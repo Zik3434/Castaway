@@ -54,8 +54,8 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 #title .vers{color:var(--muted);font-size:17px;text-shadow:1px 1px 0 #0a1020}
 #title .confirm{color:var(--bad);font-size:18px;text-shadow:1px 1px 0 #0a1020;min-height:1.2em;text-align:center}
 #cut{cursor:pointer;gap:10px}
-#cut .cap{font-family:var(--display);font-size:clamp(11px,3.4vw,15px);line-height:1.9;color:var(--text);text-align:center;text-wrap:balance;
-  text-shadow:2px 2px 0 #0a1020;max-width:440px;min-height:3.8em;opacity:0;transition:opacity .6s}
+#cut .cap{font-family:var(--display);font-size:clamp(11px,3.4vw,15px);line-height:1.9;color:var(--text);text-align:center;
+  text-shadow:2px 2px 0 #0a1020;max-width:440px;min-height:3.8em;opacity:0;transition:opacity .5s}
 #cut .cap.show{opacity:1}
 #cut .hint{color:var(--muted);font-size:18px;text-shadow:1px 1px 0 #0a1020}
 #cut .skip{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px))}
@@ -76,6 +76,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 .tide{font-size:17px;color:var(--muted);text-align:center;text-wrap:balance;padding:0 2px}
 .tide b{color:var(--text);font-weight:normal}
 .slots{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.slots.solo{grid-template-columns:1fr}
 .slot{width:100%;background:rgba(10,16,32,.55);border:2px solid var(--edge);padding:8px 3px 6px;display:grid;gap:4px;min-width:0;text-align:center}
 .slot .n{font-family:var(--display);font-size:8px;color:var(--muted)}
 .slot .st{font-size:17px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -281,26 +282,27 @@ const LOCS = [
   { id: 'trench', name: 'Black Trench', range: 3, shop: false, sell: true,  x: 122, y: 44, blurb: 'Deep water. A buyer boat anchors here.' },
   { id: 'fjord',  name: 'Frost Fjords', range: 4, shop: true,  sell: true,  x: 70,  y: 18, blurb: 'Far north. Ice station with a shop.' },
   { id: 'stars',  name: 'The Stars',    range: 5, shop: false, sell: false, x: 142, y: 10, blurb: 'Not in this build.', locked: true },
+  { id: 'sea',    name: 'Open Sea',     range: 99, shop: false, sell: false, x: 0, y: 0, blurb: 'Where it began.' }, // prologue only; never on the chart
 ];
 
 // beh: smooth | dart | sinker | floater. diff 0-1. shape picks the distant silhouette in the scene. rare = rod or trophy line only.
 // Real species, placed by biome. Sizes are real adult ranges in cm; values are untuned guesses.
 const SPECIES = [
   // Wreck Shoal: warm shallows around a wreck
-  { id: 'sardine',    name: 'Sardine',               loc: { shoal: 40, harbor: 10 }, size: [10, 20],   rate: 40,    beh: 'smooth',  diff: 0.10, shape: 'fry' },
-  { id: 'bream',      name: 'Gilt-head Bream',       loc: { shoal: 24, harbor: 10 }, size: [20, 50],   rate: 40,    beh: 'smooth',  diff: 0.30, shape: 'bream' },
+  { id: 'sardine',    name: 'Sardine',               loc: { shoal: 40, harbor: 10 , sea: 30 }, size: [10, 20],   rate: 40,    beh: 'smooth',  diff: 0.10, shape: 'fry' },
+  { id: 'bream',      name: 'Gilt-head Bream',       loc: { shoal: 24, harbor: 10 , sea: 14 }, size: [20, 50],   rate: 40,    beh: 'smooth',  diff: 0.30, shape: 'bream' },
   { id: 'grunt',      name: 'French Grunt',          loc: { shoal: 20 },             size: [15, 30],   rate: 35,    beh: 'smooth',  diff: 0.25, shape: 'bream' },
   { id: 'needlefish', name: 'Needlefish',            loc: { shoal: 12 },             size: [40, 90],   rate: 30,    beh: 'dart',    diff: 0.45, shape: 'pike', k: 0.003, time: ['day'] },
   { id: 'pompano',    name: 'Florida Pompano',       loc: { shoal: 10 },             size: [25, 55],   rate: 60,   beh: 'dart',    diff: 0.50, shape: 'bream', k: 0.02, time: ['dawn', 'dusk'] },
   { id: 'snapper',    name: 'Mangrove Snapper',      loc: { shoal: 12 },             size: [25, 60],   rate: 55,   beh: 'sinker',  diff: 0.45, shape: 'bream', time: ['dusk', 'night'], minBait: 1 },
   { id: 'trigger',    name: 'Queen Triggerfish',     loc: { shoal: 6 },              size: [30, 60],   rate: 70,   beh: 'dart',    diff: 0.55, shape: 'bream', k: 0.025, time: ['day'], minBait: 1 },
-  { id: 'bonefish',   name: 'Bonefish',              loc: { shoal: 6 },              size: [40, 80],   rate: 90,   beh: 'dart',    diff: 0.70, shape: 'trout', time: ['dawn'], minBait: 1 },
+  { id: 'bonefish',   name: 'Bonefish',              loc: { shoal: 6 , sea: 3 },              size: [40, 80],   rate: 90,   beh: 'dart',    diff: 0.70, shape: 'trout', time: ['dawn'], minBait: 1 },
   { id: 'barracuda',  name: 'Great Barracuda',       loc: { shoal: 4 },              size: [80, 170],  rate: 70,   beh: 'dart',    diff: 0.80, shape: 'pike', k: 0.006, time: ['day'], rare: true, minBait: 1, big: true },
   { id: 'tarpon',     name: 'Tarpon',                loc: { shoal: 5 },              size: [100, 220], rate: 80,   beh: 'dart',    diff: 0.85, shape: 'big', k: 0.009, time: ['night'], rare: true, minBait: 1, big: true },
   // Gull Harbor: a temperate pier
-  { id: 'herring',    name: 'Atlantic Herring',      loc: { harbor: 30 },            size: [20, 35],   rate: 35,    beh: 'smooth',  diff: 0.15, shape: 'fry' },
-  { id: 'mackerel',   name: 'Atlantic Mackerel',     loc: { harbor: 26 },            size: [25, 50],   rate: 45,    beh: 'dart',    diff: 0.40, shape: 'trout', time: ['day'] },
-  { id: 'mullet',     name: 'Grey Mullet',           loc: { harbor: 24 },            size: [30, 70],   rate: 35,    beh: 'smooth',  diff: 0.30, shape: 'trout' },
+  { id: 'herring',    name: 'Atlantic Herring',      loc: { harbor: 30 , sea: 30 },            size: [20, 35],   rate: 35,    beh: 'smooth',  diff: 0.15, shape: 'fry' },
+  { id: 'mackerel',   name: 'Atlantic Mackerel',     loc: { harbor: 26 , sea: 22 },            size: [25, 50],   rate: 45,    beh: 'dart',    diff: 0.40, shape: 'trout', time: ['day'] },
+  { id: 'mullet',     name: 'Grey Mullet',           loc: { harbor: 24 , sea: 20 },            size: [30, 70],   rate: 35,    beh: 'smooth',  diff: 0.30, shape: 'trout' },
   { id: 'flounder',   name: 'European Flounder',     loc: { harbor: 20 },            size: [20, 50],   rate: 50,   beh: 'sinker',  diff: 0.40, shape: 'flat' },
   { id: 'seabass',    name: 'European Sea Bass',     loc: { harbor: 12 },            size: [40, 90],   rate: 70,   beh: 'dart',    diff: 0.55, shape: 'trout', time: ['dawn', 'dusk'], minBait: 1 },
   { id: 'garfish',    name: 'Garfish',               loc: { harbor: 10 },            size: [50, 90],   rate: 35,   beh: 'dart',    diff: 0.45, shape: 'pike', k: 0.003, time: ['day'] },
@@ -372,6 +374,7 @@ function freshState() {
   return {
     v: 6, started: false, loc: 'shoal', money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 2, trophyRig: false,
     pending: null, // a landed catch waiting for Sell / Keep / Release; survives a reload
+    prologue: false, proCaught: 0, // the calm-sea opening: rod only, two fish, then the storm
     bait: { shrimp: 0, squid: 0 },
     lines: [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, { rig: 'set', bait: 'scraps', phase: 'idle' }, null, null],
     sel: 0, index: {}, visited: { shoal: true }, sold: 0, casts: 0,
@@ -498,6 +501,7 @@ function resolveCatch(how) {
     else if (how === 'keep' && S.bucket.length < T.bucketCap) { S.bucket.push({ id: p.id, cm: p.cm, kg: p.kg, value: p.value, trophy: p.trophy }); toast(`Into the bucket. ${S.bucket.length}/${T.bucketCap}.`); }
     else toast('Released.');
   } else if (s.kind === 'junk') toast('Tossed back.');
+  if (S.prologue && !s.kind) { S.proCaught++; if (S.proCaught >= 2) { save(); render(); toast('The light is going.'); setTimeout(startStorm, 1400); return; } }
   save(); render();
 }
 function releaseFish(j) { if (!S.bucket[j]) return; S.bucket.splice(j, 1); save(); render(); renderSheet(); toast('Released.'); }
@@ -581,12 +585,14 @@ function renderHUD() {
   $('#hClock').textContent = clockText(now());
   $('#hMoney').textContent = money(S.money);
   $('#hBucket').textContent = `Bucket ${S.bucket.length}/${T.bucketCap}`;
-  $('#tShop').hidden = !loc().shop;
+  $('#tShop').hidden = !loc().shop || S.prologue;
+  $('#tMap').hidden = S.prologue; $('#hMoney').hidden = S.prologue; // money does not exist yet
   $('#tMap').classList.toggle('pulse', S.raft && S.loc === 'shoal' && !S.visited.harbor);
 }
 function renderTide() {
   const t = now(); lastPhase = phaseAt(t);
   const names = pool(S.loc, 'hand', 'squid', t).filter(x => !x[0].kind && !x[0].rare).map(x => x[0].name);
+  if (S.prologue) { $('#tide').innerHTML = `<b>Calm sea</b> · supper: ${S.proCaught}/2 fish`; return; }
   $('#tide').innerHTML = `<b>${PHASE_NAME[lastPhase]}</b> · biting: ${names.slice(0, 2).join(', ') || 'not much'}`;
 }
 const RIG_NAME = { hand: 'rod', set: 'set', trophy: 'trophy' };
@@ -609,8 +615,9 @@ function rigNote(L) {
 function readyText() { const n = S.lines.filter(L => L && L.phase === 'idle').length, hot = S.lines.filter(L => L && (L.phase === 'bite' || L.phase === 'hooked')).length; return hot ? `${hot} on!` : `${n} line${n === 1 ? '' : 's'} ready`; }
 function renderSlots() {
   $('#ready').textContent = readyText();
+  $('#slots').classList.toggle('solo', !!S.prologue);
   let h = '';
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < (S.prologue ? 1 : 4); i++) {
     const L = S.lines[i];
     if (i >= S.slots || !L) { h += `<div class="slot lock"><div class="n">LINE ${i + 1}</div><div class="st">${money(SLOT_PRICES[i])}</div></div>`; continue; }
     const cls = ['slot', i === S.sel ? 'sel' : '', L.phase === 'bite' ? 'hot' : '', (L.phase === 'hooked' || L.phase === 'waiting') ? 'on' : ''].join(' ');
@@ -621,7 +628,7 @@ function renderSlots() {
 let rigOpen = false; // the rig and bait pickers are folded behind CHANGE unless you open them
 const RIG_LABEL = { hand: 'ROD', set: 'SET LINE', trophy: 'TROPHY' };
 function baitLabel(k) { return k === 'scraps' ? 'SCRAPS' : BAITS[k].name.toUpperCase() + ' ×' + (S.bait[k] || 0); }
-function rigsFor() { return ['hand', 'set'].concat(S.trophyRig ? ['trophy'] : []); }
+function rigsFor() { return S.prologue ? ['hand'] : ['hand', 'set'].concat(S.trophyRig ? ['trophy'] : []); }
 function baitsFor(L) { return Object.keys(BAITS).filter(k => k === 'scraps' ? L.rig !== 'trophy' : S.bait[k] > 0); }
 function cycleRig(L) { const r = rigsFor(), j = r.indexOf(L.rig); L.rig = r[(j + 1) % r.length]; if (L.rig === 'trophy' && L.bait === 'scraps') L.bait = S.bait.shrimp > 0 ? 'shrimp' : S.bait.squid > 0 ? 'squid' : 'scraps'; }
 function cycleBait(L) { const b = baitsFor(L); if (!b.length) return; const j = b.indexOf(L.bait); L.bait = b[(j + 1) % b.length]; }
@@ -630,7 +637,7 @@ function renderAction() {
   if (!L) { box.innerHTML = '<div class="note">Pick a line.</div>'; return; }
   if (L.phase === 'idle') {
     const rigs = [['hand', 'Rod'], ['set', 'Set'], ['trophy', 'Trophy']];
-    const pickers = rigOpen ? `<div class="segrow"><span class="lbl">RIG</span><div class="seg">${rigs.map(([k, n]) => `<button data-act="rig" data-k="${k}" class="${L.rig === k ? 'sel' : ''}" ${k === 'trophy' && !S.trophyRig ? 'disabled' : ''}>${n}</button>`).join('')}</div></div>
+    const pickers = rigOpen ? `<div class="segrow"><span class="lbl">RIG</span><div class="seg">${rigs.map(([k, n]) => `<button data-act="rig" data-k="${k}" class="${L.rig === k ? 'sel' : ''}" ${(k === 'trophy' && !S.trophyRig) || (S.prologue && k !== 'hand') ? 'disabled' : ''}>${n}</button>`).join('')}</div></div>
       <div class="segrow"><span class="lbl">BAIT</span><div class="seg">${Object.entries(BAITS).map(([k, b]) => `<button data-act="bait" data-k="${k}" class="${L.bait === k ? 'sel' : ''}" ${k !== 'scraps' && !(S.bait[k] > 0) ? 'disabled' : ''}>${k === 'scraps' ? 'Scraps' : b.name + ' ×' + S.bait[k]}</button>`).join('')}</div></div>` : '';
     box.innerHTML = `<div class="rigrow ${rigOpen ? 'open' : ''}"><button class="chip" data-act="cyclerig" title="Next rig">${RIG_LABEL[L.rig]}</button><span class="dot">·</span><button class="chip" data-act="cyclebait" title="Next bait">${baitLabel(L.bait)}</button><button class="link" data-act="change">${rigOpen ? 'DONE' : 'CHANGE'}</button></div>
       ${pickers}
@@ -652,7 +659,7 @@ function renderExtra() {
     h += `<div class="box"><div class="row"><div>Driftwood <b>${S.wood}/${T.raftWood}</b> for a raft</div><div class="note">no market here</div></div>${S.wood >= T.raftWood ? '<button class="cta" data-act="build">Build the raft</button>' : ''}</div>`;
   }
   const total = bucketTotal();
-  h += `<div class="bar"><button class="tool" data-act="open" data-k="inv"><span class="n">INVENTORY</span><span class="v">${S.bucket.length}/${T.bucketCap} fish${S.raft || S.loc !== 'shoal' ? ' · ' + money(total) : ''}</span></button>`;
+  h += `<div class="bar"><button class="tool" data-act="open" data-k="inv"><span class="n">INVENTORY</span><span class="v">${S.bucket.length}/${T.bucketCap} fish${!S.prologue && (S.raft || S.loc !== 'shoal') ? ' · ' + money(total) : ''}</span></button>`;
   if (loc().sell) h += `<button class="tool sell" data-act="sell" ${S.bucket.length ? '' : 'disabled'}><span class="n">MARKET</span><span class="v">${S.bucket.length ? 'Sell haul ' + money(total) : 'Nothing to sell'}</span></button>`;
   h += '</div>';
   $('#extra').innerHTML = h;
@@ -695,7 +702,7 @@ function renderSheet() {
     const total = bucketTotal(), boat = BOATS.find(b => b.id === S.boat), rod = RODS.find(r => r.id === S.rod);
     const rows = S.bucket.map((f, j) => { const sp = SP[f.id]; return `<div class="row"><canvas class="mini" width="64" height="36" data-fish="${f.id}" data-known="1"></canvas><div class="name" style="flex:1">${sp.name}<small>${f.cm} cm · ${fmtKg(fishKg(f))}${f.trophy ? ' · ★ trophy' : ''}</small></div><div class="price">${money(f.value)}</div><button class="buy" data-act="release" data-i="${j}">LET GO</button></div>`; }).join('');
     const market = loc().sell ? `<button class="cta" data-act="sell" ${S.bucket.length ? '' : 'disabled'}>Sell the haul · ${money(total)}</button>`
-      : `<div class="note">${S.raft ? 'No market here. Gull Harbor buys the whole bucket.' : 'No market on the shoal. Build the raft first.'}</div>`;
+      : `<div class="note">${S.prologue ? 'Supper. Home is a long row away.' : S.raft ? 'No market here. Gull Harbor buys the whole bucket.' : 'No market on the shoal. Build the raft first.'}</div>`;
     el.innerHTML = `<div class="head"><h2>Inventory</h2><button class="x" data-act="close">✕</button></div>
       <div class="box"><h3>BUCKET ${S.bucket.length}/${T.bucketCap}</h3>${S.bucket.length ? `<div class="list">${rows}</div><div class="row"><div>Whole bucket</div><div class="price">${money(total)}</div></div>` : '<div class="note">Empty. Fish you keep land here.</div>'}${market}</div>
       <div class="box"><h3>BAIT</h3><div class="list">
@@ -774,7 +781,7 @@ function showCatch() {
     <div class="sub">${sub}</div>
     ${stats}${warn ? `<div class="warn">${warn}</div>` : ''}
     ${s.legend ? `<div class="note">${LEGEND_LORE[p.id]} There is only one. It will never bite again.</div>` : ''}
-    ${canSell && !s.kind ? '<div class="note">Keep it to sell the whole haul later, or take the money now.</div>' : !s.kind && !S.raft ? '<div class="note">No market on the shoal. Keep it for the first port.</div>' : ''}
+    ${canSell && !s.kind ? '<div class="note">Keep it to sell the whole haul later, or take the money now.</div>' : !s.kind && S.prologue ? '<div class="note">One for the pan.</div>' : !s.kind && !S.raft ? '<div class="note">No market on the shoal. Keep it for the first port.</div>' : ''}
     <div class="acts">${acts}</div>`;
   $('#cardWrap').hidden = false;
   const cv2 = $('#ccv'), x = cv2.getContext('2d');
@@ -1306,6 +1313,7 @@ const FLOORS = {
   shoal:  { near: [172, 160, 118], deep: [50, 72, 80], f: x => x < shoreW ? SURF : x < shoreW + 26 ? SURF + (x - shoreW) * 2.5 : SURF + 64 + Math.sin(x / 9) * 1.5 + (x - shoreW - 26) * 0.06 },
   harbor: { near: [96, 104, 92],   deep: [38, 50, 56], f: x => SURF + 86 + Math.sin(x / 11) * 2 },
   reach:  { near: [92, 102, 112],  deep: [38, 48, 60], f: x => x < shoreW ? SURF : x < shoreW + 30 ? SURF + (x - shoreW) * 2.4 : SURF + 72 + Math.sin(x / 7) * 2 + (x - shoreW - 30) * 0.05 },
+  sea:    { near: [44, 66, 82],    deep: [16, 26, 40], f: x => SURF + 118 + Math.sin(x / 13) * 2 },
 };
 function floorLayer(id) {
   const key = 'f|' + id + '|' + W + '|' + H + '|' + SURF; let c = CACHE.get(key); if (c) return c;
@@ -1425,6 +1433,12 @@ function drawShore(id, t, nt, o) {
     g.fillStyle = '#5a6270'; g.fillRect(px, py, 18, 4); g.fillStyle = '#7a8492'; g.fillRect(px, py, 18, 1);
     return [px - 2, py - 24];
   }
+  if (id === 'sea') { // the prologue: the skiff alone on deep water, no land anywhere
+    g.drawImage(floorLayer('sea'), 0, SURF);
+    const bw = shoreW + 10, by = (SURF + 1 + Math.sin(t / 900)) | 0;
+    drawBoat(-8, by, bw, 'skiff', t, false);
+    return [bw - 38, by - 31];
+  }
   if (id === 'trench') {
     g.fillStyle = haze; g.fillRect(W - 44, SURF - 5, 30, 5); g.fillRect(W - 30, SURF - 12, 2, 7); g.fillStyle = '#f0c050'; g.fillRect(W - 31, SURF - 14, 4, 2);
     if (nt > 0.2) { g.fillStyle = `rgba(240,192,80,${(0.25 * nt).toFixed(2)})`; g.fillRect(W - 36, SURF - 18, 14, 9); }
@@ -1468,7 +1482,8 @@ function drawGame(t) {
   const spot = drawShore(S.loc, t, nt, {});
   const rodOut = S.lines.some(L => L && L.rig === 'hand' && L.phase !== 'idle');
   const tip = drawFisherman(spot[0], spot[1], rodOut);
-  const st = [shoreW - 4, (S.loc === 'shoal' ? sandTop(shoreW - 4) | 0 : SURF - 7) - 6]; g.fillStyle = '#3b2a1c'; g.fillRect(st[0], st[1], 2, 7); g.fillStyle = '#f0c050'; g.fillRect(st[0], st[1] - 1, 2, 1);
+  const st = [shoreW - 4, (S.loc === 'shoal' ? sandTop(shoreW - 4) | 0 : SURF - 7) - 6];
+  if (S.loc !== 'sea') { g.fillStyle = '#3b2a1c'; g.fillRect(st[0], st[1], 2, 7); g.fillStyle = '#f0c050'; g.fillRect(st[0], st[1] - 1, 2, 1); }
   S.lines.forEach((L, i) => {
     if (!L || i >= S.slots || L.phase === 'idle') return;
     const bx = floatX(i); let by = SURF - 1 + Math.sin(t / 400 + i) * 0.8;
@@ -1578,24 +1593,36 @@ function beachScene(t, h, mode) {
   }
 }
 const CUT = [
-  { dur: 6000, cap: 'The storm took the boat.', draw: drawStorm },
-  { dur: 5500, cap: 'It did not take the rod.', draw: drawDrift },
-  { dur: 5000, cap: 'Wreck Shoal. Morning.', draw: (p, t) => beachScene(t, 6.4 + p * 0.5, 'lie') },
-  { dur: 6000, cap: 'No boat. No market. Nobody coming.<br>Six planks make a raft.', draw: (p, t) => beachScene(t, 7.0 + p * 0.5, 'sit') },
+  { dur: 6000, cap: 'No warning.', draw: drawStorm },
+  { dur: 5500, cap: 'He did not let go.', draw: drawDrift },
+  { dur: 5000, cap: 'Morning. Somewhere.', draw: (p, t) => beachScene(t, 6.4 + p * 0.5, 'lie') },
+  { dur: 5500, cap: 'Nobody is coming.', draw: (p, t) => beachScene(t, 7.0 + p * 0.5, 'sit') },
 ];
 let MODE = 'title', cut = null, capT = 0;
-function setCap() { const c = $('#cap'); c.classList.remove('show'); c.innerHTML = CUT[cut.i].cap; capT = setTimeout(() => c.classList.add('show'), 500); }
+function setCap() { const c = $('#cap'), i = cut.i; clearTimeout(capT); c.classList.remove('show'); capT = setTimeout(() => { if (!cut || cut.i !== i) return; c.innerHTML = CUT[i].cap; c.classList.add('show'); }, 520); }
 function startCut() { MODE = 'cut'; cut = { i: 0, t0: performance.now() }; $('#title').hidden = true; $('#game').hidden = true; $('#cut').hidden = false; setCap(); }
 function cutAdvance() { if (!cut) return; cut.i++; if (cut.i >= CUT.length) { endCut(); return; } cut.t0 = performance.now(); setCap(); }
-function endCut() { cut = null; fadeTo(() => { $('#cut').hidden = true; enterGame(); toast('Line 1 is your rod. Line 2 is a set line.'); }); }
-function enterGame() { MODE = 'game'; $('#title').hidden = true; $('#cut').hidden = true; $('#game').hidden = false; reseedFish(); render(); window.scrollTo(0, 0); if (S.pending) showCatch(); }
+function endCut() {
+  cut = null;
+  const wasPrologue = S.prologue;
+  if (wasPrologue) { // washed up: the boat, the bucket and the skiff are gone. The index remembers the two fish.
+    S.prologue = false; S.proCaught = 0; S.loc = 'shoal'; S.boat = 'none'; S.bucket = []; S.money = 0; S.slots = 2; S.sel = 0; S.pending = null;
+    S.lines = [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, { rig: 'set', bait: 'scraps', phase: 'idle' }, null, null]; S.visited = { shoal: true }; saveNow();
+  }
+  fadeTo(() => { $('#cut').hidden = true; enterGame(); if (wasPrologue) { toast('Line 1 is your rod. Line 2 is a set line.'); setTimeout(() => toast('Driftwood comes up on the lines. Six planks make a raft.'), 3200); } });
+}
+function startStorm() { fadeTo(() => { $('#game').hidden = true; startCut(); }); }
+function enterGame() {
+  if (S.prologue && S.proCaught >= 2) { startCut(); return; } // closed the game mid-storm: pick the storm back up
+  MODE = 'game'; $('#title').hidden = true; $('#cut').hidden = true; $('#game').hidden = false; reseedFish(); render(); window.scrollTo(0, 0); if (S.pending) showCatch();
+}
 function showTitle() { MODE = 'title'; $('#game').hidden = true; $('#cut').hidden = true; $('#title').hidden = false; $('#bCont').hidden = !S.started; $('#bNew').textContent = S.started ? 'Start over' : 'New voyage'; $('#confirm').textContent = ''; confirmNew = false; }
 function fadeTo(fn) { const f = $('#fade'); f.classList.add('on'); setTimeout(() => { fn(); setTimeout(() => f.classList.remove('on'), 80); }, 600); }
 let confirmNew = false;
 function newVoyage() {
   if (S.started && !confirmNew) { confirmNew = true; $('#confirm').textContent = 'This wipes your save. Tap again to start over.'; return; }
-  S = freshState(); S.started = true; saveNow();
-  fadeTo(startCut);
+  S = freshState(); S.started = true; S.prologue = true; S.loc = 'sea'; S.boat = 'skiff'; S.slots = 1; S.lines = [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, null, null, null]; saveNow();
+  fadeTo(() => { enterGame(); toast('A calm sea. Two for supper, then home.'); });
 }
 
 // ---------- frame loop ----------
