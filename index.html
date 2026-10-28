@@ -198,7 +198,6 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 
 <div class="screen" id="title">
   <div class="logo">CASTAWAY</div>
-  <div class="tagline">Fish your way home.</div>
   <div class="menu">
     <button class="cta alt" data-act="continue" id="bCont" hidden>Continue</button>
     <button class="cta" data-act="new" id="bNew">New voyage</button>
@@ -1007,7 +1006,7 @@ function renderSheet() {
     const total = bucketTotal(), boat = BOATS.find(b => b.id === S.boat), rod = RODS.find(r => r.id === S.rod);
     const rows = S.bucket.map((f, j) => { const sp = SP[f.id]; return `<div class="row"><canvas class="mini" width="64" height="36" data-fish="${f.id}" data-known="1"></canvas><div class="name" style="flex:1">${sp.name}<small>${f.cm} cm · ${fmtKg(fishKg(f))}${f.trophy ? ' · ★ trophy' : ''}</small></div><div class="price">${money(f.value)}</div><button class="buy" data-act="release" data-i="${j}">LET GO</button></div>`; }).join('');
     const market = loc().sell ? `<button class="cta" data-act="sell" ${S.bucket.length ? '' : 'disabled'}>Sell the haul · ${money(total)}</button>`
-      : `<div class="note">${S.prologue ? 'Supper. Home is a long row away.' : S.raft ? 'No market here. Gull Harbor buys the whole bucket.' : 'No market on the shoal. Build the raft first.'}</div>`;
+      : `<div class="note">${S.prologue ? 'Supper, if you can catch it.' : S.raft ? 'No market here. Gull Harbor buys the whole bucket.' : 'No market on the shoal. Build the raft first.'}</div>`;
     el.innerHTML = `<div class="head"><h2>Inventory</h2><button class="x" data-act="close">✕</button></div>
       <div class="box"><h3>BUCKET ${S.bucket.length}/${T.bucketCap}</h3>${S.bucket.length ? `<div class="list">${rows}</div>` : '<div class="note">Empty. Fish you keep land here.</div>'}</div>
       <div class="box"><h3>GAME BAG ${S.pack.length}/${T.packCap}</h3>${S.pack.length ? `<div class="list">${S.pack.map((f, j) => { const c = GM[f.id]; return `<div class="row"><canvas class="mini game" width="80" height="48" data-game="${f.id}"></canvas><div class="name" style="flex:1">${c.name}<small>${fmtKg(f.kg)}</small></div><div class="price">${money(f.value)}</div></div>`; }).join('')}</div>` : `<div class="note">Empty. ${WEAPON().name} in hand. The hunting ground is past the village.</div>`}</div>
@@ -2482,7 +2481,7 @@ function startIntro() {
 }
 function endIntro() {
   if (introDone) return; introDone = true;
-  fadeTo(() => { $('#cut').hidden = true; enterGame(); toast('A calm sea. Two for supper, then home.'); });
+  fadeTo(() => { $('#cut').hidden = true; enterGame(); toast('A calm sea. Two for supper.'); });
 }
 function drawIntro(t) {
   const h = 19.1, nt = drawSkyBase(h, t, {});
