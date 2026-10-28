@@ -126,7 +126,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 .list{display:grid;gap:2px}
 .list .row{padding:8px 6px;border-bottom:1px solid var(--edge)}
 .list .row.dim{opacity:.55}
-.list canvas.mini{width:48px;height:auto;flex:none}
+.list canvas.mini{width:96px;height:auto;flex:none;background:var(--ink);border:1px solid var(--edge)}
 .overlay{position:fixed;inset:0;z-index:20;background:rgba(5,8,18,.8);display:flex;align-items:flex-end;justify-content:center;
   padding-top:env(safe-area-inset-top,0px);padding-bottom:0;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
@@ -220,7 +220,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 <div class="overlay center" id="fightWrap" hidden>
   <div class="fightbox">
     <div class="fname" id="fname"></div>
-    <canvas id="fcv" width="96" height="128"></canvas>
+    <canvas id="fcv" width="128" height="128"></canvas>
     <div class="note" style="text-align:center">Hold anywhere to lift the net. Let go to drop it. Keep the fish inside.</div>
   </div>
 </div>
@@ -603,7 +603,7 @@ function renderSheet() {
     const fish = SPECIES.filter(s => !s.kind);
     const rows = fish.map(s => {
       const ix = S.index[s.id], home = LOCS.find(l => s.loc[l.id]);
-      const mini = `<canvas class="mini" width="24" height="10" data-shape="${s.shape}" data-known="${ix ? 1 : 0}"></canvas>`;
+      const mini = `<canvas class="mini" width="48" height="20" data-fish="${s.id}" data-known="${ix ? 1 : 0}"></canvas>`;
       if (ix) return `<div class="row">${mini}<div class="name" style="flex:1">${s.name}<small>${home.name}${s.rare ? ' · rare' : ''}${s.time ? ' · ' + s.time.join('/') : ''}</small></div><div class="price">×${ix.n} · ${ix.best} cm${ix.trophies ? ' · ★' + ix.trophies : ''}</div></div>`;
       return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${S.visited[home.id] ? home.name : 'somewhere out there'}${s.rare ? ' · rare: rod or trophy line' : ''}</small></div><div class="price">—</div></div>`;
     }).join('');
@@ -611,7 +611,7 @@ function renderSheet() {
     drawMinis(el);
   } else if (sheetKind === 'inv') {
     const total = bucketTotal(), boat = BOATS.find(b => b.id === S.boat), rod = RODS.find(r => r.id === S.rod);
-    const rows = S.bucket.map((f, j) => { const sp = SP[f.id]; return `<div class="row"><canvas class="mini" width="24" height="10" data-shape="${sp.shape}" data-known="${f.trophy ? 2 : 1}"></canvas><div class="name" style="flex:1">${sp.name}<small>${f.cm} cm${f.trophy ? ' · ★ trophy' : ''}</small></div><div class="price">${money(f.value)}</div><button class="buy" data-act="release" data-i="${j}">LET GO</button></div>`; }).join('');
+    const rows = S.bucket.map((f, j) => { const sp = SP[f.id]; return `<div class="row"><canvas class="mini" width="48" height="20" data-fish="${f.id}" data-known="1"></canvas><div class="name" style="flex:1">${sp.name}<small>${f.cm} cm${f.trophy ? ' · ★ trophy' : ''}</small></div><div class="price">${money(f.value)}</div><button class="buy" data-act="release" data-i="${j}">LET GO</button></div>`; }).join('');
     const market = loc().sell ? `<button class="cta" data-act="sell" ${S.bucket.length ? '' : 'disabled'}>Sell the haul · ${money(total)}</button>`
       : `<div class="note">${S.raft ? 'No market here. Gull Harbor buys the whole bucket.' : 'No market on the shoal. Build the raft first.'}</div>`;
     el.innerHTML = `<div class="head"><h2>Inventory</h2><button class="x" data-act="close">✕</button></div>
@@ -639,7 +639,7 @@ function renderSheet() {
   }
 }
 function drawMinis(el) {
-  el.querySelectorAll('canvas.mini').forEach(c => { const x = c.getContext('2d'); x.fillStyle = '#0a1020'; x.fillRect(0, 0, 24, 10); const m = MASKS[c.dataset.shape]; const k = c.dataset.known; drawMaskRaw(x, m, (24 - m[0].length) >> 1, (10 - m.length) >> 1, k === '2' ? '#f0c050' : k === '1' ? '#dfe9f3' : '#2d3b55', 1); });
+  el.querySelectorAll('canvas.mini').forEach(c => { const x = c.getContext('2d'); x.fillStyle = '#0f2238'; x.fillRect(0, 0, 48, 20); x.fillStyle = '#152638'; x.fillRect(0, 18, 48, 2); blitFishCentered(x, c.dataset.fish, 24, 10, 1, c.dataset.known === '1' ? 'color' : 'dim'); });
 }
 function mapClick(e) {
   const c = e.currentTarget, r = c.getBoundingClientRect();
@@ -678,7 +678,7 @@ function showCatch() {
   $('#card').className = 'card catch';
   $('#card').innerHTML = `<div class="head">${head}</div>
     ${pills.length ? `<div class="pills">${pills.map(t => `<div class="pill ${t === 'Trophy size' ? 'gold' : ''}">${t.toUpperCase()}</div>`).join('')}</div>` : ''}
-    <canvas class="art" id="ccv" width="96" height="48"></canvas>
+    <canvas class="art" id="ccv" width="128" height="64"></canvas>
     <div class="fish">${s.name}</div>
     ${s.kind ? '' : `<div class="size">${p.trophy ? '★ ' : ''}${p.cm} cm</div>`}
     <div class="sub">${sub}</div>
@@ -687,11 +687,15 @@ function showCatch() {
     <div class="acts">${acts}</div>`;
   $('#cardWrap').hidden = false;
   const cv2 = $('#ccv'), x = cv2.getContext('2d');
-  const g = x.createRadialGradient(48, 24, 2, 48, 24, 48); g.addColorStop(0, p.trophy ? '#3a4a5a' : '#1d4466'); g.addColorStop(1, '#0a1a2c');
-  x.fillStyle = g; x.fillRect(0, 0, 96, 48);
-  x.fillStyle = 'rgba(223,233,243,.25)'; for (let k = 0; k < 7; k++) x.fillRect((k * 37 + 11) % 96, (k * 23 + 5) % 48, 1, 1);
-  const m = MASKS[s.shape], sc = s.kind ? 4 : Math.max(2, Math.min(4, Math.floor(80 / m[0].length), Math.floor(40 / m.length))), w = m[0].length * sc, h = m.length * sc;
-  drawMaskRaw(x, m, (96 - w) / 2 | 0, (48 - h) / 2 | 0, s.kind === 'wood' ? '#8a5a34' : s.kind === 'junk' ? '#5a4636' : p.trophy ? '#f0c050' : '#dfe9f3', sc);
+  x.imageSmoothingEnabled = false;
+  const g = x.createLinearGradient(0, 0, 0, 64); g.addColorStop(0, p.trophy ? '#2c4d6b' : '#1f4a6a'); g.addColorStop(1, '#0a1a2c');
+  x.fillStyle = g; x.fillRect(0, 0, 128, 64);
+  for (const [sx, sw, a] of [[18, 9, .05], [52, 6, .04], [79, 11, .05], [111, 5, .03]]) { const sg = x.createLinearGradient(0, 0, 0, 60); sg.addColorStop(0, `rgba(255,255,255,${a})`); sg.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = sg; x.fillRect(sx, 0, sw, 60); } // light shafts
+  x.fillStyle = 'rgba(255,255,255,0.35)'; for (let k = 0; k < 128; k += 7) x.fillRect(k + (k % 3), 1, 3, 1); // surface glints
+  x.fillStyle = '#152638'; x.fillRect(0, 60, 128, 4); x.fillStyle = '#1e3448'; for (let k = 3; k < 128; k += 11) x.fillRect(k, 59, 4, 1); // seabed
+  x.fillStyle = 'rgba(223,233,243,.35)'; for (let k = 0; k < 9; k++) x.fillRect((k * 41 + 9) % 128, (k * 17 + 7) % 56, 1, 1); // motes
+  const m = fishMap(p.id), sc = Math.max(1, Math.min(3, Math.floor(118 / m[0].length), Math.floor(52 / m.length)));
+  blitFishCentered(x, p.id, 64, 30, sc, 'color');
 }
 function toast(msg) {
   const w = $('#toasts'), d = document.createElement('div');
@@ -719,6 +723,304 @@ const MASKS = {
   sun:   ['..###..', '.#####.', '#######', '#######', '#######', '.#####.', '..###..'],
   ring:  ['....#####....', '..##.....##..', '.#.........#.', '#...........#', '#...........#', '#...........#', '.#.........#.', '..##.....##..', '....#####....'],
 };
+// Species sprites. Head to the right. Letters: o outline, b body, d body dark, l belly, h highlight,
+// f fin, F fin dark, m marking, n marking 2 / glow, e eye, w eye white, . transparent.
+// Rows may be ragged; fishMap() pads them to the widest row.
+const FISH_ART = {
+  minnow: { pal: { o: '#2a3a52', b: '#7fa3c4', l: '#dfe9f3', f: '#9fb8d2', F: '#6d8ba8', e: '#101820', w: '#ffffff' }, map: [
+    '.........ooooooo....',
+    '..o....oobbbbbbboo..',
+    '.ofo..obbbbbbbbbbwo.',
+    '.ofoooblllllllllbeo.',
+    '..ofoolllllllllllo..',
+    '...oo.ollllfFlllo...',
+    '.......ooooFoooo....',
+    '...........o........'] },
+  bream: { pal: { o: '#3a2a10', b: '#c8a050', d: '#9a7030', l: '#eedcae', f: '#d8b870', F: '#8a6420', e: '#140c04', w: '#ffffff' }, map: [
+    '...........ofofofofofo......',
+    '..........oFfFfFfFfFfFo.....',
+    'oo.......ohbbbbbbbbbbbbo....',
+    'oFo.....ohhbbbbbbbbbbbbbo...',
+    'oFFo...ohhbbbbbbbbbbbbbbbo..',
+    '.oFFo.ohbbbbbbbbbbbbbbbbbbo.',
+    '..oFFoobbbbbbbbbbbbbbbbbweo.',
+    '..oFFoobbbbbbbbbbbbbbbbbbboo',
+    '.oFFo.obbddddddddddddbbbbbo.',
+    'oFFo...oddddddddddddddddbo..',
+    'oFo....ollldddddddddllllo...',
+    'oo......ollllllooollllo.....',
+    '.........ooooooofFfo........',
+    '...............ooo..........'] },
+  perch: { pal: { o: '#1e2a1a', b: '#6f8f3a', d: '#4a6428', l: '#d8c870', m: '#2f4020', f: '#e08a30', F: '#a85a18', e: '#101010', w: '#ffffff' }, map: [
+    '...........ofofofofofo......',
+    '..........oFfFfFfFfFfFo.....',
+    'oo.......obbmbbmbbmbbbo.....',
+    'oFo.....obbmbbmbbmbbmbbo....',
+    'oFFo...obbbmbbmbbmbbmbbbo...',
+    '.oFFo.obbbbmbbmbbmbbmbbbbo..',
+    '..oFFoobbbbmbbmbbmbbmbbweo..',
+    '..oFFoobbbbmbbmbbmbbmbbbboo.',
+    '.oFFo.obblmlllmlllmlllmbbo..',
+    'oFFo...ollllllllllllllllo...',
+    'oFo....ollllffllllfflllo....',
+    'oo......oooofFfooofFfoo.....',
+    '...........oFo...oFo........'] },
+  tarpon: { pal: { o: '#3a4a5e', b: '#b8c6d4', m: '#dfe9f3', l: '#eef3f8', f: '#c8d4e0', F: '#8fa0b4', e: '#101820', w: '#ffffff' }, map: [
+    '............................o...........',
+    '..........oooooooooooooooooo............',
+    'oo.......obbbbbbbbbbbbbbbbbbooo.........',
+    'oFo.....obmbmbmbmbmbmbmbmbmbmbboo.......',
+    'oFFo...obbmbmbmbmbmbmbmbmbmbmbmbboo.....',
+    'oFFFoooobmbmbmbmbmbmbmbmbmbmbmbmbbbwwo..',
+    '.oFFFolllllllllllllllllllllllllllllweo..',
+    '.oFFFollllllllllllllllllllllllllllllooo.',
+    'oFFFoooollllllllllllllllllllllllllloo...',
+    'oFFo...olllllllllllllfFflllllllllloo....',
+    'oFo.....oolllllllllloooFoolllllooo......',
+    'oo........oooooooooo..o..ooooo..........'] },
+  mullet: { pal: { o: '#22304a', b: '#8fa6bd', m: '#51667f', l: '#e5ecf2', f: '#a8b8c8', F: '#6d8197', e: '#0c0c14', w: '#ffffff' }, map: [
+    '.........ooooooooooo..........',
+    'oo......obbbbbbbbbbbbooo......',
+    'oFoo...obbbbbbbbbbbbbbbboo....',
+    'oFFFoooobmmmmmmmmmmmmmbbbbo...',
+    '.oFFFobbbbbbbbbbbbbbbbbbbweo..',
+    '..oFFobmmmmmmmmmmmmmmmbbbbboo.',
+    '.oFFFolllllllllllllllllllllo..',
+    'oFFFoooolllllllllllllllllo....',
+    'oFoo....ollllllfFfllllloo.....',
+    'oo.......oooooooFooooo........',
+    '................o.............'] },
+  flounder: { pal: { o: '#2a1e12', b: '#8a6a44', m: '#5a4428', l: '#c9ad80', f: '#a88a60', F: '#6a5030', e: '#0c0c0c', w: '#ffffff' }, map: [
+    '..........ooooooooooo.........',
+    '.......oooffffffffffffooo.....',
+    '.....oofbbbbbbbbbbbbbbbbfoo...',
+    '....ofbbbbmbbbbbbmbbbbbbbbfo..',
+    '...ofbbbbbbbbbbbbbbbbbbbbweo..',
+    '..ofbbbmbbbbbbbbmbbbbbbbbbwo..',
+    '..ofbbbbbbbbbbbbbbbbbbbbbbbo..',
+    'ooobbbbbbbmbbbbbbbbbmbbbbbbo..',
+    'oFobbbbbbbbbbbbbbbbbbbbbbbbo..',
+    'oFobbbmbbbbbbbbmbbbbbbbbbbo...',
+    'ooofbbbbbbbbbbbbbbbbbbbbbfo...',
+    '...ofbbbbbbmbbbbbbbbbbbbfo....',
+    '....ofbbbbbbbbbbbbbbbbbfo.....',
+    '.....oofffffffffffffffoo......',
+    '.......ooooooooooooooo........'] },
+  jack: { pal: { o: '#16283a', b: '#3f7f8a', m: '#e8c850', l: '#dfe9f3', f: '#8fb0c0', F: '#5a8090', e: '#0c0c14', w: '#ffffff' }, map: [
+    '...........oooooooooo...........',
+    '..........obbbbbbbbbbboo........',
+    'oo.......obbbbbbbbbbbbbbooo.....',
+    'oFo.....obbbbbbbbbbbbbbbbbboo...',
+    'oFFo...obbbbbbbbbbbbbbbbbbbbbo..',
+    '.oFFoooobmmmmmmmmmmmmmmmmbbweo..',
+    '..oFFolllllllllllllllllllllllo..',
+    '.oFFo.olllllllllllllllllllllo...',
+    'oFFo...olllllllllllfFflllloo....',
+    'oFo.....ooollllllloooFoooo......',
+    'oo.........ooooooo..o...........'] },
+  eel: { pal: { o: '#1e1a10', b: '#6a6a3a', m: '#c8c890', l: '#a8a070', F: '#3a3a20', f: '#555530', e: '#0c0c0c', w: '#ffffee' }, map: [
+    '....................ooooooooo...........',
+    '...oooo...........oobbbbbbbbbooo........',
+    '..obbbboooo.....oobbbmbbbbmbbbbbooo.....',
+    '.obbmbbbbbbooooobbbbbbbbbbbbbbbbbbboo...',
+    'obbbbbbmbbbbbbbbbbmbbbbbbbbbbmbbbbbbbwo.',
+    'obbbbbbbbbbbbbmbbbbbbbbmbbbbbbbbbbbbbeo.',
+    'ollllllllllllllllllllllllllllllllllllo..',
+    '.oFFFFFFFFFFFFFFFFFFFFFFFFlllllllllloo..',
+    '..ooooooooooooooooooooooooooooooooo.....'] },
+  king: { pal: { o: '#3a1810', b: '#c05030', d: '#8a3020', m: '#e8a040', l: '#f0d8a0', f: '#f0c050', F: '#b8871c', e: '#100808', w: '#ffffff' }, map: [
+    '..............ofofofofofofo.........',
+    '.............oFfFfFfFfFfFfFo........',
+    'oo..........obbbbbbbbbbbbbbbbo......',
+    'oFo........obbbbmbbbbbbbmbbbbbo.....',
+    'oFFo......obbbbbbbbbbbbbbbbbbbbo....',
+    'oFFFo....obbmbbbbbbbbbbbbbbbbbbbo...',
+    '.oFFFo..obbbbbbbbbbmbbbbbbbbbbwwo...',
+    '..oFFFoobbbbbbbbbbbbbbbbbbbbbbweo...',
+    '..oFFFoobbbbmbbbbbbbbbbbbbbbbbbbo...',
+    '..oFFFoobbbbbbbbbbbbbbmbbbbbbbbbboo.',
+    '.oFFFo..obbbbbbbbbbbbbbbbbbbbbbllo..',
+    'oFFFo....obbddddddddddddddddbbllo...',
+    'oFFo......olllllllllllllllllllllo...',
+    'oFo........ollllffllllllffllllo.....',
+    'oo..........ooooFfooooooFfooo.......',
+    '..............oFo......oFo..........'] },
+  kelpbass: { pal: { o: '#1a2414', b: '#5a7a3a', m: '#38502a', l: '#b8c088', f: '#7a9a4a', F: '#4a6a2a', e: '#0c100c', w: '#ffffff' }, map: [
+    '..........ofofofofofo.......',
+    '.........oFfFfFfFfFfFo......',
+    'oo......obbbbmbbbbmbbbo.....',
+    'oFo....obbmbbbbbmbbbbbbo....',
+    'oFFo..obbbbbbmbbbbbmbbbbo...',
+    '.oFFoobbmbbbbbbbmbbbbbbwwo..',
+    '..oFFobbbbbmbbbbbbbbmbbweo..',
+    '..oFFobbmbbbbbmbbbbbbbbbboo.',
+    '.oFFoobbbbbbbbbbbmbbbbbbo...',
+    'oFFo..olllllllllllllllllo...',
+    'oFo....ollllffllllllffllo...',
+    'oo......ooooFfoooooooFoo....',
+    '..........oFo.......o.......'] },
+  rockcod: { pal: { o: '#2a1410', b: '#a0503a', m: '#6a2a20', l: '#e0b890', f: '#c07050', F: '#7a3a28', e: '#0c0808', w: '#ffffff' }, map: [
+    '..........ofofofofofofo.......',
+    '.........oFfFfFfFfFfFfFo......',
+    'oo......obbbbbbbbbbbbbbbo.....',
+    'oFo....obbbmbbbbbmbbbbbbbo....',
+    'oFFo..obbbbbbbbbbbbbbbbbbbo...',
+    '.oFFoobbbbmbbbbbbbbmbbbbwwbo..',
+    '..oFFobbbbbbbbbbbbbbbbbbweoo..',
+    '..oFFobbbmbbbbbbmbbbbbbbbbboo.',
+    '.oFFoobbbbbbbbbbbbbbbbbbbbbo..',
+    'oFFo..obbbbbbbbbbbbbbbbbbllo..',
+    'oFo....ollllllllllllllllllo...',
+    'oo......olllffllllllfflllo....',
+    '.........oooFfooooooFfoo......',
+    '............oFo.....oFo.......'] },
+  dragon: { pal: { o: '#1e2a10', b: '#9ab048', m: '#d8e060', l: '#e8e8a0', f: '#6a9a30', F: '#3a6a18', e: '#0c100c', w: '#ffffff' }, map: [
+    '......f.........f...........f...........',
+    '.....ff........fff.........fff..........',
+    '....ofFo......ofFfo.......ofFfo.........',
+    '...ofbbbooo..obbbbbooo...obbbbbooo......',
+    '..obbbbbbbbooobbbbbbbbooobbbbbbbbbooo...',
+    '.obbmbbbbbbbbbbbbmbbbbbbbbbbbmbbbbbbboo.',
+    'obbbbbbbmbbbbbbbbbbbbmbbbbbbbbbbbbbbwwo.',
+    'obbbbbbbbbbbbbbmbbbbbbbbbbbmbbbbbbbbweoooo',
+    '.obbbmbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbo',
+    '..olllllllllllllllllllllllllllllllllooo...',
+    '...ofFfo....ofFfo......ofFfo..............',
+    '....fff......fff........fff...............',
+    '.....f........f..........f................'] },
+  hagfish: { pal: { o: '#3a2a30', b: '#9a7a88', l: '#c8a8b0', d: '#7a5a68', e: '#1a1018', w: '#ffffff', f: '#8a6a78', F: '#5a3a48' }, map: [
+    '...........ooooooooooooooo..........',
+    '....ooooooobbbbbbbbbbbbbbbooo.......',
+    '..oobbbbbbbbbbbbbbbbbbbbbbbbbboo....',
+    '.obbbbbbbbbbbbbbbbbbbbbbbbbbbbbbooo.',
+    'obbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbebbo',
+    'olllllllllllllllllllllllllllllllbboo',
+    '.oooooodddlllllllllllllllllllllloo.o',
+    '.......ooooooooooooooooooooooooo..o.',
+    '..................................o.'] },
+  dory: { pal: { o: '#0e1420', b: '#2a3a5a', l: '#4a5a80', n: '#f0c050', h: '#fff8d0', f: '#3a5080', F: '#1e2e4a', e: '#000000', w: '#e8f0ff' }, map: [
+    '.........o.o.o..........',
+    '........ofofofo.........',
+    '.......ofFfFfFfo........',
+    '......obbbbbbbbbbo......',
+    'oo...obbbbbbbbbbbbo.....',
+    'oFo.obbbbnnnbbbbbbbo....',
+    'oFFoobbbnnhnnbbbbbwwo...',
+    '.oFFobbbnnnnnbbbbbweo...',
+    '.oFFobbbbnnnbbbbbbbbo...',
+    'oFFoobbbbbbbbbbbbbbbo...',
+    'oFo.obbbbbbbbbbbbbbo....',
+    'oo...oblllllllllllo.....',
+    '......ollllllllllo......',
+    '.......ofFfFfFfo........',
+    '........ofofofo.........',
+    '.........o.o.o..........'] },
+  grouper: { pal: { o: '#1a1020', b: '#5a4a6a', m: '#3a2a48', l: '#9a8aa8', f: '#7a6a8a', F: '#4a3a5a', e: '#000000', w: '#ffffff' }, map: [
+    '...........ofofofofofofofo..........',
+    '..........oFfFfFfFfFfFfFfFo.........',
+    'oo.......obbbbbbbbbbbbbbbbbbo.......',
+    'oFo.....obbbmbbbbmbbbbbmbbbbbo......',
+    'oFFo...obbbbbbbbbbbbbbbbbbbbbbo.....',
+    'oFFFo.obbmbbbbbmbbbbbmbbbbbbbbbo....',
+    '.oFFFoobbbbbbbbbbbbbbbbbbbbbbwwbo...',
+    '..oFFFobbbbmbbbbbbmbbbbbbbbbbweoo...',
+    '..oFFFobbbbbbbbbbbbbbbbbbbbbbbbbbo..',
+    '..oFFFobbmbbbbbmbbbbbmbbbbbooooooo..',
+    '.oFFFoobbbbbbbbbbbbbbbbbbbllllllo...',
+    'oFFFo.obbbbbbmbbbbbbbbbbbbbllllo....',
+    'oFFo...olllllllllllllllllllllllo....',
+    'oFo.....olllllffllllllllffllllo.....',
+    'oo.......oooooFfoooooooFfoooo.......',
+    '..............oFo......oFo..........'] },
+  leviathan: { pal: { o: '#05080f', b: '#141c2c', d: '#0c1220', n: '#40b0ff', h: '#e8f4ff', l: '#a0d8ff', f: '#203048', F: '#101828', e: '#ff4040', w: '#ffd0d0' }, map: [
+    '...............o.......o.......o............',
+    '...............of......of......of...........',
+    'oo.............offo....offo....offo.........',
+    'oFo..........oobbbboooobbbboooobbbbooo......',
+    'oFFo.......oobbbbbbbbbbbbbbbbbbbbbbbbbooo...',
+    'oFFFo....oobbbnbbbbbbbnbbbbbbbnbbbbbbbbbboo.',
+    '.oFFFo..obbbbbbbbbnbbbbbbbbbbbbbbbnbbbbbwwbo',
+    '..oFFFoobbbnbbbbbbbbbbbbnbbbbbbbbbbbbbbbweoo',
+    '..oFFFoobbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbo',
+    '..oFFFoobbbbbbbnbbbbbbbbbbbbnbbbboooooooooo.',
+    '.oFFFo..obbbbbbbbbbbbbbbbbbbbbbbbohlhlhlhlo.',
+    'oFFFo....obbbbbbbbbbbbbbbbbbbbbbbbooooooooo.',
+    'oFFo.......oodddddddddddddddddddddo.........',
+    'oFo..........ooddddddddddddddddddo..........',
+    'oo.............oooooooooooooooooo...........'] },
+  char: { pal: { o: '#1a2e3a', b: '#3a7a80', m: '#f08098', l: '#e8f0e8', h: '#ffffff', f: '#e07060', F: '#a04040', e: '#0c0c14', w: '#ffffff' }, map: [
+    '..........oooooooooooo..o.....',
+    'oo.......obbbbbbbbbbbbooobo...',
+    'oFo.....obbbmbbbbmbbbbmbbbboo.',
+    'oFFo...obbbbbbbbbbbbbbbbbbbbbo',
+    '.oFFoooobmbbbbmbbbbmbbbbmbbwwo',
+    '..oFFobbbbbbbbbbbbbbbbbbbbbweo',
+    '..oFFolllllmlllllmlllllmllllo.',
+    '.oFFoolllllllllllllllllllllo..',
+    'oFFo...ollllhFfllllllhFfllo...',
+    'oFo.....oooohFoooooooFooo.....',
+    'oo..........oo........o.......'] },
+  pike: { pal: { o: '#1c2a14', b: '#5a7a38', m: '#d8d890', l: '#c8c890', f: '#6a8a40', F: '#3a5a20', e: '#0c0c0c', w: '#ffffee' }, map: [
+    '............................oo..........',
+    '.......................ooooobbo.........',
+    'oo........oooooooooooobbbbbbbbbooooo....',
+    'oFo....oobbbmbbbmbbbmbbbbbbbbbbbbbbbwoo.',
+    'oFFoooobbmbbbmbbbmbbbmbbbbbbbbbbbbbbbweo',
+    '.oFFobbbbmbbbmbbbmbbbmbbbbbbbbbbbbbbboo.',
+    '.oFFolllllllllllllllllllllllllllllooo...',
+    'oFFoooolllllFfllllllllllllllllllo.......',
+    'oFo....ooooFfoooooooooooooooooo.........',
+    'oo.........o............................'] },
+  aurora: { pal: { o: '#2a3448', b: '#a0b8c8', m: '#f090c0', n: '#80e0b0', l: '#e8f0f8', h: '#ffffff', f: '#b0c0d0', F: '#7a8aa0', e: '#0c0c14', w: '#ffffff' }, map: [
+    '...........oooooooooooo.....o.......',
+    'oo........obbbbbbbbbbbbooooobo......',
+    'oFo......obbmmbbbbbnnbbbbmmbbboo....',
+    'oFFo....obbbmmbbbbbnnbbbbbmmbbbboo..',
+    'oFFFoooobbbbbmmbbbbbnnbbbbbmmbbbbwwo',
+    '.oFFFolllllllmmlllllnnllllllmmlllweo',
+    '.oFFFolllllllllllllllllllllllllllloo',
+    'oFFFooollllllllllllllllllllllllllo..',
+    'oFFo...ollllllhFfllllllllhFfllllo...',
+    'oFo.....ooooohFooooooooooFoooo......',
+    'oo............o..........o..........'] },
+  wood: { pal: { o: '#3a2414', b: '#8a5a34', d: '#6a4224', m: '#4a2e18' }, map: [
+    '.oooooooooooooooooooooo.',
+    'obbbbbbbbbbbbbbbbbbbbbbo',
+    'obddbbbbbbddddbbbbbbbddo',
+    'obbbbbbdbbbbbbbbbbmbbbbo',
+    'obbbbbbbbbbbddbbbmmbbbbo',
+    'obddddbbbbbbbbbbbbmbbddo',
+    'obbbbbbbbbbbbbbbbbbbbbbo',
+    '.oooooooooooooooooooooo.'] },
+  boot: { pal: { o: '#2a1a10', b: '#6a4a30', m: '#1a1008', d: '#4a3220' }, map: [
+    '....oooooo......',
+    '...obbbbbbo.....',
+    '...obmbbmbo.....',
+    '...obbbbbbo.....',
+    '...obmbbmbo.....',
+    '...obbbbbbo.....',
+    '...obmbbmbo.....',
+    '...obbbbbbo.....',
+    '...obbbbbboooo..',
+    '..obbbbbbbbbbbo.',
+    '.obbbbbbbbbbbbbo',
+    'obbbbbbbbbbbbbbo',
+    'oddddddddddddddo',
+    '.oooooooooooooo.'] },
+};
+// Pads ragged rows and caches the padded map per species.
+const FISH_MAP = {};
+function fishMap(id) { if (FISH_MAP[id]) return FISH_MAP[id]; const a = FISH_ART[id], w = Math.max(...a.map.map(r => r.length)); return FISH_MAP[id] = a.map.map(r => r + '.'.repeat(w - r.length)); }
+// mode: 'color' (the sprite), 'dim' (unknown-species silhouette). Cached per id/scale/mode.
+function fishC(id, sc, mode) {
+  const key = 'fish:' + id + ':' + sc + ':' + mode; let c = CACHE.get(key); if (c) return c;
+  const m = fishMap(id), pal = FISH_ART[id].pal; c = document.createElement('canvas'); c.width = m[0].length * sc; c.height = m.length * sc;
+  const x = c.getContext('2d');
+  for (let r = 0; r < m.length; r++) for (let i = 0; i < m[r].length; i++) { const ch = m[r][i]; if (ch === '.') continue; x.fillStyle = mode === 'dim' ? '#2d3b55' : (pal[ch] || pal.b); x.fillRect(i * sc, r * sc, sc, sc); }
+  CACHE.set(key, c); return c;
+}
+function blitFishCentered(ctx, id, cx, cy, sc, mode) { const c = fishC(id, sc, mode); ctx.drawImage(c, (cx - c.width / 2) | 0, (cy - c.height / 2) | 0); }
+
 const PAL = { h: '#c9a86a', H: '#8f7442', s: '#e0b088', S: '#b8835e', e: '#1a1410', b: '#3a2a1e', t: '#4e8f8a', T: '#356862', p: '#5b4a3a', P: '#3f3228' };
 const SPRITES = {
   sit: [
@@ -1322,22 +1624,24 @@ function fightFrame(ts) {
   requestAnimationFrame(fightFrame);
 }
 function drawFight(ts) {
+  // 128x128: hold indicator on the left, the water column x 24..88, the progress tube on the right.
   fg.imageSmoothingEnabled = false;
-  fg.fillStyle = '#0d1a2e'; fg.fillRect(0, 0, 96, 128);
-  for (let y = 0; y < 128; y++) { const f = y / 128; fg.fillStyle = css(lerpC([46, 134, 166], [6, 18, 36], Math.min(1, f * 1.1))); fg.fillRect(24, y, 36, 1); }
-  fg.fillStyle = 'rgba(255,255,255,0.35)'; for (let x = 24; x < 60; x += 6) fg.fillRect(x + ((ts / 200) % 6 | 0), 2, 3, 1);
-  fg.fillStyle = 'rgba(255,255,255,0.06)'; for (let y = 12; y < 128; y += 14) fg.fillRect(24, y, 36, 1);
-  fg.fillStyle = '#3a3020'; fg.fillRect(24, 122, 36, 6); fg.fillStyle = '#4f4230'; for (let x = 26; x < 60; x += 7) fg.fillRect(x, 122, 3, 1);
+  fg.fillStyle = '#0d1a2e'; fg.fillRect(0, 0, 128, 128);
+  for (let y = 0; y < 128; y++) { const f = y / 128; fg.fillStyle = css(lerpC([46, 134, 166], [6, 18, 36], Math.min(1, f * 1.1))); fg.fillRect(24, y, 64, 1); }
+  fg.fillStyle = 'rgba(255,255,255,0.06)'; for (let k = 0; k < 3; k++) fg.fillRect(34 + k * 20, 0, 4, 122);
+  fg.fillStyle = 'rgba(255,255,255,0.35)'; for (let x = 24; x < 88; x += 6) fg.fillRect(x + ((ts / 200) % 6 | 0), 2, 3, 1);
+  fg.fillStyle = 'rgba(255,255,255,0.06)'; for (let y = 12; y < 128; y += 14) fg.fillRect(24, y, 64, 1);
+  fg.fillStyle = '#3a3020'; fg.fillRect(24, 122, 64, 6); fg.fillStyle = '#4f4230'; for (let x = 26; x < 88; x += 7) fg.fillRect(x, 122, 3, 1);
   const by = 4 + F.by * 116, bh = F.bar * 116;
-  fg.fillStyle = F.inside ? 'rgba(240,192,80,0.45)' : 'rgba(240,192,80,0.18)'; fg.fillRect(26, by, 32, bh);
-  fg.fillStyle = '#f0c050'; fg.fillRect(26, by, 32, 1); fg.fillRect(26, by + bh - 1, 32, 1); fg.fillRect(26, by, 1, bh); fg.fillRect(57, by, 1, bh);
-  fg.fillStyle = '#b8871c'; for (let y = by + 3; y < by + bh - 2; y += 4) { fg.fillRect(26, y, 1, 1); fg.fillRect(57, y, 1, 1); }
-  const m = MASKS[F.s.shape], fh = m.length, fw = m[0].length, fyp = 4 + F.fy * 116;
-  drawMaskRaw(fg, m, 42 - (fw >> 1), clamp(fyp - (fh >> 1), 4, 120 - fh) | 0, F.inside ? (F.trophy ? '#ffe9a8' : '#fff6e0') : '#cfd9e3', 1);
-  fg.fillStyle = '#2a1c10'; fg.fillRect(66, 4, 12, 118); fg.fillStyle = '#3b2a1c'; fg.fillRect(67, 5, 10, 116);
-  const ph = Math.round(F.p * 114); fg.fillStyle = F.p > 0.5 ? '#8ad48a' : '#e27b5f'; fg.fillRect(69, 6 + 114 - ph, 6, ph);
-  fg.fillStyle = '#9fabc4'; fg.fillRect(64, 63, 2, 1); fg.fillRect(78, 63, 2, 1);
-  if (!F.inside) { fg.fillStyle = 'rgba(226,123,95,0.12)'; fg.fillRect(0, 0, 96, 128); }
+  fg.fillStyle = F.inside ? 'rgba(240,192,80,0.45)' : 'rgba(240,192,80,0.18)'; fg.fillRect(26, by, 60, bh);
+  fg.fillStyle = '#f0c050'; fg.fillRect(26, by, 60, 1); fg.fillRect(26, by + bh - 1, 60, 1); fg.fillRect(26, by, 1, bh); fg.fillRect(85, by, 1, bh);
+  fg.fillStyle = '#b8871c'; for (let y = by + 3; y < by + bh - 2; y += 4) { fg.fillRect(26, y, 1, 1); fg.fillRect(85, y, 1, 1); }
+  const m = fishMap(F.s.id), fh = m.length, fyp = 4 + F.fy * 116;
+  blitFishCentered(fg, F.s.id, 56, clamp(fyp, 4 + (fh >> 1), 120 - (fh >> 1)), 1, 'color');
+  if (!F.inside) { fg.fillStyle = 'rgba(226,123,95,0.12)'; fg.fillRect(24, 0, 64, 128); }
+  fg.fillStyle = '#2a1c10'; fg.fillRect(96, 4, 12, 118); fg.fillStyle = '#3b2a1c'; fg.fillRect(97, 5, 10, 116);
+  const ph = Math.round(F.p * 114); fg.fillStyle = F.p > 0.5 ? '#8ad48a' : '#e27b5f'; fg.fillRect(99, 6 + 114 - ph, 6, ph);
+  fg.fillStyle = '#9fabc4'; fg.fillRect(94, 63, 2, 1); fg.fillRect(108, 63, 2, 1);
   fg.fillStyle = '#9fabc4'; fg.fillRect(8, 110, 8, 1); fg.fillRect(11, 107, 2, 7);
   fg.fillStyle = F.hold ? '#f0c050' : '#3b5280'; fg.fillRect(6, 114, 12, 6);
 }

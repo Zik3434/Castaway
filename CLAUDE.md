@@ -38,7 +38,8 @@ A pixel-art fishing game. You are a fisherman stranded on an island. You fish yo
 - **Every landing opens a catch screen.** Headline by priority (Trophy! → New record! → New species! → Landed!), tag pills for the rest, the fish lit in a dark panel, name, size, a sub line (rig, time since the line went out), and three stat tiles: worth, bait, time of day. Driftwood and junk get the same screen with a single button.
 - **The fish is held until you decide.** At a market: **Sell** (that one fish, money now) or **Keep** (bucket, sell the haul later). Elsewhere: **Keep** or **Release**. Bucket full: Keep is disabled and Release is offered. Tapping outside the card keeps the fish (or releases it if the bucket is full). The pending catch lives in `S.pending` and is saved, so a reload reopens the screen. The index is updated at landing time, so a released fish still counts as caught.
 - **The panel is the always-there tab.** Tide line; `LINES` header with a live "n lines ready" / "n on!" count; four line cards; a compact `ROD · SCRAPS  CHANGE` row where tapping the rig or bait chip cycles to the next option and CHANGE unfolds the full rig and bait pickers; the rig note; the big Cast / Set the line / Pull in / Reel in / Haul in button; then a bottom bar with **Inventory** (bucket count and value) and, at a market, **Sell haul**. The driftwood row stays above the bar on the shoal before the raft.
-- **Inventory sheet.** Bucket list with silhouettes, size, trophy star, value and a Let go button per fish; whole-bucket total and Sell the haul at a market; bait counts; gear (rod, boat, lines, trophy rig, driftwood).
+- **Inventory sheet.** Bucket list with sprites, size, trophy star, value and a Let go button per fish; whole-bucket total and Sell the haul at a market; bait counts; gear (rod, boat, lines, trophy rig, driftwood).
+- **Every species has its own sprite** (`FISH_ART`): 20–44 px wide, 8–16 tall, head to the right, a dark outline, three body tones, fins, an eye and per-species markings (perch bars, char spots, dory lantern, leviathan lights). That is about double Stardew's 16 px fish, in line with the "higher resolution than Stardew" decision. The sprites appear on the catch screen (up to 3×), in the index (unknown species as a dark silhouette), in the inventory and in the fight. The swimming fish in the scene stay one-colour silhouettes on purpose: they are far off and under murky water. The fisherman and the scenes have not had their real art pass yet.
 
 ## The prototype, section by section
 
@@ -56,14 +57,14 @@ Everything lives in one `<script>` in `index.html`. Sections, in file order:
 | rendering (DOM) | HUD, tide line, lines header, four slot cards, the action box for the selected slot (compact rig·bait row, `rigOpen` unfolds the pickers), the driftwood row and the inventory / sell bar |
 | sheets | chart (canvas + legend + sail), index (with silhouettes), inventory (bucket, bait, gear), shop, menu |
 | catch screen | `showCatch` renders `S.pending` into the card; `fmtDur` for the wait |
-| pixel art | `MASKS` (single-color string masks: fish shapes, gulls, crab, sun, map pieces), `SPRITES` + `PAL` (multi-color: `sit`, `lie`, `float`), cached to offscreen canvases by `maskC`/`sprite`, `blit` with flip, Bresenham `bres` |
+| pixel art | `MASKS` (single-color string masks: distant fish shapes, gulls, crab, sun, map pieces), `FISH_ART` (per-species multi-color sprites with their own palettes; `fishMap` pads ragged rows, `fishC` caches per id/scale/mode, `blitFishCentered`), `SPRITES` + `PAL` (multi-color: `sit`, `lie`, `float`), cached to offscreen canvases by `maskC`/`sprite`, `blit` with flip, Bresenham `bres` |
 | sky model | `SKY` keyframes by hour, `skyAt`, `nightness`, star/cloud/rain/snow/mote particle tables seeded by a fixed LCG |
 | canvas & layout | `layout()`, cached `skyLayer`, `seaLayer`, `shaftLayer`, `floorLayer` (per-location seabed) |
 | scene pieces | `drawSkyBase`, `drawSeaBase`, fish (`reseedFish`/`stepFish`/`drawFish`), `palmTree`, `pine`, `farIsland`, `drawBoat`, `drawShore(id)` (returns the fisherman's seat), `drawFisherman`, `drawGame` |
 | title & cutscene | `drawTitle`, `drawStorm`, `drawDrift`, `beachScene`; `CUT` beat table (duration, caption, draw fn); `MODE` is `title`/`cut`/`game`; `fadeTo` for transitions |
 | frame loop | one `requestAnimationFrame` loop dispatching on `MODE`; pauses when the tab is hidden |
 | chart | 160×120 parchment canvas, islands by range, fog `???` for the next range, ink ring on the selection, boat marker, compass |
-| the fight | 96×128 canvas; hold to lift the net, release to drop; fish moves by behavior; progress fills inside the net, drains outside; difficulty widens the drain |
+| the fight | 128×128 canvas: hold indicator left, water column x 24–88 with the species sprite, progress tube right; hold to lift the net, release to drop; fish moves by behavior; progress fills inside the net, drains outside; difficulty widens the drain |
 | input / boot | click delegation on `data-act`, pointer hold for the fight, offline resolution of lines on load, title first |
 
 Line state machine: `idle → waiting → bite (rod, 3 s window) → fight → idle` or `idle → waiting → hooked (set/trophy, waits forever) → haul or fight → idle`. One rod can be active at a time; set lines can all be out at once.
@@ -101,7 +102,7 @@ Catch value: `base × (0.6 + 0.9 × sizeFraction)`, doubled at trophy size (size
 - Keep it dependency-free and single-file until the roadmap says otherwise. No frameworks, no bundler.
 - Every wait, price and weight is data in the tables at the top; change numbers there, not in logic.
 - Never add art, names, sounds or UI copied from existing games.
-- When adding a species: location weight, time window, size range, value, behavior, difficulty, min bait, rare flag, silhouette size. Then re-run the empty-pool check.
+- When adding a species: location weight, time window, size range, value, behavior, difficulty, min bait, rare flag, silhouette `shape` for the scene, and a sprite in `FISH_ART` (head right, letters `o b d l h f F m n e w`, rows may be ragged). Then re-run the empty-pool check. A quick way to see every sprite: render `FISH_ART` to a contact sheet in a scratch page before judging it in the game.
 - Save format is versioned (`v: 3`). Bump it and write a migration in `load()` when the shape changes.
 - Testing in Playwright: the game saves on `visibilitychange`, so a reload overwrites anything you put in `localStorage` from the page. Seed a save with `context.addInitScript` in a fresh context instead.
 - Reference material the designer liked: One Cast (onecast.github.io) for the fast-travel, multi-line, location-and-bite-window structure; Stardew Valley for the fight mechanic. Reference only.
