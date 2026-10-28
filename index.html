@@ -197,7 +197,6 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 <div id="fade"></div>
 
 <div class="screen" id="title">
-  <div class="logo">CASTAWAY</div>
   <div class="menu">
     <button class="cta alt" data-act="continue" id="bCont" hidden>Continue</button>
     <button class="cta" data-act="new" id="bNew">New voyage</button>
@@ -2363,10 +2362,48 @@ function titleBeat(t) {
   return { k: 'wait', p: 0, n, u: 0, len: 16000 };
 }
 function ripple(cx, cy, p, col) { const r = 1 + p * 7, a = (1 - p) * 0.8; if (a <= 0) return; g.fillStyle = col || `rgba(225,232,240,${a.toFixed(2)})`; g.fillRect((cx - r) | 0, cy, 1, 1); g.fillRect((cx + r) | 0, cy, 1, 1); if (r > 3) { g.fillRect((cx - r * 0.6) | 0, cy - 1, 1, 1); g.fillRect((cx + r * 0.6) | 0, cy - 1, 1, 1); } }
+// The title, built out of planks: a 5x7 pixel alphabet where every lit cell is a block of wood. Rows alternate plank
+// tones, each plank has a darker seam along its top and a grain streak, the ends of planks get a brass nail, and the
+// whole sign hangs from two ropes.
+const WOOD_FONT = {
+  C: ['.####', '#....', '#....', '#....', '#....', '#....', '.####'],
+  A: ['.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
+  S: ['.####', '#....', '#....', '.###.', '....#', '....#', '####.'],
+  T: ['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '..#..'],
+  W: ['#.....#', '#.....#', '#..#..#', '#..#..#', '#..#..#', '#.#.#.#', '.#...#.'],
+  Y: ['#...#', '#...#', '.#.#.', '..#..', '..#..', '..#..', '..#..'],
+};
+let woodC = null, woodKey = '';
+function woodTitle(sc) {
+  const key = sc + '|' + W; if (woodC && woodKey === key) return woodC; woodKey = key;
+  const word = 'CASTAWAY', cells = []; let cx = 0;
+  for (const ch of word) { const m = WOOD_FONT[ch]; for (let r = 0; r < 7; r++) for (let c = 0; c < m[r].length; c++) if (m[r][c] === '#') cells.push([cx + c, r]); cx += m[0].length + 1; }
+  const cw = cx - 1, c = document.createElement('canvas'); c.width = cw * sc + 6; c.height = 7 * sc + 6; const x = c.getContext('2d');
+  const lit = new Set(cells.map(([a, b]) => a + ',' + b)), on = (a, b) => lit.has(a + ',' + b);
+  const tones = ['#9a6a3e', '#86592f', '#a8743f', '#8f6236', '#9e6c3a', '#7f5530', '#a06d3c'];
+  for (const [a, b] of cells) { x.fillStyle = 'rgba(20,12,4,0.55)'; x.fillRect(a * sc + 3 + 2, b * sc + 3 + 2, sc, sc); } // shadow
+  for (const [a, b] of cells) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { x.fillStyle = '#2b1d05'; x.fillRect(a * sc + 3 + dx, b * sc + 3 + dy, sc, sc); } // outline
+  for (const [a, b] of cells) {
+    const px = a * sc + 3, py = b * sc + 3, tone = tones[b % tones.length];
+    x.fillStyle = tone; x.fillRect(px, py, sc, sc);
+    x.fillStyle = '#5a3a1a'; x.fillRect(px, py, sc, 1); // the seam between planks
+    if (!on(a, b - 1)) { x.fillStyle = '#c08a50'; x.fillRect(px, py, sc, 1); } // top edge catches the light
+    if (((a * 7 + b * 13) % 5) < 2) { x.fillStyle = '#6a4424'; x.fillRect(px + ((a * 3) % sc), py + 1 + ((a + b) % (sc - 1)), 1, 1); } // grain
+    const runEnd = (!on(a - 1, b) && on(a + 1, b) && on(a + 2, b)) || (!on(a + 1, b) && on(a - 1, b) && on(a - 2, b)), postEnd = !on(a - 1, b) && !on(a + 1, b) && (!on(a, b - 1) || !on(a, b + 1));
+    if (runEnd || postEnd) { x.fillStyle = '#e0c060'; x.fillRect(px + (sc >> 1), py + (sc >> 1), 1, 1); } // a nail at the end of each plank and post
+  }
+  woodC = c; return c;
+}
 function drawTitle(t) {
   const h = 18.9, nt = drawSkyBase(h, t, {});
   drawSeaBase(h, t, nt, {});
   farIsland(W - 64, 52, true);
+  { // the sign
+    const sc = W >= 260 ? 4 : 3, c = woodTitle(sc), sx = (W - c.width) >> 1, sy = Math.round(SURF * 0.22) + (Math.sin(t / 1900) * 0.8 | 0);
+    const sway = Math.sin(t / 1900) * 1.5 | 0;
+    bres(g, sx + 10 + sway, 0, sx + 10, sy + 2, '#c8b080'); bres(g, sx + c.width - 10 + sway, 0, sx + c.width - 10, sy + 2, '#c8b080');
+    g.drawImage(c, sx, sy);
+  }
   const B = titleBeat(t);
   const bx = (W * 0.5 - 26) | 0, by = (SURF + 1 + Math.sin(t / 900)) | 0;
   // a fish jumps out of the water, right of the boat, part way through longer waits
