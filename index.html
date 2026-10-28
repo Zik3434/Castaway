@@ -60,13 +60,13 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 #cut .hint{color:var(--muted);font-size:18px;text-shadow:1px 1px 0 #0a1020}
 #cut .skip{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px))}
 #game{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;width:100%;max-width:520px;margin:0 auto}
-#hud{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;display:grid;gap:8px;padding:12px 0 14px;
+#hud,.ihud{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;display:grid;gap:8px;padding:12px 0 14px;
   background:linear-gradient(rgba(10,16,32,.82),rgba(10,16,32,.5) 65%,rgba(10,16,32,0))}
-#hud .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
-#hud .loc{font-family:var(--display);font-size:12px;color:var(--brass);text-wrap:balance;text-shadow:2px 2px 0 #0a1020}
-#hud .sub{color:var(--text);font-size:18px;margin-top:5px;font-variant-numeric:tabular-nums;text-shadow:1px 1px 0 #0a1020}
-#hud .right{text-align:right}
-#hud .money{font-family:var(--display);font-size:12px;font-variant-numeric:tabular-nums;text-shadow:2px 2px 0 #0a1020}
+#hud .top,.ihud .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+#hud .loc,.ihud .loc{font-family:var(--display);font-size:12px;color:var(--brass);text-wrap:balance;text-shadow:2px 2px 0 #0a1020}
+#hud .sub,.ihud .sub{color:var(--text);font-size:18px;margin-top:5px;font-variant-numeric:tabular-nums;text-shadow:1px 1px 0 #0a1020}
+#hud .right,.ihud .right{text-align:right}
+#hud .money,.ihud .money{font-family:var(--display);font-size:12px;font-variant-numeric:tabular-nums;text-shadow:2px 2px 0 #0a1020}
 .tabs{display:flex;gap:6px}
 .tabs button{flex:1;font-family:var(--display);font-size:9px;padding:9px 4px;background:rgba(11,17,34,.72);border:2px solid var(--edge);color:var(--text)}
 .tabs button.pulse{border-color:var(--brass);color:var(--brass)}
@@ -165,12 +165,25 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 .fightbox .fname{font-family:var(--display);font-size:12px;color:var(--brass);text-align:center;text-wrap:balance}
 .toasts{position:fixed;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));display:grid;gap:6px;justify-items:center;pointer-events:none;z-index:30;padding:0 16px}
 .toast{background:var(--panel-2);border:2px solid var(--brass);padding:7px 12px;font-size:19px;max-width:420px;text-align:center}
-#mapcv{width:100%;height:auto;border:3px solid #5a4630;background:#d9c8a0}
+#mapcv{width:100%;height:auto;border:3px solid #5a4630;background:#d9c8a0;max-height:46vh;object-fit:contain}
 .legend{display:grid;gap:4px}
 .legend button{width:100%;text-align:left;background:none;border:2px solid transparent;padding:6px 6px;color:inherit}
 .legend button.sel{border-color:var(--brass);background:var(--panel-2)}
 .legend button.dim{opacity:.55}
 .legend .here{color:var(--good);font-size:17px;white-space:nowrap}
+#isle,#hunt{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;width:100%;max-width:520px;margin:0 auto}
+#ipanel,#hpanel{background:var(--panel);border:2px solid var(--edge);border-bottom:0;border-top-color:rgba(240,192,80,.55);padding:9px 10px calc(14px + env(safe-area-inset-bottom,0px));display:grid;gap:8px}
+.walkrow{display:grid;grid-template-columns:64px 1fr 64px;gap:8px;align-items:stretch}
+.walk{font-family:var(--display);font-size:16px;background:var(--panel-2);border:2px solid var(--edge);color:var(--brass);padding:14px 0;user-select:none;-webkit-user-select:none;touch-action:none}
+.walk:active{background:var(--edge)}
+.walkrow .cta{padding:12px 6px;font-size:11px}
+.walkrow .ghost{visibility:hidden}
+.hbar{position:relative;height:20px;background:rgba(10,16,32,.7);border:2px solid var(--edge)}
+.hband{position:absolute;top:0;bottom:0;background:rgba(240,192,80,.35);border-left:1px solid var(--brass);border-right:1px solid var(--brass)}
+.hmark{position:absolute;top:-4px;width:3px;height:24px;background:var(--text);margin-left:-1px}
+.hbar.hold .hmark{background:var(--brass)}
+.hbar.hit .hband{background:rgba(138,212,138,.6)}
+.hbar.miss .hband{background:rgba(226,123,95,.6)}
 @media (prefers-reduced-motion:reduce){.cta.hit{animation:none}.cta:active{transform:none}}
 </style>
 
@@ -204,6 +217,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
       <button data-act="open" data-k="map" id="tMap">Map</button>
       <button data-act="open" data-k="index">Index</button>
       <button data-act="open" data-k="shop" id="tShop" hidden>Shop</button>
+      <button data-act="walk" id="tWalk">Walk</button>
       <button data-act="open" data-k="menu">Menu</button>
     </nav>
   </header>
@@ -217,6 +231,40 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
   </section>
 </div>
 
+<div id="isle" hidden>
+  <header class="ihud">
+    <div class="top">
+      <div><div class="loc" id="iName"></div><div class="sub" id="iVibe"></div></div>
+      <div class="right"><div class="money" id="iMoney"></div><div class="sub" id="iClock"></div></div>
+    </div>
+    <nav class="tabs">
+      <button data-act="open" data-k="map">Chart</button>
+      <button data-act="open" data-k="index">Index</button>
+      <button data-act="open" data-k="inv">Bag</button>
+      <button data-act="open" data-k="menu">Menu</button>
+    </nav>
+  </header>
+  <div class="spacer"></div>
+  <section id="ipanel">
+    <div class="tide" id="iHint"></div>
+    <div class="walkrow"><button class="walk" data-hold="-1" aria-label="walk left">◀</button><button class="cta" id="iAct" data-act="enter"></button><button class="walk" data-hold="1" aria-label="walk right">▶</button></div>
+  </section>
+</div>
+<div id="hunt" hidden>
+  <header class="ihud">
+    <div class="top">
+      <div><div class="loc" id="hName"></div><div class="sub" id="hSub"></div></div>
+      <div class="right"><div class="money" id="hMoney"></div><div class="sub" id="hBag"></div></div>
+    </div>
+    <nav class="tabs"><button data-act="leavehunt">Back to the village</button><button data-act="open" data-k="inv">Bag</button></nav>
+  </header>
+  <div class="spacer"></div>
+  <section id="hpanel">
+    <div class="tide" id="hNote"></div>
+    <div class="hbar" id="hbar"><div class="hband" id="hband"></div><div class="hmark" id="hmark"></div></div>
+    <div class="box" id="hbox"></div>
+  </section>
+</div>
 <div class="toasts" id="toasts"></div>
 <div class="overlay" id="sheetWrap" hidden><div class="sheet" id="sheet"></div></div>
 <div class="overlay center" id="cardWrap" hidden><div class="card" id="card"></div></div>
@@ -250,6 +298,7 @@ const T = {
   trophyWait: [150000, 300000],  // trophy line: 2.5-5 min
   hitWindow: 3000,               // ms to tap Reel after a hit
   bucketCap: 20,
+  packCap: 10,
   raftWood: 6,
 };
 
@@ -270,44 +319,127 @@ const BOATS = [
   { id: 'skiff',    name: 'Skiff',          range: 2, price: 800 },
   { id: 'cutter',   name: 'Cutter',         range: 3, price: 3500 },
   { id: 'trawler',  name: 'Trawler',        range: 4, price: 12000 },
-  { id: 'starship', name: 'Starship',       range: 5, price: 500000, locked: true },
+  { id: 'clipper',  name: 'Clipper',        range: 5, price: 40000 },
+  { id: 'ironclad', name: 'Ironclad',       range: 6, price: 120000 },
+  { id: 'starship', name: 'Starship',       range: 7, price: 500000, locked: true },
 ];
 const SLOT_PRICES = [0, 0, 150, 450];
 const TROPHY_RIG_PRICE = 600;
 
+// The world is a chart of islands in tiers (range = boat tier that can reach it). Links are the routes drawn between them;
+// a node is hidden until it is adjacent to somewhere you have been (then it is a fogged ???), or until a shopkeeper's rumor
+// names it. Each island is its own culture: a shore scene (hand-drawn for the first five, data-driven `scene` for the rest),
+// a village with a building to press, and a hunting ground behind a gate. Exotic islands (tier 5+) have invented fish.
 const LOCS = [
-  { id: 'shoal',  name: 'Wreck Shoal',  range: 0, shop: false, sell: false, x: 40,  y: 86, blurb: 'Where you washed up. No market, just a bucket.' },
-  { id: 'harbor', name: 'Gull Harbor',  range: 1, shop: true,  sell: true,  x: 92,  y: 80, blurb: 'First port. Buys the whole haul.' },
-  { id: 'reach',  name: 'Kelp Reach',   range: 2, shop: false, sell: false, x: 26,  y: 50, blurb: 'Reef and kelp. No market here.' },
-  { id: 'trench', name: 'Black Trench', range: 3, shop: false, sell: true,  x: 122, y: 44, blurb: 'Deep water. A buyer boat anchors here.' },
-  { id: 'fjord',  name: 'Frost Fjords', range: 4, shop: true,  sell: true,  x: 70,  y: 18, blurb: 'Far north. Ice station with a shop.' },
-  { id: 'stars',  name: 'The Stars',    range: 5, shop: false, sell: false, x: 142, y: 10, blurb: 'Not in this build.', locked: true },
-  { id: 'sea',    name: 'Open Sea',     range: 99, shop: false, sell: false, x: 0, y: 0, blurb: 'Where it began.' }, // prologue only; never on the chart
+  { id: 'shoal', name: 'Wreck Shoal', range: 0, shop: false, sell: false, x: 28, y: 112, links: ['harbor', 'brine'],
+    blurb: 'Where you washed up. No market, just a bucket.', vibe: 'Sand, a wreck, and gulls that know too much.',
+    rumor: 'A sandbar with a wreck on it. Nobody goes back there on purpose.',
+    village: { kind: 'camp', props: [['palm', .78, 40], ['fire', .5], ['sign', .3]] },
+    hunt: { kind: 'dunes', name: 'the dunes', gate: 'driftwood posts' } },
+  { id: 'harbor', name: 'Gull Harbor', range: 1, shop: true, sell: true, x: 62, y: 96, links: ['shoal', 'reach', 'lantern'],
+    blurb: 'First port. Buys the whole haul.', vibe: 'Tar, rope, gulls on every post. Everything smells of fish and money.',
+    rumor: 'A gull-ridden port a day east. The first place that will pay you.',
+    keeper: { name: 'Marta', lines: ['"Fresh off the shoal? You have the look. Sell me what you have and buy a real rod."', '"Lines out at night. The eels come in under the pier when the lanterns are lit."', '"West is kelp. East is lanterns. Both want a bigger boat than that."'] },
+    village: { kind: 'shack', props: [['barrel', .22], ['lamp', .62], ['crate', .7], ['gullpost', .85]] },
+    hunt: { kind: 'woods', name: 'the back woods', gate: 'a stile in the hedge' } },
+  { id: 'brine', name: 'Brine Cay', range: 1, shop: false, sell: true, x: 52, y: 134, links: ['shoal', 'lantern'],
+    blurb: 'Salt pans and a traders\' camp. They buy, they do not sell.', vibe: 'White ground, white light, traders in wide hats weighing salt and fish on the same scales.',
+    rumor: 'South of the harbor the sea goes white. Salt traders camp there; they pay in coin for anything with fins.',
+    scene: { shore: 'salt', floor: [[200, 196, 170], [70, 90, 96]], far: 'none', props: [['cairn', .2], ['cairn', .45], ['saltpan', .7], ['sign', .9]], particles: 'none', palms: false },
+    village: { kind: 'tent', props: [['cairn', .18], ['scale', .62], ['sacks', .75]] },
+    hunt: { kind: 'saltflat', name: 'the salt flats', gate: 'a line of salt cairns' } },
+  { id: 'reach', name: 'Kelp Reach', range: 2, shop: false, sell: false, x: 40, y: 62, links: ['harbor', 'trench'],
+    blurb: 'Reef and kelp. No market here.', vibe: 'Cold green water, otters watching from the kelp, no one to sell to.',
+    rumor: 'Kelp thick as a forest to the north-west, and bass in it as long as your arm.',
+    village: { kind: 'camp', props: [['pine', .25, 34], ['fire', .5], ['pine', .8, 28]] },
+    hunt: { kind: 'woods', name: 'the pinewood', gate: 'a gap in the pines' } },
+  { id: 'lantern', name: 'Lantern Wharf', range: 2, shop: true, sell: true, x: 94, y: 118, links: ['harbor', 'brine', 'delta'],
+    blurb: 'A river-mouth town under paper lanterns. The fish here are gold.', vibe: 'Red gates, paper lanterns, tea steam, carp that cost more than boats.',
+    rumor: 'Follow the lanterns upriver at dusk and you will find a wharf where the fish are gold.',
+    keeper: { name: 'Auntie Mei', lines: ['"Arowana bring luck. Koi bring money. Catfish bring supper. All three bite here."', '"Pheasant in the bamboo, deer at dusk. Take the bow if you go in."', '"The delta beyond the river rains all year. Old Sajan there hears everything the sea says."'] },
+    scene: { shore: 'quay', floor: [[90, 110, 96], [36, 50, 56]], far: 'mountains', props: [['torii', .58], ['lantern', .2], ['lantern', .42], ['bamboo', .05, 30], ['bamboo', .1, 36]], particles: 'petals' },
+    village: { kind: 'pagoda', props: [['lantern', .14], ['lantern', .82], ['bamboo', .92, 34], ['teastall', .68]] },
+    hunt: { kind: 'bamboo', name: 'the bamboo grove', gate: 'a red gate' } },
+  { id: 'trench', name: 'Black Trench', range: 3, shop: false, sell: true, x: 80, y: 40, links: ['reach', 'fjord', 'bell'],
+    blurb: 'Deep water. A buyer boat anchors here.', vibe: 'Black water, a buyer boat with a lamp, and cliffs full of puffins above.',
+    rumor: 'A black trench where a buyer boat anchors. Deep things come up there.',
+    village: { kind: 'buyerboat', props: [['barrel', .3], ['lamp', .5], ['crate', .66]] },
+    hunt: { kind: 'cliffs', name: 'the puffin cliffs', gate: 'stone steps cut into the cliff' } },
+  { id: 'delta', name: 'Monsoon Delta', range: 3, shop: true, sell: true, x: 122, y: 100, links: ['lantern', 'bell', 'cinder'],
+    blurb: 'Mangroves, stilt houses, rain that never quite stops.', vibe: 'Warm rain, stilt houses, mud that moves. The shopkeeper hears every rumor on the sea.',
+    rumor: 'Where the rain never stops, houses stand on legs and the water tastes of mud and something older.',
+    keeper: { name: 'Old Sajan', exotic: true, lines: ['"Sit. The rain does not mind. You want fish? The barramundi. You want stories? Those cost nothing."', '"Sailors come through here from places that should not exist. I write down what they say."', '"The crocodile in the back channel took a boat once. Nobody has taken it back."'] },
+    scene: { shore: 'stilts', floor: [[96, 86, 60], [36, 40, 36]], far: 'none', props: [['mangrove', .12], ['mangrove', .4], ['mangrove', .7], ['lantern', .9]], particles: 'rain' },
+    village: { kind: 'stilt', props: [['mangrove', .08], ['mangrove', .9], ['net', .66], ['lantern', .26]] },
+    hunt: { kind: 'mangrove', name: 'the back channel', gate: 'a boardwalk into the roots' } },
+  { id: 'fjord', name: 'Frost Fjords', range: 4, shop: true, sell: true, x: 70, y: 14, links: ['trench', 'glass'],
+    blurb: 'Far north. Ice station with a shop.', vibe: 'Ice, aurora, a longhouse with a fire that never goes out.',
+    rumor: 'Ice and the aurora. Char the colour of the sky and a shark older than the station.',
+    keeper: { name: 'Ingrid', exotic: true, lines: ['"Cod, haddock, char. Halibut if you are patient and stupid in equal parts."', '"Ptarmigan up the slope. Reindeer when the aurora is out. Take the crossbow."', '"The old men say the sea goes up past the glass atoll. I say the old men drink."'] },
+    village: { kind: 'longhouse', props: [['pine', .2, 30], ['fire', .62], ['sled', .78], ['pine', .92, 26]] },
+    hunt: { kind: 'tundra', name: 'the tundra', gate: 'a cairn and a frozen path' } },
+  { id: 'bell', name: 'Bell Reef', range: 4, shop: false, sell: true, x: 140, y: 70, links: ['trench', 'delta', 'glass', 'cinder'],
+    blurb: 'A drowned city. Salvagers camp on the reef and buy what you bring up.', vibe: 'Columns in the shallows, a bell no one can find, salvagers who pay in coin and say little.',
+    rumor: 'On still nights the salvagers hear a bell under the reef. No one has found the tower.',
+    scene: { shore: 'coral', floor: [[120, 140, 140], [30, 60, 80]], far: 'none', props: [['column', .15], ['column', .35, 1], ['bell', .62], ['column', .85]], particles: 'none' },
+    village: { kind: 'tent', props: [['column', .1], ['crate', .66], ['bellsmall', .78], ['column', .92, 1]] },
+    hunt: { kind: 'ruins', name: 'the drowned streets', gate: 'a fallen arch' } },
+  { id: 'cinder', name: 'Cinder Isle', range: 5, shop: true, sell: true, x: 162, y: 112, links: ['delta', 'bell', 'hollow'],
+    blurb: 'A volcano that never sleeps. The fish swim in fire.', vibe: 'Black sand, red cracks, ash on everything, a smith who forges hooks that do not melt.',
+    rumor: 'There is an island that glows at night. The fish there swim in fire and the smith shoes nothing.',
+    keeper: { name: 'Brakka', exotic: true, lines: ['"Hooks of star-iron. Only kind that holds a magma char. Buy two."', '"The lava field has lizards worth their weight. Mind the vents."', '"Inside the hollow mountain they fish by lamplight. Say Brakka sent you. It will not help."'] },
+    scene: { shore: 'lava', floor: [[60, 40, 40], [20, 10, 14]], far: 'volcano', props: [['vent', .25], ['vent', .6], ['obsidian', .42], ['obsidian', .8]], particles: 'ash', weather: 'ash' },
+    village: { kind: 'forge', props: [['vent', .15], ['anvil', .66], ['obsidian', .9]] },
+    hunt: { kind: 'lavafield', name: 'the lava field', gate: 'an obsidian arch' } },
+  { id: 'glass', name: 'Glasswater Atoll', range: 5, shop: true, sell: true, x: 118, y: 30, links: ['fjord', 'bell', 'hollow', 'thunder'],
+    blurb: 'Water so clear the boats float on air. The fish are hard to see.', vibe: 'Glass sand, crystal shoals, light everywhere, fish you see only when they turn.',
+    rumor: 'An atoll of water so clear the boats look like they float on air. The fish there are hard to see, and harder to forget.',
+    keeper: { name: 'Lumen', exotic: true, lines: ['"Lensfish. Watch the eye. The rest of it is a rumor."', '"The crabs here are glass. Step carefully or step richly."', '"There is a storm that never moves, north of here. The fish bite like the lightning."'] },
+    scene: { shore: 'glass', floor: [[200, 230, 235], [80, 150, 170]], far: 'island', palms: false, props: [['crystal', .2], ['crystal', .5, 1], ['crystal', .78], ['sign', .92]], particles: 'sparkle' },
+    village: { kind: 'glasshouse', props: [['crystal', .12], ['crystal', .88, 1], ['lamp', .66]] },
+    hunt: { kind: 'glass', name: 'the crystal shoals', gate: 'a crystal arch' } },
+  { id: 'hollow', name: 'Hollow Mountain', range: 6, shop: true, sell: true, x: 178, y: 50, links: ['cinder', 'glass', 'stars'],
+    blurb: 'A lake inside a mountain. The fishermen carry lamps.', vibe: 'A cavern you sail into, lamps on every boat, glowing spores, and a singing nobody mentions.',
+    rumor: 'A mountain with a lake inside it. The fishermen there carry lamps, and they do not talk about the singing.',
+    keeper: { name: 'the Lamplighter', exotic: true, lines: ['"Lamp oil, hooks, silence. Which?"', '"Bats in the upper galleries. Salamanders by the drip pools. Both sell."', '"When the choir starts, cast. When it stops, leave."'] },
+    scene: { shore: 'cave', floor: [[50, 60, 80], [10, 14, 30]], far: 'none', tint: 'rgba(0,0,20,0.35)', props: [['stalagmite', .2], ['glowshroom', .4], ['stalagmite', .65, 1], ['glowshroom', .85]], particles: 'spores', weather: 'cave' },
+    village: { kind: 'cavehut', props: [['glowshroom', .14], ['lamp', .66], ['stalagmite', .9]] },
+    hunt: { kind: 'cave', name: 'the upper galleries', gate: 'a lit tunnel' } },
+  { id: 'thunder', name: 'Thunderhead Shoals', range: 6, shop: true, sell: true, x: 150, y: 14, links: ['glass', 'stars'],
+    blurb: 'Shoals under a storm that never moves.', vibe: 'Permanent storm, a lighthouse that hums, fish that crackle when they come out of the water.',
+    rumor: 'Shoals under a storm that never moves. The fish there bite like the lightning does.',
+    keeper: { name: 'Keeper Voss', exotic: true, lines: ['"Rubber gloves. Trust me."', '"Spark hares on the ridge. Hard to hit. Harder to hold."', '"Beyond the shoals the sea goes up. I have seen the boats that came back. There were none."'] },
+    scene: { shore: 'rock', floor: [[50, 60, 70], [14, 18, 30]], far: 'none', tint: 'rgba(0,0,10,0.25)', props: [['deadtree', .2], ['rod', .5], ['deadtree', .75]], particles: 'rain', weather: 'storm' },
+    village: { kind: 'lighthouse', props: [['deadtree', .12], ['crate', .66], ['rod', .88]] },
+    hunt: { kind: 'storm', name: 'the blasted ridge', gate: 'two lightning-struck trunks' } },
+  { id: 'stars', name: 'The Stars', range: 7, shop: false, sell: false, x: 188, y: 8, links: ['hollow', 'thunder'], blurb: 'Not in this build.', vibe: '', rumor: 'Beyond everything the sea goes up. Nobody who sailed that way has sailed back.', locked: true,
+    village: { kind: 'camp', props: [] }, hunt: { kind: 'dunes', name: 'nowhere', gate: 'nothing' } },
+  { id: 'sea', name: 'Open Sea', range: 99, shop: false, sell: false, x: 0, y: 0, links: [], blurb: 'Where it began.', vibe: '', rumor: '', village: { kind: 'camp', props: [] }, hunt: { kind: 'dunes', name: '', gate: '' } }, // prologue only
 ];
 
 // beh: smooth | dart | sinker | floater. diff 0-1. shape picks the distant silhouette in the scene. rare = rod or trophy line only.
 // Real species, placed by biome. Sizes are real adult ranges in cm; values are untuned guesses.
 const SPECIES = [
   // Wreck Shoal: warm shallows around a wreck
-  { id: 'sardine',    name: 'Sardine',               loc: { shoal: 40, harbor: 10 , sea: 30 }, size: [10, 20],   rate: 40,    beh: 'smooth',  diff: 0.10, shape: 'fry' },
+  { id: 'sardine',    name: 'Sardine',               loc: { shoal: 40, harbor: 10 , sea: 30 , brine: 14 }, size: [10, 20],   rate: 40,    beh: 'smooth',  diff: 0.10, shape: 'fry' },
   { id: 'bream',      name: 'Gilt-head Bream',       loc: { shoal: 24, harbor: 10 , sea: 14 }, size: [20, 50],   rate: 40,    beh: 'smooth',  diff: 0.30, shape: 'bream' },
   { id: 'grunt',      name: 'French Grunt',          loc: { shoal: 20 },             size: [15, 30],   rate: 35,    beh: 'smooth',  diff: 0.25, shape: 'bream' },
   { id: 'needlefish', name: 'Needlefish',            loc: { shoal: 12 },             size: [40, 90],   rate: 30,    beh: 'dart',    diff: 0.45, shape: 'pike', k: 0.003, time: ['day'] },
   { id: 'pompano',    name: 'Florida Pompano',       loc: { shoal: 10 },             size: [25, 55],   rate: 60,   beh: 'dart',    diff: 0.50, shape: 'bream', k: 0.02, time: ['dawn', 'dusk'] },
   { id: 'snapper',    name: 'Mangrove Snapper',      loc: { shoal: 12 },             size: [25, 60],   rate: 55,   beh: 'sinker',  diff: 0.45, shape: 'bream', time: ['dusk', 'night'], minBait: 1 },
   { id: 'trigger',    name: 'Queen Triggerfish',     loc: { shoal: 6 },              size: [30, 60],   rate: 70,   beh: 'dart',    diff: 0.55, shape: 'bream', k: 0.025, time: ['day'], minBait: 1 },
-  { id: 'bonefish',   name: 'Bonefish',              loc: { shoal: 6 , sea: 3 },              size: [40, 80],   rate: 90,   beh: 'dart',    diff: 0.70, shape: 'trout', time: ['dawn'], minBait: 1 },
-  { id: 'barracuda',  name: 'Great Barracuda',       loc: { shoal: 4 },              size: [80, 170],  rate: 70,   beh: 'dart',    diff: 0.80, shape: 'pike', k: 0.006, time: ['day'], rare: true, minBait: 1, big: true },
-  { id: 'tarpon',     name: 'Tarpon',                loc: { shoal: 5 },              size: [100, 220], rate: 80,   beh: 'dart',    diff: 0.85, shape: 'big', k: 0.009, time: ['night'], rare: true, minBait: 1, big: true },
+  { id: 'bonefish',   name: 'Bonefish',              loc: { shoal: 6 , sea: 3 , brine: 12 },              size: [40, 80],   rate: 90,   beh: 'dart',    diff: 0.70, shape: 'trout', time: ['dawn'], minBait: 1 },
+  { id: 'barracuda',  name: 'Great Barracuda',       loc: { shoal: 4 , bell: 4 },              size: [80, 170],  rate: 70,   beh: 'dart',    diff: 0.80, shape: 'pike', k: 0.006, time: ['day'], rare: true, minBait: 1, big: true },
+  { id: 'tarpon',     name: 'Tarpon',                loc: { shoal: 5 , brine: 3 },              size: [100, 220], rate: 80,   beh: 'dart',    diff: 0.85, shape: 'big', k: 0.009, time: ['night'], rare: true, minBait: 1, big: true },
   // Gull Harbor: a temperate pier
   { id: 'herring',    name: 'Atlantic Herring',      loc: { harbor: 30 , sea: 30 },            size: [20, 35],   rate: 35,    beh: 'smooth',  diff: 0.15, shape: 'fry' },
-  { id: 'mackerel',   name: 'Atlantic Mackerel',     loc: { harbor: 26 , sea: 22 },            size: [25, 50],   rate: 45,    beh: 'dart',    diff: 0.40, shape: 'trout', time: ['day'] },
-  { id: 'mullet',     name: 'Grey Mullet',           loc: { harbor: 24 , sea: 20 },            size: [30, 70],   rate: 35,    beh: 'smooth',  diff: 0.30, shape: 'trout' },
+  { id: 'mackerel',   name: 'Atlantic Mackerel',     loc: { harbor: 26 , sea: 22 , thunder: 10 },            size: [25, 50],   rate: 45,    beh: 'dart',    diff: 0.40, shape: 'trout', time: ['day'] },
+  { id: 'mullet',     name: 'Grey Mullet',           loc: { harbor: 24 , sea: 20 , brine: 20 },            size: [30, 70],   rate: 35,    beh: 'smooth',  diff: 0.30, shape: 'trout' },
   { id: 'flounder',   name: 'European Flounder',     loc: { harbor: 20 },            size: [20, 50],   rate: 50,   beh: 'sinker',  diff: 0.40, shape: 'flat' },
   { id: 'seabass',    name: 'European Sea Bass',     loc: { harbor: 12 },            size: [40, 90],   rate: 70,   beh: 'dart',    diff: 0.55, shape: 'trout', time: ['dawn', 'dusk'], minBait: 1 },
   { id: 'garfish',    name: 'Garfish',               loc: { harbor: 10 },            size: [50, 90],   rate: 35,   beh: 'dart',    diff: 0.45, shape: 'pike', k: 0.003, time: ['day'] },
   { id: 'pollock',    name: 'Pollock',               loc: { harbor: 10 },            size: [40, 100],  rate: 40,   beh: 'smooth',  diff: 0.45, shape: 'trout', minBait: 1 },
-  { id: 'conger',     name: 'Conger Eel',            loc: { harbor: 7, trench: 6 },  size: [80, 200],  rate: 40,   beh: 'sinker',  diff: 0.60, shape: 'eel', time: ['night'], minBait: 1, big: true },
+  { id: 'conger',     name: 'Conger Eel',            loc: { harbor: 7, trench: 6 , bell: 5 },  size: [80, 200],  rate: 40,   beh: 'sinker',  diff: 0.60, shape: 'eel', time: ['night'], minBait: 1, big: true },
   { id: 'dogfish',    name: 'Spiny Dogfish',         loc: { harbor: 6 },             size: [60, 120],  rate: 35,   beh: 'sinker',  diff: 0.50, shape: 'pike', k: 0.004, time: ['night'] },
   { id: 'sturgeon',   name: 'Atlantic Sturgeon',     loc: { harbor: 3 },             size: [150, 300], rate: 120, beh: 'sinker',  diff: 0.80, shape: 'big', k: 0.005, time: ['dawn'], rare: true, minBait: 1, big: true },
   // Kelp Reach: a kelp forest
@@ -346,12 +478,73 @@ const SPECIES = [
   { id: 'salmon',     name: 'Atlantic Salmon',       loc: { fjord: 5 },              size: [60, 120],  rate: 160, beh: 'dart',    diff: 0.80, shape: 'trout', time: ['dawn', 'dusk'], rare: true, minBait: 1, big: true },
   { id: 'halibut',    name: 'Atlantic Halibut',      loc: { fjord: 4 },              size: [100, 250], rate: 90,  beh: 'sinker',  diff: 0.80, shape: 'flat', k: 0.011, rare: true, minBait: 2, big: true },
   { id: 'greenlandshark', name: 'Greenland Shark',   loc: { fjord: 2 },              size: [300, 500], rate: 40,  beh: 'sinker',  diff: 0.90, shape: 'big', k: 0.008, time: ['night'], rare: true, minBait: 2, big: true },
+  // Brine Cay: salt lagoon
+  { id: 'seatrout',   name: 'Spotted Seatrout',      loc: { brine: 30 },             size: [35, 70],   rate: 45,   beh: 'smooth',  diff: 0.40, shape: 'trout' },
+  { id: 'redfish',    name: 'Red Drum',              loc: { brine: 22 },             size: [50, 110],  rate: 60,   beh: 'sinker',  diff: 0.50, shape: 'trout', minBait: 1 },
+  { id: 'ladyfish',   name: 'Ladyfish',              loc: { brine: 20 },             size: [40, 70],   rate: 30,   beh: 'dart',    diff: 0.45, shape: 'pike' },
+  { id: 'permit',     name: 'Permit',                loc: { brine: 8 },              size: [40, 90],   rate: 110,  beh: 'dart',    diff: 0.70, shape: 'bream', time: ['dawn', 'dusk'], minBait: 1 },
+  { id: 'stingray',   name: 'Southern Stingray',     loc: { brine: 6 },              size: [60, 150],  rate: 70,   beh: 'sinker',  diff: 0.55, shape: 'flat', minBait: 1, big: true, k: 0.02 },
+  // Lantern Wharf: river mouth under lanterns
+  { id: 'arowana',    name: 'Asian Arowana',         loc: { lantern: 10 },           size: [40, 90],   rate: 300,  beh: 'dart',    diff: 0.65, shape: 'pike', minBait: 1 },
+  { id: 'koi',        name: 'Koi',                   loc: { lantern: 26 },           size: [30, 80],   rate: 120,  beh: 'smooth',  diff: 0.40, shape: 'bream' },
+  { id: 'snakehead',  name: 'Giant Snakehead',       loc: { lantern: 12 },           size: [50, 120],  rate: 70,   beh: 'sinker',  diff: 0.60, shape: 'pike', time: ['night'], minBait: 1 },
+  { id: 'gourami',    name: 'Giant Gourami',         loc: { lantern: 22 },           size: [30, 60],   rate: 50,   beh: 'smooth',  diff: 0.35, shape: 'bream' },
+  { id: 'walkingcatfish', name: 'Walking Catfish',   loc: { lantern: 24 },           size: [30, 50],   rate: 35,   beh: 'sinker',  diff: 0.35, shape: 'eel' },
+  { id: 'mahseer',    name: 'Golden Mahseer',        loc: { lantern: 4 },            size: [60, 150],  rate: 200,  beh: 'dart',    diff: 0.78, shape: 'trout', time: ['dawn', 'dusk'], rare: true, minBait: 1, big: true },
+  // Monsoon Delta: mangroves
+  { id: 'mudskipper', name: 'Mudskipper',            loc: { delta: 30 },             size: [10, 20],   rate: 60,   beh: 'smooth',  diff: 0.25, shape: 'fry' },
+  { id: 'barramundi', name: 'Barramundi',            loc: { delta: 18 },             size: [50, 120],  rate: 90,   beh: 'dart',    diff: 0.60, shape: 'trout', minBait: 1 },
+  { id: 'mangrovejack', name: 'Mangrove Jack',       loc: { delta: 14 },             size: [30, 80],   rate: 70,   beh: 'dart',    diff: 0.55, shape: 'bream', time: ['dusk', 'night'], minBait: 1 },
+  { id: 'archerfish', name: 'Archerfish',            loc: { delta: 16 },             size: [15, 30],   rate: 80,   beh: 'smooth',  diff: 0.35, shape: 'bream', time: ['day'] },
+  { id: 'milkfish',   name: 'Milkfish',              loc: { delta: 24 },             size: [50, 100],  rate: 35,   beh: 'smooth',  diff: 0.40, shape: 'trout' },
+  { id: 'foureyed',   name: 'Four-eyed Fish',        loc: { delta: 14 },             size: [15, 30],   rate: 90,   beh: 'smooth',  diff: 0.30, shape: 'fry' },
+  { id: 'bullshark',  name: 'Bull Shark',            loc: { delta: 3 },              size: [150, 300], rate: 90,   beh: 'sinker',  diff: 0.82, shape: 'big', time: ['dusk'], rare: true, minBait: 2, big: true, k: 0.007 },
+  // Bell Reef: a drowned city
+  { id: 'parrotfish', name: 'Parrotfish',            loc: { bell: 26 },              size: [30, 60],   rate: 70,   beh: 'smooth',  diff: 0.40, shape: 'bream', time: ['day'] },
+  { id: 'lionfish',   name: 'Lionfish',              loc: { bell: 14 },              size: [20, 40],   rate: 120,  beh: 'floater', diff: 0.50, shape: 'bream', minBait: 1 },
+  { id: 'moray',      name: 'Moray Eel',             loc: { bell: 10 },              size: [60, 150],  rate: 80,   beh: 'sinker',  diff: 0.62, shape: 'eel', time: ['night'], minBait: 1, big: true },
+  { id: 'nassau',     name: 'Nassau Grouper',        loc: { bell: 12 },              size: [40, 100],  rate: 110,  beh: 'sinker',  diff: 0.60, shape: 'bream', minBait: 1 },
+  { id: 'trumpetfish', name: 'Trumpetfish',          loc: { bell: 22 },              size: [40, 80],   rate: 60,   beh: 'smooth',  diff: 0.40, shape: 'pike' },
+  { id: 'bluetang',   name: 'Blue Tang',             loc: { bell: 20 },              size: [15, 30],   rate: 80,   beh: 'dart',    diff: 0.45, shape: 'bream', time: ['day'] },
+  { id: 'hammerhead', name: 'Hammerhead',            loc: { bell: 3 },               size: [200, 350], rate: 110,  beh: 'dart',    diff: 0.85, shape: 'big', time: ['dawn'], rare: true, minBait: 2, big: true, k: 0.006 },
+  // Cinder Isle (exotic, invented): a volcano
+  { id: 'magmachar',  name: 'Magma Char',            loc: { cinder: 28 },            size: [30, 70],   rate: 160,  beh: 'dart',    diff: 0.55, shape: 'trout' },
+  { id: 'obsidianeel', name: 'Obsidian Eel',         loc: { cinder: 10 },            size: [80, 180],  rate: 180,  beh: 'sinker',  diff: 0.65, shape: 'eel', time: ['night'], minBait: 1, big: true },
+  { id: 'ashfin',     name: 'Ashfin Grunt',          loc: { cinder: 30 },            size: [20, 45],   rate: 90,   beh: 'smooth',  diff: 0.35, shape: 'bream' },
+  { id: 'emberlantern', name: 'Ember Lantern',       loc: { cinder: 16 },            size: [10, 20],   rate: 400,  beh: 'floater', diff: 0.45, shape: 'fry', time: ['night'] },
+  { id: 'slagback',   name: 'Slagback Grouper',      loc: { cinder: 4 },             size: [80, 160],  rate: 300,  beh: 'sinker',  diff: 0.80, shape: 'big', rare: true, minBait: 2, big: true },
+  // Glasswater Atoll (exotic, invented): water like air
+  { id: 'glassminnow', name: 'Glass Minnow',         loc: { glass: 34 },             size: [5, 12],    rate: 150,  beh: 'smooth',  diff: 0.30, shape: 'fry' },
+  { id: 'prismray',   name: 'Prism Ray',             loc: { glass: 8 },              size: [60, 140],  rate: 300,  beh: 'floater', diff: 0.60, shape: 'flat', minBait: 1, big: true, k: 0.02 },
+  { id: 'clearfinjack', name: 'Clearfin Jack',       loc: { glass: 18 },             size: [40, 90],   rate: 200,  beh: 'dart',    diff: 0.62, shape: 'trout', minBait: 1 },
+  { id: 'lensfish',   name: 'Lensfish',              loc: { glass: 16 },             size: [20, 40],   rate: 350,  beh: 'dart',    diff: 0.55, shape: 'bream', time: ['day'] },
+  { id: 'mirrormarlin', name: 'Mirror Marlin',       loc: { glass: 3 },              size: [200, 350], rate: 500,  beh: 'dart',    diff: 0.90, shape: 'big', time: ['day'], rare: true, minBait: 2, big: true, k: 0.006 },
+  // Hollow Mountain (exotic; the cavefish is real): a lake inside a mountain
+  { id: 'cavefish',   name: 'Blind Cavefish',        loc: { hollow: 30 },            size: [5, 10],    rate: 120,  beh: 'smooth',  diff: 0.25, shape: 'fry' },
+  { id: 'ghostgill',  name: 'Ghostgill',             loc: { hollow: 22 },            size: [20, 40],   rate: 250,  beh: 'floater', diff: 0.50, shape: 'bream' },
+  { id: 'lampmouth',  name: 'Lampmouth',             loc: { hollow: 12 },            size: [30, 60],   rate: 350,  beh: 'sinker',  diff: 0.60, shape: 'bream', time: ['night'], minBait: 1 },
+  { id: 'dripstoneloach', name: 'Dripstone Loach',   loc: { hollow: 24 },            size: [15, 30],   rate: 180,  beh: 'sinker',  diff: 0.40, shape: 'eel' },
+  { id: 'echocarp',   name: 'Echo Carp',             loc: { hollow: 4 },             size: [60, 120],  rate: 600,  beh: 'smooth',  diff: 0.80, shape: 'bream', rare: true, minBait: 2, big: true },
+  // Thunderhead Shoals (exotic, invented): a storm that never moves
+  { id: 'stormeel',   name: 'Stormeel',              loc: { thunder: 12 },           size: [60, 140],  rate: 300,  beh: 'dart',    diff: 0.65, shape: 'eel', time: ['night'], minBait: 1, big: true },
+  { id: 'sparkmackerel', name: 'Spark Mackerel',     loc: { thunder: 30 },           size: [25, 50],   rate: 150,  beh: 'dart',    diff: 0.50, shape: 'trout' },
+  { id: 'thunderjaw', name: 'Thunderjaw',            loc: { thunder: 8 },            size: [80, 170],  rate: 400,  beh: 'dart',    diff: 0.80, shape: 'big', minBait: 2, big: true },
+  { id: 'cloudskimmer', name: 'Cloudskimmer',        loc: { thunder: 22 },           size: [20, 40],   rate: 200,  beh: 'floater', diff: 0.45, shape: 'fry', time: ['day'] },
+  { id: 'staticfin',  name: 'Staticfin',             loc: { thunder: 4 },            size: [30, 70],   rate: 500,  beh: 'dart',    diff: 0.78, shape: 'bream', time: ['night'], rare: true, minBait: 2 },
   // Legends: one per location. Invented, named, caught once. Rod only, squid, a sliver of a chance, a brutal fight.
   { id: 'wreckwraith',  name: 'Wreckwraith',      loc: { shoal: 0.4 },  size: [250, 320], rate: 400, beh: 'dart',    diff: 0.97, shape: 'big', time: ['night'], rare: true, legend: true, minBait: 2, big: true, k: 0.009 },
   { id: 'harbormaster', name: 'The Harbormaster', loc: { harbor: 0.4 }, size: [350, 450], rate: 300, beh: 'sinker',  diff: 0.97, shape: 'big', time: ['dawn'], rare: true, legend: true, minBait: 2, big: true, k: 0.005 },
   { id: 'verdigris',    name: 'Verdigris',        loc: { reach: 0.4 },  size: [180, 240], rate: 500, beh: 'dart',    diff: 0.97, shape: 'big', time: ['dusk'], rare: true, legend: true, minBait: 2, big: true, k: 0.008 },
   { id: 'nightmaw',     name: 'Nightmaw',         loc: { trench: 0.4 }, size: [220, 300], rate: 600, beh: 'sinker',  diff: 0.98, shape: 'big', time: ['night'], rare: true, legend: true, minBait: 2, big: true, k: 0.016 },
   { id: 'rimeheart',    name: 'Rimeheart',        loc: { fjord: 0.4 },  size: [140, 180], rate: 700, beh: 'dart',    diff: 0.97, shape: 'big', time: ['dawn', 'night'], rare: true, legend: true, minBait: 2, big: true, k: 0.011 },
+  { id: 'saltwidow',    name: 'The Saltwidow',    loc: { brine: 0.4 },  size: [300, 400], rate: 500, beh: 'sinker',  diff: 0.97, shape: 'flat', time: ['night'], rare: true, legend: true, minBait: 2, big: true, k: 0.02 },
+  { id: 'jadelantern',  name: 'The Jade Lantern', loc: { lantern: 0.4 }, size: [200, 260], rate: 900, beh: 'dart',   diff: 0.97, shape: 'pike', time: ['night'], rare: true, legend: true, minBait: 2, big: true, k: 0.007 },
+  { id: 'monsoonmother', name: 'Monsoon Mother',  loc: { delta: 0.4 },  size: [400, 500], rate: 500, beh: 'sinker',  diff: 0.98, shape: 'big', time: ['night'], rare: true, legend: true, minBait: 2, big: true, k: 0.007 },
+  { id: 'bellringer',   name: 'The Bellringer',   loc: { bell: 0.4 },   size: [450, 550], rate: 600, beh: 'dart',    diff: 0.98, shape: 'big', time: ['night'], rare: true, legend: true, minBait: 2, big: true, k: 0.006 },
+  { id: 'caldera',      name: 'Caldera',          loc: { cinder: 0.4 }, size: [350, 450], rate: 800, beh: 'sinker',  diff: 0.98, shape: 'big', time: ['night'], rare: true, legend: true, minBait: 2, big: true, k: 0.014 },
+  { id: 'unseen',       name: 'The Unseen',       loc: { glass: 0.4 },  size: [300, 400], rate: 1200, beh: 'dart',   diff: 0.98, shape: 'big', time: ['dawn'], rare: true, legend: true, minBait: 2, big: true, k: 0.006 },
+  { id: 'deepchoir',    name: 'The Deep Choir',   loc: { hollow: 0.4 }, size: [250, 320], rate: 1500, beh: 'floater', diff: 0.98, shape: 'eel', time: ['night'], rare: true, legend: true, minBait: 2, big: true, k: 0.004 },
+  { id: 'galvanis',     name: 'Galvanis',         loc: { thunder: 0.4 }, size: [400, 500], rate: 1000, beh: 'dart',  diff: 0.99, shape: 'big', time: ['night'], rare: true, legend: true, minBait: 2, big: true, k: 0.006 },
   // not fish
   { id: 'wood',       name: 'Driftwood',             loc: { shoal: 38 },             size: [0, 0],     rate: 0,    kind: 'wood', shape: 'wood' },
   { id: 'boot',       name: 'Old Boot',              loc: { harbor: 6, reach: 5 },   size: [0, 0],     rate: 0,    kind: 'junk', shape: 'boot' },
@@ -359,6 +552,58 @@ const SPECIES = [
 // v3 saves used a fictional roster; these ids map onto their nearest real species.
 const ID_MAP_V3 = { minnow: 'sardine', jack: 'yellowtail', eel: 'conger', king: 'sturgeon', rockcod: 'rockfish', dragon: 'sunfish', dory: 'lanternfish', grouper: 'sablefish', leviathan: 'coelacanth', aurora: 'salmon' };
 const SP = Object.fromEntries(SPECIES.map(s => [s.id, s]));
+
+// ---------- hunting ----------
+// Creatures by island. kg is a weight range, rate prices them like fish (rate × kg^0.75), diff drives the stalk:
+// how fast the aim swings and how soon the animal bolts. mask + col draw it. Real animals on real islands; exotic beyond.
+const WEAPONS = [
+  { id: 'sling',    name: 'Sling',        acc: 0.07, price: 0 },
+  { id: 'bow',      name: 'Hunting bow',  acc: 0.11, price: 700 },
+  { id: 'crossbow', name: 'Crossbow',     acc: 0.16, price: 3200 },
+];
+const GAME = [
+  { id: 'ghostcrab',  name: 'Ghost Crab',        loc: { shoal: 40, brine: 20 },           kg: [0.05, 0.15], rate: 40,  diff: 0.30, mask: 'crab',   col: '#d8d0b8' },
+  { id: 'gull',       name: 'Herring Gull',      loc: { shoal: 30, harbor: 20, bell: 10 }, kg: [0.8, 1.4],   rate: 20,  diff: 0.40, mask: 'bird',   col: '#f4f4f0' },
+  { id: 'coconutcrab', name: 'Coconut Crab',     loc: { shoal: 8, bell: 20 },             kg: [1, 4],       rate: 120, diff: 0.60, mask: 'crab',   col: '#8a4a3a', time: ['night'] },
+  { id: 'hare',       name: 'Brown Hare',        loc: { harbor: 30, brine: 20 },          kg: [2.5, 5],     rate: 25,  diff: 0.50, mask: 'hare',   col: '#9a7a5a' },
+  { id: 'pheasant',   name: 'Pheasant',          loc: { harbor: 25, lantern: 25 },        kg: [0.9, 1.5],   rate: 40,  diff: 0.55, mask: 'bird',   col: '#c06030' },
+  { id: 'fox',        name: 'Red Fox',           loc: { harbor: 8 },                      kg: [4, 8],       rate: 90,  diff: 0.75, mask: 'fox',    col: '#d06a30', time: ['dusk', 'night'] },
+  { id: 'mudcrab',    name: 'Mud Crab',          loc: { brine: 30, delta: 30 },           kg: [0.3, 1.5],   rate: 50,  diff: 0.35, mask: 'crab',   col: '#4a6a5a' },
+  { id: 'sandpiper',  name: 'Sandpiper',         loc: { brine: 25 },                      kg: [0.05, 0.1],  rate: 30,  diff: 0.45, mask: 'bird',   col: '#a09080' },
+  { id: 'salthare',   name: 'Salt Hare',         loc: { brine: 12 },                      kg: [2, 4],       rate: 60,  diff: 0.60, mask: 'hare',   col: '#e8e0d0' },
+  { id: 'seal',       name: 'Harbor Seal',       loc: { reach: 14, fjord: 10 },           kg: [60, 120],    rate: 20,  diff: 0.70, mask: 'seal',   col: '#7a8088' },
+  { id: 'deer',       name: 'Black-tailed Deer', loc: { reach: 20 },                      kg: [40, 90],     rate: 40,  diff: 0.65, mask: 'deer',   col: '#8a6a4a', time: ['dawn', 'dusk'] },
+  { id: 'raccoon',    name: 'Raccoon',           loc: { reach: 25 },                      kg: [4, 9],       rate: 30,  diff: 0.45, mask: 'fox',    col: '#6a6a6a' },
+  { id: 'sika',       name: 'Sika Deer',         loc: { lantern: 20 },                    kg: [30, 70],     rate: 60,  diff: 0.60, mask: 'deer',   col: '#8a6040', time: ['dawn', 'dusk'] },
+  { id: 'boar',       name: 'Wild Boar',         loc: { lantern: 16 },                    kg: [50, 120],    rate: 80,  diff: 0.72, mask: 'boar',   col: '#4a3a30' },
+  { id: 'macaque',    name: 'Macaque',           loc: { lantern: 6 },                     kg: [6, 12],      rate: 200, diff: 0.80, mask: 'fox',    col: '#9a8a70', rare: true },
+  { id: 'puffin',     name: 'Puffin',            loc: { trench: 30 },                     kg: [0.4, 0.6],   rate: 60,  diff: 0.50, mask: 'bird',   col: '#202028' },
+  { id: 'goat',       name: 'Cliff Goat',        loc: { trench: 20 },                     kg: [30, 60],     rate: 50,  diff: 0.60, mask: 'deer',   col: '#e8e0d0' },
+  { id: 'petrel',     name: 'Storm Petrel',      loc: { trench: 15, thunder: 20 },        kg: [0.03, 0.05], rate: 80,  diff: 0.70, mask: 'bird',   col: '#303040', time: ['night'] },
+  { id: 'monitor',    name: 'Water Monitor',     loc: { delta: 20 },                      kg: [5, 20],      rate: 120, diff: 0.70, mask: 'lizard', col: '#3a4a3a' },
+  { id: 'croc',       name: 'Saltwater Crocodile', loc: { delta: 4 },                     kg: [200, 600],   rate: 150, diff: 0.90, mask: 'lizard', col: '#4a5a40', big: true, rare: true },
+  { id: 'ptarmigan',  name: 'Ptarmigan',         loc: { fjord: 30 },                      kg: [0.4, 0.7],   rate: 50,  diff: 0.50, mask: 'bird',   col: '#f4f4f0' },
+  { id: 'arctichare', name: 'Arctic Hare',       loc: { fjord: 22 },                      kg: [3, 5],       rate: 60,  diff: 0.55, mask: 'hare',   col: '#ffffff' },
+  { id: 'reindeer',   name: 'Reindeer',          loc: { fjord: 10 },                      kg: [80, 180],    rate: 70,  diff: 0.75, mask: 'deer',   col: '#8a8070', big: true },
+  { id: 'muskox',     name: 'Musk Ox',           loc: { fjord: 3 },                       kg: [200, 400],   rate: 200, diff: 0.85, mask: 'boar',   col: '#4a3a30', big: true, rare: true },
+  { id: 'frigatebird', name: 'Frigatebird',      loc: { bell: 25 },                       kg: [1, 1.6],     rate: 90,  diff: 0.60, mask: 'bird',   col: '#202020' },
+  { id: 'iguana',     name: 'Iguana',            loc: { bell: 22 },                       kg: [2, 6],       rate: 100, diff: 0.55, mask: 'lizard', col: '#5a8a50', time: ['day'] },
+  { id: 'cinderlizard', name: 'Cinder Lizard',   loc: { cinder: 30 },                     kg: [1, 3],       rate: 200, diff: 0.55, mask: 'lizard', col: '#ff6a20' },
+  { id: 'ashmoth',    name: 'Ash Moth',          loc: { cinder: 25 },                     kg: [0.01, 0.02], rate: 400, diff: 0.65, mask: 'moth',   col: '#d8c8c0', time: ['dusk', 'night'] },
+  { id: 'emberboar',  name: 'Emberback Boar',    loc: { cinder: 8 },                      kg: [80, 160],    rate: 500, diff: 0.85, mask: 'boar',   col: '#3a2020', big: true, rare: true },
+  { id: 'glasscrab',  name: 'Glass Crab',        loc: { glass: 30 },                      kg: [0.2, 0.6],   rate: 300, diff: 0.50, mask: 'crab',   col: '#d8f0f8' },
+  { id: 'mirrorgull', name: 'Mirror Gull',       loc: { glass: 25 },                      kg: [0.8, 1.2],   rate: 250, diff: 0.60, mask: 'bird',   col: '#e8f8ff' },
+  { id: 'prismbeetle', name: 'Prism Beetle',     loc: { glass: 12 },                      kg: [0.02, 0.05], rate: 900, diff: 0.75, mask: 'moth',   col: '#80e0ff', rare: true },
+  { id: 'cavebat',    name: 'Cave Bat',          loc: { hollow: 30 },                     kg: [0.02, 0.05], rate: 300, diff: 0.60, mask: 'bat',    col: '#3a3040' },
+  { id: 'palesalamander', name: 'Pale Salamander', loc: { hollow: 25 },                   kg: [0.3, 0.8],   rate: 400, diff: 0.50, mask: 'lizard', col: '#f0e0e8' },
+  { id: 'blindmole',  name: 'Blind Mole',        loc: { hollow: 10 },                     kg: [0.1, 0.2],   rate: 600, diff: 0.70, mask: 'hare',   col: '#6a6070' },
+  { id: 'sparkhare',  name: 'Spark Hare',        loc: { thunder: 28 },                    kg: [2, 4],       rate: 400, diff: 0.65, mask: 'hare',   col: '#c0d0ff' },
+  { id: 'thunderhoof', name: 'Thunderhoof',      loc: { thunder: 8 },                     kg: [150, 300],   rate: 900, diff: 0.90, mask: 'deer',   col: '#30405a', big: true, rare: true },
+];
+const GM = Object.fromEntries(GAME.map(c => [c.id, c]));
+const WEAPON = () => WEAPONS.find(w => w.id === S.weapon) || WEAPONS[0];
+const gameValue = (c, kg, jit) => Math.round(Math.max(3, c.rate * Math.pow(Math.max(kg, 0.001), 0.75) * (1 + (jit || 0))));
+const T_HUNT = { wait: [2500, 6000], breath: 2600 }; // ms to a sighting; how long you can hold the draw
 // Weight from length: kg = k × cm³ / 1000, with k a condition factor by body shape (a species can override with `k`).
 const K_SHAPE = { fry: 0.009, bream: 0.018, trout: 0.011, pike: 0.006, eel: 0.0025, big: 0.012, flat: 0.013 };
 const kgOf = (sp, cm, jit) => Math.round((sp.k || K_SHAPE[sp.shape] || 0.01) * cm * cm * cm / 1000 * (1 + (jit || 0)) * 1000) / 1000;
@@ -372,9 +617,11 @@ const PHASE_NAME = { dawn: 'Dawn', day: 'Day', dusk: 'Dusk', night: 'Night' };
 // ---------- state ----------
 function freshState() {
   return {
-    v: 6, started: false, loc: 'shoal', money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 2, trophyRig: false,
+    v: 7, started: false, loc: 'shoal', money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 2, trophyRig: false,
     pending: null, // a landed catch waiting for Sell / Keep / Release; survives a reload
     prologue: false, proCaught: 0, // the calm-sea opening: rod only, two fish, then the storm
+    known: {}, // islands named by a shopkeeper's rumor (visible on the chart before you have been)
+    pack: [], weapon: 'sling', gindex: {}, // hunting: the game bag, the weapon, the creature record
     bait: { shrimp: 0, squid: 0 },
     lines: [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, { rig: 'set', bait: 'scraps', phase: 'idle' }, null, null],
     sel: 0, index: {}, visited: { shoal: true }, sold: 0, casts: 0,
@@ -410,7 +657,8 @@ function load(seed) {
     (d.bucket || []).forEach(re); if (d.pending) re(d.pending); (d.lines || []).forEach(L => { if (L && L.c) re(L.c); });
     d.v = 6;
   }
-  if (d && d.v === 6) S = Object.assign(freshState(), d);
+  if (d && d.v === 6) { d.known = d.known || {}; d.pack = d.pack || []; d.weapon = d.weapon || 'sling'; d.gindex = d.gindex || {}; d.v = 7; } // v6 -> v7: the world grew; hunting
+  if (d && d.v === 7) S = Object.assign(freshState(), d);
 }
 
 const loc = () => LOC[S.loc];
@@ -505,11 +753,12 @@ function resolveCatch(how) {
   save(); render();
 }
 function releaseFish(j) { if (!S.bucket[j]) return; S.bucket.splice(j, 1); save(); render(); renderSheet(); toast('Released.'); }
+function haulTotal() { return bucketTotal() + S.pack.reduce((a, b) => a + b.value, 0); }
 function sellHaul() {
-  if (!loc().sell || !S.bucket.length) return;
-  const total = S.bucket.reduce((a, b) => a + b.value, 0), n = S.bucket.length;
-  S.money += total; S.sold += total; S.bucket = [];
-  save(); render(); toast(`Sold ${n} fish for ${money(total)}.`);
+  if (!loc().sell || !(S.bucket.length + S.pack.length)) return;
+  const total = haulTotal(), n = S.bucket.length, m = S.pack.length;
+  S.money += total; S.sold += total; S.bucket = []; S.pack = [];
+  save(); render(); renderSheet(); toast(`Sold ${n ? n + ' fish' : ''}${n && m ? ' and ' : ''}${m ? m + ' game' : ''} for ${money(total)}.`);
 }
 function buildRaft() {
   if (S.raft || S.wood < T.raftWood) return;
@@ -520,8 +769,10 @@ function sail(id) {
   const L = LOC[id]; if (!L || L.locked || L.range > boatRange() || id === S.loc) return;
   let pulled = 0;
   S.lines.forEach(l => { if (l && l.phase !== 'idle') { l.phase = 'idle'; l.c = null; pulled++; } });
-  S.loc = id; S.visited[id] = true; reseedFish(); save(); closeSheet(); render();
-  toast(`Sailed to ${L.name}.` + (pulled ? ` Pulled in ${pulled} line${pulled > 1 ? 's' : ''}.` : ''));
+  const first = !S.visited[id];
+  S.loc = id; S.visited[id] = true; reseedFish(); save(); closeSheet();
+  if (MODE !== 'game') enterFishing(); else render();
+  toast(`${first ? 'Landfall: ' : 'Sailed to '}${L.name}.` + (pulled ? ` Pulled in ${pulled} line${pulled > 1 ? 's' : ''}.` : '') + (first && L.vibe ? ' ' + L.vibe : ''));
 }
 
 // ---------- shop ----------
@@ -531,6 +782,8 @@ function shopItems() {
   const ri = RODS.findIndex(r => r.id === S.rod);
   if (ri < RODS.length - 1) { const r = RODS[ri + 1]; items.push({ k: 'rod', name: r.name, sub: `Wider net in the fight (${Math.round(r.bar * 100)}% of the track).`, price: r.price }); }
   if (!S.trophyRig) items.push({ k: 'trig', name: 'Trophy rig', sub: 'A long passive line. Needs shrimp or squid. Hooks big fish; you still land them yourself.', price: TROPHY_RIG_PRICE });
+  const wi = WEAPONS.findIndex(w => w.id === S.weapon);
+  if (wi < WEAPONS.length - 1) { const w = WEAPONS[wi + 1]; items.push({ k: 'weapon', name: w.name, sub: `Steadier aim in the hunt (${Math.round(w.acc * 200)}% of the bar).`, price: w.price }); }
   items.push({ k: 'bait:shrimp', name: 'Shrimp ×5', sub: `Have ${S.bait.shrimp}. Mid-size fish, and the trophy rig.`, price: BAITS.shrimp.price });
   items.push({ k: 'bait:squid', name: 'Squid ×5', sub: `Have ${S.bait.squid}. Deep and rare fish take only this.`, price: BAITS.squid.price });
   const bi = BOATS.findIndex(b => b.id === S.boat);
@@ -547,6 +800,7 @@ function buy(k) {
   if (k === 'slot') { S.slots++; S.lines[S.slots - 1] = { rig: 'set', bait: 'scraps', phase: 'idle' }; }
   else if (k === 'rod') { const ri = RODS.findIndex(r => r.id === S.rod); S.rod = RODS[ri + 1].id; }
   else if (k === 'trig') S.trophyRig = true;
+  else if (k === 'weapon') { const wi = WEAPONS.findIndex(w => w.id === S.weapon); S.weapon = WEAPONS[wi + 1].id; }
   else if (k.startsWith('bait:')) { const b = k.slice(5); S.bait[b] = (S.bait[b] || 0) + BAITS[b].qty; }
   else if (k === 'boat') { const bi = BOATS.findIndex(b => b.id === S.boat); S.boat = BOATS[bi + 1].id; }
   save(); render(); renderSheet(); toast(`Bought ${it.name}.`);
@@ -555,7 +809,7 @@ function buy(k) {
 // ---------- ticking ----------
 let lastPhase = null;
 function tick() {
-  if (MODE !== 'game') return;
+  if (MODE === 'title' || MODE === 'cut') return;
   const t = now(); let changed = false;
   S.lines.forEach((L, i) => {
     if (!L) return;
@@ -568,7 +822,9 @@ function tick() {
       L.phase = 'idle'; L.c = null; toast(`Line ${i + 1}: it spat the hook.`); changed = true;
     }
   });
-  if (changed) { save(); render(); return; }
+  if (changed) { save(); render(); renderIsle(); return; }
+  if (MODE === 'island') { $('#iClock').textContent = clockText(t); return; }
+  if (MODE !== 'game') return;
   $('#hClock').textContent = clockText(t);
   const ph = phaseAt(t); if (ph !== lastPhase) renderTide();
   $('#ready').textContent = readyText();
@@ -585,7 +841,7 @@ function renderHUD() {
   $('#hClock').textContent = clockText(now());
   $('#hMoney').textContent = money(S.money);
   $('#hBucket').textContent = `Bucket ${S.bucket.length}/${T.bucketCap}`;
-  $('#tShop').hidden = !loc().shop || S.prologue;
+  $('#tShop').hidden = true; $('#tWalk').hidden = !!S.prologue;
   $('#tMap').hidden = S.prologue; $('#hMoney').hidden = S.prologue; // money does not exist yet
   $('#tMap').classList.toggle('pulse', S.raft && S.loc === 'shoal' && !S.visited.harbor);
 }
@@ -658,34 +914,49 @@ function renderExtra() {
   if (S.loc === 'shoal' && !S.raft) {
     h += `<div class="box"><div class="row"><div>Driftwood <b>${S.wood}/${T.raftWood}</b> for a raft</div><div class="note">no market here</div></div>${S.wood >= T.raftWood ? '<button class="cta" data-act="build">Build the raft</button>' : ''}</div>`;
   }
-  const total = bucketTotal();
-  h += `<div class="bar"><button class="tool" data-act="open" data-k="inv"><span class="n">INVENTORY</span><span class="v">${S.bucket.length}/${T.bucketCap} fish${!S.prologue && (S.raft || S.loc !== 'shoal') ? ' · ' + money(total) : ''}</span></button>`;
-  if (loc().sell) h += `<button class="tool sell" data-act="sell" ${S.bucket.length ? '' : 'disabled'}><span class="n">MARKET</span><span class="v">${S.bucket.length ? 'Sell haul ' + money(total) : 'Nothing to sell'}</span></button>`;
+  const total = haulTotal(), cnt = S.bucket.length + S.pack.length;
+  h += `<div class="bar"><button class="tool" data-act="open" data-k="inv"><span class="n">INVENTORY</span><span class="v">${S.bucket.length}/${T.bucketCap} fish${S.pack.length ? ' · ' + S.pack.length + ' game' : ''}${!S.prologue && (S.raft || S.loc !== 'shoal') ? ' · ' + money(total) : ''}</span></button>`;
+  if (loc().sell) h += `<button class="tool sell" data-act="sell" ${cnt ? '' : 'disabled'}><span class="n">MARKET</span><span class="v">${cnt ? 'Sell haul ' + money(total) : 'Nothing to sell'}</span></button>`;
   h += '</div>';
   $('#extra').innerHTML = h;
 }
 
 // ---------- sheets ----------
-let sheetKind = null, mapSel = 'shoal';
-function openSheet(k) { sheetKind = k; if (k === 'map') mapSel = S.loc; $('#sheetWrap').hidden = false; renderSheet(); }
+let sheetKind = null, mapSel = 'shoal', talkLine = '', talkN = 0;
+function openSheet(k) { sheetKind = k; if (k === 'map') mapSel = S.loc; if (k === 'shop') talkLine = ''; $('#sheetWrap').hidden = false; renderSheet(); }
+// Shopkeepers talk. Every few lines, one who hears rumors names an island you have not seen: it appears on the chart.
+function talk() {
+  const kp = loc().keeper; if (!kp) return;
+  const unknown = LOCS.filter(l => !S.visited[l.id] && !S.known[l.id] && l.id !== 'sea');
+  const exoticFirst = kp.exotic ? unknown.filter(l => l.range >= 5) : [];
+  const cands = (exoticFirst.length ? exoticFirst : unknown).sort((a, b) => a.range - b.range).slice(0, 3);
+  talkN++;
+  if (cands.length && (talkN % 2 === 0 || kp.exotic)) {
+    const l = cands[Math.floor(Math.random() * cands.length)]; S.known[l.id] = true; save();
+    talkLine = `${kp.name} leans in. "${l.rumor}" <b>${l.name}</b> is on your chart now.`;
+  } else talkLine = kp.lines[(talkN - 1) % kp.lines.length];
+  renderSheet();
+}
 function closeSheet() { sheetKind = null; $('#sheetWrap').hidden = true; }
 function renderSheet() {
   const el = $('#sheet');
   if (sheetKind === 'map') {
     const R = boatRange();
-    const rows = LOCS.filter(l => l.range <= R + 1).map(l => {
-      const fog = l.range > R;
-      const need = fog ? BOATS.find(b => b.range === l.range) : null;
-      return `<button class="row ${l.id === mapSel ? 'sel' : ''} ${fog ? 'dim' : ''}" data-act="node" data-k="${l.id}"><div class="name">${fog ? '???' : l.name}<small>${fog ? (need && need.locked ? 'Beyond everything. Needs a ' + need.name.toLowerCase() + '.' : 'Beyond your range. Needs a ' + (need ? need.name.toLowerCase() : 'bigger boat') + '.') : l.blurb}</small></div>${l.id === S.loc ? '<div class="here">you are here</div>' : ''}</button>`;
+    const rows = LOCS.filter(l => mapState(l) !== 'hidden').sort((a, b) => a.range - b.range).map(l => {
+      const st = mapState(l), need = BOATS.find(b => b.range === l.range);
+      const name = st === 'fog' ? '???' : l.name;
+      const sub = st === 'fog' ? (l.range > R ? 'Land, by the gulls. Needs a ' + (need ? need.name.toLowerCase() : 'bigger boat') + '.' : 'Land, by the gulls. Nobody you know has been.')
+        : st === 'known' ? (l.range > R ? 'Rumored. Needs a ' + (need ? need.name.toLowerCase() : 'bigger boat') + '.' : 'Rumored: ' + l.rumor) : l.blurb;
+      return `<button class="row ${l.id === mapSel ? 'sel' : ''} ${st === 'fog' || l.range > R ? 'dim' : ''}" data-act="node" data-k="${l.id}"><div class="name">${name}<small>${sub}</small></div>${l.id === S.loc ? '<div class="here">you are here</div>' : ''}</button>`;
     }).join('');
     const sel = LOC[mapSel];
-    const canSail = sel && !sel.locked && sel.range <= R && sel.id !== S.loc;
+    const canSail = sel && !sel.locked && sel.range <= R && sel.id !== S.loc && mapState(sel) !== 'hidden';
     const boat = BOATS.find(b => b.id === S.boat);
     el.innerHTML = `<div class="head"><h2>Chart</h2><button class="x" data-act="close">✕</button></div>
-      <div class="note">Boat: ${boat.name.toLowerCase()} · range ${boat.range}. The chart fills in as your boat gets bigger.</div>
-      <canvas id="mapcv" width="160" height="120"></canvas>
+      <div class="note">Boat: ${boat.name.toLowerCase()} · range ${boat.range}. Islands appear as you reach their neighbours, or when a shopkeeper names them.</div>
+      <canvas id="mapcv" width="200" height="150"></canvas>
       <div class="legend">${rows}</div>
-      <button class="cta" data-act="sail" ${canSail ? '' : 'disabled'}>${canSail ? 'Sail to ' + sel.name : sel && sel.id === S.loc ? 'You are here' : 'Pick a port'}</button>`;
+      <button class="cta" data-act="sail" ${canSail ? '' : 'disabled'}>${canSail ? 'Sail to ' + (mapState(sel) === 'fog' ? 'the unknown' : sel.name) : sel && sel.id === S.loc ? 'You are here' : 'Pick a port'}</button>`;
     drawMap();
     $('#mapcv').addEventListener('click', mapClick);
   } else if (sheetKind === 'index') {
@@ -696,7 +967,12 @@ function renderSheet() {
       if (ix) return `<div class="row">${mini}<div class="name" style="flex:1">${s.name}<small>${s.legend ? home.name + ' · legend, landed' : home.name + (s.rare ? ' · rare' : '') + (s.time ? ' · ' + s.time.join('/') : '') + (ix.bestKg ? ' · best ' + fmtKg(ix.bestKg) : '')}</small></div><div class="price">×${ix.n} · ${ix.best} cm${ix.trophies ? ' · ★' + ix.trophies : ''}</div></div>`;
       return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${S.visited[home.id] ? home.name : 'somewhere out there'}${s.legend ? ' · legend: rod, squid, ' + s.time.join('/') : s.rare ? ' · rare: rod or trophy line' : ''}</small></div><div class="price">—</div></div>`;
     }).join('');
-    el.innerHTML = `<div class="head"><h2>Index ${Object.keys(S.index).length}/${fish.length}</h2><button class="x" data-act="close">✕</button></div><div class="list">${rows}</div>`;
+    const grows = GAME.map(c => { const gx = S.gindex[c.id], home = LOCS.find(l => c.loc[l.id]);
+      const mini = `<canvas class="mini game" width="64" height="36" data-game="${c.id}" data-known="${gx ? 1 : 0}"></canvas>`;
+      if (gx) return `<div class="row">${mini}<div class="name" style="flex:1">${c.name}<small>${home.name}${c.rare ? ' · rare' : ''}${c.time ? ' · ' + c.time.join('/') : ''}</small></div><div class="price">×${gx.n} · ${fmtKg(gx.best)}</div></div>`;
+      return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${S.visited[home.id] ? home.name : 'somewhere out there'}${c.rare ? ' · rare' : ''}</small></div><div class="price">—</div></div>`; }).join('');
+    el.innerHTML = `<div class="head"><h2>Index ${Object.keys(S.index).length}/${fish.length}</h2><button class="x" data-act="close">✕</button></div><div class="list">${rows}</div>
+      <div class="box"><h3>GAME ${Object.keys(S.gindex).length}/${GAME.length}</h3><div class="list">${grows}</div></div>`;
     drawMinis(el);
   } else if (sheetKind === 'inv') {
     const total = bucketTotal(), boat = BOATS.find(b => b.id === S.boat), rod = RODS.find(r => r.id === S.rod);
@@ -704,7 +980,9 @@ function renderSheet() {
     const market = loc().sell ? `<button class="cta" data-act="sell" ${S.bucket.length ? '' : 'disabled'}>Sell the haul · ${money(total)}</button>`
       : `<div class="note">${S.prologue ? 'Supper. Home is a long row away.' : S.raft ? 'No market here. Gull Harbor buys the whole bucket.' : 'No market on the shoal. Build the raft first.'}</div>`;
     el.innerHTML = `<div class="head"><h2>Inventory</h2><button class="x" data-act="close">✕</button></div>
-      <div class="box"><h3>BUCKET ${S.bucket.length}/${T.bucketCap}</h3>${S.bucket.length ? `<div class="list">${rows}</div><div class="row"><div>Whole bucket</div><div class="price">${money(total)}</div></div>` : '<div class="note">Empty. Fish you keep land here.</div>'}${market}</div>
+      <div class="box"><h3>BUCKET ${S.bucket.length}/${T.bucketCap}</h3>${S.bucket.length ? `<div class="list">${rows}</div>` : '<div class="note">Empty. Fish you keep land here.</div>'}</div>
+      <div class="box"><h3>GAME BAG ${S.pack.length}/${T.packCap}</h3>${S.pack.length ? `<div class="list">${S.pack.map((f, j) => { const c = GM[f.id]; return `<div class="row"><canvas class="mini game" width="64" height="36" data-game="${f.id}"></canvas><div class="name" style="flex:1">${c.name}<small>${fmtKg(f.kg)}</small></div><div class="price">${money(f.value)}</div></div>`; }).join('')}</div>` : `<div class="note">Empty. ${WEAPON().name} in hand. The hunting ground is past the village.</div>`}</div>
+      <div class="box"><div class="row"><div>Whole haul</div><div class="price">${money(haulTotal())}</div></div>${market.replace('Sell the haul · ' + money(total), 'Sell the haul · ' + money(haulTotal()))}</div>
       <div class="box"><h3>BAIT</h3><div class="list">
         <div class="row"><div class="name">Shell scraps<small>Free. Picked off the rocks.</small></div><div class="price">∞</div></div>
         <div class="row ${S.bait.shrimp ? '' : 'dim'}"><div class="name">Shrimp<small>Mid-size fish, and the trophy rig.</small></div><div class="price">×${S.bait.shrimp}</div></div>
@@ -714,12 +992,16 @@ function renderSheet() {
         <div class="row"><div class="name">${rod.name}<small>Net ${Math.round(rod.bar * 100)}% of the track.</small></div></div>
         <div class="row"><div class="name">${boat.name}<small>Range ${boat.range}.</small></div></div>
         <div class="row"><div class="name">${S.slots} line${S.slots > 1 ? 's' : ''}${S.trophyRig ? ' · trophy rig' : ''}<small>${S.trophyRig ? 'Any line can run as a trophy line.' : 'The trophy rig is sold at the harbor.'}</small></div></div>
+        <div class="row"><div class="name">${WEAPON().name}<small>Hunting. Hold to draw, let go on the mark.</small></div></div>
         ${S.raft ? '' : `<div class="row"><div class="name">Driftwood<small>${T.raftWood} pieces build a raft.</small></div><div class="price">${S.wood}/${T.raftWood}</div></div>`}
       </div></div>`;
     drawMinis(el);
   } else if (sheetKind === 'shop') {
     const rows = shopItems().map(it => `<div class="row"><div class="name">${it.name}<small>${it.sub}</small></div><div style="display:grid;gap:4px;justify-items:end"><div class="price">${money(it.price)}</div><button class="buy" data-act="buy" data-k="${it.k}" ${it.locked || S.money < it.price ? 'disabled' : ''}>${it.locked ? 'LOCKED' : 'BUY'}</button></div></div>`).join('');
-    el.innerHTML = `<div class="head"><h2>Shop · ${loc().name}</h2><button class="x" data-act="close">✕</button></div><div class="note">You have ${money(S.money)}.</div><div class="list">${rows}</div>`;
+    const kp = loc().keeper, said = talkLine;
+    el.innerHTML = `<div class="head"><h2>Shop · ${loc().name}</h2><button class="x" data-act="close">✕</button></div><div class="note">You have ${money(S.money)}.</div>
+      ${kp ? `<div class="box"><div class="row"><div class="name">${kp.name}<small>${kp.exotic ? 'Hears every rumor on the sea.' : 'Keeps the shop.'}</small></div><button class="buy" data-act="talk">TALK</button></div>${said ? `<div class="note">${said}</div>` : ''}</div>` : ''}
+      <div class="list">${rows}</div>`;
   } else if (sheetKind === 'menu') {
     el.innerHTML = `<div class="head"><h2>Menu</h2><button class="x" data-act="close">✕</button></div>
       <div class="note">Caught ${Object.values(S.index).reduce((a, b) => a + b.n, 0)} fish · sold ${money(S.sold)} · ${S.casts} casts.</div>
@@ -728,13 +1010,22 @@ function renderSheet() {
   }
 }
 function drawMinis(el) {
-  el.querySelectorAll('canvas.mini').forEach(c => { const x = c.getContext('2d'); x.fillStyle = '#0f2238'; x.fillRect(0, 0, 64, 36); x.fillStyle = '#152638'; x.fillRect(0, 34, 64, 2); blitFishCentered(x, c.dataset.fish, 32, 17, 1, c.dataset.known === '1' ? 'color' : 'dim'); });
+  el.querySelectorAll('canvas.mini.game').forEach(c => { const x = c.getContext('2d'), cr = GM[c.dataset.game]; x.fillStyle = '#1e2a1c'; x.fillRect(0, 0, 64, 36); x.fillStyle = '#2c3a28'; x.fillRect(0, 30, 64, 6); const m = MASKS[cr.mask], sc = m[0].length > 20 ? 1 : 2; drawMaskRaw(x, m, (64 - m[0].length * sc) >> 1, 30 - m.length * sc, c.dataset.known === '0' ? '#2d3b55' : cr.col, sc); });
+  el.querySelectorAll('canvas.mini:not(.game)').forEach(c => { const x = c.getContext('2d'); x.fillStyle = '#0f2238'; x.fillRect(0, 0, 64, 36); x.fillStyle = '#152638'; x.fillRect(0, 34, 64, 2); blitFishCentered(x, c.dataset.fish, 32, 17, 1, c.dataset.known === '1' ? 'color' : 'dim'); });
+}
+// visited: full ink. known: named by rumor. fog: next to somewhere visited, drawn as ???. hidden: not on the chart yet.
+function mapState(l) {
+  if (l.id === 'sea') return 'hidden';
+  if (S.visited[l.id]) return 'visited';
+  if (S.known[l.id]) return 'known';
+  if (l.links.some(k => S.visited[k])) return 'fog';
+  return 'hidden';
 }
 function mapClick(e) {
   const c = e.currentTarget, r = c.getBoundingClientRect();
-  const x = (e.clientX - r.left) / r.width * 160, y = (e.clientY - r.top) / r.height * 120, R = boatRange();
-  let best = null, bd = 18;
-  for (const l of LOCS) { if (l.range > R + 1) continue; const d = Math.hypot(l.x - x, l.y - y); if (d < bd) { bd = d; best = l; } }
+  const x = (e.clientX - r.left) / r.width * 200, y = (e.clientY - r.top) / r.height * 150;
+  let best = null, bd = 16;
+  for (const l of LOCS) { if (mapState(l) === 'hidden') continue; const d = Math.hypot(l.x - x, l.y - y); if (d < bd) { bd = d; best = l; } }
   if (best) { mapSel = best.id; renderSheet(); }
 }
 
@@ -747,6 +1038,14 @@ const LEGEND_LORE = {
   verdigris: 'A lingcod gone green-bronze with age, wreathed in kelp. The reef is quiet when it passes.',
   nightmaw: 'A crown of lights in the black, and a mouth under them. Nothing in the trench swims above it.',
   rimeheart: 'Ice-blue with fins like the aurora. It runs the fjord only when the sky is burning.',
+  saltwidow: 'A ray as white as the pans and wider than the traders\' tent. It surfaces when the salt is being weighed.',
+  jadelantern: 'An arowana of green glass that glows from inside. The lanterns on the wharf were hung to call it back.',
+  monsoonmother: 'The bull shark that took a house off its legs. The rain is said to follow her.',
+  bellringer: 'A hammerhead with a bronze bell lodged in its jaw. That is the bell the salvagers hear.',
+  caldera: 'The volcano\'s own fish. Where it rises the water boils, and the smith stops hammering to listen.',
+  unseen: 'You will not see it. You will see the water move where it is not.',
+  deepchoir: 'The singing in the mountain is one fish, and it is very long, and it is lonely.',
+  galvanis: 'A marlin that carries the storm on its back. The lighthouse was built so it would have something to strike.',
 };
 function fmtDur(ms) { const sec = Math.round(ms / 1000); if (sec < 60) return sec + 's'; const m = Math.floor(sec / 60), r = sec % 60; return m < 60 ? `${m}m${r ? ' ' + r + 's' : ''}` : `${Math.floor(m / 60)}h ${m % 60}m`; }
 // The catch screen. The fish is held in S.pending until you Sell (market only), Keep (bucket) or Release it.
@@ -813,6 +1112,16 @@ const MASKS = {
   flat:  ['#....####...', '##.########.', '.###########', '##.########.', '#....####...'],
   wood:  ['########', '#.##.###', '########'],
   boot:  ['..####.', '..#..#.', '..#..#.', '..#..#.', '###..#.', '#....#.', '#######'],
+  crab:  ['#...........#', '.#.........#.', '..#########..', '.###.###.###.', '#############', '.#.##.#.##.#.', '.#..#...#..#.'],
+  bird:  ['.........##.', '........####', '.......####.', '.....######.', '..#########.', '.##########.', '..########..', '....##......', '....#.#.....'],
+  hare:  ['.##.........', '.##.........', '.###........', '.####....##.', '######..####', '############', '.##########.', '..#########.', '...######...', '...##..##...', '...##..##...'],
+  boar:  ['........####....', '......#########.', '.....###########', '##.#############', '################', '.##############.', '..############..', '..##.####.##....', '..##.##...##....', '..##.##...##....'],
+  deer:  ['.#..#...........', '.#..#...........', '.####...........', '..##............', '..###...........', '...####.........', '....##########..', '....###########.', '....############', '.....##########.', '.....##......##.', '.....##......##.', '.....##......##.', '.....##......##.', '.....##......##.', '.....#.......#..'],
+  lizard: ['#####...........', '.###############', '..############.#', '.#.##########...', '.#.#...#....#...', '...#...#....#...'],
+  seal:  ['.####...........', '######..........', '.###############', '..##############', '..#############.', '...###########..', '.....##.....##..', '....###.....###.'],
+  bat:   ['##..........##', '###...##...###', '.####.##.####.', '..##########..', '....######....', '.....#..#.....'],
+  moth:  ['###....###', '####.#####', '.####.####', '..##.##...', '..######..', '.##....##.', '.#......#.'],
+  fox:   ['#...............', '##..#...........', '####..##........', '.###############', '..##############', '...############.', '....##.####.##..', '....##.##...##..', '....#..#....#...'],
   gullA: ['#.....#', '.#...#.', '..###..'],
   gullB: ['..###..', '.#...#.', '#.....#'],
   crab:  ['#...#', '.###.', '#.#.#'],
@@ -1038,6 +1347,67 @@ const FISH_ART = {
   verdigris:    { gen: { w: 56, h: 24, bodyH: .55, peak: .5, ped: .22, snout: .4, tail: 'trunc', dorsal: { type: 'long', from: .25, to: .8, h: 4 }, anal: { type: 'long', from: .5, to: .8, h: 3 }, jaws: { len: .14, gap: .3, teeth: true }, pat: ['spots', 'lights'], dens: .1, seed: 43 }, col: { base: '#3aa080', belly: '#d8f0c0', fin: '#c08040', mark: '#1a5a48', glow: '#ffe080' } },
   nightmaw:     { gen: { w: 54, h: 28, bodyH: .64, peak: .45, ped: .3, snout: .35, tail: 'round', tailLen: .14, dorsal: { type: 'spiny', from: .3, to: .5, h: 6 }, dorsal2: { type: 'soft', from: .55, to: .68, h: 3 }, anal: { type: 'soft', from: .55, to: .68, h: 3 }, pectH: 5, pelvic: .5, jaws: { len: .25, gap: .4, teeth: true }, pat: 'lights', dens: .1, seed: 47, eye: 1, eyeX: .78 }, col: { base: '#1a1430', belly: '#3a2a58', fin: '#2a2048', mark: '#101020', glow: '#ff40c0', eye: '#ff4040', eyeW: '#ffd0d0' } },
   rimeheart:    { gen: { w: 54, h: 22, bodyH: .52, peak: .42, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .55, h: 4 }, adipose: true, anal: { type: 'soft', from: .62, to: .74, h: 4 }, pelvic: .55, underbite: 2, pat: ['backspots', 'lights'], dens: .08, seed: 53 }, col: { base: '#80d0ff', belly: '#ffffff', fin: '#ffb0e0', mark: '#ff80c0', glow: '#c0ffe0', eye: '#1a2a60' } },
+  // --- Brine Cay ---
+  seatrout:   { gen: { w: 44, h: 18, bodyH: .52, peak: .45, ped: .2, snout: .3, tail: 'trunc', dorsal: { type: 'spiny', from: .35, to: .5, h: 4 }, dorsal2: { type: 'soft', from: .55, to: .75, h: 3 }, anal: { type: 'soft', from: .6, to: .72, h: 3 }, pat: 'spots', dens: .1, seed: 61 }, col: { base: '#7ab0b8', belly: '#f4f4ec', fin: '#98c0c8', mark: '#1a2030' } },
+  redfish:    { gen: { w: 48, h: 20, bodyH: .55, peak: .42, ped: .2, snout: .32, tail: 'trunc', dorsal: { type: 'spiny', from: .35, to: .5, h: 4 }, dorsal2: { type: 'soft', from: .55, to: .78, h: 3 }, anal: { type: 'soft', from: .6, to: .72, h: 3 }, pat: 'blotch' }, col: { base: '#d8805a', belly: '#ffe0c8', fin: '#e8a080', mark: '#101018' } },
+  ladyfish:   { gen: { w: 48, h: 14, bodyH: .45, peak: .45, ped: .2, snout: .25, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .58, h: 3 }, anal: { type: 'soft', from: .6, to: .7, h: 2 }, pat: 'lateral' }, col: { base: '#a8c0d0', belly: '#ffffff', fin: '#c0d8e8', mark: '#607080' } },
+  permit:     { gen: { w: 36, h: 28, bodyH: .78, peak: .5, ped: .12, snout: .22, tail: 'lunate', tailH: .95, dorsal: { type: 'soft', from: .4, to: .78, h: 5 }, anal: { type: 'soft', from: .4, to: .78, h: 5 } }, col: { base: '#b0c8d8', belly: '#ffffff', fin: '#303850', mark: '#8098a8' } },
+  stingray:   { gen: { w: 50, h: 26, bodyH: .8, peak: .5, ped: .06, snout: .3, tail: 'none', dorsal: { type: 'long', from: .05, to: .95, h: 2 }, anal: { type: 'long', from: .05, to: .95, h: 2 }, eyeX: .8, eyeY: .15, eye2: [.87, .1], pect: false, pat: 'spots', dens: .05, seed: 62, tailLight: false }, col: { base: '#6a6a5a', belly: '#c8c0a8', fin: '#7a7a68', mark: '#3a3a30' } },
+  saltwidow:  { gen: { w: 56, h: 30, bodyH: .8, peak: .5, ped: .06, snout: .3, tail: 'none', dorsal: { type: 'long', from: .05, to: .95, h: 3 }, anal: { type: 'long', from: .05, to: .95, h: 3 }, eyeX: .8, eyeY: .15, eye2: [.87, .1], pect: false, pat: 'lights', dens: .06, seed: 63 }, col: { base: '#f0ece0', belly: '#ffffff', fin: '#f8f6ee', mark: '#c8c0b0', glow: '#ffe8c0', eye: '#8a1020' } },
+  // --- Lantern Wharf ---
+  arowana:    { gen: { w: 54, h: 16, bodyH: .5, peak: .5, ped: .25, snout: .4, headPow: 1, mouth: 'top', snoutY: -.03, tail: 'round', tailLen: .12, dorsal: { type: 'long', from: .08, to: .4, h: 3 }, anal: { type: 'long', from: .08, to: .5, h: 3 }, pat: 'scales' }, col: { base: '#e0b040', belly: '#f8e8a0', fin: '#ff6020', mark: '#fff0b0' } },
+  koi:        { gen: { w: 44, h: 22, bodyH: .62, peak: .45, ped: .2, snout: .35, barbel: true, tail: 'fork', dorsal: { type: 'long', from: .35, to: .7, h: 4 }, anal: { type: 'soft', from: .5, to: .62, h: 3 }, pat: 'spots2', dens: .18, seed: 64 }, col: { base: '#f0f0f0', belly: '#ffffff', fin: '#f8e8e0', mark: '#ff6a20' } },
+  snakehead:  { gen: { w: 54, h: 15, bodyH: .5, peak: .5, ped: .28, snout: .45, headPow: 1, flatHead: .2, tail: 'round', tailLen: .1, dorsal: { type: 'long', from: .15, to: .85, h: 3 }, anal: { type: 'long', from: .3, to: .85, h: 2 }, pat: 'bars', barP: 6, barW: 3 }, col: { base: '#4a5a40', belly: '#c8c0a0', fin: '#6a7a58', mark: '#202818' } },
+  gourami:    { gen: { w: 40, h: 24, bodyH: .72, peak: .5, ped: .2, snout: .4, tail: 'round', dorsal: { type: 'long', from: .3, to: .75, h: 4 }, anal: { type: 'long', from: .3, to: .78, h: 4 } }, col: { base: '#a0a080', belly: '#e8e0c8', fin: '#b8b898', mark: '#606048' } },
+  walkingcatfish: { gen: { w: 48, h: 13, bodyH: .5, peak: .7, ped: .1, snout: .5, tail: 'none', barbel: true, mouth: 'low', dorsal: { type: 'long', from: .1, to: .7, h: 2 }, anal: { type: 'long', from: .1, to: .7, h: 2 }, eye: 1, eyeX: .85, eyeY: .3 }, col: { base: '#4a4a52', belly: '#a0a090', fin: '#5a5a62', mark: '#2a2a30' } },
+  mahseer:    { gen: { w: 54, h: 20, bodyH: .55, peak: .45, ped: .2, snout: .3, barbel: true, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .55, h: 4 }, anal: { type: 'soft', from: .6, to: .72, h: 3 }, pat: 'scales' }, col: { base: '#d0a030', belly: '#f8e8b0', fin: '#e0b850', mark: '#806010' } },
+  jadelantern: { gen: { w: 56, h: 18, bodyH: .5, peak: .5, ped: .25, snout: .4, headPow: 1, mouth: 'top', snoutY: -.03, tail: 'round', tailLen: .12, dorsal: { type: 'long', from: .08, to: .4, h: 4 }, anal: { type: 'long', from: .08, to: .5, h: 4 }, pat: ['scales', 'lights'], dens: .05, seed: 65 }, col: { base: '#40c080', belly: '#c0ffe0', fin: '#80f0c0', mark: '#e0fff0', glow: '#ffffff', eye: '#ff4040' } },
+  // --- Monsoon Delta ---
+  mudskipper: { gen: { w: 28, h: 14, bodyH: .5, peak: .7, ped: .25, snout: .5, tail: 'round', tailLen: .12, dorsal: { type: 'sail', from: .4, to: .7, h: 5 }, eyeX: .82, eyeY: .05, pectH: 4, pat: 'spots', dens: .1, seed: 66 }, col: { base: '#6a7a50', belly: '#c8c8a0', fin: '#88a070', mark: '#303828' } },
+  barramundi: { gen: { w: 50, h: 20, bodyH: .56, peak: .45, ped: .2, snout: .32, mouth: 'top', tail: 'round', dorsal: { type: 'spiny', from: .35, to: .5, h: 4 }, dorsal2: { type: 'soft', from: .55, to: .75, h: 3 }, anal: { type: 'soft', from: .58, to: .72, h: 3 }, pat: 'lateral' }, col: { base: '#a0b0b8', belly: '#f4f4f4', fin: '#b8c8d0', mark: '#404850' } },
+  mangrovejack: { gen: { w: 40, h: 20, bodyH: .62, peak: .45, ped: .2, snout: .33, tail: 'trunc', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .4, to: .6, h: 3 } }, col: { base: '#c05040', belly: '#e8c0a0', fin: '#d87060', mark: '#702020' } },
+  archerfish: { gen: { w: 32, h: 20, bodyH: .68, peak: .55, ped: .2, snout: .3, mouth: 'top', tail: 'trunc', dorsal: { type: 'soft', from: .3, to: .5, h: 3 }, anal: { type: 'soft', from: .35, to: .6, h: 3 }, pat: 'bars', barP: 6, barW: 2, barOff: 3 }, col: { base: '#d8d8c0', belly: '#ffffff', fin: '#e0e0c8', mark: '#202020' } },
+  milkfish:   { gen: { w: 50, h: 16, bodyH: .5, peak: .45, ped: .18, snout: .28, tail: 'fork', tailH: .95, dorsal: { type: 'soft', from: .45, to: .58, h: 4 }, anal: { type: 'soft', from: .6, to: .7, h: 2 } }, col: { base: '#a8c0d0', belly: '#ffffff', fin: '#90a8b8', mark: '#607888' } },
+  foureyed:   { gen: { w: 30, h: 12, bodyH: .5, peak: .55, ped: .25, snout: .45, tail: 'round', eyeX: .82, eyeY: .05, eye2: [.88, .05], dorsal: { type: 'soft', from: .3, to: .45, h: 2 }, pat: 'stripes' }, col: { base: '#8a9a70', belly: '#d8d8b0', fin: '#a0b088', mark: '#404830' } },
+  bullshark:  { gen: { w: 60, h: 20, bodyH: .55, peak: .4, ped: .2, snout: .4, snoutY: .02, tail: 'hetero', tailH: .9, dorsal: { type: 'tri', from: .4, to: .52, h: 6 }, dorsal2: { type: 'tri', from: .7, to: .76, h: 2 }, mouth: 'low', eye: 1, eyeY: .4 }, col: { base: '#7a8898', belly: '#e8ecf0', fin: '#8a98a8', mark: '#5a6878' } },
+  monsoonmother: { gen: { w: 62, h: 24, bodyH: .58, peak: .4, ped: .2, snout: .4, snoutY: .02, tail: 'hetero', tailH: .9, dorsal: { type: 'tri', from: .4, to: .52, h: 7 }, dorsal2: { type: 'tri', from: .7, to: .76, h: 3 }, mouth: 'low', jaws: { len: .1, gap: .2, teeth: true }, eye: 1, eyeY: .4, pat: 'lights', dens: .04, seed: 67 }, col: { base: '#3a4a5a', belly: '#9aa8b8', fin: '#4a5a6a', mark: '#283848', glow: '#c0d8ff', eye: '#ffd040' } },
+  // --- Bell Reef ---
+  parrotfish: { gen: { w: 40, h: 20, bodyH: .62, peak: .5, ped: .22, snout: .4, tail: 'lunate', dorsal: { type: 'long', from: .3, to: .78, h: 3 }, anal: { type: 'long', from: .4, to: .78, h: 3 }, pat: 'scales' }, col: { base: '#30a0a0', belly: '#f090a0', fin: '#60c0b0', mark: '#e070a0' } },
+  lionfish:   { gen: { w: 36, h: 26, bodyH: .55, peak: .55, ped: .2, snout: .35, tail: 'round', dorsal: { type: 'spiny', from: .3, to: .75, h: 9 }, anal: { type: 'spiny', from: .5, to: .75, h: 5 }, pectH: 7, pat: 'bars', barP: 4, barW: 2 }, col: { base: '#e8e8d8', belly: '#ffffff', fin: '#e0e0d0', mark: '#a03030' } },
+  moray:      { gen: { w: 56, h: 14, tail: 'none', ped: .1, peak: .4, snout: .4, bodyH: .62, dorsal: { type: 'long', from: .1, to: .97, h: 2 }, anal: { type: 'long', from: .2, to: .97, h: 2 }, jaws: { len: .14, gap: .3, teeth: true }, pect: false, pat: 'spots', dens: .14, seed: 68 }, col: { base: '#507048', belly: '#a0a870', fin: '#607858', mark: '#283820' } },
+  nassau:     { gen: { w: 46, h: 22, bodyH: .64, peak: .45, ped: .2, snout: .35, tail: 'round', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .55, to: .72, h: 3 }, bigMouth: true, pat: 'bars', barP: 7, barW: 3 }, col: { base: '#b09070', belly: '#f0e0c8', fin: '#c0a080', mark: '#504030' } },
+  trumpetfish: { gen: { w: 54, h: 10, bodyH: .4, peak: .4, ped: .3, snout: .5, beak: .2, tail: 'round', tailLen: .1, dorsal: { type: 'soft', from: .15, to: .3, h: 2 }, anal: { type: 'soft', from: .15, to: .3, h: 2 }, eye: 1 }, col: { base: '#c0a060', belly: '#e8d8a0', fin: '#d0b070', mark: '#806030' } },
+  bluetang:   { gen: { w: 32, h: 22, bodyH: .74, peak: .5, ped: .15, snout: .3, tail: 'lunate', dorsal: { type: 'long', from: .3, to: .78, h: 3 }, anal: { type: 'long', from: .4, to: .78, h: 3 }, pat: 'lateral' }, col: { base: '#2060e0', belly: '#40a0ff', fin: '#f0d020', mark: '#101860' } },
+  hammerhead: { gen: { w: 62, h: 20, bodyH: .5, peak: .4, ped: .2, snout: .6, flatHead: .18, headPow: 1, tail: 'hetero', tailH: .9, dorsal: { type: 'tri', from: .4, to: .52, h: 7 }, dorsal2: { type: 'tri', from: .7, to: .76, h: 2 }, mouth: 'low', eye: 1, eyeX: .96, eyeY: .5 }, col: { base: '#8898a8', belly: '#f0f4f8', fin: '#98a8b8', mark: '#607080' } },
+  bellringer: { gen: { w: 64, h: 24, bodyH: .52, peak: .4, ped: .2, snout: .6, flatHead: .18, headPow: 1, tail: 'hetero', tailH: .9, dorsal: { type: 'tri', from: .4, to: .52, h: 8 }, dorsal2: { type: 'tri', from: .7, to: .76, h: 3 }, mouth: 'low', eye: 1, eyeX: .96, eyeY: .5, pat: 'scutes' }, col: { base: '#6a8a70', belly: '#c8d8c0', fin: '#7a9a80', mark: '#c8a040', eye: '#ffd040' } },
+  // --- Cinder Isle ---
+  magmachar:  { gen: { w: 44, h: 16, bodyH: .52, peak: .45, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .55, h: 3 }, adipose: true, anal: { type: 'soft', from: .6, to: .72, h: 3 }, pat: ['spots', 'lights'], dens: .08, seed: 71 }, col: { base: '#ff6a20', belly: '#ffe060', fin: '#ff9040', mark: '#ffd040', glow: '#fff0a0' } },
+  obsidianeel: { gen: { w: 56, h: 13, tail: 'none', ped: .08, peak: .3, snout: .35, bodyH: .6, dorsal: { type: 'long', from: .15, to: .97, h: 2 }, anal: { type: 'long', from: .2, to: .97, h: 2 }, underbite: 1, pectX: .8, pat: 'lights', dens: .07, seed: 72, sheen: false }, col: { base: '#1a1418', belly: '#3a2a30', fin: '#2a2028', mark: '#101010', glow: '#ff5020', eye: '#ff8040' } },
+  ashfin:     { gen: { w: 34, h: 20, bodyH: .62, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .72, h: 4 }, anal: { type: 'soft', from: .42, to: .6, h: 3 }, pat: 'stripes' }, col: { base: '#7a7078', belly: '#c8c0c0', fin: '#8a8088', mark: '#403840' } },
+  emberlantern: { gen: { w: 26, h: 14, bodyH: .55, peak: .4, ped: .2, snout: .3, bigMouth: true, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .6, h: 3 }, eyeX: .82, eyeY: .3, pat: 'bellylights' }, col: { base: '#402020', belly: '#803030', fin: '#602828', mark: '#301818', glow: '#ffb020' } },
+  slagback:   { gen: { w: 50, h: 26, bodyH: .64, peak: .45, ped: .2, snout: .35, tail: 'round', dorsal: { type: 'spiny', from: .3, to: .75, h: 5 }, anal: { type: 'soft', from: .55, to: .72, h: 3 }, bigMouth: true, pat: ['saddles', 'lights'], barP: 7, barW: 3, dens: .06, seed: 73 }, col: { base: '#3a3034', belly: '#6a5a58', fin: '#4a4044', mark: '#ff4a10', glow: '#ffb060', eye: '#ff6020' } },
+  caldera:    { gen: { w: 60, h: 30, bodyH: .64, peak: .45, ped: .25, snout: .35, tail: 'round', tailLen: .14, dorsal: { type: 'spiny', from: .3, to: .6, h: 8 }, anal: { type: 'soft', from: .55, to: .7, h: 4 }, jaws: { len: .2, gap: .35, teeth: true }, pectH: 6, pat: ['saddles', 'lights'], barP: 6, barW: 2, dens: .1, seed: 74, sheen: false }, col: { base: '#2a1a1a', belly: '#5a2a20', fin: '#3a2020', mark: '#ff6a10', glow: '#ffe060', eye: '#ffff80' } },
+  // --- Glasswater Atoll ---
+  glassminnow: { gen: { w: 26, h: 11, bodyH: .48, ped: .18, snout: .2, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .6, h: 2 }, pat: 'lateral' }, col: { base: '#c8e8f0', belly: '#ffffff', fin: '#e8f8ff', mark: '#80c0d0' } },
+  prismray:   { gen: { w: 50, h: 26, bodyH: .8, peak: .5, ped: .06, snout: .3, tail: 'none', dorsal: { type: 'long', from: .05, to: .95, h: 2 }, anal: { type: 'long', from: .05, to: .95, h: 2 }, eyeX: .8, eyeY: .15, eye2: [.87, .1], pect: false, pat: 'lights', dens: .08, seed: 75 }, col: { base: '#d8e8f8', belly: '#ffffff', fin: '#e8f4ff', mark: '#ff80c0', glow: '#80ffd0' } },
+  clearfinjack: { gen: { w: 48, h: 18, bodyH: .5, peak: .45, ped: .16, snout: .28, tail: 'lunate', dorsal: { type: 'soft', from: .4, to: .75, h: 3 }, anal: { type: 'soft', from: .5, to: .75, h: 2 }, pat: 'lateral' }, col: { base: '#b8d8e8', belly: '#ffffff', fin: '#e8f8ff', mark: '#60a0c0' } },
+  lensfish:   { gen: { w: 34, h: 24, bodyH: .74, peak: .5, ped: .18, snout: .35, tail: 'fork', dorsal: { type: 'soft', from: .35, to: .7, h: 4 }, anal: { type: 'soft', from: .5, to: .7, h: 3 }, eyeX: .8, eyeY: .35 }, col: { base: '#e0f0f8', belly: '#ffffff', fin: '#f0f8ff', mark: '#4080a0', eye: '#104060', eyeW: '#c0f0ff' } },
+  mirrormarlin: { gen: { w: 62, h: 20, bodyH: .5, peak: .45, ped: .18, snout: .4, beak: .22, tail: 'lunate', tailH: .95, dorsal: { type: 'sail', from: .35, to: .65, h: 8 }, anal: { type: 'soft', from: .5, to: .62, h: 3 } }, col: { base: '#c0d8e8', belly: '#ffffff', fin: '#e0f0ff', mark: '#6080a0' } },
+  unseen:     { gen: { w: 62, h: 22, bodyH: .5, peak: .45, ped: .18, snout: .4, beak: .2, tail: 'lunate', tailH: .95, dorsal: { type: 'sail', from: .35, to: .65, h: 9 }, anal: { type: 'soft', from: .5, to: .62, h: 3 }, pat: 'lights', dens: .05, seed: 76 }, col: { base: '#e8f4f8', belly: '#ffffff', fin: '#f4fbff', mark: '#c0e0f0', glow: '#80ffff', eye: '#ff4080' } },
+  // --- Hollow Mountain ---
+  cavefish:   { gen: { w: 26, h: 11, bodyH: .48, ped: .18, snout: .25, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .6, h: 2 }, noEye: true, pat: 'lateral' }, col: { base: '#f0d8d0', belly: '#ffffff', fin: '#f8e8e0', mark: '#e0c0c0' } },
+  ghostgill:  { gen: { w: 36, h: 22, bodyH: .7, peak: .5, ped: .15, snout: .3, tail: 'round', dorsal: { type: 'soft', from: .35, to: .7, h: 4 }, anal: { type: 'soft', from: .5, to: .7, h: 3 }, eye: 1, pat: 'lights', dens: .08, seed: 77 }, col: { base: '#c8d0f0', belly: '#ffffff', fin: '#e0e8ff', mark: '#a0a8d0', glow: '#a0c0ff' } },
+  lampmouth:  { gen: { w: 40, h: 24, cy: .58, bodyH: .62, peak: .6, ped: .15, snout: .5, tail: 'round', tailLen: .12, jaws: { len: .3, gap: .36, teeth: true }, lure: true, dorsal: { type: 'soft', from: .35, to: .55, h: 3 }, eye: 1, eyeX: .76, eyeY: .3 }, col: { base: '#30304a', belly: '#505070', fin: '#404060', mark: '#202038', glow: '#80ffb0' } },
+  dripstoneloach: { gen: { w: 44, h: 12, tail: 'round', tailLen: .1, ped: .25, peak: .6, snout: .45, bodyH: .55, barbel: true, mouth: 'low', dorsal: { type: 'soft', from: .4, to: .6, h: 2 }, eye: 1, pat: 'bars', barP: 5, barW: 2 }, col: { base: '#9a9080', belly: '#d8d0c0', fin: '#a8a090', mark: '#605850' } },
+  echocarp:   { gen: { w: 50, h: 26, bodyH: .64, peak: .45, ped: .2, snout: .35, barbel: true, tail: 'fork', dorsal: { type: 'long', from: .35, to: .7, h: 5 }, anal: { type: 'soft', from: .5, to: .62, h: 3 }, pat: ['scales', 'lights'], dens: .05, seed: 78 }, col: { base: '#6a7090', belly: '#c0c8e0', fin: '#8088a8', mark: '#e8f0ff', glow: '#ffffff' } },
+  deepchoir:  { gen: { w: 64, h: 16, tail: 'none', ped: .1, peak: .4, snout: .4, bodyH: .62, dorsal: { type: 'long', from: .05, to: .97, h: 3 }, anal: { type: 'long', from: .15, to: .97, h: 2 }, pect: false, eye: 1, pat: 'lights', dens: .14, seed: 79 }, col: { base: '#d8d0e8', belly: '#ffffff', fin: '#e8e0f8', mark: '#b0a8c8', glow: '#ffe0ff', eye: '#6040a0' } },
+  // --- Thunderhead Shoals ---
+  stormeel:   { gen: { w: 54, h: 13, tail: 'none', ped: .08, peak: .3, snout: .35, bodyH: .6, dorsal: { type: 'long', from: .15, to: .97, h: 3 }, anal: { type: 'long', from: .2, to: .97, h: 2 }, underbite: 1, pectX: .8, pat: 'lights', dens: .08, seed: 81 }, col: { base: '#203050', belly: '#4060a0', fin: '#304070', mark: '#182040', glow: '#c0e0ff' } },
+  sparkmackerel: { gen: { w: 40, h: 16, bodyH: .5, peak: .45, ped: .18, snout: .25, tail: 'lunate', dorsal: { type: 'spiny', from: .3, to: .45, h: 3 }, dorsal2: { type: 'soft', from: .55, to: .65, h: 2 }, anal: { type: 'soft', from: .55, to: .65, h: 2 }, pat: ['saddles', 'lights'], barP: 3, barW: 1, dens: .05, seed: 82 }, col: { base: '#2a9ab0', belly: '#e8f8ff', fin: '#50c0d0', mark: '#0a2a50', glow: '#ffff80' } },
+  thunderjaw: { gen: { w: 56, h: 24, bodyH: .6, peak: .5, ped: .22, snout: .4, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .6, h: 6 }, anal: { type: 'soft', from: .55, to: .7, h: 3 }, jaws: { len: .22, gap: .4, teeth: true }, pat: 'lights', dens: .05, seed: 83 }, col: { base: '#3a4a6a', belly: '#8090b0', fin: '#4a5a7a', mark: '#182030', glow: '#e0f0ff', eye: '#ffff80' } },
+  cloudskimmer: { gen: { w: 32, h: 16, bodyH: .48, peak: .45, ped: .18, snout: .3, tail: 'fork', tailH: .95, pectH: 8, pectX: .68, dorsal: { type: 'soft', from: .4, to: .55, h: 2 } }, col: { base: '#b0c8e0', belly: '#ffffff', fin: '#e8f0ff', mark: '#7090b0' } },
+  staticfin:  { gen: { w: 40, h: 26, bodyH: .66, peak: .5, ped: .18, snout: .3, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 8 }, anal: { type: 'spiny', from: .5, to: .75, h: 4 }, pat: 'lights', dens: .1, seed: 84 }, col: { base: '#e0e0ff', belly: '#ffffff', fin: '#f0f0ff', mark: '#6060a0', glow: '#ffff60' } },
+  galvanis:   { gen: { w: 64, h: 24, bodyH: .5, peak: .45, ped: .18, snout: .4, beak: .22, tail: 'lunate', tailH: .95, dorsal: { type: 'sail', from: .35, to: .65, h: 10 }, anal: { type: 'soft', from: .5, to: .62, h: 3 }, pat: 'lights', dens: .1, seed: 85 }, col: { base: '#2a3a6a', belly: '#90a0d0', fin: '#5060a0', mark: '#182048', glow: '#ffff80', eye: '#ffff80' } },
   // --- not fish ---
   wood: { pal: { o: '#3a2414', b: '#8a5a34', d: '#6a4224', m: '#4a2e18' }, map: [
     '.oooooooooooooooooooooo.', 'obbbbbbbbbbbbbbbbbbbbbbo', 'obddbbbbbbddddbbbbbbbddo', 'obbbbbbdbbbbbbbbbbmbbbbo', 'obbbbbbbbbbbddbbbmmbbbbo', 'obddddbbbbbbbbbbbbmbbddo', 'obbbbbbbbbbbbbbbbbbbbbbo', '.oooooooooooooooooooooo.'] },
@@ -1062,6 +1432,17 @@ function blitFishCentered(ctx, id, cx, cy, sc, mode) { const c = fishC(id, sc, m
 
 const PAL = { h: '#c9a86a', H: '#8f7442', s: '#e0b088', S: '#b8835e', e: '#1a1410', b: '#3a2a1e', t: '#4e8f8a', T: '#356862', p: '#5b4a3a', P: '#3f3228' };
 const SPRITES = {
+  // standing and walking, facing left; the scene flips him to face right
+  stand: [
+    '......hhhhhhhh......', '.....hhhhhhhhhh.....', '.....hhHHHHHHhh.....', '..hhhhhhhhhhhhhhhh..', '..HHHHHHHHHHHHHHHH..',
+    '......ssssssss......', '......sesssssss.....', '......ssssssss......', '......bbbbbbbb......', '.......bbbbbb.......', '........bbbb........',
+    '.....tttttttttt.....', '....tttttttttttt....', '...ttttttttttttttt..', '..sstttTTTtttttttss.', '..ssttttttttttttttss', '....tttttttttttt....', '....tttttttttttt....', '....tttttttttttt....', '....TTTTTTTTTTTT....',
+    '.....pppppppppp.....', '.....pppp..pppp.....', '.....pppp..pppp.....', '.....PPPP..PPPP.....', '....sssss..sssss....', '....SSSSS..SSSSS....'],
+  walk: [
+    '......hhhhhhhh......', '.....hhhhhhhhhh.....', '.....hhHHHHHHhh.....', '..hhhhhhhhhhhhhhhh..', '..HHHHHHHHHHHHHHHH..',
+    '......ssssssss......', '......sesssssss.....', '......ssssssss......', '......bbbbbbbb......', '.......bbbbbb.......', '........bbbb........',
+    '.....tttttttttt.....', '....tttttttttttt....', '...ttttttttttttttt..', '.ss.tttTTTttttttt.ss', '.ss.tttttttttttttt..', '....tttttttttttt....', '....tttttttttttt....', '....tttttttttttt....', '....TTTTTTTTTTTT....',
+    '....ppppp..ppppp....', '...pppp......pppp...', '..pppp........pppp..', '..PPPP........PPPP..', '.sssss........sssss.', '.SSSSS........SSSSS.'],
   sit: [
     '.......hhhhhhhh.........',
     '......hhhhhhhhhh........',
@@ -1315,6 +1696,162 @@ const FLOORS = {
   reach:  { near: [92, 102, 112],  deep: [38, 48, 60], f: x => x < shoreW ? SURF : x < shoreW + 30 ? SURF + (x - shoreW) * 2.4 : SURF + 72 + Math.sin(x / 7) * 2 + (x - shoreW - 30) * 0.05 },
   sea:    { near: [44, 66, 82],    deep: [16, 26, 40], f: x => SURF + 118 + Math.sin(x / 13) * 2 },
 };
+for (const l of LOCS) if (l.scene) FLOORS[l.id] = { near: l.scene.floor[0], deep: l.scene.floor[1], f: l.scene.shore === 'stilts' || l.scene.shore === 'quay' ? x => SURF + 86 + Math.sin(x / 11) * 2 : x => x < shoreW ? SURF : x < shoreW + 26 ? SURF + (x - shoreW) * 2.5 : SURF + 64 + Math.sin(x / 9) * 1.5 + (x - shoreW - 26) * 0.06 };
+// ---------- data-driven island scenes ----------
+// Shore styles: [dry, wet, highlight]. Land styles (behind the shore, the village and the hunting ground): [top, mid, deep, edge].
+const SHORE_STYLE = { sand: ['#e6cf96', '#cdb47e', '#f3e4b4'], salt: ['#f0ead8', '#d8d0b8', '#ffffff'], rock: ['#5a5a66', '#3a3a46', '#8a8a96'], quay: ['#8a8a84', '#6a6a64', '#b0b0a8'], coral: ['#d8d0b8', '#b8a890', '#f0ece0'], lava: ['#2a2224', '#1a1416', '#5a4a4a'], glass: ['#cfe8ea', '#a8ccd0', '#f0fbff'], cave: ['#3a3440', '#262230', '#5a5260'], ice: ['#eef3f7', '#cfe0ec', '#ffffff'], stilts: ['#6a5a3a', '#4a3e28', '#8a7a50'] };
+const LAND_STYLE = { sand: ['#e6cf96', '#c8ae76', '#8a7048', '#f3e4b4'], salt: ['#f0ead8', '#d8d0b8', '#9a9484', '#ffffff'], grass: ['#6a9a40', '#4a7a30', '#2a4a2a', '#9ac060'], rock: ['#6a6a76', '#4a4a56', '#2a2a36', '#9a9aa6'], quay: ['#9a9a94', '#7a7a74', '#4a4a44', '#c0c0b8'], coral: ['#d8d0b8', '#b0a888', '#6a6450', '#f0ece0'], lava: ['#2e2628', '#1e1618', '#0e0a0c', '#6a5a5a'], glass: ['#d8f0f2', '#a8ccd0', '#5a8a90', '#ffffff'], cave: ['#3a3440', '#2a2430', '#140f18', '#5a5260'], ice: ['#eef3f7', '#cfe0ec', '#7a9ab0', '#ffffff'], mud: ['#6a5a3a', '#4a3e28', '#2a2218', '#8a7a50'] };
+function landKind(l) { return l.scene ? (l.scene.shore === 'stilts' ? 'mud' : l.scene.shore === 'quay' ? 'quay' : l.scene.shore) : l.id === 'shoal' ? 'sand' : l.id === 'harbor' ? 'grass' : l.id === 'reach' ? 'grass' : l.id === 'trench' ? 'rock' : l.id === 'fjord' ? 'ice' : 'sand'; }
+function shoreTop(l, x) { // the ground line along the fishing shore, local x in [0, shoreW)
+  if (l.id === 'harbor' || (l.scene && (l.scene.shore === 'stilts' || l.scene.shore === 'quay'))) return SURF - 7;
+  if (l.id === 'fjord') return (SURF - 8 - Math.max(0, 24 - x) * 0.5) | 0;
+  if (l.id === 'trench') return SURF - 5;
+  return sandTop(x) | 0;
+}
+const landY = l => shoreTop(l, 0);
+function drawLand(l, x0, w, t) { // a flat band of land from the island's ground line to the bottom
+  const st = LAND_STYLE[landKind(l)] || LAND_STYLE.sand, y = landY(l);
+  g.fillStyle = st[0]; g.fillRect(x0, y, w, 10); g.fillStyle = st[1]; g.fillRect(x0, y + 10, w, 26); g.fillStyle = st[2]; g.fillRect(x0, y + 36, w, H - y - 36);
+  g.fillStyle = st[3]; g.fillRect(x0, y, w, 1);
+  for (let x = x0 + 3; x < x0 + w; x += 9) { g.fillStyle = st[2]; g.fillRect(x + ((x * 7) % 5), y + 14 + ((x * 3) % 17), 2, 1); }
+}
+const PROP_FN = {
+  palm: (x, yb, h, t) => palmTree(x, yb, h || 36, t),
+  pine: (x, yb, h) => pine(x, yb, h || 30),
+  torii: (x, yb) => { g.fillStyle = '#c03a2a'; g.fillRect(x - 9, yb - 22, 2, 22); g.fillRect(x + 7, yb - 22, 2, 22); g.fillRect(x - 12, yb - 24, 24, 2); g.fillRect(x - 9, yb - 18, 18, 2); g.fillStyle = '#2a1a14'; g.fillRect(x - 13, yb - 26, 26, 2); },
+  lantern: (x, yb, h, t, nt) => { g.fillStyle = '#4a3222'; g.fillRect(x, yb - 16, 1, 16); g.fillRect(x - 3, yb - 16, 7, 1); g.fillStyle = nt > 0.25 ? '#ff8a40' : '#d05030'; g.fillRect(x - 2, yb - 15, 5, 7); g.fillStyle = nt > 0.25 ? '#ffe090' : '#e87050'; g.fillRect(x - 1, yb - 14, 3, 5); if (nt > 0.25) { g.fillStyle = `rgba(255,170,80,${(0.22 * nt).toFixed(2)})`; g.fillRect(x - 6, yb - 19, 13, 14); } },
+  bamboo: (x, yb, h) => { h = h || 30; for (let k = 0; k < 3; k++) { const bx = x + k * 3, bh = h - k * 4; g.fillStyle = '#6a9a3a'; g.fillRect(bx, yb - bh, 2, bh); g.fillStyle = '#3a6a20'; for (let y = yb - bh + 5; y < yb; y += 7) g.fillRect(bx, y, 2, 1); g.fillStyle = '#88b848'; g.fillRect(bx - 3, yb - bh + 2, 3, 1); g.fillRect(bx + 2, yb - bh + 8, 4, 1); } },
+  mangrove: (x, yb) => { g.fillStyle = '#4a3a24'; g.fillRect(x, yb - 20, 3, 14); for (let k = -1; k <= 1; k++) { bres(g, x + 1, yb - 6, x + 1 + k * 7, yb + 2, '#5a4a30'); bres(g, x + 1, yb - 8, x + 1 + k * 4, yb + 1, '#3a2a18'); } g.fillStyle = '#3a7a3a'; g.fillRect(x - 8, yb - 26, 19, 7); g.fillRect(x - 5, yb - 29, 13, 3); g.fillStyle = '#5a9a4a'; g.fillRect(x - 6, yb - 27, 8, 2); },
+  bell: (x, yb) => { g.fillStyle = '#4a3a24'; g.fillRect(x - 7, yb - 20, 2, 20); g.fillRect(x + 5, yb - 20, 2, 20); g.fillRect(x - 8, yb - 21, 16, 2); g.fillStyle = '#8a7a30'; g.fillRect(x - 3, yb - 18, 6, 2); g.fillRect(x - 4, yb - 16, 8, 6); g.fillRect(x - 5, yb - 10, 10, 2); g.fillStyle = '#c8b050'; g.fillRect(x - 3, yb - 16, 2, 5); g.fillStyle = '#4a7a60'; g.fillRect(x + 1, yb - 14, 2, 3); },
+  bellsmall: (x, yb) => { g.fillStyle = '#6a5a3a'; g.fillRect(x - 4, yb - 5, 9, 5); g.fillStyle = '#8a7a30'; g.fillRect(x - 2, yb - 10, 5, 5); g.fillStyle = '#c8b050'; g.fillRect(x - 1, yb - 10, 1, 3); },
+  column: (x, yb, v) => { const h = v ? 12 : 26; g.fillStyle = '#c8c4b0'; g.fillRect(x - 2, yb - h, 5, h); g.fillStyle = '#9a9684'; g.fillRect(x + 1, yb - h, 1, h); g.fillRect(x - 3, yb - 2, 7, 2); if (!v) { g.fillRect(x - 3, yb - h - 2, 7, 2); } else { g.fillStyle = '#c8c4b0'; g.fillRect(x - 1, yb - h - 2, 2, 2); } g.fillStyle = '#4a7a4a'; g.fillRect(x - 2, yb - 6, 1, 2); },
+  cairn: (x, yb) => { g.fillStyle = '#d8d4c8'; g.fillRect(x - 4, yb - 3, 9, 3); g.fillRect(x - 3, yb - 6, 7, 3); g.fillRect(x - 2, yb - 9, 5, 3); g.fillRect(x - 1, yb - 11, 3, 2); g.fillStyle = '#a8a498'; g.fillRect(x - 4, yb - 1, 9, 1); g.fillRect(x - 3, yb - 4, 7, 1); g.fillRect(x - 2, yb - 7, 5, 1); },
+  saltpan: (x, yb) => { g.fillStyle = '#ffffff'; g.fillRect(x - 10, yb - 2, 22, 2); g.fillStyle = '#d8d0c0'; for (let k = 0; k < 4; k++) g.fillRect(x - 10 + k * 6, yb - 3, 1, 1); },
+  sign: (x, yb) => { g.fillStyle = '#5a3a22'; g.fillRect(x, yb - 14, 2, 14); g.fillStyle = '#8a6a44'; g.fillRect(x - 5, yb - 14, 12, 5); g.fillStyle = '#3a2a1a'; g.fillRect(x - 3, yb - 12, 2, 1); g.fillRect(x, yb - 12, 4, 1); },
+  fire: (x, yb, h, t, nt) => { g.fillStyle = '#4a3222'; g.fillRect(x - 5, yb - 2, 11, 2); g.fillRect(x - 3, yb - 3, 7, 1); const f = Math.sin(t / 90) * 1.5; g.fillStyle = '#ff7a30'; g.fillRect(x - 2, yb - 7 - (f | 0), 5, 5 + (f | 0)); g.fillStyle = '#ffd040'; g.fillRect(x - 1, yb - 5, 3, 3); g.fillStyle = `rgba(255,150,60,${(0.12 + 0.18 * nt).toFixed(2)})`; g.fillRect(x - 10, yb - 14, 21, 14); },
+  lamp: (x, yb, h, t, nt) => { g.fillStyle = '#3a2816'; g.fillRect(x, yb - 20, 2, 20); g.fillStyle = nt > 0.25 ? '#ffd27a' : '#f0c050'; g.fillRect(x - 1, yb - 23, 4, 3); if (nt > 0.2) { g.fillStyle = `rgba(240,192,80,${(0.25 * nt).toFixed(2)})`; g.fillRect(x - 7, yb - 28, 16, 13); } },
+  barrel: (x, yb) => { g.fillStyle = '#7a5a34'; g.fillRect(x - 3, yb - 8, 7, 8); g.fillStyle = '#4a3222'; g.fillRect(x - 3, yb - 6, 7, 1); g.fillRect(x - 3, yb - 3, 7, 1); },
+  crate: (x, yb) => { g.fillStyle = '#9a7a4e'; g.fillRect(x - 4, yb - 7, 8, 7); g.fillStyle = '#6b4a2e'; g.fillRect(x - 4, yb - 4, 8, 1); g.fillRect(x, yb - 7, 1, 7); },
+  sacks: (x, yb) => { g.fillStyle = '#c8b890'; g.fillRect(x - 5, yb - 5, 6, 5); g.fillRect(x + 1, yb - 4, 5, 4); g.fillRect(x - 2, yb - 9, 5, 4); g.fillStyle = '#9a8a60'; g.fillRect(x - 5, yb - 1, 11, 1); },
+  net: (x, yb) => { g.fillStyle = '#4a3222'; g.fillRect(x - 8, yb - 18, 1, 18); g.fillRect(x + 8, yb - 18, 1, 18); g.fillRect(x - 8, yb - 18, 17, 1); g.fillStyle = 'rgba(200,210,200,.8)'; for (let y = yb - 16; y < yb - 4; y += 3) for (let k = -6; k <= 6; k += 3) g.fillRect(x + k + ((y / 3) & 1), y, 1, 1); },
+  scale: (x, yb) => { g.fillStyle = '#5a4630'; g.fillRect(x, yb - 12, 1, 12); g.fillRect(x - 6, yb - 12, 13, 1); g.fillStyle = '#b8871c'; g.fillRect(x - 8, yb - 8, 5, 1); g.fillRect(x + 4, yb - 6, 5, 1); g.fillRect(x - 6, yb - 11, 1, 3); g.fillRect(x + 6, yb - 11, 1, 5); },
+  teastall: (x, yb, h, t, nt) => { g.fillStyle = '#5a3a22'; g.fillRect(x - 8, yb - 14, 1, 14); g.fillRect(x + 8, yb - 14, 1, 14); g.fillStyle = '#c03a2a'; g.fillRect(x - 10, yb - 16, 21, 3); g.fillStyle = '#e8c070'; for (let k = -9; k < 11; k += 4) g.fillRect(x + k, yb - 13, 2, 1); g.fillStyle = '#8a6a44'; g.fillRect(x - 7, yb - 7, 15, 2); g.fillStyle = '#e8e0d0'; g.fillRect(x - 4, yb - 10, 3, 3); g.fillRect(x + 2, yb - 10, 3, 3); },
+  anvil: (x, yb) => { g.fillStyle = '#3a3a44'; g.fillRect(x - 5, yb - 6, 11, 3); g.fillRect(x - 2, yb - 3, 5, 3); g.fillRect(x + 5, yb - 5, 3, 1); g.fillStyle = '#6a6a74'; g.fillRect(x - 5, yb - 6, 11, 1); },
+  sled: (x, yb) => { g.fillStyle = '#8a6a44'; g.fillRect(x - 8, yb - 2, 17, 1); g.fillRect(x - 6, yb - 6, 13, 3); g.fillStyle = '#5a4630'; g.fillRect(x - 6, yb - 3, 1, 1); g.fillRect(x + 6, yb - 3, 1, 1); },
+  gullpost: (x, yb) => { g.fillStyle = '#3a2816'; g.fillRect(x, yb - 14, 2, 14); blit(g, maskC('gullB', '#f4f4f0', 1), x - 2, yb - 18); g.fillStyle = '#f0a040'; g.fillRect(x + 2, yb - 16, 1, 1); },
+  vent: (x, yb, h, t, nt) => { g.fillStyle = '#1a1416'; g.fillRect(x - 4, yb - 3, 9, 3); g.fillStyle = '#ff6a20'; g.fillRect(x - 1, yb - 3, 3, 1); for (let k = 0; k < 4; k++) { const yy = yb - 6 - k * 5 - ((t / 160 + k * 3) % 5 | 0); g.fillStyle = `rgba(180,170,170,${(0.35 - k * 0.07).toFixed(2)})`; g.fillRect(x - 1 + ((k & 1) ? 2 : -1), yy, 3 + k, 2); } },
+  obsidian: (x, yb) => { g.fillStyle = '#141014'; g.fillRect(x - 5, yb - 6, 11, 6); g.fillRect(x - 3, yb - 9, 7, 3); g.fillStyle = '#4a3a50'; g.fillRect(x - 2, yb - 9, 1, 4); g.fillRect(x + 2, yb - 6, 1, 3); g.fillStyle = '#8a7a90'; g.fillRect(x - 1, yb - 9, 1, 1); },
+  crystal: (x, yb, v) => { const h = v ? 9 : 16; const cols = ['#d8fbff', '#a0e0f0', '#70c0d8']; for (let k = -1; k <= 1; k++) { const hh = h - Math.abs(k) * 5, cx = x + k * 4; g.fillStyle = cols[1]; g.fillRect(cx - 1, yb - hh, 3, hh); g.fillStyle = cols[0]; g.fillRect(cx - 1, yb - hh, 1, hh); g.fillStyle = cols[2]; g.fillRect(cx + 1, yb - hh + 2, 1, hh - 2); g.fillStyle = '#ffffff'; g.fillRect(cx, yb - hh - 1, 1, 1); } },
+  stalagmite: (x, yb, v) => { const h = v ? 10 : 18; g.fillStyle = '#5a5260'; g.fillRect(x - 3, yb - h * 0.5, 7, h * 0.5); g.fillRect(x - 2, yb - h * 0.8, 5, h * 0.3); g.fillRect(x - 1, yb - h, 3, h * 0.2 + 1); g.fillStyle = '#7a7280'; g.fillRect(x - 1, yb - h, 1, h); },
+  glowshroom: (x, yb, h, t, nt) => { const pulse = 0.6 + 0.4 * Math.sin(t / 600 + x); for (let k = 0; k < 3; k++) { const mx = x + k * 4 - 4, mh = 4 + (k % 2) * 3; g.fillStyle = '#c8e8e0'; g.fillRect(mx, yb - mh, 1, mh); g.fillStyle = '#40e0b0'; g.fillRect(mx - 1, yb - mh - 2, 3, 2); } g.fillStyle = `rgba(80,240,190,${(0.18 * pulse).toFixed(2)})`; g.fillRect(x - 8, yb - 12, 17, 12); },
+  deadtree: (x, yb) => { g.fillStyle = '#2a2428'; g.fillRect(x, yb - 26, 2, 26); bres(g, x + 1, yb - 18, x - 6, yb - 24, '#2a2428'); bres(g, x + 1, yb - 14, x + 8, yb - 21, '#2a2428'); bres(g, x + 1, yb - 24, x + 4, yb - 30, '#2a2428'); },
+  rod: (x, yb, h, t, nt) => { g.fillStyle = '#8a9098'; g.fillRect(x, yb - 30, 1, 30); g.fillStyle = '#d8dce0'; g.fillRect(x, yb - 32, 1, 2); if (((t / 1800) | 0) % 5 === 0 && (t % 1800) < 120) { g.fillStyle = '#ffffff'; g.fillRect(x - 1, yb - 34, 3, 3); } },
+};
+function drawProp(spec, yb, t, nt, x0, span) { const [k, fx, v] = spec; const fn = PROP_FN[k]; if (!fn) return; fn((x0 + fx * span) | 0, yb, v, t, nt); }
+// The village building: parametric. Returns [doorX, doorY] in local coordinates.
+const BUILD = {
+  shack: { w: 36, h: 24, wall: '#6b4a2e', wall2: '#56391f', roof: 'gable', roofc: '#2f2016', sign: true },
+  pagoda: { w: 40, h: 26, wall: '#8a3a2a', wall2: '#6a2a1e', roof: 'pagoda', roofc: '#2a3a4a', sign: true, lanterns: true },
+  stilt: { w: 38, h: 20, wall: '#9a7a4a', wall2: '#7a5a34', roof: 'thatch', roofc: '#b8a060', legs: 10, sign: true },
+  longhouse: { w: 48, h: 22, wall: '#5a3a22', wall2: '#46301c', roof: 'gable', roofc: '#eef3f7', sign: true, smoke: true },
+  forge: { w: 38, h: 26, wall: '#3a3034', wall2: '#2a2024', roof: 'flat', roofc: '#5a4a44', chimney: true, glow: '#ff6a20', sign: true },
+  glasshouse: { w: 38, h: 28, wall: '#bfe6ea', wall2: '#9ac8d0', roof: 'dome', roofc: '#e8fbff', sign: true },
+  cavehut: { w: 36, h: 22, wall: '#5a5260', wall2: '#4a4250', roof: 'flat', roofc: '#3a3440', lanterns: true, sign: true },
+  lighthouse: { w: 18, h: 50, wall: '#e8e8e8', wall2: '#c03030', roof: 'cap', roofc: '#c03030', stripes: true, beacon: true, sign: true },
+  tent: { w: 34, h: 18, wall: '#c8b080', wall2: '#a89060', roof: 'tent', roofc: '#c8b080' },
+  camp: { w: 30, h: 12, wall: '#5a3a22', wall2: '#4a2e18', roof: 'leanto', roofc: '#8a6a44' },
+  buyerboat: { w: 50, h: 20, wall: '#3e2816', wall2: '#2a1a0e', roof: 'cabin', roofc: '#4a3220', lamp: true },
+};
+function drawBuilding(kind, x, yb, t, nt) {
+  const b = BUILD[kind] || BUILD.shack, w = b.w, h = b.h, legs = b.legs || 0, top = yb - h - legs;
+  if (legs) { g.fillStyle = '#5a3a22'; for (let k = 4; k < w; k += 10) g.fillRect(x + k, yb - legs, 2, legs); g.fillStyle = '#7a5a34'; g.fillRect(x - 2, yb - legs - 1, w + 4, 2); }
+  if (kind === 'buyerboat') { drawBoat(x, yb, w, 'cutter', t, false); g.fillStyle = b.roofc; g.fillRect(x + 8, yb - 14, 22, 12); g.fillStyle = '#ffd27a'; g.fillRect(x + 12, yb - 11, 4, 4); g.fillRect(x + 22, yb - 11, 4, 4); g.fillStyle = '#2a1a0e'; g.fillRect(x + 26, yb - 8, 4, 6); return [x + 28, yb - 2]; }
+  if (kind === 'tent') { g.fillStyle = b.wall; for (let k = 0; k < h; k++) g.fillRect(x + (w / 2 | 0) - k * (w / 2) / h, yb - h + k, k * w / h, 1); g.fillStyle = b.wall2; g.fillRect(x + (w / 2 | 0) - 3, yb - 9, 6, 9); g.fillStyle = '#5a3a22'; g.fillRect(x + (w / 2 | 0), yb - h - 3, 1, 4); return [x + (w / 2 | 0), yb - 2]; }
+  if (kind === 'camp') { g.fillStyle = b.roofc; for (let k = 0; k < 12; k++) g.fillRect(x + k * 2, yb - 12 + k, 2, 1); g.fillStyle = b.wall; g.fillRect(x, yb - 12, 2, 12); g.fillRect(x + 24, yb - 2, 2, 2); g.fillStyle = '#3a2a1c'; for (let k = 1; k < 12; k++) g.fillRect(x + k * 2 + 1, yb - 11 + k, 1, 12 - k); g.fillStyle = '#8a6a44'; g.fillRect(x + 4, yb - 2, 8, 1); return [x + 10, yb - 2]; }
+  g.fillStyle = b.wall; g.fillRect(x, top, w, h); g.fillStyle = b.wall2; for (let y = top + 3; y < yb - legs; y += 4) g.fillRect(x, y, w, 1);
+  if (b.stripes) { g.fillStyle = b.wall2; for (let y = top + 6; y < yb; y += 12) g.fillRect(x, y, w, 6); }
+  if (b.roof === 'gable') { g.fillStyle = b.roofc; for (let k = 0; k < 7; k++) g.fillRect(x - 3 + k * 2, top - 7 + k, w + 6 - k * 4, 1); g.fillRect(x - 3, top - 1, w + 6, 2); }
+  else if (b.roof === 'pagoda') { g.fillStyle = b.roofc; g.fillRect(x - 5, top - 2, w + 10, 3); g.fillRect(x - 2, top - 5, w + 4, 3); g.fillRect(x + 4, top - 8, w - 8, 3); g.fillRect(x + 10, top - 12, w - 20, 4); g.fillStyle = '#c03a2a'; g.fillRect(x - 6, top - 3, 2, 2); g.fillRect(x + w + 4, top - 3, 2, 2); }
+  else if (b.roof === 'thatch') { g.fillStyle = b.roofc; for (let k = 0; k < 8; k++) g.fillRect(x - 4 + k * 2, top - 8 + k, w + 8 - k * 4, 1); g.fillStyle = '#8a7a40'; for (let k = 0; k < w + 6; k += 4) g.fillRect(x - 3 + k, top - 1, 1, 2); }
+  else if (b.roof === 'dome') { g.fillStyle = b.roofc; for (let k = 0; k < 8; k++) { const ww = Math.sqrt(1 - (k / 8) * (k / 8)) * (w / 2 + 2); g.fillRect(x + w / 2 - ww | 0, top - 8 + k, ww * 2 | 0, 1); } g.fillStyle = '#ffffff'; g.fillRect(x + w / 2 - 3, top - 7, 2, 4); }
+  else if (b.roof === 'cap') { g.fillStyle = b.roofc; g.fillRect(x - 3, top - 2, w + 6, 2); g.fillRect(x, top - 6, w, 4); g.fillStyle = '#2a2a30'; g.fillRect(x + 2, top - 4, w - 4, 2); }
+  else { g.fillStyle = b.roofc; g.fillRect(x - 2, top - 2, w + 4, 3); }
+  if (b.chimney) { g.fillStyle = '#2a2024'; g.fillRect(x + w - 10, top - 10, 5, 10); for (let k = 0; k < 3; k++) { g.fillStyle = `rgba(120,110,110,${(0.4 - k * 0.1).toFixed(2)})`; g.fillRect(x + w - 10 + ((t / 300 + k) % 3 | 0), top - 14 - k * 4, 4, 2); } }
+  if (b.smoke) for (let k = 0; k < 3; k++) { g.fillStyle = `rgba(220,220,230,${(0.35 - k * 0.1).toFixed(2)})`; g.fillRect(x + w - 8 + ((t / 300 + k) % 3 | 0), top - 9 - k * 4, 3, 2); }
+  const dx = x + w - 11, dy = yb - legs; g.fillStyle = '#2a1a0e'; g.fillRect(dx, dy - 12, 7, 12); g.fillStyle = '#4a3222'; g.fillRect(dx - 1, dy - 13, 9, 1);
+  const lit = nt > 0.3; g.fillStyle = lit ? '#ffd27a' : '#a9c9e2'; g.fillRect(x + 6, top + 8, 7, 6); if (w > 34) g.fillRect(x + 17, top + 8, 7, 6); g.fillStyle = '#3a2816'; g.fillRect(x + 9, top + 8, 1, 6);
+  if (lit) { g.fillStyle = `rgba(255,210,122,${(0.18 * nt).toFixed(2)})`; g.fillRect(x + 2, top + 4, 16, 14); }
+  if (b.glow) { g.fillStyle = b.glow; g.fillRect(dx + 1, dy - 11, 5, 4); g.fillStyle = `rgba(255,106,32,${(0.2 + 0.1 * Math.sin(t / 200)).toFixed(2)})`; g.fillRect(dx - 6, dy - 16, 19, 16); }
+  if (b.beacon) { const on = Math.sin(t / 700) > 0; g.fillStyle = on ? '#ffffb0' : '#8a8a60'; g.fillRect(x + 4, top - 4, w - 8, 3); if (on) { g.fillStyle = 'rgba(255,255,180,0.12)'; g.fillRect(x - 40, top - 10, w + 80, 14); } }
+  if (b.lanterns) { PROP_FN.lantern(x - 4, yb - legs, 0, t, nt); PROP_FN.lantern(x + w + 3, yb - legs, 0, t, nt); }
+  if (b.sign) { g.fillStyle = '#d9c389'; g.fillRect(x + 4, top + 2, 14, 4); g.fillStyle = '#3a2816'; g.fillRect(x + 6, top + 3, 3, 1); g.fillRect(x + 11, top + 3, 5, 1); g.fillStyle = '#b8871c'; g.fillRect(x + 6, top + 4, 10, 1); }
+  return [dx + 3, dy];
+}
+// weather over the sky, and foreground particles, by scene
+function sceneWeather(l, t, nt) {
+  const sc = l.scene; if (!sc || !sc.weather) return;
+  if (sc.weather === 'ash') { g.fillStyle = 'rgba(70,30,20,0.28)'; g.fillRect(0, 0, W, SURF); g.fillStyle = `rgba(255,110,40,${(0.10 + 0.06 * Math.sin(t / 900)).toFixed(2)})`; g.fillRect(0, SURF - 30, W, 30); }
+  else if (sc.weather === 'storm') { g.fillStyle = 'rgba(4,8,20,0.45)'; g.fillRect(0, 0, W, SURF); for (let k = 0; k < 5; k++) { const x = (((k * 61) + t / 60) % (W + 90)) - 60 | 0; g.fillStyle = 'rgba(30,36,56,0.9)'; g.fillRect(x, 2 + k * 8, 70, 11); g.fillRect(x + 10, k * 8 - 3, 34, 6); } const cyc = 6500, ph = t % cyc; if (ph < 90 || (ph > 180 && ph < 230)) { g.fillStyle = 'rgba(255,255,255,0.25)'; g.fillRect(0, 0, W, H); bolt(Math.floor(t / cyc)); } }
+  else if (sc.weather === 'cave') { g.fillStyle = '#0c0a12'; g.fillRect(0, 0, W, SURF); for (let x = 0; x < W; x += 7) { const hh = 6 + ((x * 13) % 11); g.fillStyle = '#2a2430'; g.fillRect(x, 0, 7, hh); g.fillRect(x + 2, hh, 3, 3 + ((x * 7) % 5)); } g.fillStyle = 'rgba(64,224,176,0.08)'; g.fillRect(0, SURF - 20, W, 20); }
+}
+function sceneFx(l, t, nt) {
+  const sc = l.scene; const kind = sc ? sc.particles : (l.id === 'fjord' ? 'snow' : null); if (!kind || kind === 'none') return;
+  if (kind === 'ash' || kind === 'snow') for (const p of SNOW) { const y = (((p.y + t / 1000 * p.s * 0.08) % 1) * H) | 0, x = ((((p.x + Math.sin(t / 1300 + p.y * 9) * 0.01) % 1) + 1) % 1 * W) | 0; g.fillStyle = kind === 'ash' ? 'rgba(200,190,190,0.6)' : 'rgba(255,255,255,0.85)'; g.fillRect(x, y, 1, 1); }
+  else if (kind === 'rain') for (const r of RAIN) { if (r.s < 0.9) continue; const y = (((r.y + t / 1000 * r.s * 0.9) % 1) * SURF) | 0, x = ((((r.x - t / 1000 * r.s * 0.1) % 1) + 1) % 1 * W) | 0; g.fillStyle = 'rgba(190,205,230,0.35)'; g.fillRect(x, y, 1, 4); }
+  else if (kind === 'petals') for (const p of SNOW.slice(0, 22)) { const y = (((p.y + t / 1000 * p.s * 0.05) % 1) * SURF) | 0, x = ((((p.x + t / 1000 * 0.02 + Math.sin(t / 800 + p.y * 7) * 0.012) % 1) + 1) % 1 * W) | 0; g.fillStyle = '#ffb0c8'; g.fillRect(x, y, 1, 1); }
+  else if (kind === 'sparkle') for (const p of SNOW.slice(0, 30)) { const tw = Math.sin(t / 250 + p.x * 40 + p.y * 9); if (tw < 0.6) continue; g.fillStyle = `rgba(255,255,255,${(tw * 0.9).toFixed(2)})`; g.fillRect((p.x * W) | 0, (SURF + p.y * (H - SURF)) | 0, 1, 1); }
+  else if (kind === 'spores') for (const p of SNOW.slice(0, 36)) { const y = ((((p.y - t / 1000 * p.s * 0.04) % 1) + 1) % 1 * H) | 0, x = ((((p.x + Math.sin(t / 1500 + p.y * 9) * 0.01) % 1) + 1) % 1 * W) | 0; g.fillStyle = `rgba(80,240,190,${(0.3 + 0.4 * Math.abs(Math.sin(t / 700 + p.x * 30))).toFixed(2)})`; g.fillRect(x, y, 1, 1); }
+}
+function drawShoreGeneric(l, t, nt) {
+  const sc = l.scene, st = SHORE_STYLE[sc.shore] || SHORE_STYLE.sand;
+  if (sc.far === 'volcano') { const haze = css(lerpC(curSky.bot, [40, 20, 20], 0.55)); g.fillStyle = haze; for (let k = 0; k < 26; k++) g.fillRect(W - 86 + k, SURF - 1 - k * 1.6 | 0, 60 - k * 2, 2); g.fillStyle = `rgba(255,120,40,${(0.5 + 0.3 * Math.sin(t / 500)).toFixed(2)})`; g.fillRect(W - 58, SURF - 43, 6, 2); g.fillStyle = 'rgba(90,70,70,0.5)'; g.fillRect(W - 60 + (Math.sin(t / 900) * 3 | 0), SURF - 54, 12, 8); }
+  else if (sc.far === 'island') farIsland(W - 50, 42, !!sc.palms);
+  else if (sc.far === 'mountains') { const haze = css(lerpC(curSky.bot, [40, 50, 80], 0.5)); g.fillStyle = haze; for (let k = 0; k < 18; k++) { g.fillRect(W - 90 + k * 2, SURF - 18 + k, 70 - k * 3, 1); g.fillRect(W - 40 + k, SURF - 26 + k * 1.4 | 0, 30 - k, 1); } }
+  g.drawImage(floorLayer(l.id), 0, SURF);
+  if (sc.shore === 'stilts' || sc.shore === 'quay') {
+    const py = SURF - 7, pw = shoreW + 10;
+    if (sc.shore === 'stilts') { for (const x of [4, 20, 38, pw - 6]) { g.fillStyle = '#5a4a30'; g.fillRect(x, py, 2, 7); g.fillStyle = '#2a2a24'; g.fillRect(x, SURF, 2, 70); } g.fillStyle = '#9a7a4a'; g.fillRect(0, py, pw, 4); g.fillStyle = '#b89a60'; g.fillRect(0, py, pw, 1); g.fillStyle = '#6a5030'; for (let x = 3; x < pw; x += 5) g.fillRect(x, py + 1, 1, 3); }
+    else { g.fillStyle = st[0]; g.fillRect(0, py, pw, SURF - py + 2); g.fillStyle = st[1]; g.fillRect(0, SURF - 1, pw, 3); g.fillStyle = st[2]; g.fillRect(0, py, pw, 1); g.fillStyle = '#5a5a54'; for (let x = 6; x < pw; x += 9) g.fillRect(x, py + 2, 1, 4); g.fillStyle = '#2a2a24'; for (const x of [8, pw - 10]) g.fillRect(x, py - 6, 2, 6); }
+  } else {
+    for (let x = 0; x < shoreW; x++) { const top = sandTop(x) | 0, wet = x > shoreW - 12; g.fillStyle = wet ? st[1] : st[0]; g.fillRect(x, top, 1, SURF - top); g.fillStyle = st[2]; g.fillRect(x, top, 1, 1); }
+    if (sc.shore === 'lava') for (let x = 4; x < shoreW - 10; x += 9) { g.fillStyle = `rgba(255,110,40,${(0.5 + 0.4 * Math.sin(t / 300 + x)).toFixed(2)})`; g.fillRect(x, (sandTop(x) | 0) + 4 + (x % 7), 4, 1); }
+    if (sc.shore === 'glass') for (let x = 2; x < shoreW; x += 6) { if (Math.sin(t / 300 + x) > 0.5) { g.fillStyle = '#ffffff'; g.fillRect(x, (sandTop(x) | 0) + 1 + (x % 5), 1, 1); } }
+    if (sc.shore === 'salt') for (let x = 0; x < shoreW; x += 11) { g.fillStyle = '#ffffff'; g.fillRect(x, (sandTop(x) | 0) + 3 + (x % 4), 6, 1); }
+  }
+  for (const pr of sc.props) drawProp(pr, shoreTop(l, (pr[1] * shoreW) | 0), t, nt, 0, shoreW);
+  return [shoreW - 26, shoreTop(l, shoreW - 14) - 29];
+}
+function drawShoreAny(id, t, nt) { const l = LOC[id]; return l.scene ? drawShoreGeneric(l, t, nt) : drawShore(id, t, nt, {}); }
+// hunting grounds: the backdrop behind the gate on the island strip, and the whole screen in the hunt
+const GROUND_LAND = { dunes: 'sand', woods: 'grass', saltflat: 'salt', bamboo: 'grass', cliffs: 'rock', mangrove: 'mud', tundra: 'ice', ruins: 'coral', lavafield: 'lava', glass: 'glass', cave: 'cave', storm: 'rock' };
+function drawGroundDecor(kind, x0, gy, t, nt) {
+  const r = (k) => ((k * 7919) % 97) / 97;
+  if (kind === 'dunes') { g.fillStyle = '#d8c080'; for (let k = 0; k < 5; k++) { const dx = x0 + (k * W / 5 + r(k) * 20) | 0; for (let j = 0; j < 6; j++) g.fillRect(dx - 14 + j * 2, gy - 6 + j, 28 - j * 4, 1); } g.fillStyle = '#9a9a50'; for (let k = 0; k < 9; k++) { const tx = x0 + (r(k + 7) * W) | 0; g.fillRect(tx, gy - 4, 1, 4); g.fillRect(tx + 2, gy - 3, 1, 3); } }
+  else if (kind === 'woods') { for (let k = 0; k < 7; k++) pine(x0 + (k * W / 7 + r(k) * 14) | 0, gy + 2, 24 + (r(k + 3) * 14) | 0); g.fillStyle = '#2a4a2a'; for (let k = 0; k < 12; k++) { const fx = x0 + (r(k + 11) * W) | 0; g.fillRect(fx, gy - 3, 1, 3); g.fillRect(fx - 2, gy - 2, 5, 1); } }
+  else if (kind === 'saltflat') { for (let k = 0; k < 5; k++) PROP_FN.cairn(x0 + (k * W / 5 + 12 + r(k) * 20) | 0, gy); g.fillStyle = 'rgba(255,255,255,0.5)'; for (let k = 0; k < 20; k++) g.fillRect(x0 + (r(k + 5) * W) | 0, gy + 4 + (r(k) * 20) | 0, 3 + (k % 4), 1); }
+  else if (kind === 'bamboo') { for (let k = 0; k < 9; k++) PROP_FN.bamboo(x0 + (k * W / 9 + r(k) * 10) | 0, gy, 26 + (r(k + 2) * 16) | 0); }
+  else if (kind === 'cliffs') { g.fillStyle = '#5a5a66'; g.fillRect(x0, gy - 60, W, 60); g.fillStyle = '#4a4a56'; for (let y = gy - 58; y < gy; y += 6) g.fillRect(x0 + ((y * 7) % 13), y, W, 1); g.fillStyle = '#8a8a96'; for (let k = 0; k < 14; k++) g.fillRect(x0 + (r(k) * W) | 0, gy - 58 + (r(k + 9) * 50) | 0, 2 + (k % 3), 1); for (let k = 0; k < 8; k++) { const px = x0 + (r(k + 21) * W) | 0, py = gy - 30 - (r(k + 4) * 26) | 0; g.fillStyle = '#202028'; g.fillRect(px, py, 2, 3); g.fillStyle = '#f4f4f0'; g.fillRect(px, py + 1, 1, 2); g.fillStyle = '#f0a040'; g.fillRect(px + 2, py + 1, 1, 1); } }
+  else if (kind === 'mangrove') { for (let k = 0; k < 6; k++) PROP_FN.mangrove(x0 + (k * W / 6 + 8 + r(k) * 14) | 0, gy); g.fillStyle = 'rgba(60,90,80,0.7)'; for (let k = 0; k < 6; k++) g.fillRect(x0 + (r(k + 3) * W) | 0, gy + 6 + (r(k) * 18) | 0, 12 + (k % 3) * 6, 2); }
+  else if (kind === 'tundra') { for (let k = 0; k < 4; k++) pine(x0 + (k * W / 4 + 20 + r(k) * 18) | 0, gy + 2, 18 + (r(k + 3) * 10) | 0); PROP_FN.cairn(x0 + (W * 0.3) | 0, gy); g.fillStyle = 'rgba(255,255,255,0.7)'; for (let k = 0; k < 16; k++) g.fillRect(x0 + (r(k + 5) * W) | 0, gy + 3 + (r(k) * 24) | 0, 4 + (k % 5), 1); }
+  else if (kind === 'ruins') { for (let k = 0; k < 6; k++) PROP_FN.column(x0 + (k * W / 6 + 10 + r(k) * 14) | 0, gy, k % 2); g.fillStyle = '#9a9684'; for (let k = 0; k < 8; k++) g.fillRect(x0 + (r(k + 7) * W) | 0, gy - 2, 5 + (k % 4), 2); }
+  else if (kind === 'lavafield') { for (let k = 0; k < 4; k++) PROP_FN.vent(x0 + (k * W / 4 + 16 + r(k) * 20) | 0, gy, 0, t, nt); for (let k = 0; k < 5; k++) PROP_FN.obsidian(x0 + (r(k + 9) * W) | 0, gy); for (let x = 4; x < W; x += 13) { g.fillStyle = `rgba(255,110,40,${(0.4 + 0.4 * Math.sin(t / 300 + x)).toFixed(2)})`; g.fillRect(x0 + x, gy + 3 + (x % 9), 5, 1); } }
+  else if (kind === 'glass') { for (let k = 0; k < 7; k++) PROP_FN.crystal(x0 + (k * W / 7 + 8 + r(k) * 12) | 0, gy, k % 2); }
+  else if (kind === 'cave') { for (let k = 0; k < 6; k++) PROP_FN.stalagmite(x0 + (k * W / 6 + 6 + r(k) * 14) | 0, gy, k % 2); for (let k = 0; k < 4; k++) PROP_FN.glowshroom(x0 + (k * W / 4 + 20 + r(k + 3) * 20) | 0, gy, 0, t, nt); }
+  else if (kind === 'storm') { for (let k = 0; k < 6; k++) PROP_FN.deadtree(x0 + (k * W / 6 + 10 + r(k) * 14) | 0, gy); }
+}
+function drawGate(kind, x, gy, t, nt) { // the thing you press to enter the hunting ground
+  if (kind === 'dunes') { g.fillStyle = '#8a6a44'; g.fillRect(x - 10, gy - 16, 3, 16); g.fillRect(x + 8, gy - 20, 3, 20); g.fillStyle = '#5a4630'; g.fillRect(x - 9, gy - 15, 1, 15); g.fillRect(x + 9, gy - 19, 1, 19); }
+  else if (kind === 'woods' || kind === 'bamboo') { if (kind === 'bamboo') { PROP_FN.torii(x, gy); return; } g.fillStyle = '#5a3a22'; g.fillRect(x - 12, gy - 20, 3, 20); g.fillRect(x + 10, gy - 20, 3, 20); g.fillRect(x - 13, gy - 22, 27, 3); g.fillStyle = '#3a2816'; g.fillRect(x - 12, gy - 8, 25, 1); }
+  else if (kind === 'saltflat') { PROP_FN.cairn(x - 12, gy); PROP_FN.cairn(x + 12, gy); }
+  else if (kind === 'cliffs') { g.fillStyle = '#7a7a86'; for (let k = 0; k < 6; k++) g.fillRect(x - 10 + k * 4, gy - 4 - k * 4, 8, 4); g.fillStyle = '#a0a0ac'; for (let k = 0; k < 6; k++) g.fillRect(x - 10 + k * 4, gy - 4 - k * 4, 8, 1); }
+  else if (kind === 'mangrove') { g.fillStyle = '#9a7a4a'; for (let k = 0; k < 6; k++) g.fillRect(x - 15 + k * 5, gy - 3 + (k % 2), 4, 2); g.fillStyle = '#5a4a30'; g.fillRect(x - 16, gy - 10, 2, 10); g.fillRect(x + 14, gy - 10, 2, 10); g.fillRect(x - 16, gy - 10, 32, 1); }
+  else if (kind === 'tundra') { PROP_FN.cairn(x, gy); g.fillStyle = '#9ab0c0'; for (let k = 0; k < 5; k++) g.fillRect(x - 10 + k * 5, gy + 2 + k, 3, 1); }
+  else if (kind === 'ruins') { PROP_FN.column(x - 12, gy, 0); PROP_FN.column(x + 12, gy, 0); g.fillStyle = '#c8c4b0'; g.fillRect(x - 14, gy - 30, 28, 3); g.fillStyle = '#9a9684'; g.fillRect(x - 14, gy - 27, 28, 1); }
+  else if (kind === 'lavafield') { g.fillStyle = '#141014'; g.fillRect(x - 12, gy - 22, 4, 22); g.fillRect(x + 8, gy - 22, 4, 22); g.fillRect(x - 12, gy - 25, 24, 4); g.fillStyle = `rgba(255,110,40,${(0.6 + 0.3 * Math.sin(t / 250)).toFixed(2)})`; g.fillRect(x - 10, gy - 20, 1, 16); g.fillRect(x + 9, gy - 18, 1, 14); }
+  else if (kind === 'glass') { PROP_FN.crystal(x - 12, gy, 0); PROP_FN.crystal(x + 12, gy, 0); g.fillStyle = '#a0e0f0'; g.fillRect(x - 10, gy - 20, 20, 2); g.fillStyle = '#ffffff'; g.fillRect(x - 10, gy - 20, 20, 1); }
+  else if (kind === 'cave') { g.fillStyle = '#0c0a12'; for (let k = 0; k < 8; k++) g.fillRect(x - 12 + k, gy - 8 - k * 2, 24 - k * 2, 2); g.fillRect(x - 12, gy - 8, 24, 8); PROP_FN.lamp(x - 15, gy, 0, t, nt); }
+  else if (kind === 'storm') { PROP_FN.deadtree(x - 12, gy); PROP_FN.deadtree(x + 12, gy); g.fillStyle = '#ffffff'; if ((t % 6500) < 90) g.fillRect(x - 13, gy - 26, 2, 4); }
+}
 function floorLayer(id) {
   const key = 'f|' + id + '|' + W + '|' + H + '|' + SURF; let c = CACHE.get(key); if (c) return c;
   const fl = FLOORS[id], hh = H - SURF; c = document.createElement('canvas'); c.width = W; c.height = hh;
@@ -1475,11 +2012,11 @@ function drawFisherman(fx, fy, rodOut) {
 const floatX = i => shoreW + 20 + i * Math.floor((W - shoreW - 40) / 3);
 
 function drawGame(t) {
-  const h = hourAt(t), nt = drawSkyBase(h, t, {});
-  const tint = S.loc === 'trench' ? 'rgba(0,0,12,0.32)' : S.loc === 'fjord' ? 'rgba(120,180,220,0.1)' : null;
+  const h = hourAt(t), nt = drawSkyBase(h, t, {}); sceneWeather(loc(), t, nt);
+  const tint = S.loc === 'trench' ? 'rgba(0,0,12,0.32)' : S.loc === 'fjord' ? 'rgba(120,180,220,0.1)' : (loc().scene && loc().scene.tint) || null;
   drawSeaBase(h, t, nt, { tint });
   drawFish(t);
-  const spot = drawShore(S.loc, t, nt, {});
+  const spot = drawShoreAny(S.loc, t, nt);
   const rodOut = S.lines.some(L => L && L.rig === 'hand' && L.phase !== 'idle');
   const tip = drawFisherman(spot[0], spot[1], rodOut);
   const st = [shoreW - 4, (S.loc === 'shoal' ? sandTop(shoreW - 4) | 0 : SURF - 7) - 6];
@@ -1498,6 +2035,158 @@ function drawGame(t) {
     }
     if (on) { const yy = (SURF - 16 - Math.abs(Math.sin(t / 150)) * 3) | 0; g.fillStyle = '#2a1e14'; g.fillRect(bx - 2, yy - 1, 4, 10); g.fillStyle = '#f0c050'; g.fillRect(bx - 1, yy, 2, 6); g.fillRect(bx - 1, yy + 7, 2, 2); }
   });
+  sceneFx(loc(), t, nt);
+  g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, 0, W, 1);
+}
+
+// ---------- the island: walk between the hunting ground, the village and the fishing spot ----------
+// The strip is three screens wide: [hunting gate][village][fishing shore]. The fishing shore is the normal scene, so
+// walking left from your seat takes you through the village to the gate. Camera follows the fisherman.
+let ISL = null;
+function isleSpots(l) { const seat = landY(l); return [
+  { id: 'hunt', x: 0.5 * W, label: 'Into ' + (l.hunt.name || 'the wild'), hint: l.hunt.gate },
+  { id: 'shop', x: W + 0.5 * W + 14, label: l.shop ? 'Into the shop' : l.sell ? 'Sell to the traders' : 'The camp', hint: l.shop ? (l.keeper ? l.keeper.name + ' keeps the shop.' : 'The shop.') : l.sell ? 'They buy the whole haul.' : 'Your bucket and your bag.' },
+  { id: 'fish', x: 2 * W + shoreW - 16, label: 'Sit and fish', hint: 'Your lines are out here.' } ]; }
+function enterIsland(at) {
+  const l = loc(); MODE = 'island'; $('#game').hidden = true; $('#hunt').hidden = true; $('#isle').hidden = false;
+  const spots = isleSpots(l);
+  if (!ISL || ISL.loc !== l.id) ISL = { loc: l.id, px: spots[2].x, dir: -1, walk: 0, anim: 0 };
+  const sp = spots.find(s => s.id === at); if (sp) ISL.px = sp.x; ISL.dir = at === 'fish' ? -1 : 1; ISL.walk = 0;
+  $('#iName').textContent = l.name; $('#iVibe').textContent = l.vibe || ''; renderIsle(); window.scrollTo(0, 0);
+}
+function enterFishing() { MODE = 'game'; $('#isle').hidden = true; $('#hunt').hidden = true; $('#game').hidden = false; render(); window.scrollTo(0, 0); }
+function nearSpot() { if (!ISL) return null; const l = loc(); let best = null, bd = 18; for (const sp of isleSpots(l)) { const d = Math.abs(sp.x - ISL.px); if (d < bd) { bd = d; best = sp; } } return best; }
+function renderIsle() {
+  if (MODE !== 'island') return;
+  $('#iMoney').textContent = money(S.money); $('#iClock').textContent = clockText(now());
+  const sp = nearSpot(), b = $('#iAct');
+  b.classList.toggle('ghost', !sp); b.textContent = sp ? sp.label : '·'; b.dataset.k = sp ? sp.id : '';
+  const l = loc(); $('#iHint').innerHTML = sp ? `<b>${sp.hint}</b>` : ISL.px < W ? `${l.hunt.name ? l.hunt.name[0].toUpperCase() + l.hunt.name.slice(1) : 'The wild'} lies this way.` : ISL.px < 2 * W ? (l.shop ? 'The village. Walk up to the door.' : l.sell ? 'The traders\' camp.' : 'Your camp.') : 'The shore. Your lines are to the right.';
+}
+function stepIsle(dt) {
+  if (!ISL) return; const l = loc(), maxX = 2 * W + shoreW - 6;
+  if (ISL.walk) { ISL.px = clamp(ISL.px + ISL.walk * 42 * dt, 8, maxX); ISL.dir = ISL.walk; ISL.anim += dt * 7; renderIsle(); }
+}
+function drawIsland(t) {
+  const l = loc(), h = hourAt(t), nt = drawSkyBase(h, t, {}); sceneWeather(l, t, nt);
+  const cam = clamp(ISL.px - W / 2, 0, 2 * W) | 0, gy = landY(l), sc = l.scene;
+  g.save(); g.translate(-cam, 0);
+  // fishing shore (right screen)
+  g.save(); g.translate(2 * W, 0);
+  drawSeaBase(h, t, nt, { tint: S.loc === 'trench' ? 'rgba(0,0,12,0.32)' : S.loc === 'fjord' ? 'rgba(120,180,220,0.1)' : (sc && sc.tint) || null });
+  drawFish(t); const seat = drawShoreAny(l.id, t, nt);
+  S.lines.forEach((L, i) => { if (!L || i >= S.slots || L.phase === 'idle') return; const bx = floatX(i), by = (SURF - 1 + Math.sin(t / 400 + i) * 0.8) | 0; g.fillStyle = L.rig === 'hand' ? '#d7362a' : L.rig === 'trophy' ? '#2d6fb0' : '#f0a040'; g.fillRect(bx - 1, by - 1, 3, 2); });
+  g.restore();
+  // village (middle) and hunting gate (left): land from the island's ground line down
+  drawLand(l, 0, 2 * W + 1, t);
+  drawGroundDecor(l.hunt.kind, 0, gy, t, nt);
+  drawGate(l.hunt.kind, (0.5 * W) | 0, gy, t, nt);
+  const vb = BUILD[l.village.kind] || BUILD.shack; drawBuilding(l.village.kind, ((W + 0.5 * W) | 0) - (vb.w >> 1), gy, t, nt);
+  for (const pr of l.village.props) drawProp(pr, gy, t, nt, W, W);
+  if (l.id === 'shoal') { for (let k = 0; k < 6; k++) { g.fillStyle = '#5a3a22'; g.fillRect(W + 20 + k * 3, gy - 8 - (k % 3) * 2, 2, 8 + (k % 3) * 2); } }
+  sceneFx(l, t, nt);
+  // the three things you can press: a bobbing brass mark above each
+  for (const sp of isleSpots(l)) { const yy = (gy - 36 + Math.sin(t / 300 + sp.x) * 1.5) | 0; g.fillStyle = '#f0c050'; g.fillRect(sp.x - 2 | 0, yy, 5, 1); g.fillRect(sp.x - 1 | 0, yy + 1, 3, 1); g.fillRect(sp.x | 0, yy + 2, 1, 1); }
+  // the fisherman
+  const frame = ISL.walk && (Math.floor(ISL.anim) & 1) ? 'walk' : 'stand', spr = sprite(frame), bob = ISL.walk && (Math.floor(ISL.anim) & 1) ? 1 : 0;
+  const fy = (ISL.px >= 2 * W ? shoreTop(l, Math.min(shoreW - 1, Math.max(0, ISL.px - 2 * W | 0))) : gy) - spr.height + 1 + bob;
+  blit(g, spr, (ISL.px - spr.width / 2) | 0, fy | 0, ISL.dir > 0);
+  g.restore();
+  g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, 0, W, 1);
+}
+
+// ---------- hunting: wait, sight, draw, loose ----------
+// A stalk: wait a few seconds, something steps out at a spot along the ground. A mark swings along the bar; hold the
+// button to draw (the mark slows, your breath runs out), let go with the mark inside the band to take it. Wait too long
+// and it bolts. Band width is the weapon, less the animal's skittishness; swing speed is the animal.
+let HU = null;
+function enterHunt() {
+  const l = loc(); MODE = 'hunt'; $('#isle').hidden = true; $('#game').hidden = true; $('#hunt').hidden = false; HU = { phase: 'idle' };
+  $('#hName').textContent = l.hunt.name ? l.hunt.name[0].toUpperCase() + l.hunt.name.slice(1) : 'The wild'; $('#hSub').textContent = l.name;
+  renderHunt(); window.scrollTo(0, 0);
+}
+function gamePool(locId, t) { const ph = phaseAt(t); return GAME.filter(c => c.loc[locId] && (!c.time || c.time.includes(ph))).map(c => [c, c.loc[locId]]); }
+function rollGame() {
+  const p = gamePool(S.loc, now()); if (!p.length) return null;
+  const tot = p.reduce((a, x) => a + x[1], 0); let r = Math.random() * tot, c = p[p.length - 1][0];
+  for (const [cc, w] of p) { r -= w; if (r <= 0) { c = cc; break; } }
+  const f = Math.pow(Math.random(), 1.3), kg = Math.round((c.kg[0] + (c.kg[1] - c.kg[0]) * f) * 1000) / 1000;
+  return { c, kg, value: gameValue(c, kg, rnd(-0.15, 0.15)) };
+}
+function startStalk() {
+  if (HU && HU.phase !== 'idle') return;
+  const roll = rollGame(); if (!roll) { toast('Nothing stirs here at this hour.'); return; }
+  HU = { phase: 'wait', at: now() + rnd(T_HUNT.wait[0], T_HUNT.wait[1]), roll, tx: rnd(0.18, 0.82), ph: rnd(0, 6), hold: false, breath: 1, flee: 0 };
+  renderHunt();
+}
+function stepHunt(dt, t) {
+  if (!HU) return;
+  if (HU.phase === 'wait' && t >= HU.at) { HU.phase = 'seen'; HU.seen = t; HU.patience = 7000 - 3500 * HU.roll.c.diff; renderHunt(); }
+  if (HU.phase === 'seen') {
+    const c = HU.roll.c, period = 1.5 - 0.95 * c.diff; HU.ph += (Math.PI * 2 / period) * dt * (HU.hold ? 0.55 : 1);
+    if (HU.hold) { HU.breath -= dt * 1000 / T_HUNT.breath; if (HU.breath <= 0) { HU.hold = false; loose(true); return; } }
+    if (t - HU.seen > HU.patience) { bolt_(); return; }
+    const aim = 0.5 + 0.5 * Math.sin(HU.ph), band = WEAPON().acc * (1.15 - c.diff);
+    $('#hmark').style.left = (aim * 100).toFixed(1) + '%'; $('#hband').style.left = ((HU.tx - band) * 100).toFixed(1) + '%'; $('#hband').style.width = (band * 200).toFixed(1) + '%';
+    $('#hbar').classList.toggle('hold', HU.hold);
+    const hb = $('#hbreath'); if (hb) hb.style.width = (HU.breath * 100).toFixed(0) + '%';
+  }
+}
+function loose(shaky) {
+  if (!HU || HU.phase !== 'seen') return;
+  const c = HU.roll.c, aim = 0.5 + 0.5 * Math.sin(HU.ph), band = WEAPON().acc * (1.15 - c.diff) * (shaky ? 0.4 : 1);
+  if (Math.abs(aim - HU.tx) <= band) take(); else { HU.phase = 'miss'; $('#hbar').classList.add('miss'); toast(shaky ? 'Your arm shook. It bolted.' : 'Wide. It bolted.'); setTimeout(() => { if (HU) { HU.phase = 'idle'; $('#hbar').classList.remove('miss'); renderHunt(); } }, 900); renderHunt(); }
+}
+function bolt_() { HU.phase = 'miss'; toast(`The ${HU.roll.c.name.toLowerCase()} caught your scent.`); setTimeout(() => { if (HU) { HU.phase = 'idle'; renderHunt(); } }, 900); renderHunt(); }
+function take() {
+  const { c, kg, value } = HU.roll, tags = [];
+  const gx = S.gindex[c.id] || (S.gindex[c.id] = { n: 0, best: 0 });
+  if (gx.n === 0) tags.push('New species'); if (kg > gx.best) { if (gx.n > 0) tags.push('New record'); gx.best = kg; } gx.n++;
+  let line = '';
+  if (S.pack.length < T.packCap) { S.pack.push({ id: c.id, kg, value }); line = `Into the bag. ${S.pack.length}/${T.packCap}.`; } else line = 'The bag is full. You leave it for the gulls.';
+  HU.phase = 'taken'; $('#hbar').classList.add('hit'); save(); renderHunt();
+  showTaken(c, kg, value, tags, line);
+  setTimeout(() => { if (HU) { HU.phase = 'idle'; $('#hbar').classList.remove('hit'); renderHunt(); } }, 600);
+}
+function showTaken(c, kg, value, tags, line) {
+  const head = tags.includes('New record') ? 'NEW RECORD!' : tags.includes('New species') ? 'NEW SPECIES!' : 'TAKEN!';
+  const pills = tags.filter(t => t.toUpperCase() + '!' !== head);
+  $('#card').className = 'card catch';
+  $('#card').innerHTML = `<div class="head">${head}</div>${pills.length ? `<div class="pills">${pills.map(t => `<div class="pill">${t.toUpperCase()}</div>`).join('')}</div>` : ''}
+    <canvas class="art" id="ccv" width="192" height="96"></canvas><div class="fish">${c.name}</div>
+    <div class="size"><span>${fmtKg(kg)}</span></div><div class="sub">${WEAPON().name.toLowerCase()} · ${PHASE_NAME[phaseAt(now())].toLowerCase()}</div>
+    <div class="stats"><div class="stat"><div class="n">WORTH</div><div class="v">${money(value)}</div></div><div class="stat"><div class="n">WEAPON</div><div class="v">${WEAPON().name}</div></div><div class="stat"><div class="n">GROUND</div><div class="v">${loc().hunt.name.replace(/^the /, '')}</div></div></div>
+    <div class="note">${line}</div><div class="acts"><button class="cta" data-act="closecard">Bag it</button></div>`;
+  $('#cardWrap').hidden = false;
+  const x = $('#ccv').getContext('2d'); x.imageSmoothingEnabled = false;
+  const st = LAND_STYLE[GROUND_LAND[loc().hunt.kind]] || LAND_STYLE.grass; x.fillStyle = '#1a2838'; x.fillRect(0, 0, 192, 96); x.fillStyle = st[0]; x.fillRect(0, 70, 192, 26); x.fillStyle = st[1]; x.fillRect(0, 80, 192, 16); x.fillStyle = st[3]; x.fillRect(0, 70, 192, 1);
+  const m = MASKS[c.mask], sc = c.big ? 4 : 3; drawMaskRaw(x, m, (192 - m[0].length * sc) >> 1, 70 - m.length * sc, c.col, sc);
+  x.fillStyle = '#14141e'; x.fillRect(((192 - m[0].length * sc) >> 1) + 2 * sc, 70 - m.length * sc + sc, sc, sc);
+}
+function renderHunt() {
+  if (MODE !== 'hunt') return;
+  $('#hMoney').textContent = money(S.money); $('#hBag').textContent = `Bag ${S.pack.length}/${T.packCap}`;
+  const box = $('#hbox'), ph = HU ? HU.phase : 'idle', w = WEAPON();
+  if (ph === 'idle') { $('#hNote').innerHTML = `<b>${w.name}</b> · hold to draw, let go on the mark`; box.innerHTML = `<div class="note">${loc().hunt.name ? 'Quiet. Something is out there.' : ''}</div><button class="cta" data-act="stalk">Wait for a sign</button>`; $('#hband').style.width = '0'; }
+  else if (ph === 'wait') { $('#hNote').innerHTML = '<b>Still.</b> Watch the brush.'; box.innerHTML = `<div class="note">Keep low. Something will show.</div><button class="cta alt" data-act="leavehunt">Give up</button>`; }
+  else if (ph === 'seen') { const c = HU.roll.c; $('#hNote').innerHTML = `<b>${c.name}</b> · ${fmtKg(HU.roll.kg)}`; box.innerHTML = `<div class="note">Hold to draw. Let go when the mark is in the band.</div><div class="hbar" style="height:6px"><div class="hband" id="hbreath" style="left:0;width:100%;background:var(--good);border:0"></div></div><button class="cta hit" id="hLoose">Draw</button>`; }
+  else if (ph === 'miss') { $('#hNote').innerHTML = '<b>Gone.</b>'; box.innerHTML = '<div class="note">The brush closes behind it.</div>'; }
+  else if (ph === 'taken') { $('#hNote').innerHTML = '<b>Taken.</b>'; box.innerHTML = ''; }
+}
+function drawHunt(t) {
+  const l = loc(), h = hourAt(t), nt = drawSkyBase(h, t, {}); sceneWeather(l, t, nt);
+  const gy = SURF + 10, st = LAND_STYLE[GROUND_LAND[l.hunt.kind]] || LAND_STYLE.grass;
+  // a far ridge closes the gap between the sky and the ground, so nothing from the last screen shows through
+  const haze = css(lerpC(curSky.bot, [20, 30, 50], 0.5)); g.fillStyle = haze; g.fillRect(0, SURF - 8, W, gy - SURF + 8); for (let k = 0; k < W; k += 9) g.fillRect(k, SURF - 10 - ((k * 7) % 5), 6, 3);
+  g.fillStyle = st[0]; g.fillRect(0, gy, W, 12); g.fillStyle = st[1]; g.fillRect(0, gy + 12, W, 30); g.fillStyle = st[2]; g.fillRect(0, gy + 42, W, H - gy - 42); g.fillStyle = st[3]; g.fillRect(0, gy, W, 1);
+  drawGroundDecor(l.hunt.kind, 0, gy, t, nt);
+  if (HU && HU.phase === 'seen' || (HU && HU.phase === 'taken')) {
+    const c = HU.roll.c, m = MASKS[c.mask], sc = c.big ? 3 : 2, cx = (HU.tx * W) | 0, bob = Math.sin(t / 260) > 0.6 ? 1 : 0;
+    const mc = maskC(c.mask, c.col, sc); blit(g, mc, cx - (mc.width >> 1), gy - mc.height + bob, HU.tx < 0.5);
+    g.fillStyle = '#14141e'; g.fillRect(cx - (mc.width >> 1) + (HU.tx < 0.5 ? mc.width - 3 * sc : 2 * sc), gy - mc.height + bob + sc, sc, sc);
+    const aim = 0.5 + 0.5 * Math.sin(HU.ph), ax = (aim * W) | 0; g.fillStyle = HU.hold ? 'rgba(240,192,80,0.9)' : 'rgba(236,230,214,0.55)'; for (let y = gy - 40; y < gy + 6; y += 3) g.fillRect(ax, y, 1, 1); g.fillRect(ax - 3, gy - 18, 7, 1); g.fillRect(ax, gy - 21, 1, 7);
+  } else if (HU && HU.phase === 'wait') { const sway = Math.sin(t / 400) * 2 | 0; g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect((HU.tx * W | 0) - 8 + sway, gy - 6, 16, 2); }
+  sceneFx(l, t, nt);
   g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, 0, W, 1);
 }
 
@@ -1578,7 +2267,7 @@ function beachScene(t, h, mode) {
   drawSeaBase(h, t, nt, {});
   drawFish(t);
   const spot = drawShore('shoal', t, nt, { noSeat: mode === 'lie' });
-  const cx = (shoreW - 62 + Math.sin(t / 1300) * 9) | 0; blit(g, maskC('crab', '#c0392b', 1), cx, (sandTop(cx) | 0) - 3);
+  const cx = (shoreW - 62 + Math.sin(t / 1300) * 9) | 0; blit(g, maskC('crab', '#c0392b', 1), cx, (sandTop(cx) | 0) - 7);
   if (mode === 'lie') {
     const lx = shoreW - 38, ly = (sandTop(shoreW - 6) | 0) - 7;
     blit(g, sprite('lie'), lx, ly);
@@ -1600,7 +2289,7 @@ const CUT = [
 ];
 let MODE = 'title', cut = null, capT = 0;
 function setCap() { const c = $('#cap'), i = cut.i; clearTimeout(capT); c.classList.remove('show'); capT = setTimeout(() => { if (!cut || cut.i !== i) return; c.innerHTML = CUT[i].cap; c.classList.add('show'); }, 520); }
-function startCut() { MODE = 'cut'; cut = { i: 0, t0: performance.now() }; $('#title').hidden = true; $('#game').hidden = true; $('#cut').hidden = false; setCap(); }
+function startCut() { MODE = 'cut'; cut = { i: 0, t0: performance.now() }; $('#title').hidden = true; $('#game').hidden = true; $('#isle').hidden = true; $('#hunt').hidden = true; $('#cut').hidden = false; setCap(); }
 function cutAdvance() { if (!cut) return; cut.i++; if (cut.i >= CUT.length) { endCut(); return; } cut.t0 = performance.now(); setCap(); }
 function endCut() {
   cut = null;
@@ -1611,12 +2300,12 @@ function endCut() {
   }
   fadeTo(() => { $('#cut').hidden = true; enterGame(); if (wasPrologue) { toast('Line 1 is your rod. Line 2 is a set line.'); setTimeout(() => toast('Driftwood comes up on the lines. Six planks make a raft.'), 3200); } });
 }
-function startStorm() { fadeTo(() => { $('#game').hidden = true; startCut(); }); }
+function startStorm() { fadeTo(() => { $('#game').hidden = true; $('#isle').hidden = true; startCut(); }); }
 function enterGame() {
   if (S.prologue && S.proCaught >= 2) { startCut(); return; } // closed the game mid-storm: pick the storm back up
-  MODE = 'game'; $('#title').hidden = true; $('#cut').hidden = true; $('#game').hidden = false; reseedFish(); render(); window.scrollTo(0, 0); if (S.pending) showCatch();
+  MODE = 'game'; $('#title').hidden = true; $('#cut').hidden = true; $('#isle').hidden = true; $('#hunt').hidden = true; $('#game').hidden = false; ISL = null; reseedFish(); render(); window.scrollTo(0, 0); if (S.pending) showCatch();
 }
-function showTitle() { MODE = 'title'; $('#game').hidden = true; $('#cut').hidden = true; $('#title').hidden = false; $('#bCont').hidden = !S.started; $('#bNew').textContent = S.started ? 'Start over' : 'New voyage'; $('#confirm').textContent = ''; confirmNew = false; }
+function showTitle() { MODE = 'title'; $('#game').hidden = true; $('#isle').hidden = true; $('#hunt').hidden = true; $('#cut').hidden = true; $('#title').hidden = false; $('#bCont').hidden = !S.started; $('#bNew').textContent = S.started ? 'Start over' : 'New voyage'; $('#confirm').textContent = ''; confirmNew = false; }
 function fadeTo(fn) { const f = $('#fade'); f.classList.add('on'); setTimeout(() => { fn(); setTimeout(() => f.classList.remove('on'), 80); }, 600); }
 let confirmNew = false;
 function newVoyage() {
@@ -1632,6 +2321,8 @@ function frame(ts) {
   if (!document.hidden) {
     const t = now();
     if (MODE === 'game') { stepFish(dt); drawGame(t); }
+    else if (MODE === 'island') { stepFish(dt); stepIsle(dt); drawIsland(t); }
+    else if (MODE === 'hunt') { stepHunt(dt, t); drawHunt(t); }
     else if (MODE === 'title') { drawTitle(t); }
     else if (MODE === 'cut' && cut) {
       const b = CUT[cut.i], p = Math.min(1, (ts - cut.t0) / b.dur);
@@ -1643,37 +2334,42 @@ function frame(ts) {
 }
 
 // ---------- chart ----------
+const MAP_INK = { shoal: '#e6cf96', harbor: '#e6cf96', brine: '#f4f0e4', reach: '#cfe0b0', lantern: '#f0c8a0', trench: '#2a3550', delta: '#b8c890', fjord: '#eef3f7', bell: '#d8e8e0', cinder: '#3a2a2a', glass: '#e8fbff', hollow: '#6a6a80', thunder: '#7a8898', stars: '#5a4630' };
+const MAP_IN = { shoal: '#3f8f4e', harbor: '#3f8f4e', brine: '#d8d0b8', reach: '#2f6f3e', lantern: '#c04040', trench: '#2a3550', delta: '#4a7a3a', fjord: '#b7d3e6', bell: '#80a8a0', cinder: '#ff6a20', glass: '#a0e0f0', hollow: '#40a080', thunder: '#f0e060' };
 function drawMap() {
   const c = $('#mapcv'); if (!c) return; const m = c.getContext('2d'); m.imageSmoothingEnabled = false;
-  m.fillStyle = '#d9c8a0'; m.fillRect(0, 0, 160, 120);
-  for (let i = 0; i < 160; i++) { m.fillStyle = 'rgba(90,70,40,0.12)'; m.fillRect((i * 37) % 160, (i * 53) % 120, 1, 1); }
-  m.fillStyle = 'rgba(60,80,110,0.3)'; for (let y = 8; y < 120; y += 10) for (let x = ((y / 10) % 2) * 5; x < 160; x += 11) { m.fillRect(x, y, 2, 1); m.fillRect(x + 2, y - 1, 2, 1); }
-  m.fillStyle = 'rgba(40,50,80,0.18)'; for (let y = 30; y < 60; y += 2) m.fillRect(104 + (y % 4 === 0 ? 1 : 0), y, 40, 1);
-  m.fillStyle = '#5a4630'; m.fillRect(0, 0, 160, 2); m.fillRect(0, 118, 160, 2); m.fillRect(0, 0, 2, 120); m.fillRect(158, 0, 2, 120);
-  const R = boatRange(), here = LOC[S.loc];
-  m.fillStyle = '#5a4630';
-  for (const l of LOCS) { if (l.range > R || l.id === S.loc || l.locked) continue; const steps = 14; for (let k = 1; k < steps; k += 2) { const x = here.x + (l.x - here.x) * k / steps, y = here.y + (l.y - here.y) * k / steps; m.fillRect(x | 0, y | 0, 1, 1); } }
+  const MW = 200, MH = 150;
+  m.fillStyle = '#d9c8a0'; m.fillRect(0, 0, MW, MH);
+  for (let i = 0; i < 220; i++) { m.fillStyle = 'rgba(90,70,40,0.12)'; m.fillRect((i * 37) % MW, (i * 53) % MH, 1, 1); }
+  m.fillStyle = 'rgba(60,80,110,0.3)'; for (let y = 8; y < MH; y += 10) for (let x = ((y / 10) % 2) * 5; x < MW; x += 11) { m.fillRect(x, y, 2, 1); m.fillRect(x + 2, y - 1, 2, 1); }
+  m.fillStyle = '#5a4630'; m.fillRect(0, 0, MW, 2); m.fillRect(0, MH - 2, MW, 2); m.fillRect(0, 0, 2, MH); m.fillRect(MW - 2, 0, 2, MH);
+  // routes: dotted ink between islands you can see
+  const seen = {}; for (const l of LOCS) { const st = mapState(l); if (st !== 'hidden') seen[l.id] = st; }
+  for (const l of LOCS) for (const k of l.links) { if (!seen[l.id] || !seen[k] || l.id > k) continue; const o = LOC[k]; const strong = seen[l.id] === 'visited' && seen[k] === 'visited';
+    m.fillStyle = strong ? '#5a4630' : 'rgba(90,70,48,0.45)'; const steps = Math.max(8, Math.hypot(o.x - l.x, o.y - l.y) / 4 | 0); for (let i = 1; i < steps; i += 2) m.fillRect((l.x + (o.x - l.x) * i / steps) | 0, (l.y + (o.y - l.y) * i / steps) | 0, 1, 1); }
   for (const l of LOCS) {
-    const vis = l.range <= R, fog = !vis && l.range === R + 1;
-    if (!vis && !fog) continue;
-    const x = l.x, y = l.y;
+    const st = seen[l.id]; if (!st) continue; const x = l.x, y = l.y, vis = st === 'visited', known = st === 'known';
     if (l.id === 'stars') { m.fillStyle = vis ? '#5a4630' : '#8a7a60'; m.fillRect(x - 1, y - 4, 2, 9); m.fillRect(x - 4, y - 1, 8, 2); m.fillRect(x - 2, y - 2, 4, 4); }
-    else if (l.id === 'trench') { m.fillStyle = vis ? '#2a3550' : '#7a7a7a'; for (let r = 0; r < 3; r++) m.fillRect(x - 8 + r * 2, y - 3 + r * 2, 16 - r * 4, 1); m.fillStyle = '#5a4630'; m.fillRect(x - 3, y + 3, 7, 2); if (vis) { m.fillStyle = '#b8871c'; m.fillRect(x, y + 2, 1, 1); } }
+    else if (l.id === 'trench') { m.fillStyle = vis ? '#2a3550' : '#7a7a7a'; for (let r = 0; r < 3; r++) m.fillRect(x - 8 + r * 2, y - 3 + r * 2, 16 - r * 4, 1); m.fillStyle = '#5a4630'; m.fillRect(x - 3, y + 3, 7, 2); }
     else {
-      const ink = vis ? '#5a4630' : '#9a8a70';
+      const ink = vis || known ? '#5a4630' : '#9a8a70';
       drawMaskRaw(m, MASKS.isle, x - 7, y - 3, ink, 1); drawMaskRaw(m, MASKS.isle, x - 5, y - 3, ink, 1); drawMaskRaw(m, MASKS.isle, x - 6, y - 4, ink, 1); drawMaskRaw(m, MASKS.isle, x - 6, y - 2, ink, 1);
-      drawMaskRaw(m, MASKS.isle, x - 6, y - 3, vis ? (l.id === 'fjord' ? '#eef3f7' : '#e6cf96') : '#cfc3a4', 1);
-      drawMaskRaw(m, MASKS.isleIn, x - 4, y - 1, vis ? (l.id === 'fjord' ? '#b7d3e6' : '#3f8f4e') : '#b8ad92', 1);
-      if (vis && l.id === 'harbor') { m.fillStyle = '#5a4630'; m.fillRect(x + 4, y + 1, 6, 1); m.fillRect(x - 2, y - 2, 3, 2); m.fillRect(x - 3, y - 3, 5, 1); }
-      if (vis && l.id === 'shoal') { m.fillStyle = '#5a4630'; m.fillRect(x + 2, y, 3, 1); m.fillRect(x + 3, y - 2, 1, 2); }
+      drawMaskRaw(m, MASKS.isle, x - 6, y - 3, vis ? (MAP_INK[l.id] || '#e6cf96') : known ? '#d8ccb0' : '#cfc3a4', 1);
+      drawMaskRaw(m, MASKS.isleIn, x - 4, y - 1, vis ? (MAP_IN[l.id] || '#3f8f4e') : '#b8ad92', 1);
+      if (vis && l.id === 'cinder') { m.fillStyle = '#3a2a2a'; m.fillRect(x - 2, y - 7, 5, 4); m.fillRect(x - 1, y - 8, 3, 1); m.fillStyle = '#ff6a20'; m.fillRect(x, y - 9, 1, 1); }
+      if (vis && l.id === 'lantern') { m.fillStyle = '#c04040'; m.fillRect(x - 3, y - 6, 7, 1); m.fillRect(x - 2, y - 5, 1, 3); m.fillRect(x + 1, y - 5, 1, 3); }
+      if (vis && l.id === 'thunder') { m.fillStyle = '#f0e060'; m.fillRect(x, y - 9, 1, 2); m.fillRect(x - 1, y - 7, 1, 1); m.fillRect(x, y - 6, 1, 2); }
+      if (vis && l.id === 'hollow') { m.fillStyle = '#5a4630'; m.fillRect(x - 3, y - 7, 7, 1); m.fillRect(x - 2, y - 8, 5, 1); m.fillRect(x - 1, y - 9, 3, 1); m.fillStyle = '#40a080'; m.fillRect(x, y - 6, 1, 1); }
       if (vis && l.id === 'fjord') { m.fillStyle = '#1f5a3a'; m.fillRect(x - 3, y - 2, 1, 2); m.fillRect(x, y - 3, 1, 3); m.fillRect(x + 2, y - 2, 1, 2); }
+      if (vis && l.id === 'bell') { m.fillStyle = '#5a4630'; m.fillRect(x - 1, y - 7, 3, 1); m.fillRect(x - 2, y - 6, 5, 2); m.fillRect(x, y - 4, 1, 1); }
     }
-    if (fog) { m.fillStyle = '#5a4630'; m.fillRect(x - 2, y - 13, 5, 1); m.fillRect(x + 2, y - 12, 1, 2); m.fillRect(x, y - 10, 2, 1); m.fillRect(x, y - 9, 1, 1); m.fillRect(x, y - 7, 1, 1); }
+    if (st === 'fog') { m.fillStyle = '#5a4630'; m.fillRect(x - 2, y - 13, 5, 1); m.fillRect(x + 2, y - 12, 1, 2); m.fillRect(x, y - 10, 2, 1); m.fillRect(x, y - 9, 1, 1); m.fillRect(x, y - 7, 1, 1); }
+    if (known) { m.fillStyle = '#b8871c'; m.fillRect(x - 1, y - 9, 3, 1); m.fillRect(x, y - 10, 1, 1); m.fillRect(x, y - 8, 1, 1); }
     if (l.id === mapSel) drawMaskRaw(m, MASKS.ring, x - 6, y - 4, '#b8871c', 1);
     if (l.id === S.loc) { m.fillStyle = '#5a4630'; m.fillRect(x - 4, y + 7, 9, 2); m.fillRect(x, y + 3, 1, 4); m.fillRect(x + 1, y + 4, 3, 2); }
   }
-  m.fillStyle = '#5a4630'; m.fillRect(141, 8, 1, 14); m.fillRect(135, 14, 13, 1); m.fillRect(140, 10, 3, 1); m.fillRect(140, 18, 3, 1); m.fillRect(139, 13, 1, 3); m.fillRect(143, 13, 1, 3);
-  m.fillStyle = '#b8871c'; m.fillRect(141, 7, 1, 2);
+  m.fillStyle = '#5a4630'; m.fillRect(14, 126, 1, 14); m.fillRect(8, 132, 13, 1); m.fillRect(13, 128, 3, 1); m.fillRect(13, 136, 3, 1); m.fillRect(12, 131, 1, 3); m.fillRect(16, 131, 1, 3);
+  m.fillStyle = '#b8871c'; m.fillRect(14, 125, 1, 2);
 }
 
 // ---------- the fight ----------
@@ -1748,6 +2444,12 @@ document.addEventListener('click', e => {
   else if (a === 'cyclebait') { const L = S.lines[S.sel]; if (L && L.phase === 'idle') { cycleBait(L); save(); render(); } }
   else if (a === 'change') { rigOpen = !rigOpen; render(); }
   else if (a === 'catch') resolveCatch(k);
+  else if (a === 'talk') talk();
+  else if (a === 'walk') { if (!S.prologue) fadeTo(() => enterIsland('fish')); }
+  else if (a === 'enter') { const sp = nearSpot(); if (!sp) return; if (sp.id === 'fish') fadeTo(enterFishing); else if (sp.id === 'hunt') fadeTo(enterHunt); else openSheet(loc().shop ? 'shop' : 'inv'); }
+  else if (a === 'leavehunt') { closeSheet(); fadeTo(() => enterIsland('hunt')); }
+  else if (a === 'stalk') startStalk();
+  else if (a === 'closecard') closeCard();
   else if (a === 'release') releaseFish(i);
   else if (a === 'cast') castLine(i);
   else if (a === 'pull') pullLine(i);
@@ -1768,6 +2470,12 @@ document.addEventListener('click', e => {
 });
 $('#cut').addEventListener('click', e => { if (e.target.closest('[data-act]')) return; cutAdvance(); });
 $('#cardWrap').addEventListener('click', e => { if (e.target.closest('[data-act]')) return; if (S.pending) resolveCatch(S.bucket.length < T.bucketCap ? 'keep' : 'release'); else closeCard(); });
+// walking: hold the arrows (or the keyboard arrows); the draw: hold the button, let go to loose
+document.querySelectorAll('.walk').forEach(b => { const on = e => { e.preventDefault(); if (ISL) ISL.walk = +b.dataset.hold; }, off = () => { if (ISL) ISL.walk = 0; }; b.addEventListener('pointerdown', on); ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => b.addEventListener(ev, off)); b.addEventListener('contextmenu', e => e.preventDefault()); });
+window.addEventListener('keydown', e => { if (MODE === 'island' && ISL && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { ISL.walk = e.key === 'ArrowLeft' ? -1 : 1; e.preventDefault(); } if (MODE === 'island' && e.key === 'Enter') { const sp = nearSpot(); if (sp) $('#iAct').click(); } if (MODE === 'hunt' && e.code === 'Space' && HU && HU.phase === 'seen' && !HU.hold) { HU.hold = true; e.preventDefault(); } });
+window.addEventListener('keyup', e => { if (ISL && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) ISL.walk = 0; if (MODE === 'hunt' && e.code === 'Space' && HU && HU.hold) { HU.hold = false; loose(false); } });
+$('#hbox').addEventListener('pointerdown', e => { if (e.target.id === 'hLoose' && HU && HU.phase === 'seen') { e.preventDefault(); HU.hold = true; e.target.textContent = 'Loose!'; } });
+['pointerup', 'pointercancel'].forEach(ev => window.addEventListener(ev, () => { if (MODE === 'hunt' && HU && HU.hold) { HU.hold = false; loose(false); } }));
 $('#sheetWrap').addEventListener('click', e => { if (e.target.id === 'sheetWrap') closeSheet(); });
 const fw = $('#fightWrap');
 fw.addEventListener('pointerdown', e => { e.preventDefault(); if (F) F.hold = true; });
