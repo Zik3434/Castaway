@@ -161,9 +161,11 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 .catch .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .catch .acts .cta:only-child{grid-column:1/-1}
 .catch .warn{color:var(--bad);font-size:17px}
-.fightbox{width:100%;max-width:380px;display:grid;gap:8px;justify-items:center;touch-action:none;user-select:none;-webkit-user-select:none}
-.fightbox canvas{width:min(100%,300px);height:auto;border:3px solid var(--edge)}
-.fightbox .fname{font-family:var(--display);font-size:12px;color:var(--brass);text-align:center;text-wrap:balance}
+#fightWrap{background:transparent;align-items:flex-start;justify-content:flex-end;padding-top:calc(19vh + env(safe-area-inset-top,0px))}
+.fightbox{width:auto;max-width:none;display:grid;gap:5px;justify-items:center;touch-action:none;user-select:none;-webkit-user-select:none;background:rgba(11,17,34,.6);border:2px solid var(--edge);padding:6px 6px 7px}
+.fightbox canvas{width:176px;height:auto;border:2px solid var(--edge)}
+.fightbox .fname{font-family:var(--display);font-size:9px;color:var(--brass);text-align:center;max-width:176px;line-height:1.6}
+.fightbox .note{font-size:14px;max-width:176px;line-height:1.1}
 .toasts{position:fixed;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));display:grid;gap:6px;justify-items:center;pointer-events:none;z-index:30;padding:0 16px}
 .toast{background:var(--panel-2);border:2px solid var(--brass);padding:7px 12px;font-size:19px;max-width:420px;text-align:center}
 #mapcv{width:100%;height:auto;border:3px solid #2a3a50;background:#07070b;max-height:46vh;object-fit:contain}
@@ -1607,6 +1609,16 @@ const SPRITES = {
     '......ssbbss..ss',
   ],
 };
+// Fight frames, derived from `sit`: reelA/B crank the hand up and down; strainA/B lean the whole upper body back with the
+// arms stretched out. Which pair plays depends on the size of the fish.
+function spriteVariant(base, fn) { const m = base.map(r => r.split('')); fn(m); return m.map(r => r.join('')); }
+const clearHands = m => { for (let y = 15; y <= 17; y++) for (let x = 19; x <= 22; x++) if (m[y][x] === 's' || m[y][x] === 'S') m[y][x] = '.'; };
+const leanBack = (m, dx) => { for (let y = 0; y <= 20; y++) { const row = m[y].slice(); for (let x = 0; x < row.length; x++) m[y][x] = row[x + dx] !== undefined ? row[x + dx] : '.'; } };
+const hands = (m, y0, x0) => { for (let y = y0; y <= y0 + 1; y++) for (let x = x0; x <= x0 + 1; x++) m[y][x] = 's'; m[y0 + 1][x0 + 1] = 'S'; };
+SPRITES.reelA = spriteVariant(SPRITES.sit, m => { clearHands(m); hands(m, 13, 19); });
+SPRITES.reelB = spriteVariant(SPRITES.sit, m => { clearHands(m); hands(m, 17, 20); });
+SPRITES.strainA = spriteVariant(SPRITES.sit, m => { clearHands(m); leanBack(m, 2); hands(m, 12, 18); });
+SPRITES.strainB = spriteVariant(SPRITES.sit, m => { clearHands(m); leanBack(m, 1); hands(m, 13, 18); });
 const CACHE = new Map();
 function maskC(name, col, sc) {
   const key = 'm|' + name + '|' + col + '|' + sc; let c = CACHE.get(key); if (c) return c;
@@ -2116,11 +2128,21 @@ function drawShore(id, t, nt, o) {
   }
   return [shoreW - 28, SURF - 27];
 }
-function drawFisherman(fx, fy, rodOut) {
-  blit(g, sprite('sit'), fx, fy);
-  const hx = fx + 20, hy = fy + 16;
-  const tip = rodOut ? [hx + 30, hy - 10] : [hx + 24, hy - 24];
-  bres(g, hx, hy, tip[0], tip[1], '#7a5230', 1); g.fillStyle = '#a07a4a'; g.fillRect(tip[0], tip[1], 1, 1);
+function drawFisherman(fx, fy, rodOut, fight, t) {
+  const hx = fx + 20, hy = fy + 16; let name = 'sit', tip;
+  if (fight) { // something is on: crank fast for a small fish, lean back and hold on for a big one
+    const f = Math.floor((t || 0) / (fight.big ? 260 : 120)) % 2;
+    name = fight.big ? (f ? 'strainB' : 'strainA') : (f ? 'reelB' : 'reelA');
+    tip = fight.big ? [hx + 24 + f, hy - 2 + f * 2] : [hx + 28, hy - 11 + f];
+    const mx = hx + 13, my = hy - (fight.big ? 13 : 17); // the rod bows: handle to a mid-point, mid-point to the tip
+    blit(g, sprite(name), fx, fy);
+    bres(g, hx, hy, mx, my, '#7a5230', 1); bres(g, mx, my, tip[0], tip[1], '#7a5230', 1);
+  } else {
+    tip = rodOut ? [hx + 30, hy - 10] : [hx + 24, hy - 24];
+    blit(g, sprite(name), fx, fy);
+    bres(g, hx, hy, tip[0], tip[1], '#7a5230', 1);
+  }
+  g.fillStyle = '#a07a4a'; g.fillRect(tip[0], tip[1], 1, 1);
   return tip;
 }
 const floatX = i => shoreW + 20 + i * Math.floor((W - shoreW - 40) / 3);
@@ -2132,7 +2154,8 @@ function drawGame(t) {
   drawFish(t);
   const spot = drawShoreAny(S.loc, t, nt);
   const rodOut = S.lines.some(L => L && L.rig === 'hand' && L.phase !== 'idle');
-  const tip = drawFisherman(spot[0], spot[1], rodOut);
+  const fight = F && !F.over ? { i: F.i, big: !!(F.trophy || F.s.big || (F.kg || 0) >= 4) } : null;
+  const tip = drawFisherman(spot[0], spot[1], rodOut, fight, t);
   const st = [shoreW - 4, (S.loc === 'shoal' ? sandTop(shoreW - 4) | 0 : SURF - 7) - 6];
   if (S.loc !== 'sea') { g.fillStyle = '#3b2a1c'; g.fillRect(st[0], st[1], 2, 7); g.fillStyle = '#f0c050'; g.fillRect(st[0], st[1] - 1, 2, 1); }
   S.lines.forEach((L, i) => {
@@ -2141,6 +2164,12 @@ function drawGame(t) {
     const on = L.phase === 'bite' || L.phase === 'hooked';
     if (on) by = SURF + 2 + Math.abs(Math.sin(t / 120)) * 2;
     by |= 0;
+    if (fight && i === fight.i) { // the line runs taut to a shadow in the water; splash at the surface
+      const fyy = (SURF + 3 + F.fy * 28) | 0, sh = maskC(F.s.shape, 'rgba(6,16,30,0.8)', F.s.big ? 2 : 1), fxx = bx + (Math.sin(t / 170) * 2 | 0);
+      bres(g, tip[0], tip[1], fxx, fyy, 'rgba(225,232,240,0.95)'); blit(g, sh, fxx - (sh.width >> 1), fyy - (sh.height >> 1), Math.sin(t / 900) > 0);
+      g.fillStyle = 'rgba(240,246,255,0.85)'; for (let k = 0; k < 4; k++) { const px = bx - 4 + k * 3 + ((t / 90 + k * 7) % 3 | 0), py = SURF - 1 - ((t / 110 + k * 5) % 4 | 0); g.fillRect(px, py, 1, 1); }
+      return;
+    }
     if (L.rig === 'hand') { bres(g, tip[0], tip[1], bx, by, 'rgba(225,232,240,0.9)'); g.fillStyle = '#d7362a'; g.fillRect(bx - 1, by - 1, 3, 1); g.fillStyle = '#f4f4f0'; g.fillRect(bx - 1, by, 3, 1); }
     else {
       bres(g, st[0] + 1, st[1], bx, by, 'rgba(207,214,221,0.85)');
@@ -2511,7 +2540,7 @@ let F = null;
 const fcv = $('#fcv'), fg = fcv.getContext('2d');
 function startFight(i) {
   const L = S.lines[i], s = SP[L.c.id], bar = rodBar();
-  F = { i, s, diff: clamp(s.diff + (L.rig === 'trophy' ? 0.08 : 0) + (L.c.trophy ? 0.06 : 0), 0, 0.97), fy: 0.5, tgt: 0.5, tNext: 0.4, by: 0.5 - bar / 2, bv: 0, bar, p: 0.3, hold: false, inside: false, last: performance.now(), over: false, trophy: L.c.trophy };
+  F = { i, s, kg: L.c.kg || 0, diff: clamp(s.diff + (L.rig === 'trophy' ? 0.08 : 0) + (L.c.trophy ? 0.06 : 0), 0, 0.97), fy: 0.5, tgt: 0.5, tNext: 0.4, by: 0.5 - bar / 2, bv: 0, bar, p: 0.3, hold: false, inside: false, last: performance.now(), over: false, trophy: L.c.trophy };
   $('#fname').textContent = s.legend ? 'Something that should not be here' : L.c.trophy || s.big ? 'Something big' : s.shape === 'fry' ? 'Something small' : 'Something is on';
   $('#fightWrap').hidden = false;
   requestAnimationFrame(fightFrame);
