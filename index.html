@@ -2030,6 +2030,8 @@ function farIsland(x, w, withPalm) {
   g.fillStyle = haze; g.fillRect(x, SURF - 3, w, 3); g.fillRect(x + (w * 0.2 | 0), SURF - 6, w * 0.6 | 0, 3); g.fillRect(x + (w * 0.35 | 0), SURF - 8, w * 0.25 | 0, 2);
   if (withPalm) { const px = x + (w * 0.5 | 0); g.fillRect(px, SURF - 15, 1, 8); g.fillRect(px - 3, SURF - 16, 7, 2); g.fillRect(px - 2, SURF - 14, 2, 1); g.fillRect(px + 1, SURF - 14, 2, 1); }
 }
+// a thwart: the plank bench across a small boat, drawn under the seated fisherman (sx, sy = sprite top-left)
+function thwart(sx, sy, deckY) { g.fillStyle = '#5a3a22'; g.fillRect(sx + 5, sy + 28, 2, Math.max(1, deckY - sy - 28)); g.fillRect(sx + 13, sy + 28, 2, Math.max(1, deckY - sy - 28)); g.fillStyle = '#8a6a44'; g.fillRect(sx + 3, sy + 26, 14, 2); g.fillStyle = '#a88458'; g.fillRect(sx + 3, sy + 26, 14, 1); }
 function drawBoat(x, y, w, kind, t, storm) {
   g.fillStyle = '#5a3a22'; g.fillRect(x, y - 2, w, 2);
   g.fillStyle = '#3e2816'; g.fillRect(x + 2, y, w - 4, 3);
@@ -2116,6 +2118,7 @@ function drawShore(id, t, nt, o) {
     g.drawImage(floorLayer('sea'), 0, SURF);
     const bw = shoreW + 10, by = (SURF + 1 + Math.sin(t / 900)) | 0;
     drawBoat(-8, by, bw, 'skiff', t, false);
+    thwart(bw - 38, by - 31, by - 2);
     return [bw - 38, by - 31];
   }
   if (id === 'trench') {
@@ -2370,7 +2373,7 @@ function drawTitle(t) {
   // a fish jumps out of the water, right of the boat, part way through longer waits
   if (B.k === 'wait' && B.n % 2 === 0) { const jt = B.u - 4200; if (jt > -300 && jt < 0) ripple(W * 0.74, SURF, 1 + jt / 300); if (jt >= 0 && jt < 900) { const jp = jt / 900, jx = W * 0.72 + jp * (W * 0.1), jy = SURF - 1 - 11 * Math.sin(Math.PI * jp); const c = maskC('fry', '#1d2f44', 1); g.save(); g.translate(jx | 0, jy | 0); g.rotate((jp - 0.5) * 1.2); g.drawImage(c, -3, -1); g.restore(); } if (jt >= 900 && jt < 1500) ripple(W * 0.82, SURF, (jt - 900) / 600); }
   drawBoat(bx, by, 52, 'skiff', t, false);
-  blit(g, sprite('sit'), bx + 22, by - 31);
+  thwart(bx + 22, by - 31, by - 2); blit(g, sprite('sit'), bx + 22, by - 31);
   const hx = bx + 42, hy = by - 15, rest = [hx + 30, by + 1], tipOut = [hx + 22, hy - 24], tipBent = [hx + 19, hy - 17], tipUp = [hx + 8, hy - 31];
   let tip = tipOut, fl = rest, line = true, bait = false;
   if (B.k === 'wait') { fl = [rest[0], rest[1] + Math.round(Math.sin(t / 700))]; if ((B.u % 3000) < 900) ripple(rest[0] + 1, rest[1] + 1, (B.u % 3000) / 900); }
