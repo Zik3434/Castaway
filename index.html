@@ -148,7 +148,8 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 .catch .pills{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
 .catch canvas.art{width:100%;max-width:300px;justify-self:center;border:2px solid var(--edge)}
 .catch .fish{font-family:var(--display);font-size:13px;color:var(--text);text-wrap:balance}
-.catch .size{font-family:var(--display);font-size:clamp(22px,8vw,34px);color:var(--brass);text-shadow:3px 3px 0 #2b1d05}
+.catch .size{display:flex;justify-content:center;align-items:baseline;gap:12px;font-family:var(--display);font-size:clamp(17px,6vw,27px);color:var(--brass);text-shadow:3px 3px 0 #2b1d05}
+.catch .size .sep{color:var(--brass-2);text-shadow:none}
 .catch .sub{color:var(--muted);font-size:18px}
 .catch .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:left}
 .catch .stat{background:rgba(10,16,32,.6);border:2px solid var(--edge);padding:8px 8px}
@@ -288,60 +289,60 @@ const SPECIES = [
   { id: 'sardine',    name: 'Sardine',               loc: { shoal: 40, harbor: 10 }, size: [10, 20],   value: 2,   beh: 'smooth',  diff: 0.10, shape: 'fry' },
   { id: 'bream',      name: 'Gilt-head Bream',       loc: { shoal: 24, harbor: 10 }, size: [20, 50],   value: 7,   beh: 'smooth',  diff: 0.30, shape: 'bream' },
   { id: 'grunt',      name: 'French Grunt',          loc: { shoal: 20 },             size: [15, 30],   value: 5,   beh: 'smooth',  diff: 0.25, shape: 'bream' },
-  { id: 'needlefish', name: 'Needlefish',            loc: { shoal: 12 },             size: [40, 90],   value: 8,   beh: 'dart',    diff: 0.45, shape: 'pike', time: ['day'] },
-  { id: 'pompano',    name: 'Florida Pompano',       loc: { shoal: 10 },             size: [25, 55],   value: 14,  beh: 'dart',    diff: 0.50, shape: 'bream', time: ['dawn', 'dusk'] },
+  { id: 'needlefish', name: 'Needlefish',            loc: { shoal: 12 },             size: [40, 90],   value: 8,   beh: 'dart',    diff: 0.45, shape: 'pike', k: 0.003, time: ['day'] },
+  { id: 'pompano',    name: 'Florida Pompano',       loc: { shoal: 10 },             size: [25, 55],   value: 14,  beh: 'dart',    diff: 0.50, shape: 'bream', k: 0.02, time: ['dawn', 'dusk'] },
   { id: 'snapper',    name: 'Mangrove Snapper',      loc: { shoal: 12 },             size: [25, 60],   value: 14,  beh: 'sinker',  diff: 0.45, shape: 'bream', time: ['dusk', 'night'], minBait: 1 },
-  { id: 'trigger',    name: 'Queen Triggerfish',     loc: { shoal: 6 },              size: [30, 60],   value: 20,  beh: 'dart',    diff: 0.55, shape: 'bream', time: ['day'], minBait: 1 },
+  { id: 'trigger',    name: 'Queen Triggerfish',     loc: { shoal: 6 },              size: [30, 60],   value: 20,  beh: 'dart',    diff: 0.55, shape: 'bream', k: 0.025, time: ['day'], minBait: 1 },
   { id: 'bonefish',   name: 'Bonefish',              loc: { shoal: 6 },              size: [40, 80],   value: 30,  beh: 'dart',    diff: 0.70, shape: 'trout', time: ['dawn'], minBait: 1 },
-  { id: 'barracuda',  name: 'Great Barracuda',       loc: { shoal: 4 },              size: [80, 170],  value: 70,  beh: 'dart',    diff: 0.80, shape: 'pike', time: ['day'], rare: true, minBait: 1, big: true },
-  { id: 'tarpon',     name: 'Tarpon',                loc: { shoal: 5 },              size: [100, 220], value: 90,  beh: 'dart',    diff: 0.85, shape: 'big', time: ['night'], rare: true, minBait: 1, big: true },
+  { id: 'barracuda',  name: 'Great Barracuda',       loc: { shoal: 4 },              size: [80, 170],  value: 70,  beh: 'dart',    diff: 0.80, shape: 'pike', k: 0.006, time: ['day'], rare: true, minBait: 1, big: true },
+  { id: 'tarpon',     name: 'Tarpon',                loc: { shoal: 5 },              size: [100, 220], value: 90,  beh: 'dart',    diff: 0.85, shape: 'big', k: 0.009, time: ['night'], rare: true, minBait: 1, big: true },
   // Gull Harbor: a temperate pier
   { id: 'herring',    name: 'Atlantic Herring',      loc: { harbor: 30 },            size: [20, 35],   value: 3,   beh: 'smooth',  diff: 0.15, shape: 'fry' },
   { id: 'mackerel',   name: 'Atlantic Mackerel',     loc: { harbor: 26 },            size: [25, 50],   value: 8,   beh: 'dart',    diff: 0.40, shape: 'trout', time: ['day'] },
   { id: 'mullet',     name: 'Grey Mullet',           loc: { harbor: 24 },            size: [30, 70],   value: 7,   beh: 'smooth',  diff: 0.30, shape: 'trout' },
   { id: 'flounder',   name: 'European Flounder',     loc: { harbor: 20 },            size: [20, 50],   value: 11,  beh: 'sinker',  diff: 0.40, shape: 'flat' },
   { id: 'seabass',    name: 'European Sea Bass',     loc: { harbor: 12 },            size: [40, 90],   value: 22,  beh: 'dart',    diff: 0.55, shape: 'trout', time: ['dawn', 'dusk'], minBait: 1 },
-  { id: 'garfish',    name: 'Garfish',               loc: { harbor: 10 },            size: [50, 90],   value: 10,  beh: 'dart',    diff: 0.45, shape: 'pike', time: ['day'] },
+  { id: 'garfish',    name: 'Garfish',               loc: { harbor: 10 },            size: [50, 90],   value: 10,  beh: 'dart',    diff: 0.45, shape: 'pike', k: 0.003, time: ['day'] },
   { id: 'pollock',    name: 'Pollock',               loc: { harbor: 10 },            size: [40, 100],  value: 16,  beh: 'smooth',  diff: 0.45, shape: 'trout', minBait: 1 },
   { id: 'conger',     name: 'Conger Eel',            loc: { harbor: 7, trench: 6 },  size: [80, 200],  value: 35,  beh: 'sinker',  diff: 0.60, shape: 'eel', time: ['night'], minBait: 1, big: true },
-  { id: 'dogfish',    name: 'Spiny Dogfish',         loc: { harbor: 6 },             size: [60, 120],  value: 20,  beh: 'sinker',  diff: 0.50, shape: 'pike', time: ['night'] },
-  { id: 'sturgeon',   name: 'Atlantic Sturgeon',     loc: { harbor: 3 },             size: [150, 300], value: 160, beh: 'sinker',  diff: 0.80, shape: 'big', time: ['dawn'], rare: true, minBait: 1, big: true },
+  { id: 'dogfish',    name: 'Spiny Dogfish',         loc: { harbor: 6 },             size: [60, 120],  value: 20,  beh: 'sinker',  diff: 0.50, shape: 'pike', k: 0.004, time: ['night'] },
+  { id: 'sturgeon',   name: 'Atlantic Sturgeon',     loc: { harbor: 3 },             size: [150, 300], value: 160, beh: 'sinker',  diff: 0.80, shape: 'big', k: 0.005, time: ['dawn'], rare: true, minBait: 1, big: true },
   // Kelp Reach: a kelp forest
   { id: 'senorita',   name: 'Señorita',              loc: { reach: 26 },             size: [15, 25],   value: 4,   beh: 'smooth',  diff: 0.20, shape: 'fry' },
   { id: 'perch',      name: 'Kelp Perch',            loc: { reach: 20 },             size: [15, 22],   value: 5,   beh: 'smooth',  diff: 0.25, shape: 'bream' },
   { id: 'kelpbass',   name: 'Kelp Bass',             loc: { reach: 30 },             size: [25, 60],   value: 14,  beh: 'smooth',  diff: 0.40, shape: 'bream' },
-  { id: 'garibaldi',  name: 'Garibaldi',             loc: { reach: 14 },             size: [20, 35],   value: 16,  beh: 'dart',    diff: 0.45, shape: 'bream', time: ['day'] },
+  { id: 'garibaldi',  name: 'Garibaldi',             loc: { reach: 14 },             size: [20, 35],   value: 16,  beh: 'dart',    diff: 0.45, shape: 'bream', k: 0.025, time: ['day'] },
   { id: 'opaleye',    name: 'Opaleye',               loc: { reach: 16 },             size: [25, 50],   value: 9,   beh: 'smooth',  diff: 0.35, shape: 'bream' },
   { id: 'rockfish',   name: 'Vermilion Rockfish',    loc: { reach: 20 },             size: [30, 75],   value: 18,  beh: 'sinker',  diff: 0.48, shape: 'bream', minBait: 1 },
   { id: 'sheephead',  name: 'California Sheephead',  loc: { reach: 10 },             size: [40, 90],   value: 30,  beh: 'sinker',  diff: 0.60, shape: 'bream', time: ['day'], minBait: 1 },
   { id: 'cabezon',    name: 'Cabezon',               loc: { reach: 8 },              size: [40, 90],   value: 26,  beh: 'sinker',  diff: 0.55, shape: 'bream', minBait: 1 },
   { id: 'yellowtail', name: 'Yellowtail Amberjack',  loc: { reach: 10 },             size: [60, 120],  value: 40,  beh: 'dart',    diff: 0.65, shape: 'trout', time: ['dawn', 'dusk'], minBait: 1 },
   { id: 'lingcod',    name: 'Lingcod',               loc: { reach: 6 },              size: [60, 150],  value: 60,  beh: 'dart',    diff: 0.72, shape: 'pike', time: ['dusk', 'night'], minBait: 2, big: true },
-  { id: 'leopardshark', name: 'Leopard Shark',       loc: { reach: 4 },              size: [100, 180], value: 120, beh: 'smooth',  diff: 0.75, shape: 'big', time: ['dawn'], rare: true, minBait: 1, big: true },
-  { id: 'sunfish',    name: 'Ocean Sunfish',         loc: { reach: 3 },              size: [150, 300], value: 250, beh: 'floater', diff: 0.80, shape: 'big', time: ['day'], rare: true, minBait: 2, big: true },
+  { id: 'leopardshark', name: 'Leopard Shark',       loc: { reach: 4 },              size: [100, 180], value: 120, beh: 'smooth',  diff: 0.75, shape: 'big', k: 0.005, time: ['dawn'], rare: true, minBait: 1, big: true },
+  { id: 'sunfish',    name: 'Ocean Sunfish',         loc: { reach: 3 },              size: [150, 300], value: 250, beh: 'floater', diff: 0.80, shape: 'big', k: 0.06, time: ['day'], rare: true, minBait: 2, big: true },
   // Black Trench: the deep
-  { id: 'hagfish',    name: 'Hagfish',               loc: { trench: 24 },            size: [30, 60],   value: 12,  beh: 'sinker',  diff: 0.35, shape: 'eel' },
+  { id: 'hagfish',    name: 'Hagfish',               loc: { trench: 24 },            size: [30, 60],   value: 12,  beh: 'sinker',  diff: 0.35, shape: 'eel', k: 0.002 },
   { id: 'lanternfish', name: 'Lanternfish',          loc: { trench: 30 },            size: [8, 15],    value: 18,  beh: 'floater', diff: 0.40, shape: 'fry', time: ['dusk', 'night'] },
-  { id: 'grenadier',  name: 'Grenadier',             loc: { trench: 20 },            size: [40, 90],   value: 22,  beh: 'sinker',  diff: 0.45, shape: 'eel', minBait: 1 },
+  { id: 'grenadier',  name: 'Grenadier',             loc: { trench: 20 },            size: [40, 90],   value: 22,  beh: 'sinker',  diff: 0.45, shape: 'eel', k: 0.005, minBait: 1 },
   { id: 'sablefish',  name: 'Sablefish',             loc: { trench: 16 },            size: [50, 100],  value: 45,  beh: 'smooth',  diff: 0.50, shape: 'trout', minBait: 1 },
   { id: 'viperfish',  name: "Sloane's Viperfish",    loc: { trench: 10 },            size: [20, 35],   value: 40,  beh: 'dart',    diff: 0.60, shape: 'pike', time: ['night'], minBait: 1 },
-  { id: 'fangtooth',  name: 'Fangtooth',             loc: { trench: 10 },            size: [10, 18],   value: 35,  beh: 'dart',    diff: 0.55, shape: 'bream', time: ['night'], minBait: 1 },
-  { id: 'anglerfish', name: 'Humpback Anglerfish',   loc: { trench: 8 },             size: [20, 40],   value: 80,  beh: 'sinker',  diff: 0.65, shape: 'bream', time: ['night'], minBait: 2 },
-  { id: 'gulper',     name: 'Gulper Eel',            loc: { trench: 6 },             size: [60, 100],  value: 60,  beh: 'floater', diff: 0.60, shape: 'eel', minBait: 2 },
-  { id: 'chimaera',   name: 'Ghost Shark',           loc: { trench: 5 },             size: [60, 120],  value: 70,  beh: 'smooth',  diff: 0.60, shape: 'big', minBait: 2 },
-  { id: 'oarfish',    name: 'Oarfish',               loc: { trench: 3 },             size: [300, 600], value: 400, beh: 'floater', diff: 0.85, shape: 'eel', rare: true, minBait: 2, big: true },
-  { id: 'coelacanth', name: 'Coelacanth',            loc: { trench: 2 },             size: [120, 200], value: 600, beh: 'sinker',  diff: 0.92, shape: 'big', time: ['night'], rare: true, minBait: 2, big: true },
+  { id: 'fangtooth',  name: 'Fangtooth',             loc: { trench: 10 },            size: [10, 18],   value: 35,  beh: 'dart',    diff: 0.55, shape: 'bream', k: 0.02, time: ['night'], minBait: 1 },
+  { id: 'anglerfish', name: 'Humpback Anglerfish',   loc: { trench: 8 },             size: [20, 40],   value: 80,  beh: 'sinker',  diff: 0.65, shape: 'bream', k: 0.025, time: ['night'], minBait: 2 },
+  { id: 'gulper',     name: 'Gulper Eel',            loc: { trench: 6 },             size: [60, 100],  value: 60,  beh: 'floater', diff: 0.60, shape: 'eel', k: 0.002, minBait: 2 },
+  { id: 'chimaera',   name: 'Ghost Shark',           loc: { trench: 5 },             size: [60, 120],  value: 70,  beh: 'smooth',  diff: 0.60, shape: 'big', k: 0.006, minBait: 2 },
+  { id: 'oarfish',    name: 'Oarfish',               loc: { trench: 3 },             size: [300, 600], value: 400, beh: 'floater', diff: 0.85, shape: 'eel', k: 0.001, rare: true, minBait: 2, big: true },
+  { id: 'coelacanth', name: 'Coelacanth',            loc: { trench: 2 },             size: [120, 200], value: 600, beh: 'sinker',  diff: 0.92, shape: 'big', k: 0.016, time: ['night'], rare: true, minBait: 2, big: true },
   // Frost Fjords: cold water
   { id: 'capelin',    name: 'Capelin',               loc: { fjord: 28 },             size: [12, 20],   value: 3,   beh: 'smooth',  diff: 0.15, shape: 'fry' },
   { id: 'char',       name: 'Arctic Char',           loc: { fjord: 24 },             size: [30, 80],   value: 26,  beh: 'smooth',  diff: 0.45, shape: 'trout' },
   { id: 'cod',        name: 'Atlantic Cod',          loc: { fjord: 22 },             size: [50, 120],  value: 30,  beh: 'sinker',  diff: 0.50, shape: 'trout', minBait: 1 },
   { id: 'haddock',    name: 'Haddock',               loc: { fjord: 16 },             size: [40, 80],   value: 22,  beh: 'sinker',  diff: 0.45, shape: 'trout', minBait: 1 },
   { id: 'pike',       name: 'Northern Pike',         loc: { fjord: 14 },             size: [50, 120],  value: 45,  beh: 'dart',    diff: 0.66, shape: 'pike', minBait: 1 },
-  { id: 'lumpsucker', name: 'Lumpsucker',            loc: { fjord: 10 },             size: [20, 40],   value: 20,  beh: 'sinker',  diff: 0.40, shape: 'bream' },
-  { id: 'wolffish',   name: 'Atlantic Wolffish',     loc: { fjord: 8 },              size: [60, 120],  value: 55,  beh: 'sinker',  diff: 0.60, shape: 'eel', time: ['night'], minBait: 1 },
+  { id: 'lumpsucker', name: 'Lumpsucker',            loc: { fjord: 10 },             size: [20, 40],   value: 20,  beh: 'sinker',  diff: 0.40, shape: 'bream', k: 0.03 },
+  { id: 'wolffish',   name: 'Atlantic Wolffish',     loc: { fjord: 8 },              size: [60, 120],  value: 55,  beh: 'sinker',  diff: 0.60, shape: 'eel', k: 0.007, time: ['night'], minBait: 1 },
   { id: 'salmon',     name: 'Atlantic Salmon',       loc: { fjord: 5 },              size: [60, 120],  value: 120, beh: 'dart',    diff: 0.80, shape: 'trout', time: ['dawn', 'dusk'], rare: true, minBait: 1, big: true },
-  { id: 'halibut',    name: 'Atlantic Halibut',      loc: { fjord: 4 },              size: [100, 250], value: 220, beh: 'sinker',  diff: 0.80, shape: 'flat', rare: true, minBait: 2, big: true },
-  { id: 'greenlandshark', name: 'Greenland Shark',   loc: { fjord: 2 },              size: [300, 500], value: 500, beh: 'sinker',  diff: 0.90, shape: 'big', time: ['night'], rare: true, minBait: 2, big: true },
+  { id: 'halibut',    name: 'Atlantic Halibut',      loc: { fjord: 4 },              size: [100, 250], value: 220, beh: 'sinker',  diff: 0.80, shape: 'flat', k: 0.011, rare: true, minBait: 2, big: true },
+  { id: 'greenlandshark', name: 'Greenland Shark',   loc: { fjord: 2 },              size: [300, 500], value: 500, beh: 'sinker',  diff: 0.90, shape: 'big', k: 0.008, time: ['night'], rare: true, minBait: 2, big: true },
   // not fish
   { id: 'wood',       name: 'Driftwood',             loc: { shoal: 38 },             size: [0, 0],     value: 0,   kind: 'wood', shape: 'wood' },
   { id: 'boot',       name: 'Old Boot',              loc: { harbor: 6, reach: 5 },   size: [0, 0],     value: 0,   kind: 'junk', shape: 'boot' },
@@ -349,13 +350,18 @@ const SPECIES = [
 // v3 saves used a fictional roster; these ids map onto their nearest real species.
 const ID_MAP_V3 = { minnow: 'sardine', jack: 'yellowtail', eel: 'conger', king: 'sturgeon', rockcod: 'rockfish', dragon: 'sunfish', dory: 'lanternfish', grouper: 'sablefish', leviathan: 'coelacanth', aurora: 'salmon' };
 const SP = Object.fromEntries(SPECIES.map(s => [s.id, s]));
+// Weight from length: kg = k × cm³ / 1000, with k a condition factor by body shape (a species can override with `k`).
+const K_SHAPE = { fry: 0.009, bream: 0.018, trout: 0.011, pike: 0.006, eel: 0.0025, big: 0.012, flat: 0.013 };
+const kgOf = (sp, cm, jit) => Math.round((sp.k || K_SHAPE[sp.shape] || 0.01) * cm * cm * cm / 1000 * (1 + (jit || 0)) * 1000) / 1000;
+const fishKg = f => f.kg != null ? f.kg : kgOf(SP[f.id], f.cm, 0);
+const fmtKg = kg => kg < 1 ? Math.round(kg * 1000) + ' g' : kg < 10 ? kg.toFixed(1) + ' kg' : Math.round(kg) + ' kg';
 const LOC = Object.fromEntries(LOCS.map(l => [l.id, l]));
 const PHASE_NAME = { dawn: 'Dawn', day: 'Day', dusk: 'Dusk', night: 'Night' };
 
 // ---------- state ----------
 function freshState() {
   return {
-    v: 4, started: false, loc: 'shoal', money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 2, trophyRig: false,
+    v: 5, started: false, loc: 'shoal', money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 2, trophyRig: false,
     pending: null, // a landed catch waiting for Sell / Keep / Release; survives a reload
     bait: { shrimp: 0, squid: 0 },
     lines: [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, { rig: 'set', bait: 'scraps', phase: 'idle' }, null, null],
@@ -380,7 +386,14 @@ function load(seed) {
     (d.lines || []).forEach(L => { if (L && L.c) { L.c.id = fix(L.c.id); if (!SP[L.c.id]) { L.phase = 'idle'; L.c = null; } } });
     d.v = 4;
   }
-  if (d && d.v === 4) S = Object.assign(freshState(), d);
+  if (d && d.v === 4) { // v4 -> v5: catches carry a weight; derive one for everything already caught
+    (d.bucket || []).forEach(f => { if (f.kg == null && SP[f.id]) f.kg = kgOf(SP[f.id], f.cm, 0); });
+    for (const k in d.index || {}) if (d.index[k].bestKg == null && SP[k]) d.index[k].bestKg = kgOf(SP[k], d.index[k].best, 0);
+    if (d.pending && d.pending.kg == null && SP[d.pending.id]) d.pending.kg = kgOf(SP[d.pending.id], d.pending.cm, 0);
+    (d.lines || []).forEach(L => { if (L && L.c && L.c.kg == null && SP[L.c.id]) L.c.kg = kgOf(SP[L.c.id], L.c.cm, 0); });
+    d.v = 5;
+  }
+  if (d && d.v === 5) S = Object.assign(freshState(), d);
 }
 
 const loc = () => LOC[S.loc];
@@ -417,7 +430,7 @@ function rollCatch(locId, rig, baitId, t) {
   const cm = s.kind ? 0 : Math.round(s.size[0] + (s.size[1] - s.size[0]) * f);
   const trophy = !s.kind && f >= 0.85;
   const value = s.kind ? 0 : Math.round(s.value * (0.6 + 0.9 * f)) * (trophy ? 2 : 1);
-  return { id: s.id, cm, value, trophy };
+  return { id: s.id, cm, kg: s.kind ? 0 : kgOf(s, cm, rnd(-0.08, 0.08)), value, trophy };
 }
 function waitFor(rig) { const [a, b] = rig === 'hand' ? T.handWait : rig === 'set' ? T.setWait : T.trophyWait; return rnd(a, b); }
 
@@ -447,13 +460,14 @@ function haulLine(i) {
 function land(i) {
   const L = S.lines[i], c = L.c, s = SP[c.id];
   L.phase = 'idle'; L.c = null;
-  const p = { id: c.id, cm: c.cm, value: c.value, trophy: c.trophy, bait: L.bait, rig: L.rig, phase: phaseAt(now()), wait: L.t0 ? Math.max(0, (L.at || now()) - L.t0) : 0, tags: [] };
+  const p = { id: c.id, cm: c.cm, kg: c.kg, value: c.value, trophy: c.trophy, bait: L.bait, rig: L.rig, phase: phaseAt(now()), wait: L.t0 ? Math.max(0, (L.at || now()) - L.t0) : 0, tags: [] };
   if (s.kind) {
     if (s.kind === 'wood' && !S.raft) { S.wood++; if (S.wood >= T.raftWood) p.tags.push('Enough for a raft'); }
   } else {
     const ix = S.index[c.id] || (S.index[c.id] = { n: 0, best: 0, trophies: 0 });
     if (ix.n === 0) p.tags.push('New species');
     if (c.cm > ix.best) { if (ix.n > 0) p.tags.push('New record'); ix.best = c.cm; }
+    if ((c.kg || 0) > (ix.bestKg || 0)) ix.bestKg = c.kg;
     ix.n++;
     if (c.trophy) { ix.trophies++; p.tags.push('Trophy size'); }
   }
@@ -465,7 +479,7 @@ function resolveCatch(how) {
   const s = SP[p.id]; S.pending = null; closeCard();
   if (!s.kind) {
     if (how === 'sell' && loc().sell) { S.money += p.value; S.sold += p.value; toast(`Sold the ${s.name.toLowerCase()} for ${money(p.value)}.`); }
-    else if (how === 'keep' && S.bucket.length < T.bucketCap) { S.bucket.push({ id: p.id, cm: p.cm, value: p.value, trophy: p.trophy }); toast(`Into the bucket. ${S.bucket.length}/${T.bucketCap}.`); }
+    else if (how === 'keep' && S.bucket.length < T.bucketCap) { S.bucket.push({ id: p.id, cm: p.cm, kg: p.kg, value: p.value, trophy: p.trophy }); toast(`Into the bucket. ${S.bucket.length}/${T.bucketCap}.`); }
     else toast('Released.');
   } else if (s.kind === 'junk') toast('Tossed back.');
   save(); render();
@@ -656,14 +670,14 @@ function renderSheet() {
     const rows = fish.map(s => {
       const ix = S.index[s.id], home = LOCS.find(l => s.loc[l.id]);
       const mini = `<canvas class="mini" width="64" height="36" data-fish="${s.id}" data-known="${ix ? 1 : 0}"></canvas>`;
-      if (ix) return `<div class="row">${mini}<div class="name" style="flex:1">${s.name}<small>${home.name}${s.rare ? ' · rare' : ''}${s.time ? ' · ' + s.time.join('/') : ''}</small></div><div class="price">×${ix.n} · ${ix.best} cm${ix.trophies ? ' · ★' + ix.trophies : ''}</div></div>`;
+      if (ix) return `<div class="row">${mini}<div class="name" style="flex:1">${s.name}<small>${home.name}${s.rare ? ' · rare' : ''}${s.time ? ' · ' + s.time.join('/') : ''}${ix.bestKg ? ' · best ' + fmtKg(ix.bestKg) : ''}</small></div><div class="price">×${ix.n} · ${ix.best} cm${ix.trophies ? ' · ★' + ix.trophies : ''}</div></div>`;
       return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${S.visited[home.id] ? home.name : 'somewhere out there'}${s.rare ? ' · rare: rod or trophy line' : ''}</small></div><div class="price">—</div></div>`;
     }).join('');
     el.innerHTML = `<div class="head"><h2>Index ${Object.keys(S.index).length}/${fish.length}</h2><button class="x" data-act="close">✕</button></div><div class="list">${rows}</div>`;
     drawMinis(el);
   } else if (sheetKind === 'inv') {
     const total = bucketTotal(), boat = BOATS.find(b => b.id === S.boat), rod = RODS.find(r => r.id === S.rod);
-    const rows = S.bucket.map((f, j) => { const sp = SP[f.id]; return `<div class="row"><canvas class="mini" width="64" height="36" data-fish="${f.id}" data-known="1"></canvas><div class="name" style="flex:1">${sp.name}<small>${f.cm} cm${f.trophy ? ' · ★ trophy' : ''}</small></div><div class="price">${money(f.value)}</div><button class="buy" data-act="release" data-i="${j}">LET GO</button></div>`; }).join('');
+    const rows = S.bucket.map((f, j) => { const sp = SP[f.id]; return `<div class="row"><canvas class="mini" width="64" height="36" data-fish="${f.id}" data-known="1"></canvas><div class="name" style="flex:1">${sp.name}<small>${f.cm} cm · ${fmtKg(fishKg(f))}${f.trophy ? ' · ★ trophy' : ''}</small></div><div class="price">${money(f.value)}</div><button class="buy" data-act="release" data-i="${j}">LET GO</button></div>`; }).join('');
     const market = loc().sell ? `<button class="cta" data-act="sell" ${S.bucket.length ? '' : 'disabled'}>Sell the haul · ${money(total)}</button>`
       : `<div class="note">${S.raft ? 'No market here. Gull Harbor buys the whole bucket.' : 'No market on the shoal. Build the raft first.'}</div>`;
     el.innerHTML = `<div class="head"><h2>Inventory</h2><button class="x" data-act="close">✕</button></div>
@@ -732,7 +746,7 @@ function showCatch() {
     ${pills.length ? `<div class="pills">${pills.map(t => `<div class="pill ${t === 'Trophy size' ? 'gold' : ''}">${t.toUpperCase()}</div>`).join('')}</div>` : ''}
     <canvas class="art" id="ccv" width="192" height="96"></canvas>
     <div class="fish">${s.name}</div>
-    ${s.kind ? '' : `<div class="size">${p.trophy ? '★ ' : ''}${p.cm} cm</div>`}
+    ${s.kind ? '' : `<div class="size"><span>${p.trophy ? '★ ' : ''}${p.cm} cm</span><span class="sep">·</span><span>${fmtKg(fishKg(p))}</span></div>`}
     <div class="sub">${sub}</div>
     ${stats}${warn ? `<div class="warn">${warn}</div>` : ''}
     ${canSell && !s.kind ? '<div class="note">Keep it to sell the whole haul later, or take the money now.</div>' : !s.kind && !S.raft ? '<div class="note">No market on the shoal. Keep it for the first port.</div>' : ''}
@@ -856,16 +870,17 @@ function shadeSil(sil, g) {
     if (ch === 'g') { out[r][c] = (c % 3 === 0) ? 'F' : 'f'; continue; }
     if (ch !== '#') { out[r][c] = ch; continue; }
     const span = Math.max(1, bot[c] - top[c]), rel = (r - top[c]) / span, u = (c - left[r]) / Math.max(1, right[r] - left[r]);
-    let v = rel < 0.12 ? (g.sheen === false ? 'd' : 'h') : rel < 0.34 ? 'd' : rel < 0.74 ? 'b' : 'l';
-    if (span < 4) v = rel < 0.3 ? 'h' : rel < 0.65 ? 'b' : 'l';
+    // volume: a bright rim under the back outline, a dark band, body colour, a lit lower band, then the belly
+    let v = rel < 0.1 ? (g.sheen === false ? 'd' : 'h') : rel < 0.3 ? 'd' : rel < 0.52 ? 'b' : rel < 0.74 ? 'B' : 'l';
+    if (span < 5) v = rel < 0.25 ? 'h' : rel < 0.6 ? 'b' : 'B';
     for (const p of pats) {
-      if (p === 'bars' && rel > 0.08 && rel < 0.8 && ((c + (g.barOff || 0)) % (g.barP || 5)) < (g.barW || 2)) v = 'm';
-      else if (p === 'saddles' && rel > 0.08 && rel < 0.45 && ((c + (g.barOff || 0)) % (g.barP || 5)) < (g.barW || 2)) v = 'm';
+      if (p === 'bars' && rel > 0.14 && rel < 0.8 && ((c + (g.barOff || 0)) % (g.barP || 5)) < (g.barW || 2)) v = 'm';
+      else if (p === 'saddles' && rel > 0.14 && rel < 0.45 && ((c + (g.barOff || 0)) % (g.barP || 5)) < (g.barW || 2)) v = 'm';
       else if (p === 'stripes' && rel > 0.2 && rel < 0.78 && (Math.floor(rel * 7) & 1)) v = 'm';
       else if (p === 'lateral' && rel > 0.47 && rel < 0.56) v = 'm';
-      else if (p === 'spots' && rel > 0.1 && rel < 0.85 && hash(r, c, g.seed) < (g.dens || 0.12)) v = 'm';
-      else if (p === 'spots2' && rel > 0.1 && rel < 0.85 && (hash(r, c, g.seed) < (g.dens || 0.08) || hash(r, c - 1, g.seed) < (g.dens || 0.08))) v = 'm';
-      else if (p === 'backspots' && rel > 0.1 && rel < 0.5 && hash(r, c, g.seed) < (g.dens || 0.12)) v = 'n';
+      else if (p === 'spots' && rel > 0.14 && rel < 0.85 && hash(r, c, g.seed) < (g.dens || 0.12)) v = 'm';
+      else if (p === 'spots2' && rel > 0.14 && rel < 0.85 && (hash(r, c, g.seed) < (g.dens || 0.08) || hash(r, c - 1, g.seed) < (g.dens || 0.08))) v = 'm';
+      else if (p === 'backspots' && rel > 0.14 && rel < 0.5 && hash(r, c, g.seed) < (g.dens || 0.12)) v = 'n';
       else if (p === 'scales' && rel > 0.15 && rel < 0.72 && (r & 1) === 0 && c % 3 === 0) v = 'm';
       else if (p === 'lights' && hash(r, c, g.seed) < (g.dens || 0.06)) v = 'n';
       else if (p === 'bellylights' && rel > 0.6 && (c % 3) === 0) v = 'n';
@@ -896,7 +911,7 @@ function hsl2hex(h, sat, l) { h = ((h % 360) + 360) % 360; sat = clamp(sat, 0, 1
 const shift = (c, dh, ds, dl) => { const [h, sat, l] = rgb2hsl(c); return hsl2hex(h + dh, sat + ds, l + dl); };
 function fishPal(col) {
   const b = col.base;
-  return { o: shift(b, 18, 0.05, -0.36), d: shift(b, 10, 0.06, -0.14), b, l: col.belly, h: shift(b, -14, 0.08, 0.2),
+  return { o: shift(b, 18, 0.05, -0.36), d: shift(b, 12, 0.08, -0.19), b, B: shift(b, -8, 0.04, 0.13), l: col.belly, h: shift(b, -14, 0.1, 0.24),
     f: col.fin, F: shift(col.fin, 12, 0, -0.16), m: col.mark || b, n: col.glow || col.mark || col.belly, e: col.eye || '#14141e', w: col.eyeW || '#ffffff', t: '#ffffff' };
 }
 const FISH_ART = {
@@ -1441,15 +1456,42 @@ function drawGame(t) {
 }
 
 // ---------- title & cutscene scenes ----------
+// The title is a screensaver: the fisherman waits, gets a bite, reels in, baits up, casts again. Now and then a fish jumps.
+// One cycle: wait (length varies by cycle) -> bite 1 s -> reel 1.2 s -> bait 1 s -> cast 0.8 s -> settle 1.6 s.
+function titleBeat(t) {
+  // t is wall-clock ms. Cycle n lasts 16 s plus 0-6 s by (n*7919)%5, so five cycles repeat every 95 s: jump to the block, then walk at most five.
+  const BLOCK = 95000; let n = Math.floor(t / BLOCK) * 5, t0 = Math.floor(t / BLOCK) * BLOCK;
+  for (let k = 0; k < 5; k++, n++) {
+    const len = 16000 + ((n * 7919) % 5) * 1500;
+    if (t < t0 + len) { const u = t - t0, seq = [['wait', len - 5600], ['bite', 1000], ['reel', 1200], ['bait', 1000], ['cast', 800], ['settle', 1600]]; let acc = 0; for (const [kk, d] of seq) { if (u < acc + d) return { k: kk, p: (u - acc) / d, n, u, len }; acc += d; } }
+    t0 += len;
+  }
+  return { k: 'wait', p: 0, n, u: 0, len: 16000 };
+}
+function ripple(cx, cy, p, col) { const r = 1 + p * 7, a = (1 - p) * 0.8; if (a <= 0) return; g.fillStyle = col || `rgba(225,232,240,${a.toFixed(2)})`; g.fillRect((cx - r) | 0, cy, 1, 1); g.fillRect((cx + r) | 0, cy, 1, 1); if (r > 3) { g.fillRect((cx - r * 0.6) | 0, cy - 1, 1, 1); g.fillRect((cx + r * 0.6) | 0, cy - 1, 1, 1); } }
 function drawTitle(t) {
   const h = 18.9, nt = drawSkyBase(h, t, {});
   drawSeaBase(h, t, nt, {});
   farIsland(W - 64, 52, true);
+  const B = titleBeat(t);
   const bx = (W * 0.5 - 26) | 0, by = (SURF + 1 + Math.sin(t / 900)) | 0;
+  // a fish jumps out of the water, right of the boat, part way through longer waits
+  if (B.k === 'wait' && B.n % 2 === 0) { const jt = B.u - 4200; if (jt > -300 && jt < 0) ripple(W * 0.74, SURF, 1 + jt / 300); if (jt >= 0 && jt < 900) { const jp = jt / 900, jx = W * 0.72 + jp * (W * 0.1), jy = SURF - 1 - 11 * Math.sin(Math.PI * jp); const c = maskC('fry', '#1d2f44', 1); g.save(); g.translate(jx | 0, jy | 0); g.rotate((jp - 0.5) * 1.2); g.drawImage(c, -3, -1); g.restore(); } if (jt >= 900 && jt < 1500) ripple(W * 0.82, SURF, (jt - 900) / 600); }
   drawBoat(bx, by, 52, 'skiff', t, false);
   blit(g, sprite('sit'), bx + 22, by - 31);
-  const hx = bx + 42, hy = by - 15; bres(g, hx, hy, hx + 22, hy - 24, '#7a5230'); bres(g, hx + 22, hy - 24, hx + 30, by + 1, 'rgba(225,232,240,0.8)');
-  g.fillStyle = '#d7362a'; g.fillRect(hx + 29, by, 3, 1); g.fillStyle = '#f4f4f0'; g.fillRect(hx + 29, by + 1, 3, 1);
+  const hx = bx + 42, hy = by - 15, rest = [hx + 30, by + 1], tipOut = [hx + 22, hy - 24], tipBent = [hx + 19, hy - 17], tipUp = [hx + 8, hy - 31];
+  let tip = tipOut, fl = rest, line = true, bait = false;
+  if (B.k === 'wait') { fl = [rest[0], rest[1] + Math.round(Math.sin(t / 700))]; if ((B.u % 3000) < 900) ripple(rest[0] + 1, rest[1] + 1, (B.u % 3000) / 900); }
+  else if (B.k === 'bite') { fl = [rest[0], rest[1] + 1 + Math.round(Math.abs(Math.sin(t / 110)) * 3)]; tip = B.p > 0.5 ? tipBent : tipOut; if (B.p > 0.3) ripple(rest[0] + 1, rest[1], ((B.p - 0.3) / 0.7)); }
+  else if (B.k === 'reel') { const e = B.p * B.p; tip = tipBent; fl = [rest[0] + (tipBent[0] + 2 - rest[0]) * e, rest[1] + (tipBent[1] + 6 - rest[1]) * e]; if (B.p < 0.4) ripple(rest[0] + 1, rest[1], B.p / 0.4); }
+  else if (B.k === 'bait') { tip = tipUp; fl = [tipUp[0] + 2, tipUp[1] + 9]; bait = B.p > 0.45; }
+  else if (B.k === 'cast') { const e = B.p; tip = [tipUp[0] + (tipOut[0] - tipUp[0]) * Math.min(1, e * 1.6), tipUp[1] + (tipOut[1] - tipUp[1]) * Math.min(1, e * 1.6)]; const sx = tipUp[0] + 2, sy = tipUp[1] + 9; fl = [sx + (rest[0] - sx) * e, sy + (rest[1] - sy) * e - 14 * Math.sin(Math.PI * e)]; bait = true; }
+  else if (B.k === 'settle') { fl = [rest[0], rest[1] + (B.p < 0.3 ? 2 - Math.round(B.p / 0.3 * 2) : 0)]; if (B.p < 0.7) ripple(rest[0] + 1, rest[1] + 1, B.p / 0.7); }
+  const tx = tip[0] | 0, ty = tip[1] | 0, fx = fl[0] | 0, fy = fl[1] | 0;
+  bres(g, hx, hy, tx, ty, '#7a5230'); g.fillStyle = '#a07a4a'; g.fillRect(tx, ty, 1, 1);
+  if (line) bres(g, tx, ty, fx, fy - 1, 'rgba(225,232,240,0.8)');
+  g.fillStyle = '#d7362a'; g.fillRect(fx - 1, fy - 1, 3, 1); g.fillStyle = '#f4f4f0'; g.fillRect(fx - 1, fy, 3, 1);
+  if (bait) { g.fillStyle = '#f0a040'; g.fillRect(fx, fy + 2, 1, 1); g.fillStyle = '#ffd27a'; g.fillRect(fx, fy + 1, 1, 1); }
 }
 const surfStorm = (x, t) => SURF + 7 * Math.sin(x / 15 + t / 240) + 3 * Math.sin(x / 6 - t / 150) + 2 * Math.sin(x / 40 + t / 600);
 function bolt(n) {
