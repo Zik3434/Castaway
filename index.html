@@ -128,6 +128,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 .list .row{padding:8px 6px;border-bottom:1px solid var(--edge)}
 .list .row.dim{opacity:.55}
 .list canvas.mini{width:96px;height:auto;flex:none;background:var(--ink);border:1px solid var(--edge)}
+.list canvas.mini.game{width:120px}
 .overlay{position:fixed;inset:0;z-index:20;background:rgba(5,8,18,.8);display:flex;align-items:flex-end;justify-content:center;
   padding-top:env(safe-area-inset-top,0px);padding-bottom:0;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
@@ -165,7 +166,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 .fightbox .fname{font-family:var(--display);font-size:12px;color:var(--brass);text-align:center;text-wrap:balance}
 .toasts{position:fixed;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));display:grid;gap:6px;justify-items:center;pointer-events:none;z-index:30;padding:0 16px}
 .toast{background:var(--panel-2);border:2px solid var(--brass);padding:7px 12px;font-size:19px;max-width:420px;text-align:center}
-#mapcv{width:100%;height:auto;border:3px solid #5a4630;background:#d9c8a0;max-height:46vh;object-fit:contain}
+#mapcv{width:100%;height:auto;border:3px solid #2a3a50;background:#07070b;max-height:46vh;object-fit:contain}
 .legend{display:grid;gap:4px}
 .legend button{width:100%;text-align:left;background:none;border:2px solid transparent;padding:6px 6px;color:inherit}
 .legend button.sel{border-color:var(--brass);background:var(--panel-2)}
@@ -217,6 +218,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
       <button data-act="open" data-k="map" id="tMap">Map</button>
       <button data-act="open" data-k="index">Index</button>
       <button data-act="open" data-k="shop" id="tShop" hidden>Shop</button>
+      <button data-act="open" data-k="spots" id="tSpots">Spots</button>
       <button data-act="walk" id="tWalk">Walk</button>
       <button data-act="open" data-k="menu">Menu</button>
     </nav>
@@ -335,86 +337,86 @@ const LOCS = [
     blurb: 'Where you washed up. No market, just a bucket.', vibe: 'Sand, a wreck, and gulls that know too much.',
     rumor: 'A sandbar with a wreck on it. Nobody goes back there on purpose.',
     village: { kind: 'camp', props: [['palm', .78, 40], ['fire', .5], ['sign', .3]] },
-    hunt: { kind: 'dunes', name: 'the dunes', gate: 'driftwood posts' } },
+    hunt: { kind: 'dunes', name: 'the dunes', gate: 'driftwood posts' }, spots: [{ id: 'wreck', name: 'The Wreck', known: 'Sheltered water under the hull. Bream and snapper; the Wreckwraith circles here on moonless nights.', fish: { sardine: 1, bream: 1.4, grunt: 1, snapper: 1.4, trigger: 0.6, wood: 1, wreckwraith: 1 } }, { id: 'point', name: 'The Point', known: 'Current and open water. Needlefish, pompano at dawn and dusk, barracuda by day.', fish: { sardine: 0.6, bream: 0.5, needlefish: 1.6, pompano: 1.6, barracuda: 1.6, wood: 0.6 } }, { id: 'lagoon', name: 'The Lagoon', known: 'Warm and shallow. Sardines in clouds, grunts, triggerfish, bonefish tailing at dawn.', fish: { sardine: 1.6, grunt: 1.4, trigger: 1.2, bonefish: 1.8, wood: 0.8 } }, { id: 'hole', name: 'Tarpon Hole', known: 'A deep blue hole off the reef. Tarpon roll here at night; little else does.', fish: { tarpon: 2.5, snapper: 0.8, bream: 0.6, sardine: 0.5, wood: 0.4 } }] },
   { id: 'harbor', name: 'Gull Harbor', range: 1, shop: true, sell: true, x: 62, y: 96, links: ['shoal', 'reach', 'lantern'],
     blurb: 'First port. Buys the whole haul.', vibe: 'Tar, rope, gulls on every post. Everything smells of fish and money.',
     rumor: 'A gull-ridden port a day east. The first place that will pay you.',
     keeper: { name: 'Marta', lines: ['"Fresh off the shoal? You have the look. Sell me what you have and buy a real rod."', '"Lines out at night. The eels come in under the pier when the lanterns are lit."', '"West is kelp. East is lanterns. Both want a bigger boat than that."'] },
     village: { kind: 'shack', props: [['barrel', .22], ['lamp', .62], ['crate', .7], ['gullpost', .85]] },
-    hunt: { kind: 'woods', name: 'the back woods', gate: 'a stile in the hedge' } },
+    hunt: { kind: 'woods', name: 'the back woods', gate: 'a stile in the hedge' }, spots: [{ id: 'pier', name: 'The Pier', known: 'Herring and mackerel under your feet, flounder on the mud, conger under the lanterns at night.', fish: { sardine: 1, herring: 1.4, mackerel: 1.2, mullet: 1, flounder: 1.2, conger: 1.2, boot: 0.6 } }, { id: 'breakwater', name: 'The Breakwater', known: 'Rough water off the stones. Sea bass at dawn and dusk, pollock, garfish, dogfish after dark.', fish: { seabass: 1.8, pollock: 1.4, garfish: 1.4, dogfish: 1.4, mackerel: 0.8, bream: 0.6 } }, { id: 'estuary', name: 'The Estuary', known: 'Brown water where the river comes in. Mullet, flounder, and sturgeon older than the town at dawn.', fish: { mullet: 1.6, flounder: 1.4, sturgeon: 2, harbormaster: 1, herring: 0.5, boot: 0.8 } }, { id: 'moorings', name: 'The Moorings', known: 'Between the hulls. Herring, mackerel, the odd eel, and more boots than anywhere.', fish: { herring: 1.2, mackerel: 1.2, conger: 0.8, sardine: 1, boot: 2 } }] },
   { id: 'brine', name: 'Brine Cay', range: 1, shop: false, sell: true, x: 52, y: 134, links: ['shoal', 'lantern'],
     blurb: 'Salt pans and a traders\' camp. They buy, they do not sell.', vibe: 'White ground, white light, traders in wide hats weighing salt and fish on the same scales.',
     rumor: 'South of the harbor the sea goes white. Salt traders camp there; they pay in coin for anything with fins.',
     scene: { shore: 'salt', floor: [[200, 196, 170], [70, 90, 96]], far: 'none', props: [['cairn', .2], ['cairn', .45], ['saltpan', .7], ['sign', .9]], particles: 'none', palms: false },
     village: { kind: 'tent', props: [['cairn', .18], ['scale', .62], ['sacks', .75]] },
-    hunt: { kind: 'saltflat', name: 'the salt flats', gate: 'a line of salt cairns' } },
+    hunt: { kind: 'saltflat', name: 'the salt flats', gate: 'a line of salt cairns' }, spots: [{ id: 'pans', name: 'The Salt Pans', known: 'Knee-deep brine. Seatrout and ladyfish; mullet at the sluices.', fish: { seatrout: 1.6, ladyfish: 1.4, mullet: 1.2, sardine: 0.8 } }, { id: 'channel', name: 'The Channel', known: 'The one deep cut. Red drum, permit at the edges of the day, bonefish.', fish: { redfish: 1.8, permit: 1.6, bonefish: 1, seatrout: 0.6, ladyfish: 0.6 } }, { id: 'flats', name: 'The Flats', known: 'Ankle-deep and white. Bonefish, rays buried in the sand, and the Saltwidow when the salt is weighed.', fish: { bonefish: 1.6, stingray: 1.8, ladyfish: 0.8, saltwidow: 1, seatrout: 0.5 } }, { id: 'seagate', name: 'The Sea Gate', known: 'Where the cay meets open sea. Tarpon, permit, sardines pouring through.', fish: { tarpon: 1.2, permit: 1, sardine: 1.6, redfish: 0.6, mullet: 0.6 } }] },
   { id: 'reach', name: 'Kelp Reach', range: 2, shop: false, sell: false, x: 40, y: 62, links: ['harbor', 'trench'],
     blurb: 'Reef and kelp. No market here.', vibe: 'Cold green water, otters watching from the kelp, no one to sell to.',
     rumor: 'Kelp thick as a forest to the north-west, and bass in it as long as your arm.',
     village: { kind: 'camp', props: [['pine', .25, 34], ['fire', .5], ['pine', .8, 28]] },
-    hunt: { kind: 'woods', name: 'the pinewood', gate: 'a gap in the pines' } },
+    hunt: { kind: 'woods', name: 'the pinewood', gate: 'a gap in the pines' }, spots: [{ id: 'edge', name: 'Kelp Edge', known: 'The first fronds. Kelp bass, señoritas, kelp perch, opaleye.', fish: { kelpbass: 1.4, senorita: 1.4, perch: 1.4, opaleye: 1.2, boot: 0.6 } }, { id: 'rockfall', name: 'The Rockfall', known: 'Boulders and holes. Rockfish, cabezon, sheephead by day, lingcod in the cracks.', fish: { rockfish: 1.6, cabezon: 1.6, sheephead: 1.4, lingcod: 1, perch: 0.5 } }, { id: 'outer', name: 'The Outer Reef', known: 'Blue water past the kelp. Yellowtail, leopard sharks at dawn, sunfish basking at noon.', fish: { yellowtail: 1.8, leopardshark: 1.6, sunfish: 1.6, kelpbass: 0.6, senorita: 0.5 } }, { id: 'heart', name: 'The Kelp Heart', known: 'Where the fronds close over you. Garibaldi, kelp bass, lingcod at night, and Verdigris at dusk.', fish: { garibaldi: 1.8, kelpbass: 1, lingcod: 1.2, verdigris: 1, opaleye: 0.8 } }] },
   { id: 'lantern', name: 'Lantern Wharf', range: 2, shop: true, sell: true, x: 94, y: 118, links: ['harbor', 'brine', 'delta'],
     blurb: 'A river-mouth town under paper lanterns. The fish here are gold.', vibe: 'Red gates, paper lanterns, tea steam, carp that cost more than boats.',
     rumor: 'Follow the lanterns upriver at dusk and you will find a wharf where the fish are gold.',
     keeper: { name: 'Auntie Mei', lines: ['"Arowana bring luck. Koi bring money. Catfish bring supper. All three bite here."', '"Pheasant in the bamboo, deer at dusk. Take the bow if you go in."', '"The delta beyond the river rains all year. Old Sajan there hears everything the sea says."'] },
     scene: { shore: 'quay', floor: [[90, 110, 96], [36, 50, 56]], far: 'mountains', props: [['torii', .58], ['lantern', .2], ['lantern', .42], ['bamboo', .05, 30], ['bamboo', .1, 36]], particles: 'petals' },
     village: { kind: 'pagoda', props: [['lantern', .14], ['lantern', .82], ['bamboo', .92, 34], ['teastall', .68]] },
-    hunt: { kind: 'bamboo', name: 'the bamboo grove', gate: 'a red gate' } },
+    hunt: { kind: 'bamboo', name: 'the bamboo grove', gate: 'a red gate' }, spots: [{ id: 'wharf', name: 'The Wharf', known: 'Under the lanterns. Koi, gourami, catfish, and whatever fell in.', fish: { koi: 1.2, gourami: 1.4, walkingcatfish: 1.4, boot: 0.8 } }, { id: 'pool', name: 'Lantern Pool', known: 'A still pool the lanterns were hung to light. Arowana, koi, and the Jade Lantern at night.', fish: { arowana: 1.8, koi: 1.2, jadelantern: 1, gourami: 0.6 } }, { id: 'bend', name: 'River Bend', known: 'Dark water under the willows. Snakehead at night, catfish, golden mahseer at the edges of the day.', fish: { snakehead: 1.6, walkingcatfish: 1, mahseer: 1.8, koi: 0.5 } }, { id: 'steps', name: 'Teahouse Steps', known: 'Stone steps into the river. Fat koi fed by the teahouse, gourami, a shy arowana.', fish: { koi: 1.8, gourami: 1, arowana: 0.6, walkingcatfish: 0.6 } }] },
   { id: 'trench', name: 'Black Trench', range: 3, shop: false, sell: true, x: 80, y: 40, links: ['reach', 'fjord', 'bell'],
     blurb: 'Deep water. A buyer boat anchors here.', vibe: 'Black water, a buyer boat with a lamp, and cliffs full of puffins above.',
     rumor: 'A black trench where a buyer boat anchors. Deep things come up there.',
     village: { kind: 'buyerboat', props: [['barrel', .3], ['lamp', .5], ['crate', .66]] },
-    hunt: { kind: 'cliffs', name: 'the puffin cliffs', gate: 'stone steps cut into the cliff' } },
+    hunt: { kind: 'cliffs', name: 'the puffin cliffs', gate: 'stone steps cut into the cliff' }, spots: [{ id: 'boat', name: 'Off the Buyer Boat', known: 'The lamp draws them up. Hagfish, lanternfish, grenadier, sablefish.', fish: { hagfish: 1.2, lanternfish: 1.4, grenadier: 1.2, sablefish: 1.2 } }, { id: 'black', name: 'The Black Water', known: 'Nothing comes up here that wants to be seen. Viperfish, fangtooth, anglerfish, gulper eels.', fish: { viperfish: 1.6, fangtooth: 1.6, anglerfish: 1.6, gulper: 1.4, hagfish: 0.5 } }, { id: 'chimneys', name: 'The Chimneys', known: 'Smokers on the trench floor. Ghost sharks, grenadier, oarfish, coelacanth, and Nightmaw.', fish: { chimaera: 1.6, grenadier: 0.8, oarfish: 1.6, coelacanth: 1.6, nightmaw: 1, hagfish: 0.4 } }, { id: 'ledge', name: 'The Ledge', known: 'The last shelf before the drop. Sablefish, hagfish, conger.', fish: { sablefish: 1.6, hagfish: 1.2, conger: 1.4, lanternfish: 0.6 } }] },
   { id: 'delta', name: 'Monsoon Delta', range: 3, shop: true, sell: true, x: 122, y: 100, links: ['lantern', 'bell', 'cinder'],
     blurb: 'Mangroves, stilt houses, rain that never quite stops.', vibe: 'Warm rain, stilt houses, mud that moves. The shopkeeper hears every rumor on the sea.',
     rumor: 'Where the rain never stops, houses stand on legs and the water tastes of mud and something older.',
     keeper: { name: 'Old Sajan', exotic: true, lines: ['"Sit. The rain does not mind. You want fish? The barramundi. You want stories? Those cost nothing."', '"Sailors come through here from places that should not exist. I write down what they say."', '"The crocodile in the back channel took a boat once. Nobody has taken it back."'] },
     scene: { shore: 'stilts', floor: [[96, 86, 60], [36, 40, 36]], far: 'none', props: [['mangrove', .12], ['mangrove', .4], ['mangrove', .7], ['lantern', .9]], particles: 'rain' },
     village: { kind: 'stilt', props: [['mangrove', .08], ['mangrove', .9], ['net', .66], ['lantern', .26]] },
-    hunt: { kind: 'mangrove', name: 'the back channel', gate: 'a boardwalk into the roots' } },
+    hunt: { kind: 'mangrove', name: 'the back channel', gate: 'a boardwalk into the roots' }, spots: [{ id: 'stilts', name: 'Under the Stilts', known: 'Mud and shade. Mudskippers, milkfish, archerfish spitting at the lanterns, four-eyed fish.', fish: { mudskipper: 1.4, milkfish: 1.2, archerfish: 1.4, foureyed: 1.2 } }, { id: 'main', name: 'The Main Channel', known: 'The deep brown flow. Barramundi, mangrove jack, bull sharks at dusk.', fish: { barramundi: 1.8, mangrovejack: 1.4, bullshark: 1.6, milkfish: 0.6 } }, { id: 'backwater', name: 'The Backwater', known: 'Still, black, warm. Four-eyed fish, archerfish, mudskippers, and Monsoon Mother at night.', fish: { foureyed: 1.4, archerfish: 1, mudskipper: 1, monsoonmother: 1, mangrovejack: 0.6 } }, { id: 'mouth', name: 'The River Mouth', known: 'Where the mud meets the sea. Milkfish, barramundi, mangrove jack, bull sharks.', fish: { milkfish: 1.6, barramundi: 1, mangrovejack: 1, bullshark: 1, mudskipper: 0.5 } }] },
   { id: 'fjord', name: 'Frost Fjords', range: 4, shop: true, sell: true, x: 70, y: 14, links: ['trench', 'glass'],
     blurb: 'Far north. Ice station with a shop.', vibe: 'Ice, aurora, a longhouse with a fire that never goes out.',
     rumor: 'Ice and the aurora. Char the colour of the sky and a shark older than the station.',
     keeper: { name: 'Ingrid', exotic: true, lines: ['"Cod, haddock, char. Halibut if you are patient and stupid in equal parts."', '"Ptarmigan up the slope. Reindeer when the aurora is out. Take the crossbow."', '"The old men say the sea goes up past the glass atoll. I say the old men drink."'] },
     village: { kind: 'longhouse', props: [['pine', .2, 30], ['fire', .62], ['sled', .78], ['pine', .92, 26]] },
-    hunt: { kind: 'tundra', name: 'the tundra', gate: 'a cairn and a frozen path' } },
+    hunt: { kind: 'tundra', name: 'the tundra', gate: 'a cairn and a frozen path' }, spots: [{ id: 'station', name: 'The Station Ice', known: 'Holes cut by the longhouse. Capelin, char, cod, haddock.', fish: { capelin: 1.4, char: 1.2, cod: 1.2, haddock: 1.2 } }, { id: 'deep', name: 'The Deep Fjord', known: 'Black water a mile down. Capelin shoals, halibut, cod, and the Greenland shark at night.', fish: { capelin: 0.8, halibut: 1.8, cod: 1, greenlandshark: 1.6, haddock: 0.6 } }, { id: 'river', name: 'The River Mouth', known: 'Where the glacier melt comes in. Char, salmon at dawn and dusk, pike, and Rimeheart.', fish: { char: 1.4, salmon: 1.8, pike: 1.4, rimeheart: 1, capelin: 0.6 } }, { id: 'skerries', name: 'The Skerries', known: 'Rocks and weed. Haddock, lumpsucker, wolffish at night, capelin.', fish: { haddock: 1.2, lumpsucker: 1.8, wolffish: 1.6, capelin: 1 } }] },
   { id: 'bell', name: 'Bell Reef', range: 4, shop: false, sell: true, x: 140, y: 70, links: ['trench', 'delta', 'glass', 'cinder'],
     blurb: 'A drowned city. Salvagers camp on the reef and buy what you bring up.', vibe: 'Columns in the shallows, a bell no one can find, salvagers who pay in coin and say little.',
     rumor: 'On still nights the salvagers hear a bell under the reef. No one has found the tower.',
     scene: { shore: 'coral', floor: [[120, 140, 140], [30, 60, 80]], far: 'none', props: [['column', .15], ['column', .35, 1], ['bell', .62], ['column', .85]], particles: 'none' },
     village: { kind: 'tent', props: [['column', .1], ['crate', .66], ['bellsmall', .78], ['column', .92, 1]] },
-    hunt: { kind: 'ruins', name: 'the drowned streets', gate: 'a fallen arch' } },
+    hunt: { kind: 'ruins', name: 'the drowned streets', gate: 'a fallen arch' }, spots: [{ id: 'columns', name: 'The Columns', known: 'Marble in the shallows. Parrotfish, blue tang, trumpetfish, lionfish.', fish: { parrotfish: 1.4, bluetang: 1.4, trumpetfish: 1.2, lionfish: 1 } }, { id: 'tower', name: 'The Bell Tower', known: 'The deepest ruin. Nassau grouper, moray at night, hammerheads at dawn, and the Bellringer.', fish: { nassau: 1.4, moray: 1.4, hammerhead: 1.8, bellringer: 1, trumpetfish: 0.5 } }, { id: 'gardens', name: 'The Drowned Gardens', known: 'Coral over paving stones. Parrotfish, blue tang, lionfish, trumpetfish.', fish: { parrotfish: 1.2, bluetang: 1.2, lionfish: 1.4, trumpetfish: 1.4 } }, { id: 'channel', name: 'The Salvage Channel', known: 'Where the salvagers work. Grouper, moray, conger, barracuda.', fish: { nassau: 1.2, moray: 1, conger: 1.4, barracuda: 1.4, trumpetfish: 0.6 } }] },
   { id: 'cinder', name: 'Cinder Isle', range: 5, shop: true, sell: true, x: 162, y: 112, links: ['delta', 'bell', 'hollow'],
     blurb: 'A volcano that never sleeps. The fish swim in fire.', vibe: 'Black sand, red cracks, ash on everything, a smith who forges hooks that do not melt.',
     rumor: 'There is an island that glows at night. The fish there swim in fire and the smith shoes nothing.',
     keeper: { name: 'Brakka', exotic: true, lines: ['"Hooks of star-iron. Only kind that holds a magma char. Buy two."', '"The lava field has lizards worth their weight. Mind the vents."', '"Inside the hollow mountain they fish by lamplight. Say Brakka sent you. It will not help."'] },
     scene: { shore: 'lava', floor: [[60, 40, 40], [20, 10, 14]], far: 'volcano', props: [['vent', .25], ['vent', .6], ['obsidian', .42], ['obsidian', .8]], particles: 'ash', weather: 'ash' },
     village: { kind: 'forge', props: [['vent', .15], ['anvil', .66], ['obsidian', .9]] },
-    hunt: { kind: 'lavafield', name: 'the lava field', gate: 'an obsidian arch' } },
+    hunt: { kind: 'lavafield', name: 'the lava field', gate: 'an obsidian arch' }, spots: [{ id: 'blacksand', name: 'Black Sand', known: 'Warm underfoot. Ashfin grunts, magma char, ember lanterns at night.', fish: { ashfin: 1.4, magmachar: 1.2, emberlantern: 1.2 } }, { id: 'lavamouth', name: 'The Lava Mouth', known: 'Where the flow meets the sea and the water boils. Magma char, obsidian eels, slagbacks, and Caldera.', fish: { magmachar: 1, obsidianeel: 1.6, slagback: 1.6, caldera: 1, ashfin: 0.5 } }, { id: 'ashshallows', name: 'Ash Shallows', known: 'Grey water, grey fish. Ashfin grunts and ember lanterns.', fish: { ashfin: 1.8, emberlantern: 1.4, magmachar: 0.6 } }, { id: 'spring', name: 'The Hot Spring', known: 'A pool the smith bathes in. Magma char thick as a hand, slagbacks underneath.', fish: { magmachar: 1.8, slagback: 0.8, ashfin: 0.8 } }] },
   { id: 'glass', name: 'Glasswater Atoll', range: 5, shop: true, sell: true, x: 118, y: 30, links: ['fjord', 'bell', 'hollow', 'thunder'],
     blurb: 'Water so clear the boats float on air. The fish are hard to see.', vibe: 'Glass sand, crystal shoals, light everywhere, fish you see only when they turn.',
     rumor: 'An atoll of water so clear the boats look like they float on air. The fish there are hard to see, and harder to forget.',
     keeper: { name: 'Lumen', exotic: true, lines: ['"Lensfish. Watch the eye. The rest of it is a rumor."', '"The crabs here are glass. Step carefully or step richly."', '"There is a storm that never moves, north of here. The fish bite like the lightning."'] },
     scene: { shore: 'glass', floor: [[200, 230, 235], [80, 150, 170]], far: 'island', palms: false, props: [['crystal', .2], ['crystal', .5, 1], ['crystal', .78], ['sign', .92]], particles: 'sparkle' },
     village: { kind: 'glasshouse', props: [['crystal', .12], ['crystal', .88, 1], ['lamp', .66]] },
-    hunt: { kind: 'glass', name: 'the crystal shoals', gate: 'a crystal arch' } },
+    hunt: { kind: 'glass', name: 'the crystal shoals', gate: 'a crystal arch' }, spots: [{ id: 'shelf', name: 'The Glass Shelf', known: 'Knee-deep and perfectly clear. Glass minnows, clearfin jacks, lensfish by day.', fish: { glassminnow: 1.4, clearfinjack: 1.2, lensfish: 1.2 } }, { id: 'dropoff', name: 'The Drop-off', known: 'The shelf ends and the blue begins. Prism rays, mirror marlin by day, the Unseen at dawn.', fish: { prismray: 1.6, mirrormarlin: 1.8, clearfinjack: 1, unseen: 1, glassminnow: 0.5 } }, { id: 'mirror', name: 'Mirror Pool', known: 'So still it shows the sky. Lensfish, glass minnows, prism rays.', fish: { lensfish: 1.6, glassminnow: 1.2, prismray: 1 } }, { id: 'reefline', name: 'The Reef Line', known: 'Crystal shoals breaking the swell. Clearfin jacks, mirror marlin.', fish: { clearfinjack: 1.8, mirrormarlin: 1.2, glassminnow: 0.8 } }] },
   { id: 'hollow', name: 'Hollow Mountain', range: 6, shop: true, sell: true, x: 178, y: 50, links: ['cinder', 'glass', 'stars'],
     blurb: 'A lake inside a mountain. The fishermen carry lamps.', vibe: 'A cavern you sail into, lamps on every boat, glowing spores, and a singing nobody mentions.',
     rumor: 'A mountain with a lake inside it. The fishermen there carry lamps, and they do not talk about the singing.',
     keeper: { name: 'the Lamplighter', exotic: true, lines: ['"Lamp oil, hooks, silence. Which?"', '"Bats in the upper galleries. Salamanders by the drip pools. Both sell."', '"When the choir starts, cast. When it stops, leave."'] },
     scene: { shore: 'cave', floor: [[50, 60, 80], [10, 14, 30]], far: 'none', tint: 'rgba(0,0,20,0.35)', props: [['stalagmite', .2], ['glowshroom', .4], ['stalagmite', .65, 1], ['glowshroom', .85]], particles: 'spores', weather: 'cave' },
     village: { kind: 'cavehut', props: [['glowshroom', .14], ['lamp', .66], ['stalagmite', .9]] },
-    hunt: { kind: 'cave', name: 'the upper galleries', gate: 'a lit tunnel' } },
+    hunt: { kind: 'cave', name: 'the upper galleries', gate: 'a lit tunnel' }, spots: [{ id: 'lake', name: 'Lamp Lake', known: 'The main water, ringed with lamps. Cavefish, ghostgills, dripstone loach.', fish: { cavefish: 1.4, ghostgill: 1.2, dripstoneloach: 1.2 } }, { id: 'drip', name: 'The Drip Gallery', known: 'Water falls from the dark. Dripstone loach, lampmouths at night, echo carp.', fish: { dripstoneloach: 1.6, lampmouth: 1.4, echocarp: 1.4, cavefish: 0.5 } }, { id: 'choir', name: 'The Choir Hall', known: 'Where the singing is loudest. Ghostgills, echo carp, lampmouths, and the Deep Choir.', fish: { ghostgill: 1.2, echocarp: 1.2, lampmouth: 1, deepchoir: 1 } }, { id: 'sump', name: 'The Sump', known: 'The lowest pool. Cavefish, lampmouths, loach.', fish: { cavefish: 1.6, lampmouth: 1.2, dripstoneloach: 1 } }] },
   { id: 'thunder', name: 'Thunderhead Shoals', range: 6, shop: true, sell: true, x: 150, y: 14, links: ['glass', 'stars'],
     blurb: 'Shoals under a storm that never moves.', vibe: 'Permanent storm, a lighthouse that hums, fish that crackle when they come out of the water.',
     rumor: 'Shoals under a storm that never moves. The fish there bite like the lightning does.',
     keeper: { name: 'Keeper Voss', exotic: true, lines: ['"Rubber gloves. Trust me."', '"Spark hares on the ridge. Hard to hit. Harder to hold."', '"Beyond the shoals the sea goes up. I have seen the boats that came back. There were none."'] },
     scene: { shore: 'rock', floor: [[50, 60, 70], [14, 18, 30]], far: 'none', tint: 'rgba(0,0,10,0.25)', props: [['deadtree', .2], ['rod', .5], ['deadtree', .75]], particles: 'rain', weather: 'storm' },
     village: { kind: 'lighthouse', props: [['deadtree', .12], ['crate', .66], ['rod', .88]] },
-    hunt: { kind: 'storm', name: 'the blasted ridge', gate: 'two lightning-struck trunks' } },
+    hunt: { kind: 'storm', name: 'the blasted ridge', gate: 'two lightning-struck trunks' }, spots: [{ id: 'rock', name: 'Lighthouse Rock', known: 'Under the beam. Spark mackerel, cloudskimmers by day, ordinary mackerel that strayed in.', fish: { sparkmackerel: 1.4, cloudskimmer: 1.4, mackerel: 1.2 } }, { id: 'stormline', name: 'The Storm Line', known: 'Where the cloud touches the water. Stormeels at night, thunderjaws, and Galvanis.', fish: { stormeel: 1.6, thunderjaw: 1.6, galvanis: 1, sparkmackerel: 0.5 } }, { id: 'shoals', name: 'The Shoals', known: 'Breaking white under black sky. Spark mackerel, cloudskimmers, staticfin at night.', fish: { sparkmackerel: 1.2, cloudskimmer: 1, staticfin: 1.8 } }, { id: 'lee', name: 'The Lee', known: 'The one calm corner. Mackerel, spark mackerel, the odd stormeel.', fish: { mackerel: 1.6, sparkmackerel: 1, stormeel: 0.8 } }] },
   { id: 'stars', name: 'The Stars', range: 7, shop: false, sell: false, x: 188, y: 8, links: ['hollow', 'thunder'], blurb: 'Not in this build.', vibe: '', rumor: 'Beyond everything the sea goes up. Nobody who sailed that way has sailed back.', locked: true,
-    village: { kind: 'camp', props: [] }, hunt: { kind: 'dunes', name: 'nowhere', gate: 'nothing' } },
-  { id: 'sea', name: 'Open Sea', range: 99, shop: false, sell: false, x: 0, y: 0, links: [], blurb: 'Where it began.', vibe: '', rumor: '', village: { kind: 'camp', props: [] }, hunt: { kind: 'dunes', name: '', gate: '' } }, // prologue only
+    village: { kind: 'camp', props: [] }, hunt: { kind: 'dunes', name: 'nowhere', gate: 'nothing' }, spots: [{ id: 'void', name: 'The Void', known: 'Not in this build.', fish: {  } }] },
+  { id: 'sea', name: 'Open Sea', range: 99, shop: false, sell: false, x: 0, y: 0, links: [], blurb: 'Where it began.', vibe: '', rumor: '', village: { kind: 'camp', props: [] }, hunt: { kind: 'dunes', name: '', gate: '' }, spots: [{ id: 'open', name: 'Open Water', known: 'A calm sea and nothing else.', fish: { sardine: 1, herring: 1, bream: 1, mullet: 1, mackerel: 1, bonefish: 1 } }] }, // prologue only
 ];
 
 // beh: smooth | dart | sinker | floater. diff 0-1. shape picks the distant silhouette in the scene. rare = rod or trophy line only.
@@ -562,48 +564,50 @@ const WEAPONS = [
   { id: 'crossbow', name: 'Crossbow',     acc: 0.16, price: 3200 },
 ];
 const GAME = [
-  { id: 'ghostcrab',  name: 'Ghost Crab',        loc: { shoal: 40, brine: 20 },           kg: [0.05, 0.15], rate: 40,  diff: 0.30, mask: 'crab',   col: '#d8d0b8' },
-  { id: 'gull',       name: 'Herring Gull',      loc: { shoal: 30, harbor: 20, bell: 10 }, kg: [0.8, 1.4],   rate: 20,  diff: 0.40, mask: 'bird',   col: '#f4f4f0' },
-  { id: 'coconutcrab', name: 'Coconut Crab',     loc: { shoal: 8, bell: 20 },             kg: [1, 4],       rate: 120, diff: 0.60, mask: 'crab',   col: '#8a4a3a', time: ['night'] },
-  { id: 'hare',       name: 'Brown Hare',        loc: { harbor: 30, brine: 20 },          kg: [2.5, 5],     rate: 25,  diff: 0.50, mask: 'hare',   col: '#9a7a5a' },
-  { id: 'pheasant',   name: 'Pheasant',          loc: { harbor: 25, lantern: 25 },        kg: [0.9, 1.5],   rate: 40,  diff: 0.55, mask: 'bird',   col: '#c06030' },
-  { id: 'fox',        name: 'Red Fox',           loc: { harbor: 8 },                      kg: [4, 8],       rate: 90,  diff: 0.75, mask: 'fox',    col: '#d06a30', time: ['dusk', 'night'] },
-  { id: 'mudcrab',    name: 'Mud Crab',          loc: { brine: 30, delta: 30 },           kg: [0.3, 1.5],   rate: 50,  diff: 0.35, mask: 'crab',   col: '#4a6a5a' },
-  { id: 'sandpiper',  name: 'Sandpiper',         loc: { brine: 25 },                      kg: [0.05, 0.1],  rate: 30,  diff: 0.45, mask: 'bird',   col: '#a09080' },
-  { id: 'salthare',   name: 'Salt Hare',         loc: { brine: 12 },                      kg: [2, 4],       rate: 60,  diff: 0.60, mask: 'hare',   col: '#e8e0d0' },
-  { id: 'seal',       name: 'Harbor Seal',       loc: { reach: 14, fjord: 10 },           kg: [60, 120],    rate: 20,  diff: 0.70, mask: 'seal',   col: '#7a8088' },
-  { id: 'deer',       name: 'Black-tailed Deer', loc: { reach: 20 },                      kg: [40, 90],     rate: 40,  diff: 0.65, mask: 'deer',   col: '#8a6a4a', time: ['dawn', 'dusk'] },
-  { id: 'raccoon',    name: 'Raccoon',           loc: { reach: 25 },                      kg: [4, 9],       rate: 30,  diff: 0.45, mask: 'fox',    col: '#6a6a6a' },
-  { id: 'sika',       name: 'Sika Deer',         loc: { lantern: 20 },                    kg: [30, 70],     rate: 60,  diff: 0.60, mask: 'deer',   col: '#8a6040', time: ['dawn', 'dusk'] },
-  { id: 'boar',       name: 'Wild Boar',         loc: { lantern: 16 },                    kg: [50, 120],    rate: 80,  diff: 0.72, mask: 'boar',   col: '#4a3a30' },
-  { id: 'macaque',    name: 'Macaque',           loc: { lantern: 6 },                     kg: [6, 12],      rate: 200, diff: 0.80, mask: 'fox',    col: '#9a8a70', rare: true },
-  { id: 'puffin',     name: 'Puffin',            loc: { trench: 30 },                     kg: [0.4, 0.6],   rate: 60,  diff: 0.50, mask: 'bird',   col: '#202028' },
-  { id: 'goat',       name: 'Cliff Goat',        loc: { trench: 20 },                     kg: [30, 60],     rate: 50,  diff: 0.60, mask: 'deer',   col: '#e8e0d0' },
-  { id: 'petrel',     name: 'Storm Petrel',      loc: { trench: 15, thunder: 20 },        kg: [0.03, 0.05], rate: 80,  diff: 0.70, mask: 'bird',   col: '#303040', time: ['night'] },
-  { id: 'monitor',    name: 'Water Monitor',     loc: { delta: 20 },                      kg: [5, 20],      rate: 120, diff: 0.70, mask: 'lizard', col: '#3a4a3a' },
-  { id: 'croc',       name: 'Saltwater Crocodile', loc: { delta: 4 },                     kg: [200, 600],   rate: 150, diff: 0.90, mask: 'lizard', col: '#4a5a40', big: true, rare: true },
-  { id: 'ptarmigan',  name: 'Ptarmigan',         loc: { fjord: 30 },                      kg: [0.4, 0.7],   rate: 50,  diff: 0.50, mask: 'bird',   col: '#f4f4f0' },
-  { id: 'arctichare', name: 'Arctic Hare',       loc: { fjord: 22 },                      kg: [3, 5],       rate: 60,  diff: 0.55, mask: 'hare',   col: '#ffffff' },
-  { id: 'reindeer',   name: 'Reindeer',          loc: { fjord: 10 },                      kg: [80, 180],    rate: 70,  diff: 0.75, mask: 'deer',   col: '#8a8070', big: true },
-  { id: 'muskox',     name: 'Musk Ox',           loc: { fjord: 3 },                       kg: [200, 400],   rate: 200, diff: 0.85, mask: 'boar',   col: '#4a3a30', big: true, rare: true },
-  { id: 'frigatebird', name: 'Frigatebird',      loc: { bell: 25 },                       kg: [1, 1.6],     rate: 90,  diff: 0.60, mask: 'bird',   col: '#202020' },
-  { id: 'iguana',     name: 'Iguana',            loc: { bell: 22 },                       kg: [2, 6],       rate: 100, diff: 0.55, mask: 'lizard', col: '#5a8a50', time: ['day'] },
-  { id: 'cinderlizard', name: 'Cinder Lizard',   loc: { cinder: 30 },                     kg: [1, 3],       rate: 200, diff: 0.55, mask: 'lizard', col: '#ff6a20' },
-  { id: 'ashmoth',    name: 'Ash Moth',          loc: { cinder: 25 },                     kg: [0.01, 0.02], rate: 400, diff: 0.65, mask: 'moth',   col: '#d8c8c0', time: ['dusk', 'night'] },
-  { id: 'emberboar',  name: 'Emberback Boar',    loc: { cinder: 8 },                      kg: [80, 160],    rate: 500, diff: 0.85, mask: 'boar',   col: '#3a2020', big: true, rare: true },
-  { id: 'glasscrab',  name: 'Glass Crab',        loc: { glass: 30 },                      kg: [0.2, 0.6],   rate: 300, diff: 0.50, mask: 'crab',   col: '#d8f0f8' },
-  { id: 'mirrorgull', name: 'Mirror Gull',       loc: { glass: 25 },                      kg: [0.8, 1.2],   rate: 250, diff: 0.60, mask: 'bird',   col: '#e8f8ff' },
-  { id: 'prismbeetle', name: 'Prism Beetle',     loc: { glass: 12 },                      kg: [0.02, 0.05], rate: 900, diff: 0.75, mask: 'moth',   col: '#80e0ff', rare: true },
-  { id: 'cavebat',    name: 'Cave Bat',          loc: { hollow: 30 },                     kg: [0.02, 0.05], rate: 300, diff: 0.60, mask: 'bat',    col: '#3a3040' },
-  { id: 'palesalamander', name: 'Pale Salamander', loc: { hollow: 25 },                   kg: [0.3, 0.8],   rate: 400, diff: 0.50, mask: 'lizard', col: '#f0e0e8' },
-  { id: 'blindmole',  name: 'Blind Mole',        loc: { hollow: 10 },                     kg: [0.1, 0.2],   rate: 600, diff: 0.70, mask: 'hare',   col: '#6a6070' },
-  { id: 'sparkhare',  name: 'Spark Hare',        loc: { thunder: 28 },                    kg: [2, 4],       rate: 400, diff: 0.65, mask: 'hare',   col: '#c0d0ff' },
-  { id: 'thunderhoof', name: 'Thunderhoof',      loc: { thunder: 8 },                     kg: [150, 300],   rate: 900, diff: 0.90, mask: 'deer',   col: '#30405a', big: true, rare: true },
+  { id: 'ghostcrab',  name: 'Ghost Crab',        loc: { shoal: 40, brine: 20 },           kg: [0.05, 0.15], rate: 40,  diff: 0.30,  sil: 'crab', col: { base: '#d8d0b8', belly: '#ece8dc', acc: '#3a2018', mark: '#8a8375' } },
+  { id: 'gull',       name: 'Herring Gull',      loc: { shoal: 30, harbor: 20, bell: 10 }, kg: [0.8, 1.4],   rate: 20,  diff: 0.40,  sil: 'bird', col: { base: '#f4f4f0', belly: '#fafaf8', acc: '#f0a040', mark: '#9a9996' } },
+  { id: 'coconutcrab', name: 'Coconut Crab',     loc: { shoal: 8, bell: 20 },             kg: [1, 4],       rate: 120, diff: 0.60,  sil: 'crab', col: { base: '#8a4a3a', belly: '#c4a49c', acc: '#3a2018', mark: '#5b3329' }, time: ['night'] },
+  { id: 'hare',       name: 'Brown Hare',        loc: { harbor: 30, brine: 20 },          kg: [2.5, 5],     rate: 25,  diff: 0.50,  sil: 'hare', col: { base: '#9a7a5a', belly: '#ccbcac', acc: '#f0b0a0', mark: '#64503c' } },
+  { id: 'pheasant',   name: 'Pheasant',          loc: { harbor: 25, lantern: 25 },        kg: [0.9, 1.5],   rate: 40,  diff: 0.55,  sil: 'bird', col: { base: '#c06030', belly: '#e0b098', acc: '#f0a040', mark: '#7b4023' } },
+  { id: 'fox',        name: 'Red Fox',           loc: { harbor: 8 },                      kg: [4, 8],       rate: 90,  diff: 0.75,  sil: 'fox', col: { base: '#d06a30', belly: '#e8b498', acc: '#f0b0a0', mark: '#854623' }, time: ['dusk', 'night'] },
+  { id: 'mudcrab',    name: 'Mud Crab',          loc: { brine: 30, delta: 30 },           kg: [0.3, 1.5],   rate: 50,  diff: 0.35,  sil: 'crab', col: { base: '#4a6a5a', belly: '#a4b4ac', acc: '#3a2018', mark: '#34463c' } },
+  { id: 'sandpiper',  name: 'Sandpiper',         loc: { brine: 25 },                      kg: [0.05, 0.1],  rate: 30,  diff: 0.45,  sil: 'bird', col: { base: '#a09080', belly: '#d0c8c0', acc: '#f0a040', mark: '#685d53' } },
+  { id: 'salthare',   name: 'Salt Hare',         loc: { brine: 12 },                      kg: [2, 4],       rate: 60,  diff: 0.60,  sil: 'hare', col: { base: '#e8e0d0', belly: '#f4f0e8', acc: '#f0b0a0', mark: '#938d83' } },
+  { id: 'seal',       name: 'Harbor Seal',       loc: { reach: 14, fjord: 10 },           kg: [60, 120],    rate: 20,  diff: 0.70,  sil: 'seal', col: { base: '#7a8088', belly: '#bcc0c4', acc: '#2a2a30', mark: '#515358' } },
+  { id: 'deer',       name: 'Black-tailed Deer', loc: { reach: 20 },                      kg: [40, 90],     rate: 40,  diff: 0.65,  sil: 'deer', col: { base: '#8a6a4a', belly: '#c4b4a4', acc: '#d8c8a0', mark: '#5b4633' }, pat: 'saddle', time: ['dawn', 'dusk'] },
+  { id: 'raccoon',    name: 'Raccoon',           loc: { reach: 25 },                      kg: [4, 9],       rate: 30,  diff: 0.45,  sil: 'fox', col: { base: '#6a6a6a', belly: '#b4b4b4', acc: '#f0b0a0', mark: '#484646' }, pat: 'stripes' },
+  { id: 'sika',       name: 'Sika Deer',         loc: { lantern: 20 },                    kg: [30, 70],     rate: 60,  diff: 0.60,  sil: 'deer', col: { base: '#8a6040', belly: '#c4b0a0', acc: '#d8c8a0', mark: '#5b402d' }, pat: 'spots', time: ['dawn', 'dusk'] },
+  { id: 'boar',       name: 'Wild Boar',         loc: { lantern: 16 },                    kg: [50, 120],    rate: 80,  diff: 0.72,  sil: 'boar', col: { base: '#4a3a30', belly: '#a49c98', acc: '#f0e8d8', mark: '#342923' }, pat: 'saddle' },
+  { id: 'macaque',    name: 'Macaque',           loc: { lantern: 6 },                     kg: [6, 12],      rate: 200, diff: 0.80,  sil: 'fox', col: { base: '#9a8a70', belly: '#ccc4b8', acc: '#f0b0a0', mark: '#64594a' }, rare: true },
+  { id: 'puffin',     name: 'Puffin',            loc: { trench: 30 },                     kg: [0.4, 0.6],   rate: 60,  diff: 0.50,  sil: 'bird', col: { base: '#202028', belly: '#909094', acc: '#f0a040', mark: '#1b1a1e' } },
+  { id: 'goat',       name: 'Cliff Goat',        loc: { trench: 20 },                     kg: [30, 60],     rate: 50,  diff: 0.60,  sil: 'deer', col: { base: '#e8e0d0', belly: '#f4f0e8', acc: '#d8c8a0', mark: '#938d83' } },
+  { id: 'petrel',     name: 'Storm Petrel',      loc: { trench: 15, thunder: 20 },        kg: [0.03, 0.05], rate: 80,  diff: 0.70,  sil: 'bird', col: { base: '#303040', belly: '#9898a0', acc: '#f0a040', mark: '#25232d' }, time: ['night'] },
+  { id: 'monitor',    name: 'Water Monitor',     loc: { delta: 20 },                      kg: [5, 20],      rate: 120, diff: 0.70,  sil: 'lizard', col: { base: '#3a4a3a', belly: '#9ca49c', acc: '#c8d060', mark: '#2b3329' }, pat: 'spots' },
+  { id: 'croc',       name: 'Saltwater Crocodile', loc: { delta: 4 },                     kg: [200, 600],   rate: 150, diff: 0.90,  sil: 'lizard', col: { base: '#4a5a40', belly: '#a4aca0', acc: '#c8d060', mark: '#343c2d' }, pat: 'stripes', big: true, rare: true },
+  { id: 'ptarmigan',  name: 'Ptarmigan',         loc: { fjord: 30 },                      kg: [0.4, 0.7],   rate: 50,  diff: 0.50,  sil: 'bird', col: { base: '#f4f4f0', belly: '#fafaf8', acc: '#f0a040', mark: '#9a9996' } },
+  { id: 'arctichare', name: 'Arctic Hare',       loc: { fjord: 22 },                      kg: [3, 5],       rate: 60,  diff: 0.55,  sil: 'hare', col: { base: '#ffffff', belly: '#ffffff', acc: '#f0b0a0', mark: '#a19f9f' } },
+  { id: 'reindeer',   name: 'Reindeer',          loc: { fjord: 10 },                      kg: [80, 180],    rate: 70,  diff: 0.75,  sil: 'deer', col: { base: '#8a8070', belly: '#c4c0b8', acc: '#d8c8a0', mark: '#5b534a' }, big: true },
+  { id: 'muskox',     name: 'Musk Ox',           loc: { fjord: 3 },                       kg: [200, 400],   rate: 200, diff: 0.85,  sil: 'boar', col: { base: '#4a3a30', belly: '#a49c98', acc: '#f0e8d8', mark: '#342923' }, big: true, rare: true },
+  { id: 'frigatebird', name: 'Frigatebird',      loc: { bell: 25 },                       kg: [1, 1.6],     rate: 90,  diff: 0.60,  sil: 'bird', col: { base: '#202020', belly: '#909090', acc: '#f0a040', mark: '#1b1a1a' } },
+  { id: 'iguana',     name: 'Iguana',            loc: { bell: 22 },                       kg: [2, 6],       rate: 100, diff: 0.55,  sil: 'lizard', col: { base: '#5a8a50', belly: '#acc4a8', acc: '#c8d060', mark: '#3e5936' }, pat: 'stripes', time: ['day'] },
+  { id: 'cinderlizard', name: 'Cinder Lizard',   loc: { cinder: 30 },                     kg: [1, 3],       rate: 200, diff: 0.55,  sil: 'lizard', col: { base: '#ff6a20', belly: '#ffb490', acc: '#c8d060', mark: '#a1461a', glow: '#ffb020' }, pat: 'lights' },
+  { id: 'ashmoth',    name: 'Ash Moth',          loc: { cinder: 25 },                     kg: [0.01, 0.02], rate: 400, diff: 0.65,  sil: 'moth', col: { base: '#d8c8c0', belly: '#ece4e0', acc: '#8a6a40', mark: '#8a7e7a' }, pat: 'speckle', time: ['dusk', 'night'] },
+  { id: 'emberboar',  name: 'Emberback Boar',    loc: { cinder: 8 },                      kg: [80, 160],    rate: 500, diff: 0.85,  sil: 'boar', col: { base: '#3a2020', belly: '#9c9090', acc: '#f0e8d8', mark: '#2b1a1a', glow: '#ff6a20' }, pat: 'lights', big: true, rare: true },
+  { id: 'glasscrab',  name: 'Glass Crab',        loc: { glass: 30 },                      kg: [0.2, 0.6],   rate: 300, diff: 0.50,  sil: 'crab', col: { base: '#d8f0f8', belly: '#ecf8fc', acc: '#3a2018', mark: '#8a969b', glow: '#ffffff' }, pat: 'lights' },
+  { id: 'mirrorgull', name: 'Mirror Gull',       loc: { glass: 25 },                      kg: [0.8, 1.2],   rate: 250, diff: 0.60,  sil: 'bird', col: { base: '#e8f8ff', belly: '#f4fcff', acc: '#f0a040', mark: '#939b9f' } },
+  { id: 'prismbeetle', name: 'Prism Beetle',     loc: { glass: 12 },                      kg: [0.02, 0.05], rate: 900, diff: 0.75,  sil: 'moth', col: { base: '#80e0ff', belly: '#c0f0ff', acc: '#8a6a40', mark: '#558d9f', glow: '#ffffff' }, pat: 'lights', rare: true },
+  { id: 'cavebat',    name: 'Cave Bat',          loc: { hollow: 30 },                     kg: [0.02, 0.05], rate: 300, diff: 0.60,  sil: 'bat', col: { base: '#3a3040', belly: '#9c98a0', acc: '#f0c0b0', mark: '#2b232d' } },
+  { id: 'palesalamander', name: 'Pale Salamander', loc: { hollow: 25 },                   kg: [0.3, 0.8],   rate: 400, diff: 0.50,  sil: 'lizard', col: { base: '#f0e0e8', belly: '#f8f0f4', acc: '#c8d060', mark: '#988d92' }, pat: 'speckle' },
+  { id: 'blindmole',  name: 'Blind Mole',        loc: { hollow: 10 },                     kg: [0.1, 0.2],   rate: 600, diff: 0.70,  sil: 'hare', col: { base: '#6a6070', belly: '#b4b0b8', acc: '#f0b0a0', mark: '#48404a' } },
+  { id: 'sparkhare',  name: 'Spark Hare',        loc: { thunder: 28 },                    kg: [2, 4],       rate: 400, diff: 0.65,  sil: 'hare', col: { base: '#c0d0ff', belly: '#e0e8ff', acc: '#f0b0a0', mark: '#7b839f', glow: '#c0e0ff' }, pat: 'lights' },
+  { id: 'thunderhoof', name: 'Thunderhoof',      loc: { thunder: 8 },                     kg: [150, 300],   rate: 900, diff: 0.90,  sil: 'deer', col: { base: '#30405a', belly: '#98a0ac', acc: '#d8c8a0', mark: '#252d3c', glow: '#ffff80' }, pat: 'lights', big: true, rare: true },
 ];
 const GM = Object.fromEntries(GAME.map(c => [c.id, c]));
 const WEAPON = () => WEAPONS.find(w => w.id === S.weapon) || WEAPONS[0];
 const gameValue = (c, kg, jit) => Math.round(Math.max(3, c.rate * Math.pow(Math.max(kg, 0.001), 0.75) * (1 + (jit || 0))));
 const T_HUNT = { wait: [2500, 6000], breath: 2600 }; // ms to a sighting; how long you can hold the draw
+const spotOf = (locId, spotId) => { const l = LOC[locId]; return l.spots.find(sp => sp.id === spotId) || l.spots[0]; };
+const spot = () => spotOf(S.loc, S.spot);
 // Weight from length: kg = k × cm³ / 1000, with k a condition factor by body shape (a species can override with `k`).
 const K_SHAPE = { fry: 0.009, bream: 0.018, trout: 0.011, pike: 0.006, eel: 0.0025, big: 0.012, flat: 0.013 };
 const kgOf = (sp, cm, jit) => Math.round((sp.k || K_SHAPE[sp.shape] || 0.01) * cm * cm * cm / 1000 * (1 + (jit || 0)) * 1000) / 1000;
@@ -617,10 +621,11 @@ const PHASE_NAME = { dawn: 'Dawn', day: 'Day', dusk: 'Dusk', night: 'Night' };
 // ---------- state ----------
 function freshState() {
   return {
-    v: 7, started: false, loc: 'shoal', money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 2, trophyRig: false,
+    v: 8, started: false, loc: 'shoal', money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 2, trophyRig: false,
     pending: null, // a landed catch waiting for Sell / Keep / Release; survives a reload
     prologue: false, proCaught: 0, // the calm-sea opening: rod only, two fish, then the storm
     known: {}, // islands named by a shopkeeper's rumor (visible on the chart before you have been)
+    spot: 'wreck', // the fishing spot on the current island
     pack: [], weapon: 'sling', gindex: {}, // hunting: the game bag, the weapon, the creature record
     bait: { shrimp: 0, squid: 0 },
     lines: [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, { rig: 'set', bait: 'scraps', phase: 'idle' }, null, null],
@@ -658,7 +663,8 @@ function load(seed) {
     d.v = 6;
   }
   if (d && d.v === 6) { d.known = d.known || {}; d.pack = d.pack || []; d.weapon = d.weapon || 'sling'; d.gindex = d.gindex || {}; d.v = 7; } // v6 -> v7: the world grew; hunting
-  if (d && d.v === 7) S = Object.assign(freshState(), d);
+  if (d && d.v === 7) { d.spot = (LOC[d.loc] || LOC.shoal).spots[0].id; d.v = 8; } // v7 -> v8: fishing spots
+  if (d && d.v === 8) S = Object.assign(freshState(), d);
 }
 
 const loc = () => LOC[S.loc];
@@ -669,10 +675,11 @@ const phaseAt = t => { const h = hourAt(t); return h >= 5 && h < 7 ? 'dawn' : h 
 function clockText(t) { const h = hourAt(t), hh = Math.floor(h), mm = Math.floor((h - hh) * 60); return `${pad(hh)}:${pad(mm)} · ${PHASE_NAME[phaseAt(t)]}`; }
 
 // ---------- fishing ----------
-function pool(locId, rig, baitId, t) {
-  const ph = phaseAt(t), bt = BAITS[baitId].tier, out = [];
+function pool(locId, rig, baitId, t, spotId) {
+  const ph = phaseAt(t), bt = BAITS[baitId].tier, out = [], sp = spotOf(locId, spotId === undefined ? S.spot : spotId);
   for (const s of SPECIES) {
-    const w0 = s.loc[locId]; if (!w0) continue;
+    const mult = sp.fish[s.id]; if (!mult) continue; // a spot's own roster: overlapping, but each spot has fish the others lack
+    const w0 = (s.loc[locId] || 10) * mult;
     if (s.time && !s.time.includes(ph)) continue;
     if ((s.minBait || 0) > bt) continue;
     if (s.rare && rig === 'set') continue;
@@ -770,7 +777,7 @@ function sail(id) {
   let pulled = 0;
   S.lines.forEach(l => { if (l && l.phase !== 'idle') { l.phase = 'idle'; l.c = null; pulled++; } });
   const first = !S.visited[id];
-  S.loc = id; S.visited[id] = true; reseedFish(); save(); closeSheet();
+  S.loc = id; S.visited[id] = true; S.spot = L.spots[0].id; reseedFish(); save(); closeSheet();
   if (MODE !== 'game') enterFishing(); else render();
   toast(`${first ? 'Landfall: ' : 'Sailed to '}${L.name}.` + (pulled ? ` Pulled in ${pulled} line${pulled > 1 ? 's' : ''}.` : '') + (first && L.vibe ? ' ' + L.vibe : ''));
 }
@@ -825,7 +832,7 @@ function tick() {
   if (changed) { save(); render(); renderIsle(); return; }
   if (MODE === 'island') { $('#iClock').textContent = clockText(t); return; }
   if (MODE !== 'game') return;
-  $('#hClock').textContent = clockText(t);
+  $('#hClock').textContent = (S.prologue ? '' : spot().name + ' · ') + clockText(t);
   const ph = phaseAt(t); if (ph !== lastPhase) renderTide();
   $('#ready').textContent = readyText();
   document.querySelectorAll('[data-line]').forEach(el => {
@@ -838,10 +845,10 @@ function tick() {
 function render() { if (MODE !== 'game') return; renderHUD(); renderTide(); renderSlots(); renderAction(); renderExtra(); }
 function renderHUD() {
   $('#hLoc').textContent = loc().name;
-  $('#hClock').textContent = clockText(now());
+  $('#hClock').textContent = (S.prologue ? '' : spot().name + ' · ') + clockText(now());
   $('#hMoney').textContent = money(S.money);
   $('#hBucket').textContent = `Bucket ${S.bucket.length}/${T.bucketCap}`;
-  $('#tShop').hidden = true; $('#tWalk').hidden = !!S.prologue;
+  $('#tShop').hidden = true; $('#tWalk').hidden = !!S.prologue; $('#tSpots').hidden = !!S.prologue;
   $('#tMap').hidden = S.prologue; $('#hMoney').hidden = S.prologue; // money does not exist yet
   $('#tMap').classList.toggle('pulse', S.raft && S.loc === 'shoal' && !S.visited.harbor);
 }
@@ -953,12 +960,16 @@ function renderSheet() {
     const canSail = sel && !sel.locked && sel.range <= R && sel.id !== S.loc && mapState(sel) !== 'hidden';
     const boat = BOATS.find(b => b.id === S.boat);
     el.innerHTML = `<div class="head"><h2>Chart</h2><button class="x" data-act="close">✕</button></div>
-      <div class="note">Boat: ${boat.name.toLowerCase()} · range ${boat.range}. Islands appear as you reach their neighbours, or when a shopkeeper names them.</div>
+      <div class="note">Boat: ${boat.name.toLowerCase()} · range ${boat.range}. The world is dark until you sail it. Neighbours of places you have been show as ???; a shopkeeper's rumor lights an island from afar.</div>
       <canvas id="mapcv" width="200" height="150"></canvas>
       <div class="legend">${rows}</div>
       <button class="cta" data-act="sail" ${canSail ? '' : 'disabled'}>${canSail ? 'Sail to ' + (mapState(sel) === 'fog' ? 'the unknown' : sel.name) : sel && sel.id === S.loc ? 'You are here' : 'Pick a port'}</button>`;
     drawMap();
     $('#mapcv').addEventListener('click', mapClick);
+  } else if (sheetKind === 'spots') {
+    const l = loc();
+    const rows = l.spots.map(sp => `<button class="row ${sp.id === S.spot ? 'sel' : ''}" data-act="spot" data-k="${sp.id}"><div class="name">${sp.name}<small>${sp.known}</small></div>${sp.id === S.spot ? '<div class="here">fishing here</div>' : ''}</button>`).join('');
+    el.innerHTML = `<div class="head"><h2>Spots · ${l.name}</h2><button class="x" data-act="close">✕</button></div><div class="note">${l.spots.length} places to fish on this island. Moving pulls in your lines.</div><div class="legend">${rows}</div>`;
   } else if (sheetKind === 'index') {
     const fish = SPECIES.filter(s => !s.kind);
     const rows = fish.map(s => {
@@ -968,7 +979,7 @@ function renderSheet() {
       return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${S.visited[home.id] ? home.name : 'somewhere out there'}${s.legend ? ' · legend: rod, squid, ' + s.time.join('/') : s.rare ? ' · rare: rod or trophy line' : ''}</small></div><div class="price">—</div></div>`;
     }).join('');
     const grows = GAME.map(c => { const gx = S.gindex[c.id], home = LOCS.find(l => c.loc[l.id]);
-      const mini = `<canvas class="mini game" width="64" height="36" data-game="${c.id}" data-known="${gx ? 1 : 0}"></canvas>`;
+      const mini = `<canvas class="mini game" width="80" height="48" data-game="${c.id}" data-known="${gx ? 1 : 0}"></canvas>`;
       if (gx) return `<div class="row">${mini}<div class="name" style="flex:1">${c.name}<small>${home.name}${c.rare ? ' · rare' : ''}${c.time ? ' · ' + c.time.join('/') : ''}</small></div><div class="price">×${gx.n} · ${fmtKg(gx.best)}</div></div>`;
       return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${S.visited[home.id] ? home.name : 'somewhere out there'}${c.rare ? ' · rare' : ''}</small></div><div class="price">—</div></div>`; }).join('');
     el.innerHTML = `<div class="head"><h2>Index ${Object.keys(S.index).length}/${fish.length}</h2><button class="x" data-act="close">✕</button></div><div class="list">${rows}</div>
@@ -981,7 +992,7 @@ function renderSheet() {
       : `<div class="note">${S.prologue ? 'Supper. Home is a long row away.' : S.raft ? 'No market here. Gull Harbor buys the whole bucket.' : 'No market on the shoal. Build the raft first.'}</div>`;
     el.innerHTML = `<div class="head"><h2>Inventory</h2><button class="x" data-act="close">✕</button></div>
       <div class="box"><h3>BUCKET ${S.bucket.length}/${T.bucketCap}</h3>${S.bucket.length ? `<div class="list">${rows}</div>` : '<div class="note">Empty. Fish you keep land here.</div>'}</div>
-      <div class="box"><h3>GAME BAG ${S.pack.length}/${T.packCap}</h3>${S.pack.length ? `<div class="list">${S.pack.map((f, j) => { const c = GM[f.id]; return `<div class="row"><canvas class="mini game" width="64" height="36" data-game="${f.id}"></canvas><div class="name" style="flex:1">${c.name}<small>${fmtKg(f.kg)}</small></div><div class="price">${money(f.value)}</div></div>`; }).join('')}</div>` : `<div class="note">Empty. ${WEAPON().name} in hand. The hunting ground is past the village.</div>`}</div>
+      <div class="box"><h3>GAME BAG ${S.pack.length}/${T.packCap}</h3>${S.pack.length ? `<div class="list">${S.pack.map((f, j) => { const c = GM[f.id]; return `<div class="row"><canvas class="mini game" width="80" height="48" data-game="${f.id}"></canvas><div class="name" style="flex:1">${c.name}<small>${fmtKg(f.kg)}</small></div><div class="price">${money(f.value)}</div></div>`; }).join('')}</div>` : `<div class="note">Empty. ${WEAPON().name} in hand. The hunting ground is past the village.</div>`}</div>
       <div class="box"><div class="row"><div>Whole haul</div><div class="price">${money(haulTotal())}</div></div>${market.replace('Sell the haul · ' + money(total), 'Sell the haul · ' + money(haulTotal()))}</div>
       <div class="box"><h3>BAIT</h3><div class="list">
         <div class="row"><div class="name">Shell scraps<small>Free. Picked off the rocks.</small></div><div class="price">∞</div></div>
@@ -1010,7 +1021,7 @@ function renderSheet() {
   }
 }
 function drawMinis(el) {
-  el.querySelectorAll('canvas.mini.game').forEach(c => { const x = c.getContext('2d'), cr = GM[c.dataset.game]; x.fillStyle = '#1e2a1c'; x.fillRect(0, 0, 64, 36); x.fillStyle = '#2c3a28'; x.fillRect(0, 30, 64, 6); const m = MASKS[cr.mask], sc = m[0].length > 20 ? 1 : 2; drawMaskRaw(x, m, (64 - m[0].length * sc) >> 1, 30 - m.length * sc, c.dataset.known === '0' ? '#2d3b55' : cr.col, sc); });
+  el.querySelectorAll('canvas.mini.game').forEach(c => { const x = c.getContext('2d'); x.fillStyle = '#1e2a1c'; x.fillRect(0, 0, 80, 48); x.fillStyle = '#2c3a28'; x.fillRect(0, 44, 80, 4); const bc = beastC(c.dataset.game, 1, c.dataset.known === '0' ? 'dim' : 'color'); x.drawImage(bc, (80 - bc.width) >> 1, 44 - bc.height); });
   el.querySelectorAll('canvas.mini:not(.game)').forEach(c => { const x = c.getContext('2d'); x.fillStyle = '#0f2238'; x.fillRect(0, 0, 64, 36); x.fillStyle = '#152638'; x.fillRect(0, 34, 64, 2); blitFishCentered(x, c.dataset.fish, 32, 17, 1, c.dataset.known === '1' ? 'color' : 'dim'); });
 }
 // visited: full ink. known: named by rumor. fog: next to somewhere visited, drawn as ???. hidden: not on the chart yet.
@@ -1414,6 +1425,109 @@ const FISH_ART = {
   boot: { pal: { o: '#2a1a10', b: '#6a4a30', m: '#1a1008', d: '#4a3220' }, map: [
     '....oooooo......', '...obbbbbbo.....', '...obmbbmbo.....', '...obbbbbbo.....', '...obmbbmbo.....', '...obbbbbbo.....', '...obmbbmbo.....', '...obbbbbbo.....', '...obbbbbboooo..', '..obbbbbbbbbbbo.', '.obbbbbbbbbbbbbo', 'obbbbbbbbbbbbbbo', 'oddddddddddddddo', '.oooooooooooooo.'] },
 };
+
+
+// ---------- creature sprites ----------
+// Hand-drawn silhouettes (facing left), shaded in code like the fish: # body, l legs, a accent (ears, antlers, beak,
+// claws), w white marking, d dark marking (nose, hooves), e eye, m explicit marking. shadeBeast adds outline, a highlight
+// along the back, a lighter belly, darker legs, the eye, and the creature's pattern. Palettes: base, belly, acc, mark.
+const BEAST_SIL = {
+  hare: [
+    '......aa......aa........', '.....a##a....a##a.......', '.....a##a....a##a.......', '.....a##a....a##a.......', '......##......##........',
+    '......###....###........', '.......########.........', '......##########........', '.....e###########.......', '....d#############......',
+    '.....############.......', '......##########........', '.......########.####....', '........######.#######..', '.........###############',
+    '..........##############', '..........##############', '..........##############', '..........##############', '..........###########l##',
+    '..........##########.ll.', '...........########..ll.', '...........ll####ll..ll.', '..........ll.....ll.ll..', '.........dd......dd.dd..'],
+  fox: [
+    '.....aa.....aa..............................', '....a##a...a##a.............................', '....a###a.a###a.............................', '.....#########..............................',
+    '......########..............................', '.....e#########............................w', '....d###########..........................ww', '...dd#############.......................www',
+    '.....#################...............wwwwww.', '......#################...........#########.', '.......##################......###########..', '........###################..############...',
+    '.........###########################........', '..........#########################.........', '...........l###################l............', '...........l###############...ll............',
+    '...........ll####..#######....ll............', '............ll....ll.....ll...ll............', '............ll....ll.....ll...ll............', '............ll....ll.....ll...ll............', '............dd....dd.....dd...dd............'],
+  deer: [
+    '....a....a..................................', '...aa...aa..................................', '..a.a..a.a..................................', '..aaa..aaa..................................',
+    '...a.aa.a...................................', '....aaa.....................................', '.....a.a....................................', '.....###....................................',
+    '....e####...................................', '...d######..................................', '....#######.................................', '.....#######................................',
+    '......#######...............................', '.......#######..............................', '........#######.............................', '.........######.............................',
+    '.........######...........................##', '.........######.........................####', '.........#######.....................#######', '.........######################.############',
+    '.........###################################', '..........#################################.', '..........################################..', '...........##############################...',
+    '...........##############################...', '............############################....', '............l###########################l...', '............l########.......###########ll...',
+    '............ll######........#########.ll....', '.............ll####.........l#####ll..ll....', '.............ll.ll..........ll...ll...ll....', '.............ll.ll..........ll...ll...ll....',
+    '.............ll.ll..........ll...ll...ll....', '.............ll.ll..........ll...ll...ll....', '.............dd.dd..........dd...dd...dd....'],
+  boar: [
+    '.........................#####..............', '......................###aaaaaaa#...........', '....................###aaaaaaaaaaa#.........', '..................#####################.......',
+    '.......###......#####################.......', '.....#####....########################......', '....e#####################################..', '...d#######################################.',
+    '..dd########################################', '.d###########################################', '.d###########################################', '..w##########################################',
+    '..ww#########################################', '....#########################################', '....##########################################', '.....########################################',
+    '......#######################################', '.......l####################################.', '.......l#######.......#####################l.', '.......ll#####........l##############....ll..',
+    '........ll###.........ll############.....ll..', '........ll.ll.........ll....ll...........ll..', '........ll.ll.........ll....ll...........ll..', '........dd.dd.........dd....dd...........dd..'],
+  bird: [
+    '...........#####..............', '.........e########............', '.......aaa#########...........', '.....aaaaa##########..........', '..........###########.........',
+    '...........###########........', '............###########.......', '.............#############....', '..............##############..', '...............################',
+    '...............#################', '..............###################', '.............####################', '.............####################', '..............##################.',
+    '...............################..', '................##############...', '.................###########.....', '..................########.......', '...................ll.ll.........',
+    '...................ll.ll.........', '..................aaa.aaa........'],
+  crab: [
+    '..dd......................dd........', '.d##d....................d##d.......', '.d###d..................d###d.......', '..d###......####.....###d...........',
+    '...####..##########..####...........', '....###################.............', '....e#################e.............', '...####################.............',
+    '..######################............', '.#########################..........', '.##########################.........', '..########################..........',
+    '...l###################l............', '..ll.l###############l.ll...........', '.ll..ll.###########.ll..ll..........', 'll...ll..ll.....ll..ll...ll.........', 'll..ll...ll....ll....ll...ll........'],
+  lizard: [
+    '....####................................', '..e######...............................', '.d#######################...............', '..#############################.........',
+    '..#################################.....', '...#####################################.', '....l#########################l########..', '....l########.....############l...######.',
+    '...ll######.......l#########.ll.....####.', '...ll..ll.........ll.......ll........###.', '..dd..dd..........dd......dd..........##.'],
+  seal: [
+    '....######..................................', '..e#########................................', '.d###########...............................', '..#############.............................',
+    '..w###############..........................', '..ww#################.......................', '...ww###################....................', '....www####################.................',
+    '.....wwww#####################..............', '......wwwww######################...........', '.......wwwwww#######################........', '........wwwwwww#######################.....##',
+    '.........wwwwwwww######################...###', '..........wwwwwwwww#####################.####', '............wwwwwwwww#######################.', '..............wwwwwwwwww###################..',
+    '................wwwwwwwwwwww#############....', '..................l#####wwwww##########......', '.................ll#####........#######......'],
+  bat: [
+    '###..................................###', '####................................####', '#####..............####............#####', '######............########........######',
+    '.######..........##########......######.', '..#######.......#e########e#....#######.', '...########.....############...########.', '....#########..##############.#########.',
+    '.....###########################.......', '......#########################........', '.......#######################.........', '........#####################..........',
+    '.........###################...........', '...........###############.............', '.............############..............', '...............########................', '.................d..d..................'],
+  moth: [
+    '...a..........a.................', '....a........a..................', '.....######..######.............', '....########ee########..........', '...##########ww#########........',
+    '..###########ww##########.......', '.############mm############.....', '.############mm############.....', '.############mm############.....', '..###########mm###########......',
+    '...##########mm##########.......', '....#########mm#########........', '.....####..##mm##..####.........', '......##....#mm#....##..........', '............#mm#................', '.............mm.................'],
+};
+function shadeBeast(sil, c) {
+  const H = sil.length, W = Math.max(...sil.map(r => r.length)); sil = sil.map(r => r + '.'.repeat(W - r.length));
+  const body = ch => ch === '#' || ch === 'e' || ch === 'm' || ch === 'w';
+  const top = Array(W).fill(-1), bot = Array(W).fill(-1);
+  for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) if (body(sil[y][x])) { if (top[x] < 0) top[x] = y; bot[x] = y; }
+  const out = Array.from({ length: H }, () => Array(W).fill('.'));
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const ch = sil[y][x];
+    if (ch === '.') { if ((y > 0 && sil[y - 1][x] !== '.') || (y < H - 1 && sil[y + 1][x] !== '.') || (x > 0 && sil[y][x - 1] !== '.') || (x < W - 1 && sil[y][x + 1] !== '.')) out[y][x] = 'o'; continue; }
+    if (ch === 'l') { out[y][x] = 'L'; continue; }
+    if (ch !== '#') { out[y][x] = ch; continue; }
+    const span = Math.max(1, bot[x] - top[x]), rel = (y - top[x]) / span;
+    let v = rel < 0.12 ? 'h' : rel < 0.62 ? 'b' : rel < 0.8 ? 'B' : 'l';
+    if (c.pat === 'spots' && rel > 0.15 && rel < 0.7 && hash(y, x, 7) < 0.12) v = 'm';
+    else if (c.pat === 'stripes' && rel > 0.1 && rel < 0.75 && (x % 6) < 2) v = 'm';
+    else if (c.pat === 'saddle' && rel < 0.4 && x > W * 0.3 && x < W * 0.8) v = 'm';
+    else if (c.pat === 'lights' && hash(y, x, 11) < 0.07) v = 'n';
+    else if (c.pat === 'speckle' && hash(y, x, 13) < 0.2) v = 'm';
+    out[y][x] = v;
+  }
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (sil[y][x] === 'e') { out[y][x] = 'e'; if (x + 1 < W && sil[y][x + 1] === '#') out[y][x + 1] = 'w'; if (y > 0 && sil[y - 1][x] === '#') out[y - 1][x] = 'w'; }
+  return out.map(r => r.join(''));
+}
+function beastPal(c) {
+  const b = c.col.base, belly = c.col.belly || shift(b, 0, -0.1, 0.25);
+  return { o: shift(b, 14, 0.04, -0.34), h: shift(b, -10, 0.06, 0.16), b, B: shift(b, 0, -0.04, 0.08), l: belly, L: shift(b, 8, 0, -0.16), a: c.col.acc || '#f0b0a0', w: '#f8f6f0', d: '#1a1410', e: '#14141e', m: c.col.mark || shift(b, 6, 0.04, -0.2), n: c.col.glow || '#ffff80' };
+}
+const BEAST_MAP = {};
+function beastMap(id) { return BEAST_MAP[id] || (BEAST_MAP[id] = shadeBeast(BEAST_SIL[GM[id].sil], GM[id])); }
+function beastC(id, sc, mode) {
+  const key = 'beast:' + id + ':' + sc + ':' + mode; let c = CACHE.get(key); if (c) return c;
+  const m = beastMap(id), pal = beastPal(GM[id]); c = document.createElement('canvas'); c.width = m[0].length * sc; c.height = m.length * sc;
+  const x = c.getContext('2d');
+  for (let r = 0; r < m.length; r++) for (let i = 0; i < m[r].length; i++) { const ch = m[r][i]; if (ch === '.') continue; x.fillStyle = mode === 'dim' ? '#2d3b55' : (pal[ch] || pal.b); x.fillRect(i * sc, r * sc, sc, sc); }
+  CACHE.set(key, c); return c;
+}
 
 // A species' coloured map, built once: explicit pixel maps (wood, boot) are padded; everything else is generated and shaded.
 const FISH_MAP = {};
@@ -2046,7 +2160,7 @@ let ISL = null;
 function isleSpots(l) { const seat = landY(l); return [
   { id: 'hunt', x: 0.5 * W, label: 'Into ' + (l.hunt.name || 'the wild'), hint: l.hunt.gate },
   { id: 'shop', x: W + 0.5 * W + 14, label: l.shop ? 'Into the shop' : l.sell ? 'Sell to the traders' : 'The camp', hint: l.shop ? (l.keeper ? l.keeper.name + ' keeps the shop.' : 'The shop.') : l.sell ? 'They buy the whole haul.' : 'Your bucket and your bag.' },
-  { id: 'fish', x: 2 * W + shoreW - 16, label: 'Sit and fish', hint: 'Your lines are out here.' } ]; }
+  { id: 'fish', x: 2 * W + shoreW - 16, label: 'Fishing spots', hint: l.spots.length + ' places to fish. Pick one.' } ]; }
 function enterIsland(at) {
   const l = loc(); MODE = 'island'; $('#game').hidden = true; $('#hunt').hidden = true; $('#isle').hidden = false;
   const spots = isleSpots(l);
@@ -2153,15 +2267,14 @@ function showTaken(c, kg, value, tags, line) {
   const pills = tags.filter(t => t.toUpperCase() + '!' !== head);
   $('#card').className = 'card catch';
   $('#card').innerHTML = `<div class="head">${head}</div>${pills.length ? `<div class="pills">${pills.map(t => `<div class="pill">${t.toUpperCase()}</div>`).join('')}</div>` : ''}
-    <canvas class="art" id="ccv" width="192" height="96"></canvas><div class="fish">${c.name}</div>
+    <canvas class="art" id="ccv" width="192" height="112"></canvas><div class="fish">${c.name}</div>
     <div class="size"><span>${fmtKg(kg)}</span></div><div class="sub">${WEAPON().name.toLowerCase()} · ${PHASE_NAME[phaseAt(now())].toLowerCase()}</div>
     <div class="stats"><div class="stat"><div class="n">WORTH</div><div class="v">${money(value)}</div></div><div class="stat"><div class="n">WEAPON</div><div class="v">${WEAPON().name}</div></div><div class="stat"><div class="n">GROUND</div><div class="v">${loc().hunt.name.replace(/^the /, '')}</div></div></div>
     <div class="note">${line}</div><div class="acts"><button class="cta" data-act="closecard">Bag it</button></div>`;
   $('#cardWrap').hidden = false;
   const x = $('#ccv').getContext('2d'); x.imageSmoothingEnabled = false;
-  const st = LAND_STYLE[GROUND_LAND[loc().hunt.kind]] || LAND_STYLE.grass; x.fillStyle = '#1a2838'; x.fillRect(0, 0, 192, 96); x.fillStyle = st[0]; x.fillRect(0, 70, 192, 26); x.fillStyle = st[1]; x.fillRect(0, 80, 192, 16); x.fillStyle = st[3]; x.fillRect(0, 70, 192, 1);
-  const m = MASKS[c.mask], sc = c.big ? 4 : 3; drawMaskRaw(x, m, (192 - m[0].length * sc) >> 1, 70 - m.length * sc, c.col, sc);
-  x.fillStyle = '#14141e'; x.fillRect(((192 - m[0].length * sc) >> 1) + 2 * sc, 70 - m.length * sc + sc, sc, sc);
+  const st = LAND_STYLE[GROUND_LAND[loc().hunt.kind]] || LAND_STYLE.grass; x.fillStyle = '#1a2838'; x.fillRect(0, 0, 192, 112); x.fillStyle = st[0]; x.fillRect(0, 98, 192, 14); x.fillStyle = st[1]; x.fillRect(0, 106, 192, 6); x.fillStyle = st[3]; x.fillRect(0, 98, 192, 1);
+  const bm = beastMap(c.id), bsc = bm[0].length * 2 <= 180 && bm.length * 2 <= 92 ? 2 : 1, bc = beastC(c.id, bsc, 'color'); x.drawImage(bc, (192 - bc.width) >> 1, 98 - bc.height);
 }
 function renderHunt() {
   if (MODE !== 'hunt') return;
@@ -2181,9 +2294,8 @@ function drawHunt(t) {
   g.fillStyle = st[0]; g.fillRect(0, gy, W, 12); g.fillStyle = st[1]; g.fillRect(0, gy + 12, W, 30); g.fillStyle = st[2]; g.fillRect(0, gy + 42, W, H - gy - 42); g.fillStyle = st[3]; g.fillRect(0, gy, W, 1);
   drawGroundDecor(l.hunt.kind, 0, gy, t, nt);
   if (HU && HU.phase === 'seen' || (HU && HU.phase === 'taken')) {
-    const c = HU.roll.c, m = MASKS[c.mask], sc = c.big ? 3 : 2, cx = (HU.tx * W) | 0, bob = Math.sin(t / 260) > 0.6 ? 1 : 0;
-    const mc = maskC(c.mask, c.col, sc); blit(g, mc, cx - (mc.width >> 1), gy - mc.height + bob, HU.tx < 0.5);
-    g.fillStyle = '#14141e'; g.fillRect(cx - (mc.width >> 1) + (HU.tx < 0.5 ? mc.width - 3 * sc : 2 * sc), gy - mc.height + bob + sc, sc, sc);
+    const c = HU.roll.c, cx = (HU.tx * W) | 0, bob = Math.sin(t / 260) > 0.6 ? 1 : 0;
+    const mc = beastC(c.id, 1, 'color'); blit(g, mc, cx - (mc.width >> 1), gy - mc.height + bob, HU.tx > 0.5);
     const aim = 0.5 + 0.5 * Math.sin(HU.ph), ax = (aim * W) | 0; g.fillStyle = HU.hold ? 'rgba(240,192,80,0.9)' : 'rgba(236,230,214,0.55)'; for (let y = gy - 40; y < gy + 6; y += 3) g.fillRect(ax, y, 1, 1); g.fillRect(ax - 3, gy - 18, 7, 1); g.fillRect(ax, gy - 21, 1, 7);
   } else if (HU && HU.phase === 'wait') { const sway = Math.sin(t / 400) * 2 | 0; g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect((HU.tx * W | 0) - 8 + sway, gy - 6, 16, 2); }
   sceneFx(l, t, nt);
@@ -2295,7 +2407,7 @@ function endCut() {
   cut = null;
   const wasPrologue = S.prologue;
   if (wasPrologue) { // washed up: the boat, the bucket and the skiff are gone. The index remembers the two fish.
-    S.prologue = false; S.proCaught = 0; S.loc = 'shoal'; S.boat = 'none'; S.bucket = []; S.money = 0; S.slots = 2; S.sel = 0; S.pending = null;
+    S.prologue = false; S.proCaught = 0; S.loc = 'shoal'; S.spot = 'wreck'; S.boat = 'none'; S.bucket = []; S.money = 0; S.slots = 2; S.sel = 0; S.pending = null;
     S.lines = [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, { rig: 'set', bait: 'scraps', phase: 'idle' }, null, null]; S.visited = { shoal: true }; saveNow();
   }
   fadeTo(() => { $('#cut').hidden = true; enterGame(); if (wasPrologue) { toast('Line 1 is your rod. Line 2 is a set line.'); setTimeout(() => toast('Driftwood comes up on the lines. Six planks make a raft.'), 3200); } });
@@ -2310,7 +2422,7 @@ function fadeTo(fn) { const f = $('#fade'); f.classList.add('on'); setTimeout(()
 let confirmNew = false;
 function newVoyage() {
   if (S.started && !confirmNew) { confirmNew = true; $('#confirm').textContent = 'This wipes your save. Tap again to start over.'; return; }
-  S = freshState(); S.started = true; S.prologue = true; S.loc = 'sea'; S.boat = 'skiff'; S.slots = 1; S.lines = [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, null, null, null]; saveNow();
+  S = freshState(); S.started = true; S.prologue = true; S.loc = 'sea'; S.spot = 'open'; S.boat = 'skiff'; S.slots = 1; S.lines = [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, null, null, null]; saveNow();
   fadeTo(() => { enterGame(); toast('A calm sea. Two for supper, then home.'); });
 }
 
@@ -2334,42 +2446,64 @@ function frame(ts) {
 }
 
 // ---------- chart ----------
-const MAP_INK = { shoal: '#e6cf96', harbor: '#e6cf96', brine: '#f4f0e4', reach: '#cfe0b0', lantern: '#f0c8a0', trench: '#2a3550', delta: '#b8c890', fjord: '#eef3f7', bell: '#d8e8e0', cinder: '#3a2a2a', glass: '#e8fbff', hollow: '#6a6a80', thunder: '#7a8898', stars: '#5a4630' };
+const MAP_INK = { shoal: '#e6cf96', harbor: '#c8d08c', brine: '#f4f0e4', reach: '#9ac070', lantern: '#f0c8a0', trench: '#2a3550', delta: '#8aa860', fjord: '#eef3f7', bell: '#d8e8e0', cinder: '#3a2a2a', glass: '#e8fbff', hollow: '#6a6a80', thunder: '#7a8898', stars: '#5a4630' };
 const MAP_IN = { shoal: '#3f8f4e', harbor: '#3f8f4e', brine: '#d8d0b8', reach: '#2f6f3e', lantern: '#c04040', trench: '#2a3550', delta: '#4a7a3a', fjord: '#b7d3e6', bell: '#80a8a0', cinder: '#ff6a20', glass: '#a0e0f0', hollow: '#40a080', thunder: '#f0e060' };
+// The world: one sea, every island drawn as a landmass, a few uninhabited sandbars, and black fog over all of it.
+// Fog clears in a wide circle around islands you have visited, a smaller one around islands a keeper named, a sliver
+// around land you have only heard the gulls over, and along the routes you have sailed. Space is not on this map.
+const MW = 200, MH = 150;
+let WORLD_C = null, FOG_C = null, fogKey = '';
+function landBlob(m, cx, cy, r, seed, rim, ink, inner) {
+  for (let y = -r - 4; y <= r + 4; y++) for (let x = -r - 4; x <= r + 4; x++) {
+    const d = Math.hypot(x, y), th = Math.atan2(y, x), rr = r * (1 + 0.28 * Math.sin(3 * th + seed) + 0.18 * Math.sin(5 * th + seed * 2.3) + 0.1 * Math.sin(7 * th - seed));
+    if (d <= rr + 1.2 && d > rr) { m.fillStyle = rim; m.fillRect(cx + x, cy + y, 1, 1); }
+    else if (d <= rr) { m.fillStyle = d <= rr - 2.4 ? inner : ink; m.fillRect(cx + x, cy + y, 1, 1); }
+  }
+}
+function worldLayer() {
+  if (WORLD_C) return WORLD_C;
+  const c = document.createElement('canvas'); c.width = MW; c.height = MH; const m = c.getContext('2d');
+  m.fillStyle = '#4e7a9c'; m.fillRect(0, 0, MW, MH);
+  for (let i = 0; i < 900; i++) { m.fillStyle = (i % 3) ? 'rgba(90,140,170,0.5)' : 'rgba(40,70,100,0.5)'; m.fillRect((i * 37) % MW, (i * 53 + (i >> 3)) % MH, 2 + (i % 2), 1); }
+  m.fillStyle = 'rgba(30,50,80,0.35)'; m.fillRect(60, 20, 70, 44); m.fillRect(100, 110, 60, 30); // deeper water
+  for (const [x, y, r, sd] of [[22, 42, 3, 1], [112, 140, 2, 2], [168, 136, 3, 3], [36, 18, 2, 4], [186, 100, 2, 5], [8, 80, 2, 6], [140, 42, 2, 7]]) landBlob(m, x, y, r, sd, '#2a3a50', '#d8cfa8', '#c8b890');
+  for (const l of LOCS) { if (l.id === 'sea' || l.id === 'stars') continue; landBlob(m, l.x, l.y, 6 + (l.range % 3) + (l.id === 'hollow' || l.id === 'cinder' ? 2 : 0), l.x * 0.37 + l.y * 0.11, '#2a3a50', MAP_INK[l.id] || '#e6cf96', MAP_IN[l.id] || '#3f8f4e');
+    if (l.id === 'cinder') { m.fillStyle = '#ff6a20'; m.fillRect(l.x, l.y - 1, 1, 1); } if (l.id === 'hollow') { m.fillStyle = '#2a2a38'; m.fillRect(l.x - 2, l.y - 2, 4, 3); m.fillStyle = '#40a080'; m.fillRect(l.x, l.y - 1, 1, 1); } if (l.id === 'fjord') { m.fillStyle = '#ffffff'; m.fillRect(l.x - 3, l.y - 2, 2, 1); m.fillRect(l.x + 1, l.y - 3, 2, 1); } if (l.id === 'lantern') { m.fillStyle = '#c04040'; m.fillRect(l.x - 1, l.y, 3, 1); } if (l.id === 'bell') { m.fillStyle = '#5a4630'; m.fillRect(l.x, l.y - 1, 1, 2); } if (l.id === 'thunder') { m.fillStyle = '#f0e060'; m.fillRect(l.x, l.y - 2, 1, 2); } }
+  WORLD_C = c; return c;
+}
+function fogLayer() {
+  const key = Object.keys(S.visited).sort().join(',') + '|' + Object.keys(S.known).sort().join(','); if (FOG_C && key === fogKey) return FOG_C; fogKey = key;
+  const c = document.createElement('canvas'); c.width = MW; c.height = MH; const m = c.getContext('2d'), img = m.createImageData(MW, MH), d = img.data;
+  const cents = []; for (const l of LOCS) { const st = mapState(l); if (st === 'hidden' || l.id === 'stars') continue; cents.push([l.x, l.y, st === 'visited' ? 24 : st === 'known' ? 12 : 7, st === 'visited' ? 9 : 5]); }
+  const segs = []; for (const l of LOCS) for (const k of l.links) if (S.visited[l.id] && S.visited[k] && l.id < k) segs.push([l.x, l.y, LOC[k].x, LOC[k].y]);
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
+    let rev = 0;
+    for (const [cx, cy, R, soft] of cents) { const v = (R - Math.hypot(x - cx, y - cy)) / soft; if (v > rev) rev = v; }
+    for (const [x0, y0, x1, y1] of segs) { const dx = x1 - x0, dy = y1 - y0, tt = clamp(((x - x0) * dx + (y - y0) * dy) / (dx * dx + dy * dy), 0, 1), v = (5 - Math.hypot(x - x0 - dx * tt, y - y0 - dy * tt)) / 3; if (v > rev) rev = v; }
+    rev = clamp(rev, 0, 1); const dither = BAYER[((y & 1) << 1) | (x & 1)]; const a = rev >= 1 ? 0 : rev <= 0 ? 1 : (rev + (dither - 0.5) * 0.3 < 0.5 ? 1 : 0.55 - rev * 0.4);
+    const i = (y * MW + x) * 4; d[i] = 7; d[i + 1] = 7; d[i + 2] = 11; d[i + 3] = Math.round(255 * clamp(a, 0, 1));
+  }
+  m.putImageData(img, 0, 0); FOG_C = c; return c;
+}
 function drawMap() {
   const c = $('#mapcv'); if (!c) return; const m = c.getContext('2d'); m.imageSmoothingEnabled = false;
-  const MW = 200, MH = 150;
-  m.fillStyle = '#d9c8a0'; m.fillRect(0, 0, MW, MH);
-  for (let i = 0; i < 220; i++) { m.fillStyle = 'rgba(90,70,40,0.12)'; m.fillRect((i * 37) % MW, (i * 53) % MH, 1, 1); }
-  m.fillStyle = 'rgba(60,80,110,0.3)'; for (let y = 8; y < MH; y += 10) for (let x = ((y / 10) % 2) * 5; x < MW; x += 11) { m.fillRect(x, y, 2, 1); m.fillRect(x + 2, y - 1, 2, 1); }
-  m.fillStyle = '#5a4630'; m.fillRect(0, 0, MW, 2); m.fillRect(0, MH - 2, MW, 2); m.fillRect(0, 0, 2, MH); m.fillRect(MW - 2, 0, 2, MH);
-  // routes: dotted ink between islands you can see
+  m.drawImage(worldLayer(), 0, 0);
   const seen = {}; for (const l of LOCS) { const st = mapState(l); if (st !== 'hidden') seen[l.id] = st; }
   for (const l of LOCS) for (const k of l.links) { if (!seen[l.id] || !seen[k] || l.id > k) continue; const o = LOC[k]; const strong = seen[l.id] === 'visited' && seen[k] === 'visited';
-    m.fillStyle = strong ? '#5a4630' : 'rgba(90,70,48,0.45)'; const steps = Math.max(8, Math.hypot(o.x - l.x, o.y - l.y) / 4 | 0); for (let i = 1; i < steps; i += 2) m.fillRect((l.x + (o.x - l.x) * i / steps) | 0, (l.y + (o.y - l.y) * i / steps) | 0, 1, 1); }
+    m.fillStyle = strong ? '#f4ecd0' : 'rgba(244,236,208,0.45)'; const steps = Math.max(8, Math.hypot(o.x - l.x, o.y - l.y) / 4 | 0); for (let i = 1; i < steps; i += 2) m.fillRect((l.x + (o.x - l.x) * i / steps) | 0, (l.y + (o.y - l.y) * i / steps) | 0, 1, 1); }
+  m.drawImage(fogLayer(), 0, 0);
   for (const l of LOCS) {
-    const st = seen[l.id]; if (!st) continue; const x = l.x, y = l.y, vis = st === 'visited', known = st === 'known';
-    if (l.id === 'stars') { m.fillStyle = vis ? '#5a4630' : '#8a7a60'; m.fillRect(x - 1, y - 4, 2, 9); m.fillRect(x - 4, y - 1, 8, 2); m.fillRect(x - 2, y - 2, 4, 4); }
-    else if (l.id === 'trench') { m.fillStyle = vis ? '#2a3550' : '#7a7a7a'; for (let r = 0; r < 3; r++) m.fillRect(x - 8 + r * 2, y - 3 + r * 2, 16 - r * 4, 1); m.fillStyle = '#5a4630'; m.fillRect(x - 3, y + 3, 7, 2); }
-    else {
-      const ink = vis || known ? '#5a4630' : '#9a8a70';
-      drawMaskRaw(m, MASKS.isle, x - 7, y - 3, ink, 1); drawMaskRaw(m, MASKS.isle, x - 5, y - 3, ink, 1); drawMaskRaw(m, MASKS.isle, x - 6, y - 4, ink, 1); drawMaskRaw(m, MASKS.isle, x - 6, y - 2, ink, 1);
-      drawMaskRaw(m, MASKS.isle, x - 6, y - 3, vis ? (MAP_INK[l.id] || '#e6cf96') : known ? '#d8ccb0' : '#cfc3a4', 1);
-      drawMaskRaw(m, MASKS.isleIn, x - 4, y - 1, vis ? (MAP_IN[l.id] || '#3f8f4e') : '#b8ad92', 1);
-      if (vis && l.id === 'cinder') { m.fillStyle = '#3a2a2a'; m.fillRect(x - 2, y - 7, 5, 4); m.fillRect(x - 1, y - 8, 3, 1); m.fillStyle = '#ff6a20'; m.fillRect(x, y - 9, 1, 1); }
-      if (vis && l.id === 'lantern') { m.fillStyle = '#c04040'; m.fillRect(x - 3, y - 6, 7, 1); m.fillRect(x - 2, y - 5, 1, 3); m.fillRect(x + 1, y - 5, 1, 3); }
-      if (vis && l.id === 'thunder') { m.fillStyle = '#f0e060'; m.fillRect(x, y - 9, 1, 2); m.fillRect(x - 1, y - 7, 1, 1); m.fillRect(x, y - 6, 1, 2); }
-      if (vis && l.id === 'hollow') { m.fillStyle = '#5a4630'; m.fillRect(x - 3, y - 7, 7, 1); m.fillRect(x - 2, y - 8, 5, 1); m.fillRect(x - 1, y - 9, 3, 1); m.fillStyle = '#40a080'; m.fillRect(x, y - 6, 1, 1); }
-      if (vis && l.id === 'fjord') { m.fillStyle = '#1f5a3a'; m.fillRect(x - 3, y - 2, 1, 2); m.fillRect(x, y - 3, 1, 3); m.fillRect(x + 2, y - 2, 1, 2); }
-      if (vis && l.id === 'bell') { m.fillStyle = '#5a4630'; m.fillRect(x - 1, y - 7, 3, 1); m.fillRect(x - 2, y - 6, 5, 2); m.fillRect(x, y - 4, 1, 1); }
-    }
-    if (st === 'fog') { m.fillStyle = '#5a4630'; m.fillRect(x - 2, y - 13, 5, 1); m.fillRect(x + 2, y - 12, 1, 2); m.fillRect(x, y - 10, 2, 1); m.fillRect(x, y - 9, 1, 1); m.fillRect(x, y - 7, 1, 1); }
-    if (known) { m.fillStyle = '#b8871c'; m.fillRect(x - 1, y - 9, 3, 1); m.fillRect(x, y - 10, 1, 1); m.fillRect(x, y - 8, 1, 1); }
-    if (l.id === mapSel) drawMaskRaw(m, MASKS.ring, x - 6, y - 4, '#b8871c', 1);
-    if (l.id === S.loc) { m.fillStyle = '#5a4630'; m.fillRect(x - 4, y + 7, 9, 2); m.fillRect(x, y + 3, 1, 4); m.fillRect(x + 1, y + 4, 3, 2); }
+    const st = seen[l.id]; if (!st) continue; const x = l.x, y = l.y;
+    if (l.id === 'stars') { m.fillStyle = '#f4ecd0'; m.fillRect(x - 1, y - 4, 2, 9); m.fillRect(x - 4, y - 1, 8, 2); m.fillRect(x - 2, y - 2, 4, 4); }
+    if (st === 'fog') { m.fillStyle = '#f4ecd0'; m.fillRect(x - 2, y - 13, 5, 1); m.fillRect(x + 2, y - 12, 1, 2); m.fillRect(x, y - 10, 2, 1); m.fillRect(x, y - 9, 1, 1); m.fillRect(x, y - 7, 1, 1); }
+    if (st === 'known') { m.fillStyle = '#f0c050'; m.fillRect(x - 1, y - 11, 3, 1); m.fillRect(x, y - 12, 1, 1); m.fillRect(x, y - 10, 1, 1); m.fillRect(x - 2, y - 11, 1, 1); m.fillRect(x + 2, y - 11, 1, 1); }
+    if (st === 'visited' && l.id !== S.loc) { m.fillStyle = '#2a1a0e'; m.fillRect(x, y - 9, 1, 7); m.fillStyle = '#f0c050'; m.fillRect(x + 1, y - 9, 4, 3); }
+    if (l.id === mapSel) drawMaskRaw(m, MASKS.ring, x - 6, y - 4, '#f0c050', 1);
+    if (l.id === S.loc) { m.fillStyle = '#2a1a0e'; m.fillRect(x - 4, y + 7, 9, 2); m.fillRect(x, y + 3, 1, 4); m.fillRect(x + 1, y + 4, 3, 2); m.fillStyle = '#f4ecd0'; m.fillRect(x - 3, y + 7, 7, 1); }
   }
-  m.fillStyle = '#5a4630'; m.fillRect(14, 126, 1, 14); m.fillRect(8, 132, 13, 1); m.fillRect(13, 128, 3, 1); m.fillRect(13, 136, 3, 1); m.fillRect(12, 131, 1, 3); m.fillRect(16, 131, 1, 3);
-  m.fillStyle = '#b8871c'; m.fillRect(14, 125, 1, 2);
+  m.fillStyle = '#f4ecd0'; m.fillRect(14, 126, 1, 14); m.fillRect(8, 132, 13, 1); m.fillRect(13, 128, 3, 1); m.fillRect(13, 136, 3, 1); m.fillRect(12, 131, 1, 3); m.fillRect(16, 131, 1, 3);
+  m.fillStyle = '#f0c050'; m.fillRect(14, 125, 1, 2);
+  m.fillStyle = '#2a3a50'; m.fillRect(0, 0, MW, 2); m.fillRect(0, MH - 2, MW, 2); m.fillRect(0, 0, 2, MH); m.fillRect(MW - 2, 0, 2, MH);
 }
 
 // ---------- the fight ----------
@@ -2445,8 +2579,9 @@ document.addEventListener('click', e => {
   else if (a === 'change') { rigOpen = !rigOpen; render(); }
   else if (a === 'catch') resolveCatch(k);
   else if (a === 'talk') talk();
+  else if (a === 'spot') { if (k !== S.spot) { let pulled = 0; S.lines.forEach(L => { if (L && L.phase !== 'idle') { L.phase = 'idle'; L.c = null; pulled++; } }); S.spot = k; reseedFish(); save(); toast(`${spot().name}.` + (pulled ? ` Pulled in ${pulled} line${pulled > 1 ? 's' : ''}.` : '')); } closeSheet(); if (MODE !== 'game') fadeTo(enterFishing); else render(); }
   else if (a === 'walk') { if (!S.prologue) fadeTo(() => enterIsland('fish')); }
-  else if (a === 'enter') { const sp = nearSpot(); if (!sp) return; if (sp.id === 'fish') fadeTo(enterFishing); else if (sp.id === 'hunt') fadeTo(enterHunt); else openSheet(loc().shop ? 'shop' : 'inv'); }
+  else if (a === 'enter') { const sp = nearSpot(); if (!sp) return; if (sp.id === 'fish') openSheet('spots'); else if (sp.id === 'hunt') fadeTo(enterHunt); else openSheet(loc().shop ? 'shop' : 'inv'); }
   else if (a === 'leavehunt') { closeSheet(); fadeTo(() => enterIsland('hunt')); }
   else if (a === 'stalk') startStalk();
   else if (a === 'closecard') closeCard();
