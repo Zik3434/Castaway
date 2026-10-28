@@ -150,6 +150,9 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 .catch .head{font-family:var(--display);font-size:clamp(20px,7vw,30px);color:var(--brass);text-shadow:3px 3px 0 #2b1d05;line-height:1.2}
 .catch .pill{justify-self:center;font-family:var(--display);font-size:8px;padding:6px 10px;background:#2a5a74;color:var(--text);letter-spacing:.5px}
 .catch .pill.gold{background:var(--brass-2);color:#2b1d05}
+.catch .pill.far{background:#5a3a74}
+.catch .rar{display:flex;justify-content:center;gap:8px;font-family:var(--display);font-size:9px;letter-spacing:.5px;text-shadow:2px 2px 0 #0a1424}
+.catch .rar .sep{color:var(--muted)}
 .catch .pills{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
 .catch canvas.art{width:100%;max-width:300px;justify-self:center;border:2px solid var(--edge)}
 .catch .fish{font-family:var(--display);font-size:13px;color:var(--text);text-wrap:balance}
@@ -364,7 +367,7 @@ const LOCS = [
     keeper: { name: 'Auntie Mei', lines: ['"Arowana bring luck. Koi bring money. Catfish bring supper. All three bite here."', '"Pheasant in the bamboo, deer at dusk. Take the bow if you go in."', '"The delta beyond the river rains all year. Old Sajan there hears everything the sea says."'] },
     scene: { shore: 'quay', floor: [[90, 110, 96], [36, 50, 56]], far: 'mountains', props: [['torii', .58], ['lantern', .2], ['lantern', .42], ['bamboo', .05, 30], ['bamboo', .1, 36]], particles: 'petals' },
     village: { kind: 'pagoda', props: [['lantern', .14], ['lantern', .82], ['bamboo', .92, 34], ['teastall', .68]] },
-    hunt: { kind: 'bamboo', name: 'the bamboo grove', gate: 'a red gate' }, spots: [{ id: 'wharf', name: 'The Wharf', known: 'Under the lanterns. Koi, gourami, catfish, and whatever fell in.', fish: { koi: 1.2, gourami: 1.4, walkingcatfish: 1.4, boot: 0.8, grasscarp: 1.2, tilapia: 1.4, climbingperch: .8, rohu: .8, swampeel: 1, siamesecarp: .8 } }, { id: 'pool', name: 'Lantern Pool', known: 'A still pool the lanterns were hung to light. Arowana, koi, and the Jade Lantern at night.', fish: { arowana: 1.8, koi: 1.2, jadelantern: 1, gourami: 0.6, tinfoilbarb: .8, knifefish: .8, giantstingray: .8, siamesecarp: 1.2 } }, { id: 'bend', name: 'River Bend', known: 'Dark water under the willows. Snakehead at night, catfish, golden mahseer at the edges of the day.', fish: { snakehead: 1.6, walkingcatfish: 1, mahseer: 1.8, koi: 0.5, grasscarp: 1, rohu: 1.4, knifefish: 1.4, swampeel: 1.2, giantstingray: 1.4, wallago: 1.6 } }, { id: 'steps', name: 'Teahouse Steps', known: 'Stone steps into the river. Fat koi fed by the teahouse, gourami, a shy arowana.', fish: { koi: 1.8, gourami: 1, arowana: 0.6, walkingcatfish: 0.6, tilapia: 1.2, climbingperch: 1.4, tinfoilbarb: 1.4, paradisefish: 1.6 } }] },
+    hunt: { kind: 'bamboo', name: 'the bamboo grove', gate: 'a red gate' }, spots: [{ id: 'wharf', name: 'The Wharf', known: 'Under the lanterns. Koi, gourami, catfish, and whatever fell in.', fish: { koi: 1.2, gourami: 1.4, walkingcatfish: 1.4, boot: 0.8, grasscarp: 1.2, tilapia: 1.4, climbingperch: .8, rohu: .8, swampeel: 1, siamesecarp: .8 } }, { id: 'pool', name: 'Lantern Pool', known: 'A still pool the lanterns were hung to light. Arowana, koi, and the Jade Lantern at night.', fish: { arowana: 1.8, koi: 1.2, jadelantern: 1, gourami: 0.6, tinfoilbarb: .8, knifefish: .8, giantstingray: .8, siamesecarp: 1.2, largemouth: 1.4 } }, { id: 'bend', name: 'River Bend', known: 'Dark water under the willows. Snakehead at night, catfish, golden mahseer at the edges of the day.', fish: { snakehead: 1.6, walkingcatfish: 1, mahseer: 1.8, koi: 0.5, grasscarp: 1, rohu: 1.4, knifefish: 1.4, swampeel: 1.2, giantstingray: 1.4, wallago: 1.6, largemouth: 1 } }, { id: 'steps', name: 'Teahouse Steps', known: 'Stone steps into the river. Fat koi fed by the teahouse, gourami, a shy arowana.', fish: { koi: 1.8, gourami: 1, arowana: 0.6, walkingcatfish: 0.6, tilapia: 1.2, climbingperch: 1.4, tinfoilbarb: 1.4, paradisefish: 1.6 } }] },
   { id: 'trench', name: 'Black Trench', range: 3, shop: false, sell: true, x: 80, y: 40, links: ['reach', 'fjord', 'bell'],
     blurb: 'Deep water. A buyer boat anchors here.', vibe: 'Black water, a buyer boat with a lamp, and cliffs full of puffins above.',
     rumor: 'A black trench where a buyer boat anchors. Deep things come up there.',
@@ -376,7 +379,7 @@ const LOCS = [
     keeper: { name: 'Old Sajan', exotic: true, lines: ['"Sit. The rain does not mind. You want fish? The barramundi. You want stories? Those cost nothing."', '"Sailors come through here from places that should not exist. I write down what they say."', '"The crocodile in the back channel took a boat once. Nobody has taken it back."'] },
     scene: { shore: 'stilts', floor: [[96, 86, 60], [36, 40, 36]], far: 'none', props: [['mangrove', .12], ['mangrove', .4], ['mangrove', .7], ['lantern', .9]], particles: 'rain' },
     village: { kind: 'stilt', props: [['mangrove', .08], ['mangrove', .9], ['net', .66], ['lantern', .26]] },
-    hunt: { kind: 'mangrove', name: 'the back channel', gate: 'a boardwalk into the roots' }, spots: [{ id: 'stilts', name: 'Under the Stilts', known: 'Mud and shade. Mudskippers, milkfish, archerfish spitting at the lanterns, four-eyed fish.', fish: { mudskipper: 1.4, milkfish: 1.2, archerfish: 1.4, foureyed: 1.2, glassfish: 1.6, scat: 1.4, moony: 1.2, estuarycatfish: .8, halfbeak: 1 } }, { id: 'main', name: 'The Main Channel', known: 'The deep brown flow. Barramundi, mangrove jack, bull sharks at dusk.', fish: { barramundi: 1.8, mangrovejack: 1.4, bullshark: 1.6, milkfish: 0.6, threadfin: .8, sawfish: 1.4, queenfish: .6, estuarygrouper: 1.4 } }, { id: 'backwater', name: 'The Backwater', known: 'Still, black, warm. Four-eyed fish, archerfish, mudskippers, and Monsoon Mother at night.', fish: { foureyed: 1.4, archerfish: 1, mudskipper: 1, monsoonmother: 1, mangrovejack: 0.6, estuarygrouper: .8, glassfish: 1, moony: 1.2, estuarycatfish: 1.4 } }, { id: 'mouth', name: 'The River Mouth', known: 'Where the mud meets the sea. Milkfish, barramundi, mangrove jack, bull sharks.', fish: { milkfish: 1.6, barramundi: 1, mangrovejack: 1, bullshark: 1, mudskipper: 0.5, threadfin: 1.6, sawfish: 1, gianttrevally: 1.6, queenfish: 1.4, scat: .6, halfbeak: 1.2 } }] },
+    hunt: { kind: 'mangrove', name: 'the back channel', gate: 'a boardwalk into the roots' }, spots: [{ id: 'stilts', name: 'Under the Stilts', known: 'Mud and shade. Mudskippers, milkfish, archerfish spitting at the lanterns, four-eyed fish.', fish: { mudskipper: 1.4, milkfish: 1.2, archerfish: 1.4, foureyed: 1.2, glassfish: 1.6, scat: 1.4, moony: 1.2, estuarycatfish: .8, halfbeak: 1 } }, { id: 'main', name: 'The Main Channel', known: 'The deep brown flow. Barramundi, mangrove jack, bull sharks at dusk.', fish: { barramundi: 1.8, mangrovejack: 1.4, bullshark: 1.6, milkfish: 0.6, threadfin: .8, sawfish: 1.4, queenfish: .6, estuarygrouper: 1.4 } }, { id: 'backwater', name: 'The Backwater', known: 'Still, black, warm. Four-eyed fish, archerfish, mudskippers, and Monsoon Mother at night.', fish: { foureyed: 1.4, archerfish: 1, mudskipper: 1, monsoonmother: 1, mangrovejack: 0.6, estuarygrouper: .8, glassfish: 1, moony: 1.2, estuarycatfish: 1.4, largemouth: 1.4 } }, { id: 'mouth', name: 'The River Mouth', known: 'Where the mud meets the sea. Milkfish, barramundi, mangrove jack, bull sharks.', fish: { milkfish: 1.6, barramundi: 1, mangrovejack: 1, bullshark: 1, mudskipper: 0.5, threadfin: 1.6, sawfish: 1, gianttrevally: 1.6, queenfish: 1.4, scat: .6, halfbeak: 1.2 } }] },
   { id: 'fjord', name: 'Frost Fjords', range: 4, shop: true, sell: true, x: 70, y: 14, links: ['trench', 'glass'],
     blurb: 'Far north. Ice station with a shop.', vibe: 'Ice, aurora, a longhouse with a fire that never goes out.',
     rumor: 'Ice and the aurora. Char the colour of the sky and a shark older than the station.',
@@ -395,28 +398,28 @@ const LOCS = [
     keeper: { name: 'Brakka', exotic: true, lines: ['"Hooks of star-iron. Only kind that holds a magma char. Buy two."', '"The lava field has lizards worth their weight. Mind the vents."', '"Inside the hollow mountain they fish by lamplight. Say Brakka sent you. It will not help."'] },
     scene: { shore: 'lava', floor: [[60, 40, 40], [20, 10, 14]], far: 'volcano', props: [['vent', .25], ['vent', .6], ['obsidian', .42], ['obsidian', .8]], particles: 'ash', weather: 'ash' },
     village: { kind: 'forge', props: [['vent', .15], ['anvil', .66], ['obsidian', .9]] },
-    hunt: { kind: 'lavafield', name: 'the lava field', gate: 'an obsidian arch' }, spots: [{ id: 'blacksand', name: 'Black Sand', known: 'Warm underfoot. Ashfin grunts, magma char, ember lanterns at night.', fish: { ashfin: 1.4, magmachar: 1.2, emberlantern: 1.2, cinderling: 1, basaltbream: 1.4, brimstoneray: 1.2, smouldertrout: .6, lavabacksnapper: .8 } }, { id: 'lavamouth', name: 'The Lava Mouth', known: 'Where the flow meets the sea and the water boils. Magma char, obsidian eels, slagbacks, and Caldera.', fish: { magmachar: 1, obsidianeel: 1.6, slagback: 1.6, caldera: 1, ashfin: 0.5, sulfurgar: 1, brimstoneray: .8, lavabacksnapper: 1.4, sooteel: 1.2, fumarolegrouper: 1.4 } }, { id: 'ashshallows', name: 'Ash Shallows', known: 'Grey water, grey fish. Ashfin grunts and ember lanterns.', fish: { ashfin: 1.8, emberlantern: 1.4, magmachar: 0.6, cinderling: 1.4, sulfurgar: 1.2, pumicepuffer: 1.6, sooteel: 1 } }, { id: 'spring', name: 'The Hot Spring', known: 'A pool the smith bathes in. Magma char thick as a hand, slagbacks underneath.', fish: { magmachar: 1.8, slagback: 0.8, ashfin: 0.8, basaltbream: .8, smouldertrout: 1.6, fumarolegrouper: .8, kilncarp: 1.6 } }] },
+    hunt: { kind: 'lavafield', name: 'the lava field', gate: 'an obsidian arch' }, spots: [{ id: 'blacksand', name: 'Black Sand', known: 'Warm underfoot. Ashfin grunts, magma char, ember lanterns at night.', fish: { ashfin: 1.4, magmachar: 1.2, emberlantern: 1.2, cinderling: 1, basaltbream: 1.4, brimstoneray: 1.2, smouldertrout: .6, lavabacksnapper: .8 } }, { id: 'lavamouth', name: 'The Lava Mouth', known: 'Where the flow meets the sea and the water boils. Magma char, obsidian eels, slagbacks, and Caldera.', fish: { magmachar: 1, obsidianeel: 1.6, slagback: 1.6, caldera: 1, ashfin: 0.5, sulfurgar: 1, brimstoneray: .8, lavabacksnapper: 1.4, sooteel: 1.2, fumarolegrouper: 1.4 } }, { id: 'ashshallows', name: 'Ash Shallows', known: 'Grey water, grey fish. Ashfin grunts and ember lanterns.', fish: { ashfin: 1.8, emberlantern: 1.4, magmachar: 0.6, cinderling: 1.4, sulfurgar: 1.2, pumicepuffer: 1.6, sooteel: 1, sixeyedgoby: 1.4 } }, { id: 'spring', name: 'The Hot Spring', known: 'A pool the smith bathes in. Magma char thick as a hand, slagbacks underneath.', fish: { magmachar: 1.8, slagback: 0.8, ashfin: 0.8, basaltbream: .8, smouldertrout: 1.6, fumarolegrouper: .8, kilncarp: 1.6 } }] },
   { id: 'glass', name: 'Glasswater Atoll', range: 5, shop: true, sell: true, x: 118, y: 30, links: ['fjord', 'bell', 'hollow', 'thunder'],
     blurb: 'Water so clear the boats float on air. The fish are hard to see.', vibe: 'Glass sand, crystal shoals, light everywhere, fish you see only when they turn.',
     rumor: 'An atoll of water so clear the boats look like they float on air. The fish there are hard to see, and harder to forget.',
     keeper: { name: 'Lumen', exotic: true, lines: ['"Lensfish. Watch the eye. The rest of it is a rumor."', '"The crabs here are glass. Step carefully or step richly."', '"There is a storm that never moves, north of here. The fish bite like the lightning."'] },
     scene: { shore: 'glass', floor: [[200, 230, 235], [80, 150, 170]], far: 'island', palms: false, props: [['crystal', .2], ['crystal', .5, 1], ['crystal', .78], ['sign', .92]], particles: 'sparkle' },
     village: { kind: 'glasshouse', props: [['crystal', .12], ['crystal', .88, 1], ['lamp', .66]] },
-    hunt: { kind: 'glass', name: 'the crystal shoals', gate: 'a crystal arch' }, spots: [{ id: 'shelf', name: 'The Glass Shelf', known: 'Knee-deep and perfectly clear. Glass minnows, clearfin jacks, lensfish by day.', fish: { glassminnow: 1.4, clearfinjack: 1.2, lensfish: 1.2, shardfin: 1.2, crystalwrasse: 1.6, panesole: 1.4, dewdroptetra: 1, spectrumtang: 1, prismbackbream: 1 } }, { id: 'dropoff', name: 'The Drop-off', known: 'The shelf ends and the blue begins. Prism rays, mirror marlin by day, the Unseen at dawn.', fish: { prismray: 1.6, mirrormarlin: 1.8, clearfinjack: 1, unseen: 1, glassminnow: 0.5, refractorpike: .8, halogrouper: 1.4, lucenteel: 1, miragetuna: 1.8 } }, { id: 'mirror', name: 'Mirror Pool', known: 'So still it shows the sky. Lensfish, glass minnows, prism rays.', fish: { lensfish: 1.6, glassminnow: 1.2, prismray: 1, crystalwrasse: .8, panesole: 1, lucenteel: 1.2, dewdroptetra: 1.6, prismbackbream: 1.4 } }, { id: 'reefline', name: 'The Reef Line', known: 'Crystal shoals breaking the swell. Clearfin jacks, mirror marlin.', fish: { clearfinjack: 1.8, mirrormarlin: 1.2, glassminnow: 0.8, shardfin: 1.4, refractorpike: 1.4, halogrouper: .8, spectrumtang: 1.2 } }] },
+    hunt: { kind: 'glass', name: 'the crystal shoals', gate: 'a crystal arch' }, spots: [{ id: 'shelf', name: 'The Glass Shelf', known: 'Knee-deep and perfectly clear. Glass minnows, clearfin jacks, lensfish by day.', fish: { glassminnow: 1.4, clearfinjack: 1.2, lensfish: 1.2, shardfin: 1.2, crystalwrasse: 1.6, panesole: 1.4, dewdroptetra: 1, spectrumtang: 1, prismbackbream: 1 } }, { id: 'dropoff', name: 'The Drop-off', known: 'The shelf ends and the blue begins. Prism rays, mirror marlin by day, the Unseen at dawn.', fish: { prismray: 1.6, mirrormarlin: 1.8, clearfinjack: 1, unseen: 1, glassminnow: 0.5, refractorpike: .8, halogrouper: 1.4, lucenteel: 1, miragetuna: 1.8 } }, { id: 'mirror', name: 'Mirror Pool', known: 'So still it shows the sky. Lensfish, glass minnows, prism rays.', fish: { lensfish: 1.6, glassminnow: 1.2, prismray: 1, crystalwrasse: .8, panesole: 1, lucenteel: 1.2, dewdroptetra: 1.6, prismbackbream: 1.4, insideoutperch: 1.4 } }, { id: 'reefline', name: 'The Reef Line', known: 'Crystal shoals breaking the swell. Clearfin jacks, mirror marlin.', fish: { clearfinjack: 1.8, mirrormarlin: 1.2, glassminnow: 0.8, shardfin: 1.4, refractorpike: 1.4, halogrouper: .8, spectrumtang: 1.2 } }] },
   { id: 'hollow', name: 'Hollow Mountain', range: 6, shop: true, sell: true, x: 178, y: 50, links: ['cinder', 'glass', 'stars'],
     blurb: 'A lake inside a mountain. The fishermen carry lamps.', vibe: 'A cavern you sail into, lamps on every boat, glowing spores, and a singing nobody mentions.',
     rumor: 'A mountain with a lake inside it. The fishermen there carry lamps, and they do not talk about the singing.',
     keeper: { name: 'the Lamplighter', exotic: true, lines: ['"Lamp oil, hooks, silence. Which?"', '"Bats in the upper galleries. Salamanders by the drip pools. Both sell."', '"When the choir starts, cast. When it stops, leave."'] },
     scene: { shore: 'cave', floor: [[50, 60, 80], [10, 14, 30]], far: 'none', tint: 'rgba(0,0,20,0.35)', props: [['stalagmite', .2], ['glowshroom', .4], ['stalagmite', .65, 1], ['glowshroom', .85]], particles: 'spores', weather: 'cave' },
     village: { kind: 'cavehut', props: [['glowshroom', .14], ['lamp', .66], ['stalagmite', .9]] },
-    hunt: { kind: 'cave', name: 'the upper galleries', gate: 'a lit tunnel' }, spots: [{ id: 'lake', name: 'Lamp Lake', known: 'The main water, ringed with lamps. Cavefish, ghostgills, dripstone loach.', fish: { cavefish: 1.4, ghostgill: 1.2, dripstoneloach: 1.2, moonmilkcatfish: .8, gloomcarp: 1.4, hollowperch: 1.4, lanterngudgeon: 1.6 } }, { id: 'drip', name: 'The Drip Gallery', known: 'Water falls from the dark. Dripstone loach, lampmouths at night, echo carp.', fish: { dripstoneloach: 1.6, lampmouth: 1.4, echocarp: 1.4, cavefish: 0.5, stalactiteeel: 1.4, gloomcarp: .6, lanterngudgeon: 1, resonancepike: .8, palelamprey: 1.4 } }, { id: 'choir', name: 'The Choir Hall', known: 'Where the singing is loudest. Ghostgills, echo carp, lampmouths, and the Deep Choir.', fish: { ghostgill: 1.2, echocarp: 1.2, lampmouth: 1, deepchoir: 1, resonancepike: 1.4, vaultsturgeon: 1.2, chimebass: 1.6 } }, { id: 'sump', name: 'The Sump', known: 'The lowest pool. Cavefish, lampmouths, loach.', fish: { cavefish: 1.6, lampmouth: 1.2, dripstoneloach: 1, stalactiteeel: 1, moonmilkcatfish: 1.4, hollowperch: 1, siltflounder: 1.6, vaultsturgeon: .8, palelamprey: .8 } }] },
+    hunt: { kind: 'cave', name: 'the upper galleries', gate: 'a lit tunnel' }, spots: [{ id: 'lake', name: 'Lamp Lake', known: 'The main water, ringed with lamps. Cavefish, ghostgills, dripstone loach.', fish: { cavefish: 1.4, ghostgill: 1.2, dripstoneloach: 1.2, moonmilkcatfish: .8, gloomcarp: 1.4, hollowperch: 1.4, lanterngudgeon: 1.6 } }, { id: 'drip', name: 'The Drip Gallery', known: 'Water falls from the dark. Dripstone loach, lampmouths at night, echo carp.', fish: { dripstoneloach: 1.6, lampmouth: 1.4, echocarp: 1.4, cavefish: 0.5, stalactiteeel: 1.4, gloomcarp: .6, lanterngudgeon: 1, resonancepike: .8, palelamprey: 1.4 } }, { id: 'choir', name: 'The Choir Hall', known: 'Where the singing is loudest. Ghostgills, echo carp, lampmouths, and the Deep Choir.', fish: { ghostgill: 1.2, echocarp: 1.2, lampmouth: 1, deepchoir: 1, resonancepike: 1.4, vaultsturgeon: 1.2, chimebass: 1.6 } }, { id: 'sump', name: 'The Sump', known: 'The lowest pool. Cavefish, lampmouths, loach.', fish: { cavefish: 1.6, lampmouth: 1.2, dripstoneloach: 1, stalactiteeel: 1, moonmilkcatfish: 1.4, hollowperch: 1, siltflounder: 1.6, vaultsturgeon: .8, palelamprey: .8, twinmawcarp: 1.4 } }] },
   { id: 'thunder', name: 'Thunderhead Shoals', range: 6, shop: true, sell: true, x: 150, y: 14, links: ['glass', 'stars'],
     blurb: 'Shoals under a storm that never moves.', vibe: 'Permanent storm, a lighthouse that hums, fish that crackle when they come out of the water.',
     rumor: 'Shoals under a storm that never moves. The fish there bite like the lightning does.',
     keeper: { name: 'Keeper Voss', exotic: true, lines: ['"Rubber gloves. Trust me."', '"Spark hares on the ridge. Hard to hit. Harder to hold."', '"Beyond the shoals the sea goes up. I have seen the boats that came back. There were none."'] },
     scene: { shore: 'rock', floor: [[50, 60, 70], [14, 18, 30]], far: 'none', tint: 'rgba(0,0,10,0.25)', props: [['deadtree', .2], ['rod', .5], ['deadtree', .75]], particles: 'rain', weather: 'storm' },
     village: { kind: 'lighthouse', props: [['deadtree', .12], ['crate', .66], ['rod', .88]] },
-    hunt: { kind: 'storm', name: 'the blasted ridge', gate: 'two lightning-struck trunks' }, spots: [{ id: 'rock', name: 'Lighthouse Rock', known: 'Under the beam. Spark mackerel, cloudskimmers by day, ordinary mackerel that strayed in.', fish: { sparkmackerel: 1.4, cloudskimmer: 1.4, mackerel: 1.2, boltfish: 1.4, arcwrasse: 1.6, ozoneperch: 1, tempestsalmon: .6, hailstonepuffer: .8 } }, { id: 'stormline', name: 'The Storm Line', known: 'Where the cloud touches the water. Stormeels at night, thunderjaws, and Galvanis.', fish: { stormeel: 1.6, thunderjaw: 1.6, galvanis: 1, sparkmackerel: 0.5, gustgrouper: 1.2, fulgurtuna: 1.8, tempestsalmon: 1.4 } }, { id: 'shoals', name: 'The Shoals', known: 'Breaking white under black sky. Spark mackerel, cloudskimmers, staticfin at night.', fish: { sparkmackerel: 1.2, cloudskimmer: 1, staticfin: 1.8, squallherring: 1, gustgrouper: 1, rumbleray: 1.4, downdraftflounder: 1.4, hailstonepuffer: 1.2 } }, { id: 'lee', name: 'The Lee', known: 'The one calm corner. Mackerel, spark mackerel, the odd stormeel.', fish: { mackerel: 1.6, sparkmackerel: 1, stormeel: 0.8, boltfish: 1, squallherring: 1.4, rumbleray: .6, ozoneperch: 1.4, downdraftflounder: 1 } }] },
+    hunt: { kind: 'storm', name: 'the blasted ridge', gate: 'two lightning-struck trunks' }, spots: [{ id: 'rock', name: 'Lighthouse Rock', known: 'Under the beam. Spark mackerel, cloudskimmers by day, ordinary mackerel that strayed in.', fish: { sparkmackerel: 1.4, cloudskimmer: 1.4, mackerel: 1.2, boltfish: 1.4, arcwrasse: 1.6, ozoneperch: 1, tempestsalmon: .6, hailstonepuffer: .8 } }, { id: 'stormline', name: 'The Storm Line', known: 'Where the cloud touches the water. Stormeels at night, thunderjaws, and Galvanis.', fish: { stormeel: 1.6, thunderjaw: 1.6, galvanis: 1, sparkmackerel: 0.5, gustgrouper: 1.2, fulgurtuna: 1.8, tempestsalmon: 1.4 } }, { id: 'shoals', name: 'The Shoals', known: 'Breaking white under black sky. Spark mackerel, cloudskimmers, staticfin at night.', fish: { sparkmackerel: 1.2, cloudskimmer: 1, staticfin: 1.8, squallherring: 1, gustgrouper: 1, rumbleray: 1.4, downdraftflounder: 1.4, hailstonepuffer: 1.2, knotbackeel: 1.2 } }, { id: 'lee', name: 'The Lee', known: 'The one calm corner. Mackerel, spark mackerel, the odd stormeel.', fish: { mackerel: 1.6, sparkmackerel: 1, stormeel: 0.8, boltfish: 1, squallherring: 1.4, rumbleray: .6, ozoneperch: 1.4, downdraftflounder: 1 } }] },
   { id: 'stars', name: 'The Stars', range: 7, shop: false, sell: false, x: 188, y: 8, links: ['hollow', 'thunder'], blurb: 'Not in this build.', vibe: '', rumor: 'Beyond everything the sea goes up. Nobody who sailed that way has sailed back.', locked: true,
     village: { kind: 'camp', props: [] }, hunt: { kind: 'dunes', name: 'nowhere', gate: 'nothing' }, spots: [{ id: 'void', name: 'The Void', known: 'Not in this build.', fish: {  } }] },
   { id: 'sea', name: 'Open Sea', range: 99, shop: false, sell: false, x: 0, y: 0, links: [], blurb: 'Where it began.', vibe: '', rumor: '', village: { kind: 'camp', props: [] }, hunt: { kind: 'dunes', name: '', gate: '' }, spots: [{ id: 'open', name: 'Open Water', known: 'A calm sea and nothing else.', fish: { sardine: 1, herring: 1, bream: 1, mullet: 1, mackerel: 1, bonefish: 1 } }] }, // prologue only
@@ -674,6 +677,12 @@ const SPECIES = [
   { id: 'downdraftflounder', name: 'Downdraft Flounder', loc: { thunder: 10 }, size: [30, 60], rate: 300, beh: 'sinker', diff: 0.45, shape: 'flat' },
   { id: 'tempestsalmon', name: 'Tempest Salmon', loc: { thunder: 6 }, size: [70, 130], rate: 520, beh: 'dart', diff: 0.72, shape: 'trout', time: ['dawn', 'dusk'], minBait: 1, big: true },
   { id: 'hailstonepuffer', name: 'Hailstone Puffer', loc: { thunder: 10 }, size: [15, 30], rate: 260, beh: 'floater', diff: 0.42, shape: 'bream', minBait: 1 },
+  // --- fish of more than one island, and the mutant-only species (they only ever come mutated; an island of their own is on the idea list) ---
+  { id: 'largemouth', name: 'Largemouth Bass', loc: { lantern: 14, delta: 10 }, size: [25, 75], rate: 60, beh: 'dart', diff: 0.42, shape: 'bream' },
+  { id: 'twinmawcarp', name: 'Twin-maw Carp', loc: { hollow: 7 }, size: [40, 80], rate: 220, beh: 'sinker', diff: 0.50, shape: 'bream', time: ['night'], mutant: true },
+  { id: 'sixeyedgoby', name: 'Six-eyed Goby', loc: { cinder: 9 }, size: [8, 16], rate: 160, beh: 'smooth', diff: 0.30, shape: 'fry', mutant: true },
+  { id: 'knotbackeel', name: 'Knotback Eel', loc: { thunder: 6 }, size: [60, 120], rate: 300, beh: 'dart', diff: 0.60, shape: 'eel', minBait: 1, mutant: true },
+  { id: 'insideoutperch', name: 'Inside-out Perch', loc: { glass: 8 }, size: [15, 30], rate: 260, beh: 'floater', diff: 0.45, shape: 'bream', mutant: true },
   // Legends: one per location. Invented, named, caught once. Rod only, squid, a sliver of a chance, a brutal fight.
   { id: 'wreckwraith',  name: 'Wreckwraith',      loc: { shoal: 0.4 },  size: [250, 320], rate: 400, beh: 'dart',    diff: 0.97, shape: 'big', time: ['night'], rare: true, legend: true, minBait: 2, big: true, k: 0.009 },
   { id: 'harbormaster', name: 'The Harbormaster', loc: { harbor: 0.4 }, size: [350, 450], rate: 300, beh: 'sinker',  diff: 0.97, shape: 'big', time: ['dawn'], rare: true, legend: true, minBait: 2, big: true, k: 0.005 },
@@ -759,6 +768,26 @@ const fishKg = f => f.kg != null ? f.kg : kgOf(SP[f.id], f.cm, 0);
 const fmtKg = kg => kg < 1 ? Math.round(kg * 1000) + ' g' : kg < 10 ? kg.toFixed(1) + ' kg' : Math.round(kg) + ' kg';
 // Worth: rate × kg^0.75, ±15% rolled at catch time, ×1.5 at trophy size, never under $3. Not a straight line on purpose.
 const valueOf = (sp, kg, trophy, jit) => sp.kind ? 0 : Math.round(Math.max(3, sp.rate * Math.pow(Math.max(kg, 0.001), 0.75) * (1 + (jit || 0))) * (trophy ? 1.5 : 1));
+// Rarity tiers, shown in colour on the catch screen and in the index. Derived from the data: a legend is legendary, the `rare`
+// flag is rare (epic when it also needs squid, fights at 0.75+, or sits at weight 3 or under), otherwise the island weight decides.
+// A species can pin its own with `tier`.
+const RARITY = { common: { name: 'Common', col: '#aab6c4' }, uncommon: { name: 'Uncommon', col: '#6fdc8c' }, rare: { name: 'Rare', col: '#5ab0ff' }, epic: { name: 'Epic', col: '#c68bff' }, legendary: { name: 'Legendary', col: '#ffcf4a' } };
+function rarityOf(s) {
+  if (s.kind) return null; if (s.legend) return 'legendary'; if (s.tier) return s.tier;
+  const w = Math.max(...Object.values(s.loc));
+  if (s.rare) return (s.minBait || 0) >= 2 || s.diff >= 0.75 || w <= 3 ? 'epic' : 'rare';
+  return w >= 16 ? 'common' : w >= 7 ? 'uncommon' : 'rare';
+}
+// Variants, rolled at cast time. Large and gigantic come on the rod and the trophy line (a set line never lands them); albino and
+// mutated can come on anything. Worth is multiplied. A species with `mutant: true` only ever comes mutated, with no penalty: that is what it is.
+const VARIANTS = {
+  large:    { name: 'Large',    col: '#ffd34a', mult: 2,   odds: 0.08,  rigs: ['hand', 'trophy'] },
+  gigantic: { name: 'Gigantic', col: '#ff7a3a', mult: 5,   odds: 0.012, rigs: ['hand', 'trophy'] },
+  albino:   { name: 'Albino',   col: '#ffd6e4', mult: 4,   odds: 0.02 },
+  mutated:  { name: 'Mutated',  col: '#8cff5a', mult: 0.5, odds: 0.03 },
+};
+// Strays: a fish can turn up an island from home (tier within one, same side of the exotic line) at a sliver of weight, rod and trophy line only.
+const STRAY = { w: 0.1, tiers: 1 };
 const LOC = Object.fromEntries(LOCS.map(l => [l.id, l]));
 const PHASE_NAME = { dawn: 'Dawn', day: 'Day', dusk: 'Dusk', night: 'Night' };
 
@@ -819,11 +848,24 @@ const phaseAt = t => { const h = hourAt(t); return h >= 5 && h < 7 ? 'dawn' : h 
 function clockText(t) { const h = hourAt(t), hh = Math.floor(h), mm = Math.floor((h - hh) * 60); return `${pad(hh)}:${pad(mm)} · ${PHASE_NAME[phaseAt(t)]}`; }
 
 // ---------- fishing ----------
+const STRAYS = {}; // per island: the set of species that can stray in, computed once
+function straysTo(locId) {
+  if (STRAYS[locId]) return STRAYS[locId]; const here = LOC[locId], out = new Set();
+  if (here.range < 99) for (const s of SPECIES) {
+    if (s.kind || s.legend || s.rare || s.mutant || s.loc[locId] || s.stray === false) continue;
+    const tiers = Object.keys(s.loc).map(id => LOC[id].range).filter(r => r < 99);
+    if (tiers.some(r => Math.abs(r - here.range) <= STRAY.tiers && (r >= 5) === (here.range >= 5))) out.add(s);
+  }
+  return STRAYS[locId] = out;
+}
+// Each entry is [species, weight, stray].
 function pool(locId, rig, baitId, t, spotId) {
   const ph = phaseAt(t), bt = BAITS[baitId].tier, out = [], sp = spotOf(locId, spotId === undefined ? S.spot : spotId);
+  const strays = rig === 'set' ? null : straysTo(locId);
   for (const s of SPECIES) {
-    const mult = sp.fish[s.id]; if (!mult) continue; // a spot's own roster: overlapping, but each spot has fish the others lack
-    const w0 = (s.loc[locId] || 10) * mult;
+    let mult = sp.fish[s.id], stray = false; // a spot's own roster: overlapping, but each spot has fish the others lack
+    if (!mult) { if (!strays || !strays.has(s)) continue; stray = true; } // ...or a stray, far from its own waters
+    const w0 = stray ? STRAY.w : (s.loc[locId] || 10) * mult;
     if (s.time && !s.time.includes(ph)) continue;
     if ((s.minBait || 0) > bt) continue;
     if (s.rare && rig === 'set') continue;
@@ -833,7 +875,7 @@ function pool(locId, rig, baitId, t, spotId) {
     if (s.rare && !s.legend && rig === 'trophy') w *= 4;
     if (!s.kind && bt > 0 && (s.minBait || 0) === bt) w *= 1.5;
     if (rig === 'set' && s.shape === 'big') w *= 0.5;
-    out.push([s, w]);
+    out.push([s, w, stray]);
   }
   return out;
 }
@@ -841,14 +883,22 @@ function rollCatch(locId, rig, baitId, t) {
   let p = pool(locId, rig, baitId, t); if (!p.length) return null;
   if (S.prologue) { const easy = p.filter(x => !x[0].kind && x[0].diff <= (S.proCaught === 0 ? 0.2 : 0.32)); if (easy.length) p = easy; } // the tutorial's fights are gentle ones
   const tot = p.reduce((a, x) => a + x[1], 0);
-  let r = Math.random() * tot, s = p[p.length - 1][0];
-  for (const [sp, w] of p) { r -= w; if (r <= 0) { s = sp; break; } }
+  let r = Math.random() * tot, s = p[p.length - 1][0], stray = false;
+  for (const [sp, w, st] of p) { r -= w; if (r <= 0) { s = sp; stray = !!st; break; } }
   const skew = rig === 'trophy' ? 0.45 : rig === 'set' ? 1.7 : 1;
-  const f = rig === 'set' ? Math.min(0.8, Math.pow(Math.random(), skew)) : Math.pow(Math.random(), skew); // set lines never reach trophy size
-  const cm = s.kind ? 0 : Math.round(s.size[0] + (s.size[1] - s.size[0]) * f);
+  let f = rig === 'set' ? Math.min(0.8, Math.pow(Math.random(), skew)) : Math.pow(Math.random(), skew); // set lines never reach trophy size
+  let v = null; // the variant, if any
+  if (!s.kind && !s.legend && !S.prologue) {
+    if (s.mutant) v = 'mutated';
+    else { let u = Math.random(); for (const id in VARIANTS) { const V = VARIANTS[id]; if (V.rigs && !V.rigs.includes(rig)) continue; u -= V.odds; if (u <= 0) { v = id; break; } } }
+  }
+  if (v === 'large') f = Math.max(f, 0.7 + 0.3 * Math.random());
+  let cm = s.kind ? 0 : Math.round(s.size[0] + (s.size[1] - s.size[0]) * f);
+  if (v === 'gigantic') { cm = Math.round(s.size[1] * rnd(1.3, 1.8)); f = 1; } // past anything the species should grow to
   const trophy = !s.kind && f >= 0.85;
   const kg = s.kind ? 0 : kgOf(s, cm, rnd(-0.08, 0.08));
-  return { id: s.id, cm, kg, value: valueOf(s, kg, trophy, rnd(-0.15, 0.15)), trophy };
+  const mult = v && !s.mutant ? VARIANTS[v].mult : 1;
+  return { id: s.id, cm, kg, value: Math.round(valueOf(s, kg, trophy, rnd(-0.15, 0.15)) * mult), trophy, v, stray };
 }
 function waitFor(rig) { const [a, b] = rig === 'hand' ? T.handWait : rig === 'set' ? T.setWait : T.trophyWait; return rnd(a, b); }
 
@@ -878,7 +928,7 @@ function haulLine(i) {
 function land(i) {
   const L = S.lines[i], c = L.c, s = SP[c.id];
   L.phase = 'idle'; L.c = null;
-  const p = { id: c.id, cm: c.cm, kg: c.kg, value: c.value, trophy: c.trophy, bait: L.bait, rig: L.rig, phase: phaseAt(now()), wait: L.t0 ? Math.max(0, (L.at || now()) - L.t0) : 0, tags: [] };
+  const p = { id: c.id, cm: c.cm, kg: c.kg, value: c.value, trophy: c.trophy, v: c.v || null, stray: !!c.stray, bait: L.bait, rig: L.rig, phase: phaseAt(now()), wait: L.t0 ? Math.max(0, (L.at || now()) - L.t0) : 0, tags: [] };
   if (s.kind) {
     if (s.kind === 'wood' && !S.raft) { S.wood++; if (S.wood >= T.raftWood) p.tags.push('Enough for a raft'); }
   } else {
@@ -888,6 +938,8 @@ function land(i) {
     if ((c.kg || 0) > (ix.bestKg || 0)) ix.bestKg = c.kg;
     ix.n++;
     if (c.trophy) { ix.trophies++; p.tags.push('Trophy size'); }
+    if (c.v) { ix.v = ix.v || {}; ix.v[c.v] = (ix.v[c.v] || 0) + 1; }
+    if (c.stray) p.tags.push('Far from home');
     if (s.legend) p.tags.push('Legend');
   }
   S.pending = p; save(); render(); showCatch();
@@ -898,7 +950,7 @@ function resolveCatch(how) {
   const s = SP[p.id]; S.pending = null; closeCard();
   if (!s.kind) {
     if (how === 'sell' && loc().sell) { S.money += p.value; S.sold += p.value; toast(`Sold the ${s.name.toLowerCase()} for ${money(p.value)}.`); }
-    else if (how === 'keep' && S.bucket.length < T.bucketCap) { S.bucket.push({ id: p.id, cm: p.cm, kg: p.kg, value: p.value, trophy: p.trophy }); toast(`Into the bucket. ${S.bucket.length}/${T.bucketCap}.`); }
+    else if (how === 'keep' && S.bucket.length < T.bucketCap) { S.bucket.push({ id: p.id, cm: p.cm, kg: p.kg, value: p.value, trophy: p.trophy, v: p.v || null }); toast(`Into the bucket. ${S.bucket.length}/${T.bucketCap}.`); }
     else toast('Released.');
   } else if (s.kind === 'junk') toast('Tossed back.');
   if (S.prologue && !s.kind) { S.proCaught++; if (S.proCaught >= 2) { save(); render(); toast('The light is going.'); setTimeout(startStorm, 1400); return; } }
@@ -1010,7 +1062,7 @@ function tutorialText() {
 }
 function renderTide() {
   const t = now(); lastPhase = phaseAt(t);
-  const names = pool(S.loc, 'hand', 'squid', t).filter(x => !x[0].kind && !x[0].rare).map(x => x[0].name);
+  const names = pool(S.loc, 'hand', 'squid', t).filter(x => !x[0].kind && !x[0].rare && !x[2]).map(x => x[0].name);
   if (S.prologue) { $('#tide').innerHTML = tutorialText(); $('#tide').classList.add('tut'); return; }
   $('#tide').classList.remove('tut');
   $('#tide').innerHTML = `<b>${PHASE_NAME[lastPhase]}</b> · biting: ${names.slice(0, 2).join(', ') || 'not much'}`;
@@ -1130,10 +1182,12 @@ function renderSheet() {
   } else if (sheetKind === 'index') {
     const fish = SPECIES.filter(s => !s.kind);
     const rows = fish.map(s => {
-      const ix = S.index[s.id], home = LOCS.find(l => s.loc[l.id]);
-      const mini = `<canvas class="mini" width="64" height="36" data-fish="${s.id}" data-known="${ix ? 1 : 0}"></canvas>`;
-      if (ix) return `<div class="row">${mini}<div class="name" style="flex:1">${s.name}<small>${s.legend ? home.name + ' · legend, landed' : home.name + (s.rare ? ' · rare' : '') + (s.time ? ' · ' + s.time.join('/') : '') + (ix.bestKg ? ' · best ' + fmtKg(ix.bestKg) : '')}</small></div><div class="price">×${ix.n} · ${ix.best} cm${ix.trophies ? ' · ★' + ix.trophies : ''}</div></div>`;
-      return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${S.visited[home.id] ? home.name : 'somewhere out there'}${s.legend ? ' · legend: rod, squid, ' + s.time.join('/') : s.rare ? ' · rare: rod or trophy line' : ''}</small></div><div class="price">—</div></div>`;
+      const ix = S.index[s.id], homes = LOCS.filter(l => s.loc[l.id]), home = homes[0], r = rarityOf(s), rarT = `<span style="color:${RARITY[r].col}">${RARITY[r].name}</span>`;
+      const homeT = homes.length > 1 ? homes.map(l => l.name).join(', ') : home.name;
+      const mini = `<canvas class="mini" width="64" height="36" data-fish="${s.id}" data-known="${ix ? 1 : 0}" data-v="${s.mutant ? 'mutated' : ''}"></canvas>`;
+      const vT = ix && ix.v ? ' · ' + Object.entries(ix.v).map(([k, n]) => `<span style="color:${VARIANTS[k].col}">${VARIANTS[k].name.toLowerCase()}${n > 1 ? ' ×' + n : ''}</span>`).join(', ') : '';
+      if (ix) return `<div class="row">${mini}<div class="name" style="flex:1">${s.name}<small>${rarT} · ${s.legend ? home.name + ' · legend, landed' : homeT + (s.time ? ' · ' + s.time.join('/') : '') + (ix.bestKg ? ' · best ' + fmtKg(ix.bestKg) : '') + vT}</small></div><div class="price">×${ix.n} · ${ix.best} cm${ix.trophies ? ' · ★' + ix.trophies : ''}</div></div>`;
+      return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${rarT} · ${S.visited[home.id] ? homeT : 'somewhere out there'}${s.legend ? ' · legend: rod, squid, ' + s.time.join('/') : s.rare ? ' · rod or trophy line' : ''}</small></div><div class="price">—</div></div>`;
     }).join('');
     const grows = GAME.map(c => { const gx = S.gindex[c.id], home = LOCS.find(l => c.loc[l.id]);
       const mini = `<canvas class="mini game" width="80" height="48" data-game="${c.id}" data-known="${gx ? 1 : 0}"></canvas>`;
@@ -1144,7 +1198,7 @@ function renderSheet() {
     drawMinis(el);
   } else if (sheetKind === 'inv') {
     const total = bucketTotal(), boat = BOATS.find(b => b.id === S.boat), rod = RODS.find(r => r.id === S.rod);
-    const rows = S.bucket.map((f, j) => { const sp = SP[f.id]; return `<div class="row"><canvas class="mini" width="64" height="36" data-fish="${f.id}" data-known="1"></canvas><div class="name" style="flex:1">${sp.name}<small>${f.cm} cm · ${fmtKg(fishKg(f))}${f.trophy ? ' · ★ trophy' : ''}</small></div><div class="price">${money(f.value)}</div><button class="buy" data-act="release" data-i="${j}">LET GO</button></div>`; }).join('');
+    const rows = S.bucket.map((f, j) => { const sp = SP[f.id], V = f.v ? VARIANTS[f.v] : null, r = rarityOf(sp); return `<div class="row"><canvas class="mini" width="64" height="36" data-fish="${f.id}" data-known="1" data-v="${fishMode(f) === 'color' ? '' : fishMode(f)}"></canvas><div class="name" style="flex:1">${V ? `<span style="color:${V.col}">${V.name}</span> ` : ''}${sp.name}<small><span style="color:${RARITY[r].col}">${RARITY[r].name}</span> · ${f.cm} cm · ${fmtKg(fishKg(f))}${f.trophy ? ' · ★ trophy' : ''}</small></div><div class="price">${money(f.value)}</div><button class="buy" data-act="release" data-i="${j}">LET GO</button></div>`; }).join('');
     const market = loc().sell ? `<button class="cta" data-act="sell" ${S.bucket.length ? '' : 'disabled'}>Sell the haul · ${money(total)}</button>`
       : `<div class="note">${S.prologue ? 'Supper, if you can catch it.' : S.raft ? 'No market here. Gull Harbor buys the whole bucket.' : 'No market on the shoal. Build the raft first.'}</div>`;
     el.innerHTML = `<div class="head"><h2>Inventory</h2><button class="x" data-act="close">✕</button></div>
@@ -1179,7 +1233,7 @@ function renderSheet() {
 }
 function drawMinis(el) {
   el.querySelectorAll('canvas.mini.game').forEach(c => { const x = c.getContext('2d'); x.fillStyle = '#1e2a1c'; x.fillRect(0, 0, 80, 48); x.fillStyle = '#2c3a28'; x.fillRect(0, 44, 80, 4); const bc = beastC(c.dataset.game, 1, c.dataset.known === '0' ? 'dim' : 'color'); x.drawImage(bc, (80 - bc.width) >> 1, 44 - bc.height); });
-  el.querySelectorAll('canvas.mini:not(.game)').forEach(c => { const x = c.getContext('2d'); x.fillStyle = '#0f2238'; x.fillRect(0, 0, 64, 36); x.fillStyle = '#152638'; x.fillRect(0, 34, 64, 2); blitFishCentered(x, c.dataset.fish, 32, 17, 1, c.dataset.known === '1' ? 'color' : 'dim'); });
+  el.querySelectorAll('canvas.mini:not(.game)').forEach(c => { const x = c.getContext('2d'); x.fillStyle = '#0f2238'; x.fillRect(0, 0, 64, 36); x.fillStyle = '#152638'; x.fillRect(0, 34, 64, 2); blitFishCentered(x, c.dataset.fish, 32, 17, 1, c.dataset.known === '1' ? (c.dataset.v || 'color') : 'dim'); });
 }
 // visited: full ink. known: named by rumor. fog: next to somewhere visited, drawn as ???. hidden: not on the chart yet.
 function mapState(l) {
@@ -1224,7 +1278,7 @@ function showCatch() {
   if (s.kind === 'wood') { head = S.raft ? 'DRIFTWOOD' : 'A GOOD PLANK'; acts = `<button class="cta" data-act="catch" data-k="ok">${S.raft ? 'Toss it' : 'Take it'}</button>`; }
   else if (s.kind) { head = 'JUNK'; acts = '<button class="cta alt" data-act="catch" data-k="ok">Toss it back</button>'; }
   else {
-    head = s.legend ? 'LEGENDARY!' : p.trophy ? 'TROPHY!' : pills.includes('New record') ? 'NEW RECORD!' : pills.includes('New species') ? 'NEW SPECIES!' : 'LANDED!';
+    head = s.legend ? 'LEGENDARY!' : p.v === 'gigantic' ? 'GIGANTIC!' : p.v === 'albino' ? 'ALBINO!' : p.trophy ? 'TROPHY!' : pills.includes('New record') ? 'NEW RECORD!' : pills.includes('New species') ? 'NEW SPECIES!' : 'LANDED!';
     if (s.legend) pills = pills.filter(t => t !== 'New species');
     pills = pills.filter(t => t.toUpperCase() + '!' !== head); // the headline already says it
     if (full) warn = 'The bucket is full. Sell or let something go first.';
@@ -1239,11 +1293,14 @@ function showCatch() {
       <div class="stat"><div class="n">WORTH</div><div class="v">${money(p.value)}</div></div>
       <div class="stat"><div class="n">BAIT</div><div class="v">${p.bait === 'scraps' ? 'Scraps' : BAITS[p.bait].name}</div></div>
       <div class="stat"><div class="n">TIME</div><div class="v">${PHASE_NAME[p.phase]}</div></div></div>`;
+  const rar = rarityOf(s), V = p.v ? VARIANTS[p.v] : null, headCol = V && (p.v === 'gigantic' || p.v === 'albino') ? `style="color:${V.col}"` : '';
+  const rarLine = rar ? `<div class="rar"><span style="color:${RARITY[rar].col}">${RARITY[rar].name.toUpperCase()}</span>${V ? `<span class="sep">·</span><span style="color:${V.col}">${V.name.toUpperCase()}${s.mutant ? '' : V.mult < 1 ? ' · HALF WORTH' : ' · ×' + V.mult + ' WORTH'}</span>` : ''}</div>` : '';
   $('#card').className = 'card catch';
-  $('#card').innerHTML = `<div class="head">${head}</div>
-    ${pills.length ? `<div class="pills">${pills.map(t => `<div class="pill ${t === 'Trophy size' || t === 'Legend' ? 'gold' : ''}">${t.toUpperCase()}</div>`).join('')}</div>` : ''}
+  $('#card').innerHTML = `<div class="head" ${headCol}>${head}</div>
+    ${pills.length ? `<div class="pills">${pills.map(t => `<div class="pill ${t === 'Trophy size' || t === 'Legend' ? 'gold' : t === 'Far from home' ? 'far' : ''}">${t.toUpperCase()}</div>`).join('')}</div>` : ''}
     <canvas class="art" id="ccv" width="192" height="96"></canvas>
-    <div class="fish">${s.name}</div>
+    <div class="fish">${V ? `<span style="color:${V.col}">${V.name}</span> ` : ''}${s.name}</div>
+    ${rarLine}
     ${s.kind ? '' : `<div class="size"><span>${p.trophy ? '★ ' : ''}${p.cm} cm</span><span class="sep">·</span><span>${fmtKg(fishKg(p))}</span></div>`}
     <div class="sub">${sub}</div>
     ${stats}${warn ? `<div class="warn">${warn}</div>` : ''}
@@ -1259,8 +1316,9 @@ function showCatch() {
   x.fillStyle = 'rgba(255,255,255,0.35)'; for (let k = 0; k < 192; k += 7) x.fillRect(k + (k % 3), 1, 3, 1); // surface glints
   x.fillStyle = '#152638'; x.fillRect(0, 90, 192, 6); x.fillStyle = '#1e3448'; for (let k = 3; k < 192; k += 11) x.fillRect(k, 89, 4, 1); // seabed
   x.fillStyle = 'rgba(223,233,243,.35)'; for (let k = 0; k < 12; k++) x.fillRect((k * 41 + 9) % 192, (k * 17 + 7) % 84, 1, 1); // motes
-  const fm = fishMap(p.id), fsc = fm.length * 3 > 88 || fm[0].length * 3 > 188 ? 2 : 3; // 3x unless the fish would not fit the panel
-  blitFishCentered(x, p.id, 96, 46, fsc, 'color');
+  const fm = fishMap(p.id), fits = k => fm.length * k <= 88 && fm[0].length * k <= 188;
+  const fsc = p.v === 'gigantic' && fits(4) ? 4 : fits(3) ? 3 : 2; // 3x unless the fish would not fit the panel; a gigantic one gets 4x when it can
+  blitFishCentered(x, p.id, 96, 46, fsc, fishMode(p));
 }
 function toast(msg) {
   const w = $('#toasts'), d = document.createElement('div');
@@ -1647,6 +1705,12 @@ const FISH_ART = {
   downdraftflounder: { gen: { w: 46, h: 22, bodyH: .8, peak: .5, ped: .14, snout: .3, tail: 'round', tailLen: .12, dorsal: { type: 'long', from: .05, to: .95, h: 2 }, anal: { type: 'long', from: .05, to: .95, h: 2 }, eyeX: .8, eyeY: .2, eye2: [.87, .14], pect: false, pat: 'spots', dens: .08, seed: 151 }, col: { base: '#4a5060', belly: '#b8c0d0', fin: '#5a6070', mark: '#282c38' } },
   tempestsalmon: { gen: { w: 56, h: 19, bodyH: .52, peak: .45, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .55, h: 3 }, anal: { type: 'soft', from: .6, to: .72, h: 3 }, adipose: true, underbite: 2, pat: 'lights', dens: .06, seed: 152 }, col: { base: '#4a6a90', belly: '#e8f0ff', fin: '#7090b0', mark: '#203048', glow: '#c0e0ff' } },
   hailstonepuffer: { gen: { w: 30, h: 24, bodyH: .84, peak: .55, ped: .2, snout: .45, tail: 'round', tailLen: .12, dorsal: { type: 'soft', from: .6, to: .75, h: 3 }, anal: { type: 'soft', from: .6, to: .75, h: 3 }, eyeX: .8, eyeY: .3, pat: 'spots', dens: .14, seed: 153 }, col: { base: '#d8e8f0', belly: '#ffffff', fin: '#e8f4f8', mark: '#8098b0' } },
+  // --- two-island fish and mutant-only species ---
+  largemouth: { gen: { w: 42, h: 20, bodyH: .6, peak: .42, ped: .2, snout: .36, underbite: 2, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .52, h: 4 }, dorsal2: { type: 'soft', from: .55, to: .74, h: 3 }, anal: { type: 'soft', from: .5, to: .66, h: 3 }, pat: 'lateral' }, col: { base: '#6a8a3a', belly: '#e8f0c8', fin: '#7a9a4a', mark: '#2a3a18' } },
+  twinmawcarp: { gen: { w: 50, h: 26, bodyH: .64, peak: .45, ped: .2, snout: .35, barbel: true, underbite: 3, tail: 'fork', dorsal: { type: 'long', from: .35, to: .7, h: 5 }, anal: { type: 'soft', from: .5, to: .62, h: 3 }, pat: 'scales' }, col: { base: '#8a7a50', belly: '#e0d8b0', fin: '#9a8a60', mark: '#4a4028' } },
+  sixeyedgoby: { gen: { w: 28, h: 13, bodyH: .55, peak: .35, ped: .22, snout: .3, flatHead: true, eye: 1, eye2: [.72, .3], tail: 'round', dorsal: { type: 'spiny', from: .3, to: .5, h: 3 }, dorsal2: { type: 'soft', from: .55, to: .8, h: 2 }, anal: { type: 'soft', from: .55, to: .8, h: 2 }, pat: 'blotch', dens: .1, seed: 161 }, col: { base: '#7a6a5a', belly: '#d8c8b8', fin: '#8a7a6a', mark: '#3a2a20' } },
+  knotbackeel: { gen: { w: 56, h: 14, tail: 'none', ped: .3, peak: .4, snout: .3, bodyH: .8, dorsal: { type: 'long', from: .2, to: .97, h: 3 }, anal: { type: 'long', from: .4, to: .95, h: 2 }, pectX: .8, pect: false, eye: 1, pat: 'saddles', barP: 6, barW: 3 }, col: { base: '#4a5a4a', belly: '#b8c0a8', fin: '#5a6a5a', mark: '#202820' } },
+  insideoutperch: { gen: { w: 34, h: 20, bodyH: .62, peak: .5, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'spiny', from: .35, to: .55, h: 4 }, dorsal2: { type: 'soft', from: .58, to: .75, h: 3 }, anal: { type: 'soft', from: .55, to: .7, h: 2 }, pat: 'bars', barP: 4, barW: 2 }, col: { base: '#c05060', belly: '#f0c0c8', fin: '#d06070', mark: '#602030' } },
   // --- legends ---
   wreckwraith:  { gen: { w: 56, h: 30, bodyH: .6, peak: .4, ped: .2, snout: .3, mouth: 'top', snoutY: -.04, tail: 'fork', tailH: .95, dorsal: { type: 'soft', from: .4, to: .55, h: 5 }, anal: { type: 'soft', from: .45, to: .65, h: 4 }, pat: ['scales', 'lights'], dens: .05, seed: 41 }, col: { base: '#9ad8e8', belly: '#ffffff', fin: '#c8f0ff', mark: '#ffffff', glow: '#80ffff', eye: '#ff4060', eyeW: '#ffe0e8' } },
   harbormaster: { gen: { w: 60, h: 26, bodyH: .55, peak: .4, ped: .2, snout: .25, snoutY: .04, tail: 'hetero', tailH: .9, dorsal: { type: 'soft', from: .2, to: .34, h: 5 }, anal: { type: 'soft', from: .2, to: .3, h: 4 }, barbel: true, mouth: 'low', pat: 'scutes' }, col: { base: '#c8a040', belly: '#fff0c0', fin: '#e0c060', mark: '#fff8e0', eye: '#2a1a08', eyeW: '#ffe8a0' } },
@@ -1829,10 +1893,18 @@ const FISH_MAP = {};
 function fishMap(id) { if (FISH_MAP[id]) return FISH_MAP[id]; const a = FISH_ART[id]; if (a.map) { const w = Math.max(...a.map.map(r => r.length)); return FISH_MAP[id] = a.map.map(r => r + '.'.repeat(w - r.length)); } return FISH_MAP[id] = shadeSil(a.sil || genSil(a.gen), a.g || a.gen); }
 const FISH_PALS = {};
 function fishPalOf(id) { const a = FISH_ART[id]; return FISH_PALS[id] || (FISH_PALS[id] = a.pal || fishPal(a.col)); }
-// mode: 'color' (the sprite), 'dim' (unknown-species silhouette). Cached per id/scale/mode.
+// Variant palettes: albino is bone white with a red eye; mutated turns every tone a third of the way round the wheel, with a hot pink pattern and a yellow eye.
+function variantPal(pal, mode) {
+  if (mode === 'albino') return { o: '#9a7a8a', d: '#e2c8d2', b: '#f3e4ea', B: '#f9eff3', l: '#ffffff', h: '#ffffff', f: '#f0d0dc', F: '#d6b0c0', m: '#e8d2da', n: '#ffd6e4', e: '#e0304c', w: '#ffffff', t: '#ffffff' };
+  if (mode === 'mutated') { const o = {}; for (const k in pal) o[k] = shift(pal[k], 150, 0.2, 0); o.e = '#f4ff40'; o.m = '#ff3ec8'; o.n = '#c0ff40'; o.w = '#d8ffb0'; return o; }
+  return pal;
+}
+// the sprite mode for a caught fish: its variant palette, or the plain colours
+const fishMode = f => f && (f.v === 'albino' || f.v === 'mutated') ? f.v : 'color';
+// mode: 'color' (the sprite), 'dim' (unknown-species silhouette), 'shadow' (the fight), 'albino' / 'mutated' (variants). Cached per id/scale/mode.
 function fishC(id, sc, mode) {
   const key = 'fish:' + id + ':' + sc + ':' + mode; let c = CACHE.get(key); if (c) return c;
-  const m = fishMap(id), pal = fishPalOf(id); c = document.createElement('canvas'); c.width = m[0].length * sc; c.height = m.length * sc;
+  const m = fishMap(id), pal = variantPal(fishPalOf(id), mode); c = document.createElement('canvas'); c.width = m[0].length * sc; c.height = m.length * sc;
   const x = c.getContext('2d');
   for (let r = 0; r < m.length; r++) for (let i = 0; i < m[r].length; i++) { const ch = m[r][i]; if (ch === '.') continue; x.fillStyle = mode === 'dim' ? '#2d3b55' : mode === 'shadow' ? (ch === 'o' ? '#0a1424' : '#132236') : (pal[ch] || pal.b); x.fillRect(i * sc, r * sc, sc, sc); }
   CACHE.set(key, c); return c;
