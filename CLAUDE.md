@@ -14,10 +14,12 @@ A pixel-art fishing game. You are a fisherman stranded on an island. You fish yo
 - **Own art, higher resolution than Stardew.** The bar-and-fish fight mechanic is fair game (mechanics are not protected); the art, sounds, names and UI are ours. Nothing is copied from Stardew Valley or One Cast. Everything in the prototype is placeholder code-drawn pixel art at 192×108 scene resolution; the resolution decision for real art is still open (see below).
 - **Space is the endgame and the pitch line, not a reskin.** Space fishing only earns its place if the mechanics change (gravity throws off the net, alien behaviors). Build hours 1–20 first; space is an expansion.
 - **The world is fictional, the fish are real.** Island names are placeholders until the world is named. Every species outside space is a real fish, placed by biome (warm shallows, temperate pier, kelp forest, deep sea, cold fjord), with its real adult size range. Space gets invented species later.
+- **One legend per location.** The exception to real fish: each location has an invented, named legendary fish (Wreckwraith, The Harbormaster, Verdigris, Nightmaw, Rimeheart) with a line of lore. Rod only, squid, a narrow time window, a sliver of pool weight (0.4 against commons at 20–40), difficulty 0.97+, and it can be landed once ever: once it is in the index it leaves the pool. Losing the fight leaves it out there.
+- **Worth is deliberately unrealistic.** A 4 lb mullet is about $55. Worth comes from weight: `rate × kg^0.75`, ±15% rolled at catch time, ×1.5 at trophy size, floor $3. `rate` is per species and is not proportional to size or rarity on purpose (deep-sea oddities and a garibaldi are worth far more per kilo than a cod), so the curve bends.
 
 ## Open questions and placeholders
 
-- World name and island names: placeholders. Current set: Wreck Shoal (start), Gull Harbor (first port, shop), Kelp Reach (reef, no market), Black Trench (deep, buyer boat sells only), Frost Fjords (ice station, shop), The Stars (locked teaser). Species names are real and settled (53 fish, about ten per location).
+- World name and island names: placeholders. Current set: Wreck Shoal (start), Gull Harbor (first port, shop), Kelp Reach (reef, no market), Black Trench (deep, buyer boat sells only), Frost Fjords (ice station, shop), The Stars (locked teaser). Species names are real and settled (53 fish, about ten per location, plus five legends).
 - Art resolution. Prototype scene is 192×108 logical pixels. "Higher quality than Stardew" means more pixels per sprite; every step up multiplies asset cost. Decide before drawing anything real. Suggestion: 320×180 scene, 24–32 px character.
 - Real-time vs accelerated clock. Prototype: 1 real minute = 1 game hour (24-minute day) so bite windows are testable. Passive-line timers are real time (`Date.now()`), so they survive closing the game.
 - All numbers below are prototype values at roughly one-tenth of intended wait times. Prices and fish values are untuned guesses.
@@ -51,13 +53,13 @@ Everything lives in one `<script>` in `index.html`. Sections, in file order:
 | `T` (tuning) | hour length, wait ranges per rig, hit window, bucket cap, raft wood count |
 | `BAITS`, `RODS`, `BOATS`, `SLOT_PRICES`, `TROPHY_RIG_PRICE` | shop data |
 | `LOCS` | locations: range gate, shop/sell flags, chart coordinates, blurb |
-| `SPECIES` | 53 real fish by biome: location weights, bite-time windows, real size range in cm, base value, fight behavior (`smooth`/`dart`/`sinker`/`floater`), difficulty, min bait tier, rare flag, scene silhouette `shape` (`fry`/`bream`/`trout`/`pike`/`eel`/`big`/`flat`), `big` for double-size silhouettes; plus `wood` and `junk` entries. `ID_MAP_V3` maps the old fictional ids onto these |
-| state (`S`, `freshState`, `save`, `load`) | the whole save in one object (`v: 5`), persisted to `localStorage` under `castaway-proto-v2`; `load` migrates older saves in steps (v3→v4 remaps species ids; v4→v5 derives weights for everything already caught) |
+| `SPECIES` | 53 real fish by biome plus five legends: location weights, bite-time windows, real size range in cm, `rate` (dollars per kg^0.75), `legend` flag, fight behavior (`smooth`/`dart`/`sinker`/`floater`), difficulty, min bait tier, rare flag, scene silhouette `shape` (`fry`/`bream`/`trout`/`pike`/`eel`/`big`/`flat`), `big` for double-size silhouettes; plus `wood` and `junk` entries. `ID_MAP_V3` maps the old fictional ids onto these |
+| state (`S`, `freshState`, `save`, `load`) | the whole save in one object (`v: 6`), persisted to `localStorage` under `castaway-proto-v2`; `load` migrates older saves in steps (v3→v4 remaps species ids; v4→v5 derives weights; v5→v6 reprices catches in hand) |
 | fishing (`pool`, `rollCatch`, `castLine`, `tick`, `land`, `resolveCatch`, …) | the catch is rolled at cast time for the moment the bite will happen; the line just waits for that timestamp. `land` records the catch in the index and parks it in `S.pending`; `resolveCatch` sells, keeps or releases it |
 | shop (`shopItems`, `buy`) | next rod, next boat, extra slots, trophy rig, bait packs |
 | rendering (DOM) | HUD, tide line, lines header, four slot cards, the action box for the selected slot (compact rig·bait row, `rigOpen` unfolds the pickers), the driftwood row and the inventory / sell bar |
 | sheets | chart (canvas + legend + sail), index (with silhouettes), inventory (bucket, bait, gear), shop, menu |
-| catch screen | `showCatch` renders `S.pending` into the card; `fmtDur` for the wait |
+| catch screen | `showCatch` renders `S.pending` into the card (`LEGENDARY!` headline and `LEGEND_LORE` for legends); `fmtDur` for the wait |
 | pixel art | `MASKS` (single-color string masks: distant fish shapes, gulls, crab, sun, map pieces), the species sprite generator (`genSil`, `shadeSil`, `fishPal`) and `FISH_ART` (body plans and palettes per species; `fishMap` builds and caches the coloured map, `fishC` caches canvases per id/scale/mode, `blitFishCentered`), `SPRITES` + `PAL` (multi-color: `sit`, `lie`, `float`), cached to offscreen canvases by `maskC`/`sprite`, `blit` with flip, Bresenham `bres` |
 | sky model | `SKY` keyframes by hour, `skyAt`, `nightness`, star/cloud/rain/snow/mote particle tables seeded by a fixed LCG |
 | canvas & layout | `layout()`, cached `skyLayer`, `seaLayer`, `shaftLayer`, `floorLayer` (per-location seabed) |
@@ -70,7 +72,7 @@ Everything lives in one `<script>` in `index.html`. Sections, in file order:
 
 Line state machine: `idle → waiting → bite (rod, 3 s window) → fight → idle` or `idle → waiting → hooked (set/trophy, waits forever) → haul or fight → idle`. One rod can be active at a time; set lines can all be out at once.
 
-Catch value: `base × (0.6 + 0.9 × sizeFraction)`, doubled at trophy size (sizeFraction ≥ 0.85). Trophy line skews size up (`u^0.45`), set line skews down and caps at 0.8, rod is linear.
+Catch value: `valueOf` = `rate × kg^0.75 × (1 ± 0.15)`, ×1.5 at trophy size (sizeFraction ≥ 0.85), floor $3. Weight comes from `kgOf`. Trophy line skews size up (`u^0.45`), set line skews down and caps at 0.8, rod is linear.
 
 ## How to run and test
 
@@ -105,6 +107,6 @@ Catch value: `base × (0.6 + 0.9 × sizeFraction)`, doubled at trophy size (size
 - Never add art, names, sounds or UI copied from existing games.
 - When adding a species: pick a real fish that belongs in that location's biome; add location weight, time window, real size range, value, behavior, difficulty, min bait, rare flag, scene `shape`, and a `FISH_ART` entry (a body plan and palette; copy the closest existing plan and adjust, or a hand-drawn `sil` for odd shapes). Then re-run the empty-pool check. Judge sprites on a contact sheet first: render every `fishMap` at 3× in a scratch page.
 - Fish are drawn head right, tail left; the scene flips them as needed.
-- Save format is versioned (`v: 5`). Bump it and write a migration in `load()` when the shape changes.
+- Save format is versioned (`v: 6`). Bump it and write a migration in `load()` when the shape changes.
 - Testing in Playwright: the game saves on `visibilitychange`, so a reload overwrites anything you put in `localStorage` from the page. Seed a save with `context.addInitScript` in a fresh context instead.
 - Reference material the designer liked: One Cast (onecast.github.io) for the fast-travel, multi-line, location-and-bite-window structure; Stardew Valley for the fight mechanic. Reference only.

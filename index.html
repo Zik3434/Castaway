@@ -287,66 +287,72 @@ const LOCS = [
 // Real species, placed by biome. Sizes are real adult ranges in cm; values are untuned guesses.
 const SPECIES = [
   // Wreck Shoal: warm shallows around a wreck
-  { id: 'sardine',    name: 'Sardine',               loc: { shoal: 40, harbor: 10 }, size: [10, 20],   value: 2,   beh: 'smooth',  diff: 0.10, shape: 'fry' },
-  { id: 'bream',      name: 'Gilt-head Bream',       loc: { shoal: 24, harbor: 10 }, size: [20, 50],   value: 7,   beh: 'smooth',  diff: 0.30, shape: 'bream' },
-  { id: 'grunt',      name: 'French Grunt',          loc: { shoal: 20 },             size: [15, 30],   value: 5,   beh: 'smooth',  diff: 0.25, shape: 'bream' },
-  { id: 'needlefish', name: 'Needlefish',            loc: { shoal: 12 },             size: [40, 90],   value: 8,   beh: 'dart',    diff: 0.45, shape: 'pike', k: 0.003, time: ['day'] },
-  { id: 'pompano',    name: 'Florida Pompano',       loc: { shoal: 10 },             size: [25, 55],   value: 14,  beh: 'dart',    diff: 0.50, shape: 'bream', k: 0.02, time: ['dawn', 'dusk'] },
-  { id: 'snapper',    name: 'Mangrove Snapper',      loc: { shoal: 12 },             size: [25, 60],   value: 14,  beh: 'sinker',  diff: 0.45, shape: 'bream', time: ['dusk', 'night'], minBait: 1 },
-  { id: 'trigger',    name: 'Queen Triggerfish',     loc: { shoal: 6 },              size: [30, 60],   value: 20,  beh: 'dart',    diff: 0.55, shape: 'bream', k: 0.025, time: ['day'], minBait: 1 },
-  { id: 'bonefish',   name: 'Bonefish',              loc: { shoal: 6 },              size: [40, 80],   value: 30,  beh: 'dart',    diff: 0.70, shape: 'trout', time: ['dawn'], minBait: 1 },
-  { id: 'barracuda',  name: 'Great Barracuda',       loc: { shoal: 4 },              size: [80, 170],  value: 70,  beh: 'dart',    diff: 0.80, shape: 'pike', k: 0.006, time: ['day'], rare: true, minBait: 1, big: true },
-  { id: 'tarpon',     name: 'Tarpon',                loc: { shoal: 5 },              size: [100, 220], value: 90,  beh: 'dart',    diff: 0.85, shape: 'big', k: 0.009, time: ['night'], rare: true, minBait: 1, big: true },
+  { id: 'sardine',    name: 'Sardine',               loc: { shoal: 40, harbor: 10 }, size: [10, 20],   rate: 40,    beh: 'smooth',  diff: 0.10, shape: 'fry' },
+  { id: 'bream',      name: 'Gilt-head Bream',       loc: { shoal: 24, harbor: 10 }, size: [20, 50],   rate: 40,    beh: 'smooth',  diff: 0.30, shape: 'bream' },
+  { id: 'grunt',      name: 'French Grunt',          loc: { shoal: 20 },             size: [15, 30],   rate: 35,    beh: 'smooth',  diff: 0.25, shape: 'bream' },
+  { id: 'needlefish', name: 'Needlefish',            loc: { shoal: 12 },             size: [40, 90],   rate: 30,    beh: 'dart',    diff: 0.45, shape: 'pike', k: 0.003, time: ['day'] },
+  { id: 'pompano',    name: 'Florida Pompano',       loc: { shoal: 10 },             size: [25, 55],   rate: 60,   beh: 'dart',    diff: 0.50, shape: 'bream', k: 0.02, time: ['dawn', 'dusk'] },
+  { id: 'snapper',    name: 'Mangrove Snapper',      loc: { shoal: 12 },             size: [25, 60],   rate: 55,   beh: 'sinker',  diff: 0.45, shape: 'bream', time: ['dusk', 'night'], minBait: 1 },
+  { id: 'trigger',    name: 'Queen Triggerfish',     loc: { shoal: 6 },              size: [30, 60],   rate: 70,   beh: 'dart',    diff: 0.55, shape: 'bream', k: 0.025, time: ['day'], minBait: 1 },
+  { id: 'bonefish',   name: 'Bonefish',              loc: { shoal: 6 },              size: [40, 80],   rate: 90,   beh: 'dart',    diff: 0.70, shape: 'trout', time: ['dawn'], minBait: 1 },
+  { id: 'barracuda',  name: 'Great Barracuda',       loc: { shoal: 4 },              size: [80, 170],  rate: 70,   beh: 'dart',    diff: 0.80, shape: 'pike', k: 0.006, time: ['day'], rare: true, minBait: 1, big: true },
+  { id: 'tarpon',     name: 'Tarpon',                loc: { shoal: 5 },              size: [100, 220], rate: 80,   beh: 'dart',    diff: 0.85, shape: 'big', k: 0.009, time: ['night'], rare: true, minBait: 1, big: true },
   // Gull Harbor: a temperate pier
-  { id: 'herring',    name: 'Atlantic Herring',      loc: { harbor: 30 },            size: [20, 35],   value: 3,   beh: 'smooth',  diff: 0.15, shape: 'fry' },
-  { id: 'mackerel',   name: 'Atlantic Mackerel',     loc: { harbor: 26 },            size: [25, 50],   value: 8,   beh: 'dart',    diff: 0.40, shape: 'trout', time: ['day'] },
-  { id: 'mullet',     name: 'Grey Mullet',           loc: { harbor: 24 },            size: [30, 70],   value: 7,   beh: 'smooth',  diff: 0.30, shape: 'trout' },
-  { id: 'flounder',   name: 'European Flounder',     loc: { harbor: 20 },            size: [20, 50],   value: 11,  beh: 'sinker',  diff: 0.40, shape: 'flat' },
-  { id: 'seabass',    name: 'European Sea Bass',     loc: { harbor: 12 },            size: [40, 90],   value: 22,  beh: 'dart',    diff: 0.55, shape: 'trout', time: ['dawn', 'dusk'], minBait: 1 },
-  { id: 'garfish',    name: 'Garfish',               loc: { harbor: 10 },            size: [50, 90],   value: 10,  beh: 'dart',    diff: 0.45, shape: 'pike', k: 0.003, time: ['day'] },
-  { id: 'pollock',    name: 'Pollock',               loc: { harbor: 10 },            size: [40, 100],  value: 16,  beh: 'smooth',  diff: 0.45, shape: 'trout', minBait: 1 },
-  { id: 'conger',     name: 'Conger Eel',            loc: { harbor: 7, trench: 6 },  size: [80, 200],  value: 35,  beh: 'sinker',  diff: 0.60, shape: 'eel', time: ['night'], minBait: 1, big: true },
-  { id: 'dogfish',    name: 'Spiny Dogfish',         loc: { harbor: 6 },             size: [60, 120],  value: 20,  beh: 'sinker',  diff: 0.50, shape: 'pike', k: 0.004, time: ['night'] },
-  { id: 'sturgeon',   name: 'Atlantic Sturgeon',     loc: { harbor: 3 },             size: [150, 300], value: 160, beh: 'sinker',  diff: 0.80, shape: 'big', k: 0.005, time: ['dawn'], rare: true, minBait: 1, big: true },
+  { id: 'herring',    name: 'Atlantic Herring',      loc: { harbor: 30 },            size: [20, 35],   rate: 35,    beh: 'smooth',  diff: 0.15, shape: 'fry' },
+  { id: 'mackerel',   name: 'Atlantic Mackerel',     loc: { harbor: 26 },            size: [25, 50],   rate: 45,    beh: 'dart',    diff: 0.40, shape: 'trout', time: ['day'] },
+  { id: 'mullet',     name: 'Grey Mullet',           loc: { harbor: 24 },            size: [30, 70],   rate: 35,    beh: 'smooth',  diff: 0.30, shape: 'trout' },
+  { id: 'flounder',   name: 'European Flounder',     loc: { harbor: 20 },            size: [20, 50],   rate: 50,   beh: 'sinker',  diff: 0.40, shape: 'flat' },
+  { id: 'seabass',    name: 'European Sea Bass',     loc: { harbor: 12 },            size: [40, 90],   rate: 70,   beh: 'dart',    diff: 0.55, shape: 'trout', time: ['dawn', 'dusk'], minBait: 1 },
+  { id: 'garfish',    name: 'Garfish',               loc: { harbor: 10 },            size: [50, 90],   rate: 35,   beh: 'dart',    diff: 0.45, shape: 'pike', k: 0.003, time: ['day'] },
+  { id: 'pollock',    name: 'Pollock',               loc: { harbor: 10 },            size: [40, 100],  rate: 40,   beh: 'smooth',  diff: 0.45, shape: 'trout', minBait: 1 },
+  { id: 'conger',     name: 'Conger Eel',            loc: { harbor: 7, trench: 6 },  size: [80, 200],  rate: 40,   beh: 'sinker',  diff: 0.60, shape: 'eel', time: ['night'], minBait: 1, big: true },
+  { id: 'dogfish',    name: 'Spiny Dogfish',         loc: { harbor: 6 },             size: [60, 120],  rate: 35,   beh: 'sinker',  diff: 0.50, shape: 'pike', k: 0.004, time: ['night'] },
+  { id: 'sturgeon',   name: 'Atlantic Sturgeon',     loc: { harbor: 3 },             size: [150, 300], rate: 120, beh: 'sinker',  diff: 0.80, shape: 'big', k: 0.005, time: ['dawn'], rare: true, minBait: 1, big: true },
   // Kelp Reach: a kelp forest
-  { id: 'senorita',   name: 'Señorita',              loc: { reach: 26 },             size: [15, 25],   value: 4,   beh: 'smooth',  diff: 0.20, shape: 'fry' },
-  { id: 'perch',      name: 'Kelp Perch',            loc: { reach: 20 },             size: [15, 22],   value: 5,   beh: 'smooth',  diff: 0.25, shape: 'bream' },
-  { id: 'kelpbass',   name: 'Kelp Bass',             loc: { reach: 30 },             size: [25, 60],   value: 14,  beh: 'smooth',  diff: 0.40, shape: 'bream' },
-  { id: 'garibaldi',  name: 'Garibaldi',             loc: { reach: 14 },             size: [20, 35],   value: 16,  beh: 'dart',    diff: 0.45, shape: 'bream', k: 0.025, time: ['day'] },
-  { id: 'opaleye',    name: 'Opaleye',               loc: { reach: 16 },             size: [25, 50],   value: 9,   beh: 'smooth',  diff: 0.35, shape: 'bream' },
-  { id: 'rockfish',   name: 'Vermilion Rockfish',    loc: { reach: 20 },             size: [30, 75],   value: 18,  beh: 'sinker',  diff: 0.48, shape: 'bream', minBait: 1 },
-  { id: 'sheephead',  name: 'California Sheephead',  loc: { reach: 10 },             size: [40, 90],   value: 30,  beh: 'sinker',  diff: 0.60, shape: 'bream', time: ['day'], minBait: 1 },
-  { id: 'cabezon',    name: 'Cabezon',               loc: { reach: 8 },              size: [40, 90],   value: 26,  beh: 'sinker',  diff: 0.55, shape: 'bream', minBait: 1 },
-  { id: 'yellowtail', name: 'Yellowtail Amberjack',  loc: { reach: 10 },             size: [60, 120],  value: 40,  beh: 'dart',    diff: 0.65, shape: 'trout', time: ['dawn', 'dusk'], minBait: 1 },
-  { id: 'lingcod',    name: 'Lingcod',               loc: { reach: 6 },              size: [60, 150],  value: 60,  beh: 'dart',    diff: 0.72, shape: 'pike', time: ['dusk', 'night'], minBait: 2, big: true },
-  { id: 'leopardshark', name: 'Leopard Shark',       loc: { reach: 4 },              size: [100, 180], value: 120, beh: 'smooth',  diff: 0.75, shape: 'big', k: 0.005, time: ['dawn'], rare: true, minBait: 1, big: true },
-  { id: 'sunfish',    name: 'Ocean Sunfish',         loc: { reach: 3 },              size: [150, 300], value: 250, beh: 'floater', diff: 0.80, shape: 'big', k: 0.06, time: ['day'], rare: true, minBait: 2, big: true },
+  { id: 'senorita',   name: 'Señorita',              loc: { reach: 26 },             size: [15, 25],   rate: 40,    beh: 'smooth',  diff: 0.20, shape: 'fry' },
+  { id: 'perch',      name: 'Kelp Perch',            loc: { reach: 20 },             size: [15, 22],   rate: 40,    beh: 'smooth',  diff: 0.25, shape: 'bream' },
+  { id: 'kelpbass',   name: 'Kelp Bass',             loc: { reach: 30 },             size: [25, 60],   rate: 50,   beh: 'smooth',  diff: 0.40, shape: 'bream' },
+  { id: 'garibaldi',  name: 'Garibaldi',             loc: { reach: 14 },             size: [20, 35],   rate: 150,  beh: 'dart',    diff: 0.45, shape: 'bream', k: 0.025, time: ['day'] },
+  { id: 'opaleye',    name: 'Opaleye',               loc: { reach: 16 },             size: [25, 50],   rate: 40,    beh: 'smooth',  diff: 0.35, shape: 'bream' },
+  { id: 'rockfish',   name: 'Vermilion Rockfish',    loc: { reach: 20 },             size: [30, 75],   rate: 60,   beh: 'sinker',  diff: 0.48, shape: 'bream', minBait: 1 },
+  { id: 'sheephead',  name: 'California Sheephead',  loc: { reach: 10 },             size: [40, 90],   rate: 80,   beh: 'sinker',  diff: 0.60, shape: 'bream', time: ['day'], minBait: 1 },
+  { id: 'cabezon',    name: 'Cabezon',               loc: { reach: 8 },              size: [40, 90],   rate: 60,   beh: 'sinker',  diff: 0.55, shape: 'bream', minBait: 1 },
+  { id: 'yellowtail', name: 'Yellowtail Amberjack',  loc: { reach: 10 },             size: [60, 120],  rate: 90,   beh: 'dart',    diff: 0.65, shape: 'trout', time: ['dawn', 'dusk'], minBait: 1 },
+  { id: 'lingcod',    name: 'Lingcod',               loc: { reach: 6 },              size: [60, 150],  rate: 80,   beh: 'dart',    diff: 0.72, shape: 'pike', time: ['dusk', 'night'], minBait: 2, big: true },
+  { id: 'leopardshark', name: 'Leopard Shark',       loc: { reach: 4 },              size: [100, 180], rate: 60,  beh: 'smooth',  diff: 0.75, shape: 'big', k: 0.005, time: ['dawn'], rare: true, minBait: 1, big: true },
+  { id: 'sunfish',    name: 'Ocean Sunfish',         loc: { reach: 3 },              size: [150, 300], rate: 40,  beh: 'floater', diff: 0.80, shape: 'big', k: 0.06, time: ['day'], rare: true, minBait: 2, big: true },
   // Black Trench: the deep
-  { id: 'hagfish',    name: 'Hagfish',               loc: { trench: 24 },            size: [30, 60],   value: 12,  beh: 'sinker',  diff: 0.35, shape: 'eel', k: 0.002 },
-  { id: 'lanternfish', name: 'Lanternfish',          loc: { trench: 30 },            size: [8, 15],    value: 18,  beh: 'floater', diff: 0.40, shape: 'fry', time: ['dusk', 'night'] },
-  { id: 'grenadier',  name: 'Grenadier',             loc: { trench: 20 },            size: [40, 90],   value: 22,  beh: 'sinker',  diff: 0.45, shape: 'eel', k: 0.005, minBait: 1 },
-  { id: 'sablefish',  name: 'Sablefish',             loc: { trench: 16 },            size: [50, 100],  value: 45,  beh: 'smooth',  diff: 0.50, shape: 'trout', minBait: 1 },
-  { id: 'viperfish',  name: "Sloane's Viperfish",    loc: { trench: 10 },            size: [20, 35],   value: 40,  beh: 'dart',    diff: 0.60, shape: 'pike', time: ['night'], minBait: 1 },
-  { id: 'fangtooth',  name: 'Fangtooth',             loc: { trench: 10 },            size: [10, 18],   value: 35,  beh: 'dart',    diff: 0.55, shape: 'bream', k: 0.02, time: ['night'], minBait: 1 },
-  { id: 'anglerfish', name: 'Humpback Anglerfish',   loc: { trench: 8 },             size: [20, 40],   value: 80,  beh: 'sinker',  diff: 0.65, shape: 'bream', k: 0.025, time: ['night'], minBait: 2 },
-  { id: 'gulper',     name: 'Gulper Eel',            loc: { trench: 6 },             size: [60, 100],  value: 60,  beh: 'floater', diff: 0.60, shape: 'eel', k: 0.002, minBait: 2 },
-  { id: 'chimaera',   name: 'Ghost Shark',           loc: { trench: 5 },             size: [60, 120],  value: 70,  beh: 'smooth',  diff: 0.60, shape: 'big', k: 0.006, minBait: 2 },
-  { id: 'oarfish',    name: 'Oarfish',               loc: { trench: 3 },             size: [300, 600], value: 400, beh: 'floater', diff: 0.85, shape: 'eel', k: 0.001, rare: true, minBait: 2, big: true },
-  { id: 'coelacanth', name: 'Coelacanth',            loc: { trench: 2 },             size: [120, 200], value: 600, beh: 'sinker',  diff: 0.92, shape: 'big', k: 0.016, time: ['night'], rare: true, minBait: 2, big: true },
+  { id: 'hagfish',    name: 'Hagfish',               loc: { trench: 24 },            size: [30, 60],   rate: 60,   beh: 'sinker',  diff: 0.35, shape: 'eel', k: 0.002 },
+  { id: 'lanternfish', name: 'Lanternfish',          loc: { trench: 30 },            size: [8, 15],    rate: 400,  beh: 'floater', diff: 0.40, shape: 'fry', time: ['dusk', 'night'] },
+  { id: 'grenadier',  name: 'Grenadier',             loc: { trench: 20 },            size: [40, 90],   rate: 50,   beh: 'sinker',  diff: 0.45, shape: 'eel', k: 0.005, minBait: 1 },
+  { id: 'sablefish',  name: 'Sablefish',             loc: { trench: 16 },            size: [50, 100],  rate: 110,  beh: 'smooth',  diff: 0.50, shape: 'trout', minBait: 1 },
+  { id: 'viperfish',  name: "Sloane's Viperfish",    loc: { trench: 10 },            size: [20, 35],   rate: 600,  beh: 'dart',    diff: 0.60, shape: 'pike', time: ['night'], minBait: 1 },
+  { id: 'fangtooth',  name: 'Fangtooth',             loc: { trench: 10 },            size: [10, 18],   rate: 900,  beh: 'dart',    diff: 0.55, shape: 'bream', k: 0.02, time: ['night'], minBait: 1 },
+  { id: 'anglerfish', name: 'Humpback Anglerfish',   loc: { trench: 8 },             size: [20, 40],   rate: 800,  beh: 'sinker',  diff: 0.65, shape: 'bream', k: 0.025, time: ['night'], minBait: 2 },
+  { id: 'gulper',     name: 'Gulper Eel',            loc: { trench: 6 },             size: [60, 100],  rate: 300,  beh: 'floater', diff: 0.60, shape: 'eel', k: 0.002, minBait: 2 },
+  { id: 'chimaera',   name: 'Ghost Shark',           loc: { trench: 5 },             size: [60, 120],  rate: 120,  beh: 'smooth',  diff: 0.60, shape: 'big', k: 0.006, minBait: 2 },
+  { id: 'oarfish',    name: 'Oarfish',               loc: { trench: 3 },             size: [300, 600], rate: 100, beh: 'floater', diff: 0.85, shape: 'eel', k: 0.001, rare: true, minBait: 2, big: true },
+  { id: 'coelacanth', name: 'Coelacanth',            loc: { trench: 2 },             size: [120, 200], rate: 400, beh: 'sinker',  diff: 0.92, shape: 'big', k: 0.016, time: ['night'], rare: true, minBait: 2, big: true },
   // Frost Fjords: cold water
-  { id: 'capelin',    name: 'Capelin',               loc: { fjord: 28 },             size: [12, 20],   value: 3,   beh: 'smooth',  diff: 0.15, shape: 'fry' },
-  { id: 'char',       name: 'Arctic Char',           loc: { fjord: 24 },             size: [30, 80],   value: 26,  beh: 'smooth',  diff: 0.45, shape: 'trout' },
-  { id: 'cod',        name: 'Atlantic Cod',          loc: { fjord: 22 },             size: [50, 120],  value: 30,  beh: 'sinker',  diff: 0.50, shape: 'trout', minBait: 1 },
-  { id: 'haddock',    name: 'Haddock',               loc: { fjord: 16 },             size: [40, 80],   value: 22,  beh: 'sinker',  diff: 0.45, shape: 'trout', minBait: 1 },
-  { id: 'pike',       name: 'Northern Pike',         loc: { fjord: 14 },             size: [50, 120],  value: 45,  beh: 'dart',    diff: 0.66, shape: 'pike', minBait: 1 },
-  { id: 'lumpsucker', name: 'Lumpsucker',            loc: { fjord: 10 },             size: [20, 40],   value: 20,  beh: 'sinker',  diff: 0.40, shape: 'bream', k: 0.03 },
-  { id: 'wolffish',   name: 'Atlantic Wolffish',     loc: { fjord: 8 },              size: [60, 120],  value: 55,  beh: 'sinker',  diff: 0.60, shape: 'eel', k: 0.007, time: ['night'], minBait: 1 },
-  { id: 'salmon',     name: 'Atlantic Salmon',       loc: { fjord: 5 },              size: [60, 120],  value: 120, beh: 'dart',    diff: 0.80, shape: 'trout', time: ['dawn', 'dusk'], rare: true, minBait: 1, big: true },
-  { id: 'halibut',    name: 'Atlantic Halibut',      loc: { fjord: 4 },              size: [100, 250], value: 220, beh: 'sinker',  diff: 0.80, shape: 'flat', k: 0.011, rare: true, minBait: 2, big: true },
-  { id: 'greenlandshark', name: 'Greenland Shark',   loc: { fjord: 2 },              size: [300, 500], value: 500, beh: 'sinker',  diff: 0.90, shape: 'big', k: 0.008, time: ['night'], rare: true, minBait: 2, big: true },
+  { id: 'capelin',    name: 'Capelin',               loc: { fjord: 28 },             size: [12, 20],   rate: 40,    beh: 'smooth',  diff: 0.15, shape: 'fry' },
+  { id: 'char',       name: 'Arctic Char',           loc: { fjord: 24 },             size: [30, 80],   rate: 90,   beh: 'smooth',  diff: 0.45, shape: 'trout' },
+  { id: 'cod',        name: 'Atlantic Cod',          loc: { fjord: 22 },             size: [50, 120],  rate: 55,   beh: 'sinker',  diff: 0.50, shape: 'trout', minBait: 1 },
+  { id: 'haddock',    name: 'Haddock',               loc: { fjord: 16 },             size: [40, 80],   rate: 55,   beh: 'sinker',  diff: 0.45, shape: 'trout', minBait: 1 },
+  { id: 'pike',       name: 'Northern Pike',         loc: { fjord: 14 },             size: [50, 120],  rate: 60,   beh: 'dart',    diff: 0.66, shape: 'pike', minBait: 1 },
+  { id: 'lumpsucker', name: 'Lumpsucker',            loc: { fjord: 10 },             size: [20, 40],   rate: 90,   beh: 'sinker',  diff: 0.40, shape: 'bream', k: 0.03 },
+  { id: 'wolffish',   name: 'Atlantic Wolffish',     loc: { fjord: 8 },              size: [60, 120],  rate: 80,   beh: 'sinker',  diff: 0.60, shape: 'eel', k: 0.007, time: ['night'], minBait: 1 },
+  { id: 'salmon',     name: 'Atlantic Salmon',       loc: { fjord: 5 },              size: [60, 120],  rate: 160, beh: 'dart',    diff: 0.80, shape: 'trout', time: ['dawn', 'dusk'], rare: true, minBait: 1, big: true },
+  { id: 'halibut',    name: 'Atlantic Halibut',      loc: { fjord: 4 },              size: [100, 250], rate: 90,  beh: 'sinker',  diff: 0.80, shape: 'flat', k: 0.011, rare: true, minBait: 2, big: true },
+  { id: 'greenlandshark', name: 'Greenland Shark',   loc: { fjord: 2 },              size: [300, 500], rate: 40,  beh: 'sinker',  diff: 0.90, shape: 'big', k: 0.008, time: ['night'], rare: true, minBait: 2, big: true },
+  // Legends: one per location. Invented, named, caught once. Rod only, squid, a sliver of a chance, a brutal fight.
+  { id: 'wreckwraith',  name: 'Wreckwraith',      loc: { shoal: 0.4 },  size: [250, 320], rate: 400, beh: 'dart',    diff: 0.97, shape: 'big', time: ['night'], rare: true, legend: true, minBait: 2, big: true, k: 0.009 },
+  { id: 'harbormaster', name: 'The Harbormaster', loc: { harbor: 0.4 }, size: [350, 450], rate: 300, beh: 'sinker',  diff: 0.97, shape: 'big', time: ['dawn'], rare: true, legend: true, minBait: 2, big: true, k: 0.005 },
+  { id: 'verdigris',    name: 'Verdigris',        loc: { reach: 0.4 },  size: [180, 240], rate: 500, beh: 'dart',    diff: 0.97, shape: 'big', time: ['dusk'], rare: true, legend: true, minBait: 2, big: true, k: 0.008 },
+  { id: 'nightmaw',     name: 'Nightmaw',         loc: { trench: 0.4 }, size: [220, 300], rate: 600, beh: 'sinker',  diff: 0.98, shape: 'big', time: ['night'], rare: true, legend: true, minBait: 2, big: true, k: 0.016 },
+  { id: 'rimeheart',    name: 'Rimeheart',        loc: { fjord: 0.4 },  size: [140, 180], rate: 700, beh: 'dart',    diff: 0.97, shape: 'big', time: ['dawn', 'night'], rare: true, legend: true, minBait: 2, big: true, k: 0.011 },
   // not fish
-  { id: 'wood',       name: 'Driftwood',             loc: { shoal: 38 },             size: [0, 0],     value: 0,   kind: 'wood', shape: 'wood' },
-  { id: 'boot',       name: 'Old Boot',              loc: { harbor: 6, reach: 5 },   size: [0, 0],     value: 0,   kind: 'junk', shape: 'boot' },
+  { id: 'wood',       name: 'Driftwood',             loc: { shoal: 38 },             size: [0, 0],     rate: 0,    kind: 'wood', shape: 'wood' },
+  { id: 'boot',       name: 'Old Boot',              loc: { harbor: 6, reach: 5 },   size: [0, 0],     rate: 0,    kind: 'junk', shape: 'boot' },
 ];
 // v3 saves used a fictional roster; these ids map onto their nearest real species.
 const ID_MAP_V3 = { minnow: 'sardine', jack: 'yellowtail', eel: 'conger', king: 'sturgeon', rockcod: 'rockfish', dragon: 'sunfish', dory: 'lanternfish', grouper: 'sablefish', leviathan: 'coelacanth', aurora: 'salmon' };
@@ -356,13 +362,15 @@ const K_SHAPE = { fry: 0.009, bream: 0.018, trout: 0.011, pike: 0.006, eel: 0.00
 const kgOf = (sp, cm, jit) => Math.round((sp.k || K_SHAPE[sp.shape] || 0.01) * cm * cm * cm / 1000 * (1 + (jit || 0)) * 1000) / 1000;
 const fishKg = f => f.kg != null ? f.kg : kgOf(SP[f.id], f.cm, 0);
 const fmtKg = kg => kg < 1 ? Math.round(kg * 1000) + ' g' : kg < 10 ? kg.toFixed(1) + ' kg' : Math.round(kg) + ' kg';
+// Worth: rate × kg^0.75, ±15% rolled at catch time, ×1.5 at trophy size, never under $3. Not a straight line on purpose.
+const valueOf = (sp, kg, trophy, jit) => sp.kind ? 0 : Math.round(Math.max(3, sp.rate * Math.pow(Math.max(kg, 0.001), 0.75) * (1 + (jit || 0))) * (trophy ? 1.5 : 1));
 const LOC = Object.fromEntries(LOCS.map(l => [l.id, l]));
 const PHASE_NAME = { dawn: 'Dawn', day: 'Day', dusk: 'Dusk', night: 'Night' };
 
 // ---------- state ----------
 function freshState() {
   return {
-    v: 5, started: false, loc: 'shoal', money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 2, trophyRig: false,
+    v: 6, started: false, loc: 'shoal', money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 2, trophyRig: false,
     pending: null, // a landed catch waiting for Sell / Keep / Release; survives a reload
     bait: { shrimp: 0, squid: 0 },
     lines: [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, { rig: 'set', bait: 'scraps', phase: 'idle' }, null, null],
@@ -394,7 +402,12 @@ function load(seed) {
     (d.lines || []).forEach(L => { if (L && L.c && L.c.kg == null && SP[L.c.id]) L.c.kg = kgOf(SP[L.c.id], L.c.cm, 0); });
     d.v = 5;
   }
-  if (d && d.v === 5) S = Object.assign(freshState(), d);
+  if (d && d.v === 5) { // v5 -> v6: worth now comes from weight; reprice everything in hand
+    const re = f => { if (SP[f.id] && !SP[f.id].kind) f.value = valueOf(SP[f.id], f.kg != null ? f.kg : kgOf(SP[f.id], f.cm, 0), f.trophy, 0); };
+    (d.bucket || []).forEach(re); if (d.pending) re(d.pending); (d.lines || []).forEach(L => { if (L && L.c) re(L.c); });
+    d.v = 6;
+  }
+  if (d && d.v === 6) S = Object.assign(freshState(), d);
 }
 
 const loc = () => LOC[S.loc];
@@ -412,9 +425,10 @@ function pool(locId, rig, baitId, t) {
     if (s.time && !s.time.includes(ph)) continue;
     if ((s.minBait || 0) > bt) continue;
     if (s.rare && rig === 'set') continue;
+    if (s.legend && (rig !== 'hand' || S.index[s.id])) continue; // legends: rod only, and only until someone lands it
     let w = w0;
     if (s.kind === 'wood' && S.raft) w = 6;
-    if (s.rare && rig === 'trophy') w *= 4;
+    if (s.rare && !s.legend && rig === 'trophy') w *= 4;
     if (!s.kind && bt > 0 && (s.minBait || 0) === bt) w *= 1.5;
     if (rig === 'set' && s.shape === 'big') w *= 0.5;
     out.push([s, w]);
@@ -430,8 +444,8 @@ function rollCatch(locId, rig, baitId, t) {
   const f = rig === 'set' ? Math.min(0.8, Math.pow(Math.random(), skew)) : Math.pow(Math.random(), skew); // set lines never reach trophy size
   const cm = s.kind ? 0 : Math.round(s.size[0] + (s.size[1] - s.size[0]) * f);
   const trophy = !s.kind && f >= 0.85;
-  const value = s.kind ? 0 : Math.round(s.value * (0.6 + 0.9 * f)) * (trophy ? 2 : 1);
-  return { id: s.id, cm, kg: s.kind ? 0 : kgOf(s, cm, rnd(-0.08, 0.08)), value, trophy };
+  const kg = s.kind ? 0 : kgOf(s, cm, rnd(-0.08, 0.08));
+  return { id: s.id, cm, kg, value: valueOf(s, kg, trophy, rnd(-0.15, 0.15)), trophy };
 }
 function waitFor(rig) { const [a, b] = rig === 'hand' ? T.handWait : rig === 'set' ? T.setWait : T.trophyWait; return rnd(a, b); }
 
@@ -471,6 +485,7 @@ function land(i) {
     if ((c.kg || 0) > (ix.bestKg || 0)) ix.bestKg = c.kg;
     ix.n++;
     if (c.trophy) { ix.trophies++; p.tags.push('Trophy size'); }
+    if (s.legend) p.tags.push('Legend');
   }
   S.pending = p; save(); render(); showCatch();
 }
@@ -671,8 +686,8 @@ function renderSheet() {
     const rows = fish.map(s => {
       const ix = S.index[s.id], home = LOCS.find(l => s.loc[l.id]);
       const mini = `<canvas class="mini" width="64" height="36" data-fish="${s.id}" data-known="${ix ? 1 : 0}"></canvas>`;
-      if (ix) return `<div class="row">${mini}<div class="name" style="flex:1">${s.name}<small>${home.name}${s.rare ? ' · rare' : ''}${s.time ? ' · ' + s.time.join('/') : ''}${ix.bestKg ? ' · best ' + fmtKg(ix.bestKg) : ''}</small></div><div class="price">×${ix.n} · ${ix.best} cm${ix.trophies ? ' · ★' + ix.trophies : ''}</div></div>`;
-      return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${S.visited[home.id] ? home.name : 'somewhere out there'}${s.rare ? ' · rare: rod or trophy line' : ''}</small></div><div class="price">—</div></div>`;
+      if (ix) return `<div class="row">${mini}<div class="name" style="flex:1">${s.name}<small>${s.legend ? home.name + ' · legend, landed' : home.name + (s.rare ? ' · rare' : '') + (s.time ? ' · ' + s.time.join('/') : '') + (ix.bestKg ? ' · best ' + fmtKg(ix.bestKg) : '')}</small></div><div class="price">×${ix.n} · ${ix.best} cm${ix.trophies ? ' · ★' + ix.trophies : ''}</div></div>`;
+      return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${S.visited[home.id] ? home.name : 'somewhere out there'}${s.legend ? ' · legend: rod, squid, ' + s.time.join('/') : s.rare ? ' · rare: rod or trophy line' : ''}</small></div><div class="price">—</div></div>`;
     }).join('');
     el.innerHTML = `<div class="head"><h2>Index ${Object.keys(S.index).length}/${fish.length}</h2><button class="x" data-act="close">✕</button></div><div class="list">${rows}</div>`;
     drawMinis(el);
@@ -719,6 +734,13 @@ function mapClick(e) {
 // ---------- cards & toasts ----------
 function showCard(html) { $('#card').className = 'card'; $('#card').innerHTML = html; $('#cardWrap').hidden = false; }
 function closeCard() { $('#cardWrap').hidden = true; }
+const LEGEND_LORE = {
+  wreckwraith: 'Pale as bone, it circles the wreck on moonless nights. Some say it is the ship\'s captain, still keeping watch.',
+  harbormaster: 'Older than the pier. Brass-scaled, slow, and heavier than the boat that lands it.',
+  verdigris: 'A lingcod gone green-bronze with age, wreathed in kelp. The reef is quiet when it passes.',
+  nightmaw: 'A crown of lights in the black, and a mouth under them. Nothing in the trench swims above it.',
+  rimeheart: 'Ice-blue with fins like the aurora. It runs the fjord only when the sky is burning.',
+};
 function fmtDur(ms) { const sec = Math.round(ms / 1000); if (sec < 60) return sec + 's'; const m = Math.floor(sec / 60), r = sec % 60; return m < 60 ? `${m}m${r ? ' ' + r + 's' : ''}` : `${Math.floor(m / 60)}h ${m % 60}m`; }
 // The catch screen. The fish is held in S.pending until you Sell (market only), Keep (bucket) or Release it.
 function showCatch() {
@@ -728,7 +750,8 @@ function showCatch() {
   if (s.kind === 'wood') { head = S.raft ? 'DRIFTWOOD' : 'A GOOD PLANK'; acts = `<button class="cta" data-act="catch" data-k="ok">${S.raft ? 'Toss it' : 'Take it'}</button>`; }
   else if (s.kind) { head = 'JUNK'; acts = '<button class="cta alt" data-act="catch" data-k="ok">Toss it back</button>'; }
   else {
-    head = p.trophy ? 'TROPHY!' : pills.includes('New record') ? 'NEW RECORD!' : pills.includes('New species') ? 'NEW SPECIES!' : 'LANDED!';
+    head = s.legend ? 'LEGENDARY!' : p.trophy ? 'TROPHY!' : pills.includes('New record') ? 'NEW RECORD!' : pills.includes('New species') ? 'NEW SPECIES!' : 'LANDED!';
+    if (s.legend) pills = pills.filter(t => t !== 'New species');
     pills = pills.filter(t => t.toUpperCase() + '!' !== head); // the headline already says it
     if (full) warn = 'The bucket is full. Sell or let something go first.';
     acts = (canSell ? `<button class="cta" data-act="catch" data-k="sell">Sell ${money(p.value)}</button>` : '')
@@ -744,12 +767,13 @@ function showCatch() {
       <div class="stat"><div class="n">TIME</div><div class="v">${PHASE_NAME[p.phase]}</div></div></div>`;
   $('#card').className = 'card catch';
   $('#card').innerHTML = `<div class="head">${head}</div>
-    ${pills.length ? `<div class="pills">${pills.map(t => `<div class="pill ${t === 'Trophy size' ? 'gold' : ''}">${t.toUpperCase()}</div>`).join('')}</div>` : ''}
+    ${pills.length ? `<div class="pills">${pills.map(t => `<div class="pill ${t === 'Trophy size' || t === 'Legend' ? 'gold' : ''}">${t.toUpperCase()}</div>`).join('')}</div>` : ''}
     <canvas class="art" id="ccv" width="192" height="96"></canvas>
     <div class="fish">${s.name}</div>
     ${s.kind ? '' : `<div class="size"><span>${p.trophy ? '★ ' : ''}${p.cm} cm</span><span class="sep">·</span><span>${fmtKg(fishKg(p))}</span></div>`}
     <div class="sub">${sub}</div>
     ${stats}${warn ? `<div class="warn">${warn}</div>` : ''}
+    ${s.legend ? `<div class="note">${LEGEND_LORE[p.id]} There is only one. It will never bite again.</div>` : ''}
     ${canSell && !s.kind ? '<div class="note">Keep it to sell the whole haul later, or take the money now.</div>' : !s.kind && !S.raft ? '<div class="note">No market on the shoal. Keep it for the first port.</div>' : ''}
     <div class="acts">${acts}</div>`;
   $('#cardWrap').hidden = false;
@@ -1001,6 +1025,12 @@ const FISH_ART = {
   halibut:   { gen: { w: 52, h: 28, bodyH: .85, peak: .5, ped: .12, snout: .25, tail: 'trunc', tailLen: .12, dorsal: { type: 'long', from: .08, to: .9, h: 3 }, anal: { type: 'long', from: .08, to: .9, h: 3 }, eyeX: .8, eyeY: .2, eye2: [.87, .14], pect: false, pat: 'spots', dens: .06, seed: 29 }, col: { base: '#6a7a50', belly: '#e8e0c0', fin: '#88986a', mark: '#a0b080' } },
   salmon:    { gen: { w: 46, h: 20, bodyH: .5, peak: .42, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .55, h: 3 }, adipose: true, anal: { type: 'soft', from: .62, to: .74, h: 3 }, pelvic: .55, underbite: 2, pat: 'backspots', dens: .08, seed: 31 }, col: { base: '#50a8c0', belly: '#ffffff', fin: '#80c0d8', mark: '#1a3a50', glow: '#1a3a50' } },
   greenlandshark:{ gen: { w: 54, h: 22, bodyH: .55, peak: .45, ped: .22, snout: .4, snoutY: .02, tail: 'hetero', tailH: .9, dorsal: { type: 'tri', from: .4, to: .5, h: 3 }, dorsal2: { type: 'tri', from: .68, to: .74, h: 2 }, mouth: 'low', eye: 1, eyeY: .45, sheen: false }, col: { base: '#7a7a90', belly: '#c0c0d0', fin: '#90909a', mark: '#5a5a70' } },
+  // --- legends ---
+  wreckwraith:  { gen: { w: 56, h: 30, bodyH: .6, peak: .4, ped: .2, snout: .3, mouth: 'top', snoutY: -.04, tail: 'fork', tailH: .95, dorsal: { type: 'soft', from: .4, to: .55, h: 5 }, anal: { type: 'soft', from: .45, to: .65, h: 4 }, pat: ['scales', 'lights'], dens: .05, seed: 41 }, col: { base: '#9ad8e8', belly: '#ffffff', fin: '#c8f0ff', mark: '#ffffff', glow: '#80ffff', eye: '#ff4060', eyeW: '#ffe0e8' } },
+  harbormaster: { gen: { w: 60, h: 26, bodyH: .55, peak: .4, ped: .2, snout: .25, snoutY: .04, tail: 'hetero', tailH: .9, dorsal: { type: 'soft', from: .2, to: .34, h: 5 }, anal: { type: 'soft', from: .2, to: .3, h: 4 }, barbel: true, mouth: 'low', pat: 'scutes' }, col: { base: '#c8a040', belly: '#fff0c0', fin: '#e0c060', mark: '#fff8e0', eye: '#2a1a08', eyeW: '#ffe8a0' } },
+  verdigris:    { gen: { w: 56, h: 24, bodyH: .55, peak: .5, ped: .22, snout: .4, tail: 'trunc', dorsal: { type: 'long', from: .25, to: .8, h: 4 }, anal: { type: 'long', from: .5, to: .8, h: 3 }, jaws: { len: .14, gap: .3, teeth: true }, pat: ['spots', 'lights'], dens: .1, seed: 43 }, col: { base: '#3aa080', belly: '#d8f0c0', fin: '#c08040', mark: '#1a5a48', glow: '#ffe080' } },
+  nightmaw:     { gen: { w: 54, h: 28, bodyH: .64, peak: .45, ped: .3, snout: .35, tail: 'round', tailLen: .14, dorsal: { type: 'spiny', from: .3, to: .5, h: 6 }, dorsal2: { type: 'soft', from: .55, to: .68, h: 3 }, anal: { type: 'soft', from: .55, to: .68, h: 3 }, pectH: 5, pelvic: .5, jaws: { len: .25, gap: .4, teeth: true }, pat: 'lights', dens: .1, seed: 47, eye: 1, eyeX: .78 }, col: { base: '#1a1430', belly: '#3a2a58', fin: '#2a2048', mark: '#101020', glow: '#ff40c0', eye: '#ff4040', eyeW: '#ffd0d0' } },
+  rimeheart:    { gen: { w: 54, h: 22, bodyH: .52, peak: .42, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .55, h: 4 }, adipose: true, anal: { type: 'soft', from: .62, to: .74, h: 4 }, pelvic: .55, underbite: 2, pat: ['backspots', 'lights'], dens: .08, seed: 53 }, col: { base: '#80d0ff', belly: '#ffffff', fin: '#ffb0e0', mark: '#ff80c0', glow: '#c0ffe0', eye: '#1a2a60' } },
   // --- not fish ---
   wood: { pal: { o: '#3a2414', b: '#8a5a34', d: '#6a4224', m: '#4a2e18' }, map: [
     '.oooooooooooooooooooooo.', 'obbbbbbbbbbbbbbbbbbbbbbo', 'obddbbbbbbddddbbbbbbbddo', 'obbbbbbdbbbbbbbbbbmbbbbo', 'obbbbbbbbbbbddbbbmmbbbbo', 'obddddbbbbbbbbbbbbmbbddo', 'obbbbbbbbbbbbbbbbbbbbbbo', '.oooooooooooooooooooooo.'] },
@@ -1625,7 +1655,7 @@ const fcv = $('#fcv'), fg = fcv.getContext('2d');
 function startFight(i) {
   const L = S.lines[i], s = SP[L.c.id], bar = rodBar();
   F = { i, s, diff: clamp(s.diff + (L.rig === 'trophy' ? 0.08 : 0) + (L.c.trophy ? 0.06 : 0), 0, 0.97), fy: 0.5, tgt: 0.5, tNext: 0.4, by: 0.5 - bar / 2, bv: 0, bar, p: 0.3, hold: false, inside: false, last: performance.now(), over: false, trophy: L.c.trophy };
-  $('#fname').textContent = s.name + (L.c.trophy ? ' · trophy size' : '');
+  $('#fname').textContent = s.name + (s.legend ? ' · legend' : L.c.trophy ? ' · trophy size' : '');
   $('#fightWrap').hidden = false;
   requestAnimationFrame(fightFrame);
 }
