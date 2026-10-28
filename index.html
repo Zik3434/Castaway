@@ -855,7 +855,7 @@ function renderHUD() {
 function renderTide() {
   const t = now(); lastPhase = phaseAt(t);
   const names = pool(S.loc, 'hand', 'squid', t).filter(x => !x[0].kind && !x[0].rare).map(x => x[0].name);
-  if (S.prologue) { $('#tide').innerHTML = `<b>Calm sea</b> · supper: ${S.proCaught}/2 fish`; return; }
+  if (S.prologue) { $('#tide').innerHTML = S.proCaught < 2 ? `<b>Calm sea.</b> Cast, and catch ${S.proCaught === 0 ? 'two' : 'one more'} for supper. Then home.` : '<b>The light is going.</b>'; return; }
   $('#tide').innerHTML = `<b>${PHASE_NAME[lastPhase]}</b> · biting: ${names.slice(0, 2).join(', ') || 'not much'}`;
 }
 const RIG_NAME = { hand: 'rod', set: 'set', trophy: 'trophy' };
@@ -904,7 +904,7 @@ function renderAction() {
       <div class="segrow"><span class="lbl">BAIT</span><div class="seg">${Object.entries(BAITS).map(([k, b]) => `<button data-act="bait" data-k="${k}" class="${L.bait === k ? 'sel' : ''}" ${k !== 'scraps' && !(S.bait[k] > 0) ? 'disabled' : ''}>${k === 'scraps' ? 'Scraps' : b.name + ' ×' + S.bait[k]}</button>`).join('')}</div></div>` : '';
     box.innerHTML = `<div class="rigrow ${rigOpen ? 'open' : ''}"><button class="chip" data-act="cyclerig" title="Next rig">${RIG_LABEL[L.rig]}</button><span class="dot">·</span><button class="chip" data-act="cyclebait" title="Next bait">${baitLabel(L.bait)}</button><button class="link" data-act="change">${rigOpen ? 'DONE' : 'CHANGE'}</button></div>
       ${pickers}
-      <div class="note">${rigNote(L)}</div>
+      <div class="note">${S.prologue && S.casts === 0 ? 'Cast the rod. When the float dips, tap Reel, then keep the fish inside the net.' : rigNote(L)}</div>
       <button class="cta" data-act="cast" data-i="${i}">${L.rig === 'hand' ? 'Cast' : 'Set the line'}</button>`;
   } else if (L.phase === 'waiting') {
     box.innerHTML = `<div class="rigrow"><span class="chip">${RIG_LABEL[L.rig]}</span><span class="dot">·</span><span class="chip">${baitLabel(L.bait)}</span></div><div class="note" data-line="${i}">${waitNote(L)}</div><button class="cta alt" data-act="pull" data-i="${i}">Pull in</button>`;
