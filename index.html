@@ -2431,7 +2431,7 @@ const CUT = [
 let MODE = 'title', cut = null, capT = 0;
 function setCap() { const c = $('#cap'), i = cut.i; clearTimeout(capT); c.classList.remove('show'); capT = setTimeout(() => { if (!cut || cut.i !== i) return; c.innerHTML = CUT[i].cap; c.classList.add('show'); }, 520); }
 function startCut() { MODE = 'cut'; cut = { i: 0, t0: performance.now() }; $('#title').hidden = true; $('#game').hidden = true; $('#isle').hidden = true; $('#hunt').hidden = true; $('#cut').hidden = false; setCap(); }
-function cutAdvance() { if (!cut) return; cut.i++; if (cut.i >= CUT.length) { endCut(); return; } cut.t0 = performance.now(); setCap(); }
+function cutAdvance() { if (MODE === 'intro') { endIntro(); return; } if (!cut) return; cut.i++; if (cut.i >= CUT.length) { endCut(); return; } cut.t0 = performance.now(); setCap(); }
 function endCut() {
   cut = null;
   const wasPrologue = S.prologue;
@@ -2452,7 +2452,25 @@ let confirmNew = false;
 function newVoyage() {
   if (S.started && !confirmNew) { confirmNew = true; $('#confirm').textContent = 'This wipes your save. Tap again to start over.'; return; }
   S = freshState(); S.started = true; S.prologue = true; S.loc = 'sea'; S.spot = 'open'; S.boat = 'skiff'; S.slots = 1; S.lines = [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, null, null, null]; saveNow();
-  fadeTo(() => { enterGame(); toast('A calm sea. Two for supper, then home.'); });
+  fadeTo(startIntro);
+}
+// A title card before the prologue: the empty sea at dusk, a skiff a long way off, one line. Tap or wait, then the game.
+let introT0 = 0, introDone = false;
+function startIntro() {
+  MODE = 'intro'; introT0 = performance.now(); introDone = false;
+  $('#title').hidden = true; $('#game').hidden = true; $('#isle').hidden = true; $('#hunt').hidden = true; $('#cut').hidden = false;
+  const c = $('#cap'); clearTimeout(capT); c.classList.remove('show'); c.innerHTML = 'Somewhere in the ocean…'; capT = setTimeout(() => c.classList.add('show'), 700);
+}
+function endIntro() {
+  if (introDone) return; introDone = true;
+  fadeTo(() => { $('#cut').hidden = true; enterGame(); toast('A calm sea. Two for supper, then home.'); });
+}
+function drawIntro(t) {
+  const h = 19.1, nt = drawSkyBase(h, t, {});
+  drawSeaBase(h, t, nt, {});
+  const haze = css(lerpC(curSky.bot, [20, 30, 50], 0.55)), bx = (W * 0.68 + Math.sin(t / 1400) * 2) | 0, by = SURF - 1;
+  g.fillStyle = haze; g.fillRect(bx, by, 9, 2); g.fillRect(bx + 3, by - 7, 1, 7); g.fillRect(bx + 4, by - 6, 3, 4); // a skiff, far off
+  g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, 0, W, 1);
 }
 
 // ---------- frame loop ----------
@@ -2465,6 +2483,7 @@ function frame(ts) {
     else if (MODE === 'island') { stepFish(dt); stepIsle(dt); drawIsland(t); }
     else if (MODE === 'hunt') { stepHunt(dt, t); drawHunt(t); }
     else if (MODE === 'title') { drawTitle(t); }
+    else if (MODE === 'intro') { drawIntro(t); if (ts - introT0 > 3800) endIntro(); }
     else if (MODE === 'cut' && cut) {
       const b = CUT[cut.i], p = Math.min(1, (ts - cut.t0) / b.dur);
       stepFish(dt); b.draw(p, t);
@@ -2628,7 +2647,7 @@ document.addEventListener('click', e => {
   else if (a === 'buy') buy(k);
   else if (a === 'new') newVoyage();
   else if (a === 'continue') fadeTo(enterGame);
-  else if (a === 'skip') { e.stopPropagation(); endCut(); }
+  else if (a === 'skip') { e.stopPropagation(); if (MODE === 'intro') endIntro(); else endCut(); }
   else if (a === 'replay') { closeSheet(); fadeTo(startCut); }
   else if (a === 'totitle') { closeSheet(); fadeTo(showTitle); }
 });
