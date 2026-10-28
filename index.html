@@ -1539,7 +1539,7 @@ function fishC(id, sc, mode) {
   const key = 'fish:' + id + ':' + sc + ':' + mode; let c = CACHE.get(key); if (c) return c;
   const m = fishMap(id), pal = fishPalOf(id); c = document.createElement('canvas'); c.width = m[0].length * sc; c.height = m.length * sc;
   const x = c.getContext('2d');
-  for (let r = 0; r < m.length; r++) for (let i = 0; i < m[r].length; i++) { const ch = m[r][i]; if (ch === '.') continue; x.fillStyle = mode === 'dim' ? '#2d3b55' : (pal[ch] || pal.b); x.fillRect(i * sc, r * sc, sc, sc); }
+  for (let r = 0; r < m.length; r++) for (let i = 0; i < m[r].length; i++) { const ch = m[r][i]; if (ch === '.') continue; x.fillStyle = mode === 'dim' ? '#2d3b55' : mode === 'shadow' ? (ch === 'o' ? '#0a1424' : '#132236') : (pal[ch] || pal.b); x.fillRect(i * sc, r * sc, sc, sc); }
   CACHE.set(key, c); return c;
 }
 function blitFishCentered(ctx, id, cx, cy, sc, mode) { const c = fishC(id, sc, mode); ctx.drawImage(c, (cx - c.width / 2) | 0, (cy - c.height / 2) | 0); }
@@ -2512,7 +2512,7 @@ const fcv = $('#fcv'), fg = fcv.getContext('2d');
 function startFight(i) {
   const L = S.lines[i], s = SP[L.c.id], bar = rodBar();
   F = { i, s, diff: clamp(s.diff + (L.rig === 'trophy' ? 0.08 : 0) + (L.c.trophy ? 0.06 : 0), 0, 0.97), fy: 0.5, tgt: 0.5, tNext: 0.4, by: 0.5 - bar / 2, bv: 0, bar, p: 0.3, hold: false, inside: false, last: performance.now(), over: false, trophy: L.c.trophy };
-  $('#fname').textContent = s.name + (s.legend ? ' · legend' : L.c.trophy ? ' · trophy size' : '');
+  $('#fname').textContent = s.legend ? 'Something that should not be here' : L.c.trophy || s.big ? 'Something big' : s.shape === 'fry' ? 'Something small' : 'Something is on';
   $('#fightWrap').hidden = false;
   requestAnimationFrame(fightFrame);
 }
@@ -2553,7 +2553,7 @@ function drawFight(ts) {
   fg.fillStyle = '#f0c050'; fg.fillRect(26, by, 60, 1); fg.fillRect(26, by + bh - 1, 60, 1); fg.fillRect(26, by, 1, bh); fg.fillRect(85, by, 1, bh);
   fg.fillStyle = '#b8871c'; for (let y = by + 3; y < by + bh - 2; y += 4) { fg.fillRect(26, y, 1, 1); fg.fillRect(85, y, 1, 1); }
   const m = fishMap(F.s.id), fh = m.length, fyp = 4 + F.fy * 116;
-  blitFishCentered(fg, F.s.id, 56, clamp(fyp, 4 + (fh >> 1), 120 - (fh >> 1)), 1, 'color');
+  blitFishCentered(fg, F.s.id, 56, clamp(fyp, 4 + (fh >> 1), 120 - (fh >> 1)), 1, 'shadow'); // a shadow only: you learn what it is when you land it
   if (!F.inside) { fg.fillStyle = 'rgba(226,123,95,0.12)'; fg.fillRect(24, 0, 64, 128); }
   fg.fillStyle = '#2a1c10'; fg.fillRect(96, 4, 12, 118); fg.fillStyle = '#3b2a1c'; fg.fillRect(97, 5, 10, 116);
   const ph = Math.round(F.p * 114); fg.fillStyle = F.p > 0.5 ? '#8ad48a' : '#e27b5f'; fg.fillRect(99, 6 + 114 - ph, 6, ph);
