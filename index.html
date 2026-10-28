@@ -655,7 +655,7 @@ function renderSheet() {
     const fish = SPECIES.filter(s => !s.kind);
     const rows = fish.map(s => {
       const ix = S.index[s.id], home = LOCS.find(l => s.loc[l.id]);
-      const mini = `<canvas class="mini" width="64" height="28" data-fish="${s.id}" data-known="${ix ? 1 : 0}"></canvas>`;
+      const mini = `<canvas class="mini" width="64" height="36" data-fish="${s.id}" data-known="${ix ? 1 : 0}"></canvas>`;
       if (ix) return `<div class="row">${mini}<div class="name" style="flex:1">${s.name}<small>${home.name}${s.rare ? ' · rare' : ''}${s.time ? ' · ' + s.time.join('/') : ''}</small></div><div class="price">×${ix.n} · ${ix.best} cm${ix.trophies ? ' · ★' + ix.trophies : ''}</div></div>`;
       return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${S.visited[home.id] ? home.name : 'somewhere out there'}${s.rare ? ' · rare: rod or trophy line' : ''}</small></div><div class="price">—</div></div>`;
     }).join('');
@@ -663,7 +663,7 @@ function renderSheet() {
     drawMinis(el);
   } else if (sheetKind === 'inv') {
     const total = bucketTotal(), boat = BOATS.find(b => b.id === S.boat), rod = RODS.find(r => r.id === S.rod);
-    const rows = S.bucket.map((f, j) => { const sp = SP[f.id]; return `<div class="row"><canvas class="mini" width="64" height="28" data-fish="${f.id}" data-known="1"></canvas><div class="name" style="flex:1">${sp.name}<small>${f.cm} cm${f.trophy ? ' · ★ trophy' : ''}</small></div><div class="price">${money(f.value)}</div><button class="buy" data-act="release" data-i="${j}">LET GO</button></div>`; }).join('');
+    const rows = S.bucket.map((f, j) => { const sp = SP[f.id]; return `<div class="row"><canvas class="mini" width="64" height="36" data-fish="${f.id}" data-known="1"></canvas><div class="name" style="flex:1">${sp.name}<small>${f.cm} cm${f.trophy ? ' · ★ trophy' : ''}</small></div><div class="price">${money(f.value)}</div><button class="buy" data-act="release" data-i="${j}">LET GO</button></div>`; }).join('');
     const market = loc().sell ? `<button class="cta" data-act="sell" ${S.bucket.length ? '' : 'disabled'}>Sell the haul · ${money(total)}</button>`
       : `<div class="note">${S.raft ? 'No market here. Gull Harbor buys the whole bucket.' : 'No market on the shoal. Build the raft first.'}</div>`;
     el.innerHTML = `<div class="head"><h2>Inventory</h2><button class="x" data-act="close">✕</button></div>
@@ -691,7 +691,7 @@ function renderSheet() {
   }
 }
 function drawMinis(el) {
-  el.querySelectorAll('canvas.mini').forEach(c => { const x = c.getContext('2d'); x.fillStyle = '#0f2238'; x.fillRect(0, 0, 64, 28); x.fillStyle = '#152638'; x.fillRect(0, 26, 64, 2); blitFishCentered(x, c.dataset.fish, 32, 13, 1, c.dataset.known === '1' ? 'color' : 'dim'); });
+  el.querySelectorAll('canvas.mini').forEach(c => { const x = c.getContext('2d'); x.fillStyle = '#0f2238'; x.fillRect(0, 0, 64, 36); x.fillStyle = '#152638'; x.fillRect(0, 34, 64, 2); blitFishCentered(x, c.dataset.fish, 32, 17, 1, c.dataset.known === '1' ? 'color' : 'dim'); });
 }
 function mapClick(e) {
   const c = e.currentTarget, r = c.getBoundingClientRect();
@@ -746,7 +746,8 @@ function showCatch() {
   x.fillStyle = 'rgba(255,255,255,0.35)'; for (let k = 0; k < 192; k += 7) x.fillRect(k + (k % 3), 1, 3, 1); // surface glints
   x.fillStyle = '#152638'; x.fillRect(0, 90, 192, 6); x.fillStyle = '#1e3448'; for (let k = 3; k < 192; k += 11) x.fillRect(k, 89, 4, 1); // seabed
   x.fillStyle = 'rgba(223,233,243,.35)'; for (let k = 0; k < 12; k++) x.fillRect((k * 41 + 9) % 192, (k * 17 + 7) % 84, 1, 1); // motes
-  blitFishCentered(x, p.id, 96, 46, 3, 'color'); // fixed 3x, so a sardine reads small next to a halibut
+  const fm = fishMap(p.id), fsc = fm.length * 3 > 88 || fm[0].length * 3 > 188 ? 2 : 3; // 3x unless the fish would not fit the panel
+  blitFishCentered(x, p.id, 96, 46, fsc, 'color');
 }
 function toast(msg) {
   const w = $('#toasts'), d = document.createElement('div');
@@ -780,23 +781,30 @@ const MASKS = {
 // p pectoral on the body side, e eye, o forced dark pixel, m / n explicit markings, t tooth, . empty.
 // shadeSil() adds the outline, back/mid/belly tones, a sheen line, fin rays, the eye and the pattern.
 const ss = u => { u = u < 0 ? 0 : u > 1 ? 1 : u; return u * u * (3 - 2 * u); };
+function trimSil(rows) {
+  let r0 = rows.length, r1 = -1, c0 = rows[0].length, c1 = -1;
+  rows.forEach((row, r) => { for (let c = 0; c < row.length; c++) if (row[c] !== '.') { r0 = Math.min(r0, r); r1 = Math.max(r1, r); c0 = Math.min(c0, c); c1 = Math.max(c1, c); } });
+  if (r1 < 0) return rows;
+  r0 = Math.max(0, r0 - 1); r1 = Math.min(rows.length - 1, r1 + 1); c0 = Math.max(0, c0 - 1); c1 = Math.min(rows[0].length - 1, c1 + 1);
+  return rows.slice(r0, r1 + 1).map(row => row.slice(c0, c1 + 1));
+}
 function genSil(g) {
-  const W = g.w, H = g.h, rows = Array.from({ length: H }, () => Array(W).fill('.'));
+  const PAD = 8, W = g.w + 2, H = g.h + PAD * 2, rows = Array.from({ length: H }, () => Array(W).fill('.'));
   const put = (r, c, ch) => { r = Math.round(r); c = Math.round(c); if (r < 0 || c < 0 || r >= H || c >= W) return; if ((ch === 'f' || ch === 'g') && rows[r][c] !== '.') return; rows[r][c] = ch; };
   const vfill = (c, y0, y1, ch) => { const a = Math.round(Math.min(y0, y1)), b = Math.round(Math.max(y0, y1)); for (let r = a; r <= b; r++) put(r, c, ch); };
-  const cy = (g.cy || 0.5) * H, tailLen = g.tail === 'none' ? 0 : Math.round(W * (g.tailLen || 0.17)), beak = g.beak ? Math.round(W * g.beak) : 0;
-  const x0 = tailLen, x1 = W - 1 - beak, L = x1 - x0;
-  const bodyH = (g.bodyH || 0.6) * H, topFrac = g.topFrac || 0.5, pk = g.peak || 0.45, ped = g.ped || 0.22, sn = g.snout || 0.3, flat = g.flatHead || 0;
+  const cy = PAD + (g.cy || 0.5) * g.h, tailLen = g.tail === 'none' ? 0 : Math.round(g.w * (g.tailLen || 0.17)), beak = g.beak ? Math.round(g.w * g.beak) : 0;
+  const x0 = 1 + tailLen, x1 = g.w - beak, L = x1 - x0;
+  const bodyH = (g.bodyH || 0.6) * g.h, topFrac = g.topFrac || 0.5, pk = g.peak || 0.45, ped = g.ped || 0.22, sn = g.snout || 0.3, flat = g.flatHead || 0;
   const tops = [], bots = [];
   for (let x = x0; x <= x1; x++) {
     let u = (x - x0) / L; const ue = flat ? Math.min(u, 1 - flat) : u;
     const t = ue < pk ? ped + (1 - ped) * ss(ue / pk) : 1 - (1 - sn) * Math.pow((ue - pk) / (1 - pk), g.headPow || 1.8);
-    const hh = t * bodyH, shift = (g.snoutY || 0) * H * Math.max(0, (u - 0.6) / 0.4);
+    const hh = t * bodyH, shift = (g.snoutY || 0) * g.h * Math.max(0, (u - 0.6) / 0.4);
     tops[x] = cy - hh * topFrac + shift; bots[x] = cy + hh * (1 - topFrac) + shift;
     vfill(x, tops[x], bots[x], '#');
   }
   const snoutMid = (tops[x1] + bots[x1]) / 2;
-  if (beak) for (let x = x1 + 1; x < W; x++) { put(snoutMid, x, '#'); if (x < x1 + beak * 0.5) put(snoutMid + 1, x, '#'); }
+  if (beak) for (let x = x1 + 1; x <= x1 + beak; x++) { put(snoutMid, x, '#'); if (x < x1 + beak * 0.5) put(snoutMid + 1, x, '#'); }
   const mouthY = g.mouth === 'top' ? tops[x1] + 1 : g.mouth === 'low' ? bots[x1] - 1 : snoutMid + 0.5;
   if (g.jaws) { // an open mouth: a wedge cut out of the snout, teeth along both jaws
     const len = Math.round(L * g.jaws.len), gap = g.jaws.gap * bodyH;
@@ -805,11 +813,11 @@ function genSil(g) {
   } else { put(mouthY, x1, 'o'); put(mouthY, x1 - 1, 'o'); if (g.bigMouth) { put(mouthY, x1 - 2, 'o'); put(mouthY, x1 - 3, 'o'); } }
   if (g.underbite) for (let k = 1; k <= g.underbite; k++) { put(bots[x1] - 1, x1 + k, '#'); put(bots[x1], x1 + k, '#'); }
   if (!g.noEye) { const ex = Math.round(x0 + L * (g.eyeX || 0.86)), ey = Math.round(tops[ex] + (bots[ex] - tops[ex]) * (g.eyeY || 0.33)); put(ey, ex, 'e'); if (g.eye2) { const ex2 = Math.round(x0 + L * g.eye2[0]), ey2 = Math.round(tops[ex2] + (bots[ex2] - tops[ex2]) * g.eye2[1]); put(ey2, ex2, 'e'); } }
-  const pedH = Math.max(2, ped * bodyH), tailH = (g.tailH || 0.8) * H;
-  if (tailLen) for (let x = 0; x < x0; x++) {
-    const v = 1 - x / x0;
+  const pedH = Math.max(2, ped * bodyH), tailH = (g.tailH || 0.8) * g.h;
+  if (tailLen) for (let x = 1; x < x0; x++) {
+    const v = 1 - (x - 1) / tailLen;
     if (g.tail === 'fork' || g.tail === 'lunate' || g.tail === 'hetero') {
-      const spread = v * (tailH / 2 - pedH / 4), thick = g.tail === 'lunate' ? 1.5 : Math.max(1.5, pedH / 2 * (1 - v) + 1.5), dn = g.tail === 'hetero' ? 0.45 : 1;
+      const spread = v * (tailH / 2 - pedH / 4), thick = g.tail === 'lunate' ? 2 : Math.max(2, pedH / 2 * (1 - v) + 2), dn = g.tail === 'hetero' ? 0.45 : 1;
       vfill(x, cy - pedH / 4 - spread, cy - pedH / 4 - spread + thick, 'f'); vfill(x, cy + pedH / 4 + spread * dn - thick, cy + pedH / 4 + spread * dn, 'f');
       if (v < 0.4) vfill(x, cy - pedH / 2 * (1 - v) - 0.5, cy + pedH / 2 * (1 - v) + 0.5, 'f');
     } else if (g.tail === 'round') { const hh = Math.sqrt(Math.max(0, 1 - v * v * 0.92)) * tailH / 2; vfill(x, cy - hh, cy + hh, 'f'); }
@@ -821,7 +829,7 @@ function genSil(g) {
     else if (f.type === 'long') hp = f.h * (0.7 + 0.3 * Math.sin(Math.PI * u));
     else if (f.type === 'sail') hp = f.h * (u < 0.3 ? u / 0.3 : 1 - 0.8 * (u - 0.3) / 0.7);
     else hp = f.h * (1 - u) + 0.5; // tri: tall at the front, sloping back
-    hp = Math.max(1, hp); if (!tops[x]) continue;
+    hp = Math.max(1, hp * 1.25); if (!tops[x]) continue;
     if (below) vfill(x, bots[x] + 1, bots[x] + hp, 'g'); else vfill(x, tops[x] - hp, tops[x] - 1, 'g'); } };
   fin(g.dorsal); fin(g.dorsal2); fin(g.dorsal3); fin(g.anal, true); fin(g.anal2, true);
   if (g.adipose) { const x = Math.round(x0 + L * 0.2); vfill(x, tops[x] - 2, tops[x] - 1, 'g'); vfill(x + 1, tops[x + 1] - 2, tops[x + 1] - 1, 'g'); put(tops[x + 2] - 1, x + 2, 'g'); }
@@ -829,8 +837,8 @@ function genSil(g) {
   if (g.pelvic) { const px = Math.round(x0 + L * g.pelvic); for (let k = 0; k < 3; k++) vfill(px - k, bots[px - k] + 1, bots[px - k] + (k < 2 ? 2 : 1), 'g'); }
   if (g.barbel) { put(bots[x1 - 1] + 1, x1 - 1, 'o'); put(bots[x1 - 1] + 2, x1 - 2, 'o'); }
   if (g.lure) { const lx = Math.round(x0 + L * 0.78); let y = tops[lx] - 1; for (let k = 0; k < 5; k++) put(y - k, lx + Math.round(k * 0.8), 'o'); put(y - 6, lx + 4, 'n'); put(y - 6, lx + 5, 'n'); put(y - 5, lx + 5, 'n'); put(y - 7, lx + 5, 'n'); }
-  if (g.tailLight) { put(cy, 0, 'n'); put(cy, 1, 'n'); }
-  return rows.map(r => r.join(''));
+  if (g.tailLight) { put(cy, 1, 'n'); put(cy, 2, 'n'); }
+  return trimSil(rows.map(r => r.join('')));
 }
 const hash = (r, c, s) => { const v = Math.sin(r * 12.9898 + c * 78.233 + (s || 1) * 37.719) * 43758.5453; return v - Math.floor(v); };
 function shadeSil(sil, g) {
@@ -848,8 +856,8 @@ function shadeSil(sil, g) {
     if (ch === 'g') { out[r][c] = (c % 3 === 0) ? 'F' : 'f'; continue; }
     if (ch !== '#') { out[r][c] = ch; continue; }
     const span = Math.max(1, bot[c] - top[c]), rel = (r - top[c]) / span, u = (c - left[r]) / Math.max(1, right[r] - left[r]);
-    let v = rel < 0.1 ? (g.sheen === false ? 'd' : 'h') : rel < 0.42 ? 'd' : rel < 0.7 ? 'b' : 'l';
-    if (span < 3) v = rel < 0.5 ? 'b' : 'l';
+    let v = rel < 0.12 ? (g.sheen === false ? 'd' : 'h') : rel < 0.34 ? 'd' : rel < 0.74 ? 'b' : 'l';
+    if (span < 4) v = rel < 0.3 ? 'h' : rel < 0.65 ? 'b' : 'l';
     for (const p of pats) {
       if (p === 'bars' && rel > 0.08 && rel < 0.8 && ((c + (g.barOff || 0)) % (g.barP || 5)) < (g.barW || 2)) v = 'm';
       else if (p === 'saddles' && rel > 0.08 && rel < 0.45 && ((c + (g.barOff || 0)) % (g.barP || 5)) < (g.barW || 2)) v = 'm';
@@ -869,52 +877,63 @@ function shadeSil(sil, g) {
     }
     out[r][c] = v;
   }
-  // eyes: a white 2x2 (or 1x1 for small fish) with the pupil bottom right
-  for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) if (sil[r][c] === 'e') { out[r][c] = 'e'; const big = g.eye !== 1 && (bot[c] - top[c]) >= 7; if (c > 0 && body(sil[r][c - 1])) out[r][c - 1] = 'w'; if (big) { if (r > 0 && body(sil[r - 1][c])) out[r - 1][c] = 'w'; if (r > 0 && c > 0 && body(sil[r - 1][c - 1])) out[r - 1][c - 1] = 'w'; } }
+  // eyes: big and bright. 3x3 white with a 2x2 pupil on deep bodies, 2x2 with a 1px pupil on mid ones, 1+1 on tiny fish.
+  // A white glint sits on the top of the head just behind the eye.
+  const setIf = (r, c, v) => { if (r >= 0 && c >= 0 && r < H && c < W && body(sil[r][c])) out[r][c] = v; };
+  for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) if (sil[r][c] === 'e') {
+    const span = bot[c] - top[c], size = g.eye === 1 ? 1 : span >= 11 ? 3 : span >= 6 ? 2 : 1;
+    if (size === 3) { for (let i = -2; i <= 0; i++) for (let j = -2; j <= 0; j++) setIf(r + i, c + j, 'w'); setIf(r, c, 'e'); setIf(r - 1, c, 'e'); setIf(r, c - 1, 'e'); }
+    else if (size === 2) { setIf(r - 1, c - 1, 'w'); setIf(r - 1, c, 'w'); setIf(r, c - 1, 'w'); setIf(r, c, 'e'); }
+    else { setIf(r, c - 1, 'w'); setIf(r, c, 'e'); }
+    if (g.sheen !== false) for (let k = 3; k <= 4; k++) { const gc = c - k; if (gc >= 0 && top[gc] >= 0) setIf(top[gc], gc, 'w'); }
+  }
   return out.map(r => r.join(''));
 }
-// palette from four or five colours: base (back), belly, fin, mark, glow
-const mixC = (a, b, f) => { const A = hex(a), B = hex(b); return '#' + [0, 1, 2].map(i => (Math.round(A[i] + (B[i] - A[i]) * f) | 0).toString(16).padStart(2, '0')).join(''); };
+// palette from four or five colours: base (body), belly, fin, mark, glow. Shading shifts hue the way hand-pixelled
+// fish do: shadows go darker and bluer, highlights lighter and warmer, the outline is a deep tint of the body, not black.
+function rgb2hsl(c) { const [r, g, b] = hex(c).map(v => v / 255), M = Math.max(r, g, b), m = Math.min(r, g, b), l = (M + m) / 2; if (M === m) return [0, 0, l]; const d = M - m, sat = l > 0.5 ? d / (2 - M - m) : d / (M + m); let h = M === r ? (g - b) / d + (g < b ? 6 : 0) : M === g ? (b - r) / d + 2 : (r - g) / d + 4; return [h * 60, sat, l]; }
+function hsl2hex(h, sat, l) { h = ((h % 360) + 360) % 360; sat = clamp(sat, 0, 1); l = clamp(l, 0, 1); const f = n => { const k = (n + h / 30) % 12, a = sat * Math.min(l, 1 - l); return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))); }; return '#' + [f(0), f(8), f(4)].map(v => v.toString(16).padStart(2, '0')).join(''); }
+const shift = (c, dh, ds, dl) => { const [h, sat, l] = rgb2hsl(c); return hsl2hex(h + dh, sat + ds, l + dl); };
 function fishPal(col) {
-  return { o: mixC(col.base, '#0a1020', 0.62), d: mixC(col.base, '#0a1020', 0.22), b: col.base, l: col.belly, h: mixC(col.base, col.belly, 0.55),
-    f: col.fin, F: mixC(col.fin, '#0a1020', 0.3), m: col.mark || col.base, n: col.glow || col.mark || col.belly, e: col.eye || '#0a0a10', w: col.eyeW || '#f4f4f0', t: '#f4f4f0' };
+  const b = col.base;
+  return { o: shift(b, 18, 0.05, -0.36), d: shift(b, 10, 0.06, -0.14), b, l: col.belly, h: shift(b, -14, 0.08, 0.2),
+    f: col.fin, F: shift(col.fin, 12, 0, -0.16), m: col.mark || b, n: col.glow || col.mark || col.belly, e: col.eye || '#14141e', w: col.eyeW || '#ffffff', t: '#ffffff' };
 }
-// gen: body plan; col: palette; pat/seed/dens: pattern. w/h is the sprite size.
 const FISH_ART = {
   // --- Wreck Shoal: warm shallows around a wreck ---
-  sardine:   { gen: { w: 28, h: 12, bodyH: .5, ped: .18, snout: .2, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .6, h: 2 }, anal: { type: 'soft', from: .5, to: .62, h: 1 }, pat: 'backspots', dens: .1, seed: 3 }, col: { base: '#4a6a8a', belly: '#e8f0f4', fin: '#9fb8d2', mark: '#2a3a5a', glow: '#2a3a5a' } },
-  bream:     { gen: { w: 40, h: 20, bodyH: .72, peak: .5, ped: .18, snout: .35, topFrac: .55, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .38, to: .56, h: 3 }, pat: 'lateral' }, col: { base: '#8a9ab0', belly: '#ece8dc', fin: '#a8a898', mark: '#c8a040' } },
-  grunt:     { gen: { w: 36, h: 18, bodyH: .6, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .72, h: 4 }, anal: { type: 'soft', from: .42, to: .6, h: 3 }, pat: 'stripes' }, col: { base: '#d8c050', belly: '#f0e8c0', fin: '#e8d070', mark: '#4080c0' } },
-  needlefish:{ gen: { w: 56, h: 10, bodyH: .45, ped: .3, peak: .5, snout: .5, beak: .3, tail: 'fork', tailH: .9, dorsal: { type: 'soft', from: .25, to: .45, h: 2 }, anal: { type: 'soft', from: .25, to: .45, h: 2 }, pat: 'lateral', eye: 1 }, col: { base: '#3a7a6a', belly: '#e0f0e8', fin: '#6aa090', mark: '#2a4a40' } },
-  pompano:   { gen: { w: 40, h: 22, bodyH: .76, peak: .5, ped: .12, snout: .22, tail: 'lunate', tailH: .95, dorsal: { type: 'soft', from: .4, to: .76, h: 4 }, anal: { type: 'soft', from: .4, to: .76, h: 4 } }, col: { base: '#a0b0c0', belly: '#f4f6f6', fin: '#e0c040', mark: '#c8c8c8' } },
-  snapper:   { gen: { w: 42, h: 20, bodyH: .62, peak: .45, ped: .2, snout: .33, tail: 'trunc', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .4, to: .6, h: 3 }, pat: 'bars', barP: 6, barW: 2, barOff: 2 }, col: { base: '#8a5a4a', belly: '#e0c8a8', fin: '#b07050', mark: '#6a4038' } },
-  trigger:   { gen: { w: 40, h: 22, bodyH: .78, peak: .5, ped: .15, snout: .35, snoutY: .05, tail: 'lunate', dorsal: { type: 'sail', from: .25, to: .45, h: 6 }, dorsal2: { type: 'soft', from: .5, to: .76, h: 4 }, anal: { type: 'soft', from: .5, to: .76, h: 4 }, pat: 'spots', dens: .07, seed: 5 }, col: { base: '#4a7a80', belly: '#d8d080', fin: '#70a0a8', mark: '#2a5060' } },
-  bonefish:  { gen: { w: 46, h: 14, bodyH: .5, peak: .45, ped: .2, snout: .25, snoutY: .03, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .6, h: 4 }, anal: { type: 'soft', from: .3, to: .4, h: 2 }, pat: 'lateral' }, col: { base: '#8898a8', belly: '#f2f2f2', fin: '#a8b8c0', mark: '#6a7a8a' } },
-  barracuda: { gen: { w: 56, h: 14, bodyH: .5, peak: .55, ped: .22, snout: .4, tail: 'fork', dorsal: { type: 'soft', from: .3, to: .4, h: 3 }, dorsal2: { type: 'soft', from: .62, to: .72, h: 3 }, anal: { type: 'soft', from: .3, to: .4, h: 3 }, jaws: { len: .2, gap: .35, teeth: true }, pat: 'saddles', barP: 5, barW: 2 }, col: { base: '#5a6a7a', belly: '#e8e8e8', fin: '#7a8a9a', mark: '#2a3a4a' } },
-  tarpon:    { gen: { w: 56, h: 20, bodyH: .6, peak: .4, ped: .2, snout: .3, mouth: 'top', snoutY: -.04, tail: 'fork', tailH: .95, dorsal: { type: 'soft', from: .4, to: .55, h: 4 }, anal: { type: 'soft', from: .45, to: .65, h: 4 }, pat: 'scales' }, col: { base: '#8a9ab0', belly: '#f4f4f8', fin: '#a8b8c8', mark: '#dfe9f3' } },
+  sardine:   { gen: { w: 24, h: 15, bodyH: .5, ped: .18, snout: .2, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .6, h: 2 }, anal: { type: 'soft', from: .5, to: .62, h: 1 }, pat: 'backspots', dens: .1, seed: 3 }, col: { base: '#4aa0e0', belly: '#f8fbff', fin: '#9fd0f0', mark: '#1f4f90', glow: '#1f4f90' } },
+  bream:     { gen: { w: 34, h: 25, bodyH: .72, peak: .5, ped: .18, snout: .35, topFrac: .55, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .38, to: .56, h: 3 }, pat: 'lateral' }, col: { base: '#e0c060', belly: '#fff8e0', fin: '#f0d880', mark: '#ff8c00' } },
+  grunt:     { gen: { w: 30, h: 22, bodyH: .6, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .72, h: 4 }, anal: { type: 'soft', from: .42, to: .6, h: 3 }, pat: 'stripes' }, col: { base: '#ffd23a', belly: '#fff6c8', fin: '#ffe070', mark: '#2a7fe0' } },
+  needlefish:{ gen: { w: 48, h: 12, bodyH: .45, ped: .3, peak: .5, snout: .5, beak: .3, tail: 'fork', tailH: .9, dorsal: { type: 'soft', from: .25, to: .45, h: 2 }, anal: { type: 'soft', from: .25, to: .45, h: 2 }, pat: 'lateral', eye: 1 }, col: { base: '#38c0a0', belly: '#e8fff8', fin: '#7ae0c8', mark: '#1a6a58' } },
+  pompano:   { gen: { w: 34, h: 28, bodyH: .76, peak: .5, ped: .12, snout: .22, tail: 'lunate', tailH: .95, dorsal: { type: 'soft', from: .4, to: .76, h: 4 }, anal: { type: 'soft', from: .4, to: .76, h: 4 } }, col: { base: '#a8c8e8', belly: '#ffffff', fin: '#ffd030', mark: '#6a90b8' } },
+  snapper:   { gen: { w: 36, h: 25, bodyH: .62, peak: .45, ped: .2, snout: .33, tail: 'trunc', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .4, to: .6, h: 3 }, pat: 'bars', barP: 6, barW: 2, barOff: 2 }, col: { base: '#e07050', belly: '#ffd8b0', fin: '#ff9060', mark: '#8a2a30' } },
+  trigger:   { gen: { w: 34, h: 28, bodyH: .78, peak: .5, ped: .15, snout: .35, snoutY: .05, tail: 'lunate', dorsal: { type: 'sail', from: .25, to: .45, h: 6 }, dorsal2: { type: 'soft', from: .5, to: .76, h: 4 }, anal: { type: 'soft', from: .5, to: .76, h: 4 }, pat: 'spots', dens: .07, seed: 5 }, col: { base: '#30a0b0', belly: '#ffe66a', fin: '#60d0d8', mark: '#1a4a70' } },
+  bonefish:  { gen: { w: 40, h: 18, bodyH: .5, peak: .45, ped: .2, snout: .25, snoutY: .03, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .6, h: 4 }, anal: { type: 'soft', from: .3, to: .4, h: 2 }, pat: 'lateral' }, col: { base: '#a8c0d8', belly: '#ffffff', fin: '#c8d8e8', mark: '#6a7a90' } },
+  barracuda: { gen: { w: 48, h: 18, bodyH: .5, peak: .55, ped: .22, snout: .4, tail: 'fork', dorsal: { type: 'soft', from: .3, to: .4, h: 3 }, dorsal2: { type: 'soft', from: .62, to: .72, h: 3 }, anal: { type: 'soft', from: .3, to: .4, h: 3 }, jaws: { len: .2, gap: .35, teeth: true }, pat: 'saddles', barP: 5, barW: 2 }, col: { base: '#70a0c0', belly: '#f0f8ff', fin: '#90b8d0', mark: '#1a3a60' } },
+  tarpon:    { gen: { w: 48, h: 25, bodyH: .6, peak: .4, ped: .2, snout: .3, mouth: 'top', snoutY: -.04, tail: 'fork', tailH: .95, dorsal: { type: 'soft', from: .4, to: .55, h: 4 }, anal: { type: 'soft', from: .45, to: .65, h: 4 }, pat: 'scales' }, col: { base: '#9ab8d8', belly: '#ffffff', fin: '#b8d0e8', mark: '#e8f4ff' } },
   // --- Gull Harbor: a temperate pier ---
-  herring:   { gen: { w: 30, h: 12, bodyH: .5, ped: .18, snout: .22, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .6, h: 2 }, anal: { type: 'soft', from: .5, to: .62, h: 1 } }, col: { base: '#3a5a7a', belly: '#f0f4f8', fin: '#a0b0c0', mark: '#6a8aa0' } },
-  mackerel:  { gen: { w: 42, h: 14, bodyH: .5, peak: .45, ped: .18, snout: .25, tail: 'lunate', dorsal: { type: 'spiny', from: .3, to: .45, h: 3 }, dorsal2: { type: 'soft', from: .55, to: .65, h: 2 }, anal: { type: 'soft', from: .55, to: .65, h: 2 }, pat: 'saddles', barP: 3, barW: 1 }, col: { base: '#2a6a7a', belly: '#e8eef0', fin: '#5a8a98', mark: '#0a2a30' } },
-  mullet:    { gen: { w: 42, h: 15, bodyH: .5, peak: .4, ped: .22, snout: .4, tail: 'trunc', dorsal: { type: 'spiny', from: .4, to: .5, h: 3 }, dorsal2: { type: 'soft', from: .65, to: .75, h: 2 }, anal: { type: 'soft', from: .62, to: .72, h: 2 }, pat: 'stripes' }, col: { base: '#7a8a9a', belly: '#e8eef2', fin: '#90a0b0', mark: '#4a5a6a' } },
-  flounder:  { gen: { w: 44, h: 22, bodyH: .8, peak: .5, ped: .15, snout: .3, tail: 'round', tailLen: .12, dorsal: { type: 'long', from: .05, to: .95, h: 2 }, anal: { type: 'long', from: .05, to: .95, h: 2 }, eyeX: .8, eyeY: .2, eye2: [.87, .14], pect: false, pat: 'spots', dens: .1, seed: 2 }, col: { base: '#8a6a44', belly: '#c9ad80', fin: '#a88a60', mark: '#5a4428' } },
-  seabass:   { gen: { w: 46, h: 17, bodyH: .56, peak: .45, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'spiny', from: .35, to: .55, h: 4 }, dorsal2: { type: 'soft', from: .6, to: .75, h: 3 }, anal: { type: 'soft', from: .55, to: .7, h: 3 }, pat: 'lateral' }, col: { base: '#6a7a86', belly: '#e8ecee', fin: '#8898a0', mark: '#3a4a50' } },
-  garfish:   { gen: { w: 56, h: 9, bodyH: .45, ped: .3, peak: .5, snout: .5, beak: .3, tail: 'fork', tailH: .9, dorsal: { type: 'soft', from: .25, to: .45, h: 2 }, anal: { type: 'soft', from: .25, to: .45, h: 2 }, pat: 'lateral', eye: 1 }, col: { base: '#3a6a4a', belly: '#e8f0e8', fin: '#70a080', mark: '#2a4a3a' } },
-  pollock:   { gen: { w: 44, h: 16, bodyH: .55, peak: .4, ped: .2, snout: .3, underbite: 1, tail: 'trunc', dorsal: { type: 'soft', from: .3, to: .4, h: 3 }, dorsal2: { type: 'long', from: .45, to: .75, h: 3 }, anal: { type: 'long', from: .45, to: .75, h: 2 }, pat: 'lateral' }, col: { base: '#3a5a4a', belly: '#d8e0d8', fin: '#6a8a7a', mark: '#a8c0b0' } },
-  conger:    { gen: { w: 56, h: 12, tail: 'none', ped: .08, peak: .3, snout: .35, bodyH: .6, dorsal: { type: 'long', from: .15, to: .97, h: 2 }, anal: { type: 'long', from: .2, to: .97, h: 2 }, underbite: 1, pectX: .8 }, col: { base: '#5a6a70', belly: '#d0d8d8', fin: '#70808a', mark: '#3a4a50' } },
-  dogfish:   { gen: { w: 54, h: 14, bodyH: .48, peak: .4, ped: .2, snout: .25, snoutY: .02, tail: 'hetero', dorsal: { type: 'tri', from: .35, to: .47, h: 4 }, dorsal2: { type: 'tri', from: .65, to: .73, h: 3 }, mouth: 'low', pat: 'spots', dens: .05, seed: 7 }, col: { base: '#6a7080', belly: '#e0e4e8', fin: '#8a9098', mark: '#e8ecf0' } },
-  sturgeon:  { gen: { w: 60, h: 18, bodyH: .5, peak: .4, ped: .2, snout: .25, snoutY: .04, tail: 'hetero', tailH: .9, dorsal: { type: 'soft', from: .2, to: .32, h: 4 }, anal: { type: 'soft', from: .2, to: .3, h: 3 }, barbel: true, mouth: 'low', pat: 'scutes' }, col: { base: '#6a6a62', belly: '#d8d0c0', fin: '#7a7a70', mark: '#c8c0a8' } },
+  herring:   { gen: { w: 26, h: 15, bodyH: .5, ped: .18, snout: .22, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .6, h: 2 }, anal: { type: 'soft', from: .5, to: .62, h: 1 } }, col: { base: '#3a90d0', belly: '#ffffff', fin: '#a0c8e8', mark: '#1a4a80' } },
+  mackerel:  { gen: { w: 36, h: 18, bodyH: .5, peak: .45, ped: .18, snout: .25, tail: 'lunate', dorsal: { type: 'spiny', from: .3, to: .45, h: 3 }, dorsal2: { type: 'soft', from: .55, to: .65, h: 2 }, anal: { type: 'soft', from: .55, to: .65, h: 2 }, pat: 'saddles', barP: 3, barW: 1 }, col: { base: '#20b0b8', belly: '#f0fbff', fin: '#50c8d0', mark: '#0a2a50' } },
+  mullet:    { gen: { w: 36, h: 19, bodyH: .5, peak: .4, ped: .22, snout: .4, tail: 'trunc', dorsal: { type: 'spiny', from: .4, to: .5, h: 3 }, dorsal2: { type: 'soft', from: .65, to: .75, h: 2 }, anal: { type: 'soft', from: .62, to: .72, h: 2 }, pat: 'stripes' }, col: { base: '#70a8d8', belly: '#f4f8ff', fin: '#90b8e0', mark: '#2a4a80' } },
+  flounder:  { gen: { w: 38, h: 28, bodyH: .8, peak: .5, ped: .15, snout: .3, tail: 'round', tailLen: .12, dorsal: { type: 'long', from: .05, to: .95, h: 2 }, anal: { type: 'long', from: .05, to: .95, h: 2 }, eyeX: .8, eyeY: .2, eye2: [.87, .14], pect: false, pat: 'spots', dens: .1, seed: 2 }, col: { base: '#c08a40', belly: '#f0dcb0', fin: '#d8a860', mark: '#6a3a18' } },
+  seabass:   { gen: { w: 40, h: 21, bodyH: .56, peak: .45, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'spiny', from: .35, to: .55, h: 4 }, dorsal2: { type: 'soft', from: .6, to: .75, h: 3 }, anal: { type: 'soft', from: .55, to: .7, h: 3 }, pat: 'lateral' }, col: { base: '#8ab0c8', belly: '#ffffff', fin: '#a8c8d8', mark: '#2a4a60' } },
+  garfish:   { gen: { w: 48, h: 11, bodyH: .45, ped: .3, peak: .5, snout: .5, beak: .3, tail: 'fork', tailH: .9, dorsal: { type: 'soft', from: .25, to: .45, h: 2 }, anal: { type: 'soft', from: .25, to: .45, h: 2 }, pat: 'lateral', eye: 1 }, col: { base: '#30c070', belly: '#e8fff0', fin: '#70e0a0', mark: '#186a3a' } },
+  pollock:   { gen: { w: 38, h: 20, bodyH: .55, peak: .4, ped: .2, snout: .3, underbite: 1, tail: 'trunc', dorsal: { type: 'soft', from: .3, to: .4, h: 3 }, dorsal2: { type: 'long', from: .45, to: .75, h: 3 }, anal: { type: 'long', from: .45, to: .75, h: 2 }, pat: 'lateral' }, col: { base: '#3a9a70', belly: '#e0f8e8', fin: '#70c0a0', mark: '#c8ffe0' } },
+  conger:    { gen: { w: 48, h: 15, tail: 'none', ped: .08, peak: .3, snout: .35, bodyH: .6, dorsal: { type: 'long', from: .15, to: .97, h: 2 }, anal: { type: 'long', from: .2, to: .97, h: 2 }, underbite: 1, pectX: .8 }, col: { base: '#7a90a8', belly: '#e8f0f8', fin: '#98b0c8', mark: '#3a4a60' } },
+  dogfish:   { gen: { w: 46, h: 18, bodyH: .48, peak: .4, ped: .2, snout: .25, snoutY: .02, tail: 'hetero', dorsal: { type: 'tri', from: .35, to: .47, h: 4 }, dorsal2: { type: 'tri', from: .65, to: .73, h: 3 }, mouth: 'low', pat: 'spots', dens: .05, seed: 7 }, col: { base: '#8098b8', belly: '#ffffff', fin: '#a0b8d0', mark: '#ffffff' } },
+  sturgeon:  { gen: { w: 52, h: 22, bodyH: .5, peak: .4, ped: .2, snout: .25, snoutY: .04, tail: 'hetero', tailH: .9, dorsal: { type: 'soft', from: .2, to: .32, h: 4 }, anal: { type: 'soft', from: .2, to: .3, h: 3 }, barbel: true, mouth: 'low', pat: 'scutes' }, col: { base: '#9a8a70', belly: '#ffe8c0', fin: '#b0a080', mark: '#fff0d0' } },
   // --- Kelp Reach: a kelp forest ---
-  senorita:  { gen: { w: 30, h: 11, bodyH: .45, peak: .45, ped: .25, snout: .3, tail: 'trunc', dorsal: { type: 'long', from: .3, to: .8, h: 2 }, anal: { type: 'long', from: .4, to: .8, h: 2 }, pat: 'stripes' }, col: { base: '#c07a40', belly: '#f0d8b0', fin: '#d09050', mark: '#8a5020' } },
-  perch:     { gen: { w: 32, h: 14, bodyH: .6, peak: .5, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'spiny', from: .35, to: .7, h: 3 }, anal: { type: 'soft', from: .5, to: .7, h: 2 }, pat: 'stripes' }, col: { base: '#a06a40', belly: '#e8c8a0', fin: '#c08050', mark: '#6a4028' } },
-  kelpbass:  { gen: { w: 42, h: 18, bodyH: .6, peak: .45, ped: .2, snout: .3, tail: 'trunc', dorsal: { type: 'spiny', from: .3, to: .55, h: 4 }, dorsal2: { type: 'soft', from: .55, to: .75, h: 3 }, anal: { type: 'soft', from: .55, to: .7, h: 3 }, pat: 'spots2', dens: .1, seed: 4 }, col: { base: '#5a7a3a', belly: '#c8c898', fin: '#7a9a4a', mark: '#38502a' } },
-  garibaldi: { gen: { w: 34, h: 20, bodyH: .78, peak: .5, ped: .18, snout: .35, tail: 'fork', dorsal: { type: 'long', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .5, to: .75, h: 3 } }, col: { base: '#f08030', belly: '#f8b060', fin: '#f09040', mark: '#d05010' } },
-  rockfish:  { gen: { w: 42, h: 20, bodyH: .66, peak: .4, ped: .2, snout: .33, tail: 'trunc', dorsal: { type: 'spiny', from: .3, to: .6, h: 5 }, dorsal2: { type: 'soft', from: .6, to: .75, h: 3 }, anal: { type: 'soft', from: .55, to: .7, h: 3 }, bigMouth: true, pat: 'spots', dens: .14, seed: 9 }, col: { base: '#c04a3a', belly: '#e8b090', fin: '#d06050', mark: '#8a2a20' } },
-  sheephead: { gen: { w: 46, h: 20, bodyH: .66, peak: .45, ped: .2, snout: .4, tail: 'trunc', dorsal: { type: 'long', from: .3, to: .75, h: 3 }, anal: { type: 'soft', from: .55, to: .75, h: 3 }, pat: 'bands', bandA: .3, bandB: .72, jaws: { len: .08, gap: .2, teeth: true } }, col: { base: '#c04050', belly: '#f0e0e0', fin: '#2a2a30', mark: '#2a2a30' } },
-  opaleye:   { gen: { w: 38, h: 19, bodyH: .68, peak: .5, ped: .2, snout: .33, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 3 }, anal: { type: 'soft', from: .55, to: .75, h: 3 }, pat: 'twospots' }, col: { base: '#3a5a40', belly: '#a0b090', fin: '#4a6a50', mark: '#e8f0e0', eye: '#204080', eyeW: '#80c0e0' } },
-  cabezon:   { gen: { w: 46, h: 18, bodyH: .62, peak: .55, ped: .2, snout: .45, tail: 'round', dorsal: { type: 'spiny', from: .25, to: .5, h: 4 }, dorsal2: { type: 'soft', from: .5, to: .75, h: 3 }, anal: { type: 'soft', from: .5, to: .7, h: 3 }, bigMouth: true, pat: 'spots2', dens: .12, seed: 11 }, col: { base: '#5a6a4a', belly: '#c8c8a0', fin: '#7a8a6a', mark: '#3a4a30' } },
-  lingcod:   { gen: { w: 56, h: 15, bodyH: .5, peak: .5, ped: .22, snout: .4, tail: 'trunc', dorsal: { type: 'long', from: .25, to: .8, h: 3 }, anal: { type: 'long', from: .5, to: .8, h: 2 }, jaws: { len: .14, gap: .3, teeth: true }, pat: 'spots', dens: .14, seed: 13 }, col: { base: '#6a7a5a', belly: '#d0d8c0', fin: '#8a9a7a', mark: '#3a4a30' } },
-  yellowtail:{ gen: { w: 54, h: 16, bodyH: .5, peak: .45, ped: .16, snout: .28, tail: 'lunate', dorsal: { type: 'soft', from: .4, to: .75, h: 3 }, anal: { type: 'soft', from: .5, to: .75, h: 2 }, pat: 'lateral' }, col: { base: '#5a7a90', belly: '#e8f0f4', fin: '#e8d040', mark: '#e8c030' } },
-  leopardshark:{ gen: { w: 60, h: 16, bodyH: .48, peak: .4, ped: .2, snout: .25, snoutY: .02, tail: 'hetero', dorsal: { type: 'tri', from: .35, to: .47, h: 5 }, dorsal2: { type: 'tri', from: .62, to: .7, h: 3 }, anal: { type: 'soft', from: .62, to: .68, h: 2 }, mouth: 'low', pat: ['saddles', 'spots'], barP: 6, barW: 3, dens: .06, seed: 15 }, col: { base: '#8a8070', belly: '#e8e4d8', fin: '#9a9080', mark: '#3a3028' } },
+  senorita:  { gen: { w: 26, h: 14, bodyH: .45, peak: .45, ped: .25, snout: .3, tail: 'trunc', dorsal: { type: 'long', from: .3, to: .8, h: 2 }, anal: { type: 'long', from: .4, to: .8, h: 2 }, pat: 'stripes' }, col: { base: '#ff9a30', belly: '#ffe8b0', fin: '#ffb860', mark: '#c05010' } },
+  perch:     { gen: { w: 28, h: 18, bodyH: .6, peak: .5, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'spiny', from: .35, to: .7, h: 3 }, anal: { type: 'soft', from: .5, to: .7, h: 2 }, pat: 'stripes' }, col: { base: '#e08a40', belly: '#ffe0a8', fin: '#f0a860', mark: '#8a3a18' } },
+  kelpbass:  { gen: { w: 36, h: 22, bodyH: .6, peak: .45, ped: .2, snout: .3, tail: 'trunc', dorsal: { type: 'spiny', from: .3, to: .55, h: 4 }, dorsal2: { type: 'soft', from: .55, to: .75, h: 3 }, anal: { type: 'soft', from: .55, to: .7, h: 3 }, pat: 'spots2', dens: .1, seed: 4 }, col: { base: '#7ab040', belly: '#e8f0a0', fin: '#a0d060', mark: '#2a5a18' } },
+  garibaldi: { gen: { w: 28, h: 25, bodyH: .78, peak: .5, ped: .18, snout: .35, tail: 'fork', dorsal: { type: 'long', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .5, to: .75, h: 3 } }, col: { base: '#ff7a1a', belly: '#ffc050', fin: '#ff9a40', mark: '#d04000' } },
+  rockfish:  { gen: { w: 36, h: 25, bodyH: .66, peak: .4, ped: .2, snout: .33, tail: 'trunc', dorsal: { type: 'spiny', from: .3, to: .6, h: 5 }, dorsal2: { type: 'soft', from: .6, to: .75, h: 3 }, anal: { type: 'soft', from: .55, to: .7, h: 3 }, bigMouth: true, pat: 'spots', dens: .14, seed: 9 }, col: { base: '#ff5a3a', belly: '#ffd0a0', fin: '#ff8060', mark: '#a01818' } },
+  sheephead: { gen: { w: 40, h: 25, bodyH: .66, peak: .45, ped: .2, snout: .4, tail: 'trunc', dorsal: { type: 'long', from: .3, to: .75, h: 3 }, anal: { type: 'soft', from: .55, to: .75, h: 3 }, pat: 'bands', bandA: .3, bandB: .72, jaws: { len: .08, gap: .2, teeth: true } }, col: { base: '#ff4060', belly: '#ffffff', fin: '#2a3048', mark: '#262c44' } },
+  opaleye:   { gen: { w: 32, h: 24, bodyH: .68, peak: .5, ped: .2, snout: .33, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 3 }, anal: { type: 'soft', from: .55, to: .75, h: 3 }, pat: 'twospots' }, col: { base: '#3a8a50', belly: '#c0e8b0', fin: '#58a868', mark: '#ffffff', eye: '#1a3a90', eyeW: '#80d0ff' } },
+  cabezon:   { gen: { w: 40, h: 22, bodyH: .62, peak: .55, ped: .2, snout: .45, tail: 'round', dorsal: { type: 'spiny', from: .25, to: .5, h: 4 }, dorsal2: { type: 'soft', from: .5, to: .75, h: 3 }, anal: { type: 'soft', from: .5, to: .7, h: 3 }, bigMouth: true, pat: 'spots2', dens: .12, seed: 11 }, col: { base: '#6a9a50', belly: '#e8e0a0', fin: '#90b870', mark: '#2a4a20' } },
+  lingcod:   { gen: { w: 48, h: 19, bodyH: .5, peak: .5, ped: .22, snout: .4, tail: 'trunc', dorsal: { type: 'long', from: .25, to: .8, h: 3 }, anal: { type: 'long', from: .5, to: .8, h: 2 }, jaws: { len: .14, gap: .3, teeth: true }, pat: 'spots', dens: .14, seed: 13 }, col: { base: '#70a080', belly: '#e0f0d8', fin: '#98c0a0', mark: '#2a4a30' } },
+  yellowtail:{ gen: { w: 46, h: 20, bodyH: .5, peak: .45, ped: .16, snout: .28, tail: 'lunate', dorsal: { type: 'soft', from: .4, to: .75, h: 3 }, anal: { type: 'soft', from: .5, to: .75, h: 2 }, pat: 'lateral' }, col: { base: '#4aa0d0', belly: '#ffffff', fin: '#ffe030', mark: '#ffd020' } },
+  leopardshark:{ gen: { w: 52, h: 20, bodyH: .48, peak: .4, ped: .2, snout: .25, snoutY: .02, tail: 'hetero', dorsal: { type: 'tri', from: .35, to: .47, h: 5 }, dorsal2: { type: 'tri', from: .62, to: .7, h: 3 }, anal: { type: 'soft', from: .62, to: .68, h: 2 }, mouth: 'low', pat: ['saddles', 'spots'], barP: 6, barW: 3, dens: .06, seed: 15 }, col: { base: '#c0a070', belly: '#fff0d8', fin: '#d0b888', mark: '#3a2a18' } },
   sunfish:   { sil: [
     '...............gggg.....................',
     '..............gggggg....................',
@@ -942,30 +961,30 @@ const FISH_ART = {
     '............gggggggg....................',
     '.............ggggggg....................',
     '..............gggggg....................',
-    '...............gggg.....................'], g: { pat: 'spots', dens: .05, seed: 8 }, col: { base: '#6a7080', belly: '#c8ccd0', fin: '#7a8090', mark: '#4a5060' } },
+    '...............gggg.....................'], g: { pat: 'spots', dens: .05, seed: 8 }, col: { base: '#8a9ab8', belly: '#e8ecf8', fin: '#a0b0c8', mark: '#4a5a78' } },
   // --- Black Trench: the deep ---
-  hagfish:   { gen: { w: 56, h: 9, tail: 'none', ped: .15, peak: .4, snout: .5, bodyH: .55, noEye: true, anal: { type: 'long', from: .02, to: .9, h: 1 }, barbel: true, pect: false, sheen: false }, col: { base: '#9a7a88', belly: '#c8a8b0', fin: '#8a6a78', mark: '#7a5a68' } },
-  lanternfish:{ gen: { w: 28, h: 12, bodyH: .55, peak: .4, ped: .2, snout: .3, bigMouth: true, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .6, h: 3 }, anal: { type: 'soft', from: .45, to: .7, h: 2 }, eyeX: .82, eyeY: .3, pat: 'bellylights' }, col: { base: '#2a3a5a', belly: '#4a5a80', fin: '#3a5080', mark: '#1a2a4a', glow: '#70d0ff' } },
-  grenadier: { gen: { w: 56, h: 16, bodyH: .62, peak: .7, ped: .04, snout: .4, tail: 'none', dorsal: { type: 'tri', from: .7, to: .85, h: 5 }, dorsal2: { type: 'long', from: .1, to: .65, h: 2 }, anal: { type: 'long', from: .1, to: .65, h: 2 }, mouth: 'low', barbel: true, eyeX: .88, eyeY: .3 }, col: { base: '#6a6a7a', belly: '#a0a0b0', fin: '#7a7a8a', mark: '#4a4a5a' } },
-  sablefish: { gen: { w: 50, h: 14, bodyH: .48, peak: .45, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .3, to: .42, h: 3 }, dorsal2: { type: 'soft', from: .55, to: .72, h: 3 }, anal: { type: 'soft', from: .55, to: .72, h: 2 } }, col: { base: '#2a2a30', belly: '#6a6a70', fin: '#3a3a40', mark: '#1a1a20' } },
-  viperfish: { gen: { w: 48, h: 12, bodyH: .45, peak: .75, ped: .15, snout: .5, tail: 'fork', tailLen: .12, jaws: { len: .22, gap: .45, teeth: true }, dorsal: { type: 'tri', from: .55, to: .68, h: 6 }, anal: { type: 'soft', from: .3, to: .5, h: 2 }, eyeX: .78, pat: 'bellylights' }, col: { base: '#1a2430', belly: '#3a4a5a', fin: '#2a3a48', mark: '#101820', glow: '#60c0ff' } },
-  fangtooth: { gen: { w: 30, h: 18, bodyH: .7, peak: .6, ped: .15, snout: .45, tail: 'fork', jaws: { len: .3, gap: .3, teeth: true }, eye: 1, eyeX: .8, eyeY: .3, dorsal: { type: 'soft', from: .35, to: .6, h: 3 }, anal: { type: 'soft', from: .35, to: .55, h: 2 } }, col: { base: '#2a1c20', belly: '#4a3038', fin: '#3a2830', mark: '#0a0a0a' } },
-  anglerfish:{ gen: { w: 44, h: 26, cy: .58, bodyH: .62, peak: .6, ped: .15, snout: .5, tail: 'round', tailLen: .12, jaws: { len: .35, gap: .38, teeth: true }, lure: true, dorsal: { type: 'soft', from: .35, to: .55, h: 3 }, anal: { type: 'soft', from: .35, to: .5, h: 2 }, eye: 1, eyeX: .76, eyeY: .3 }, col: { base: '#2a2430', belly: '#4a3a48', fin: '#3a3040', mark: '#1a1420', glow: '#a0f0ff' } },
-  gulper:    { gen: { w: 60, h: 16, bodyH: .6, peak: .72, ped: .04, snout: .5, tail: 'none', jaws: { len: .32, gap: .55 }, eye: 1, eyeX: .68, eyeY: .35, tailLight: true, pect: false, sheen: false }, col: { base: '#1a1a24', belly: '#2a2a38', fin: '#202030', mark: '#101018', glow: '#ff6060' } },
-  chimaera:  { gen: { w: 56, h: 18, bodyH: .55, peak: .62, ped: .05, snout: .4, tail: 'none', dorsal: { type: 'tri', from: .6, to: .72, h: 6 }, dorsal2: { type: 'long', from: .1, to: .55, h: 2 }, anal: { type: 'long', from: .1, to: .5, h: 1 }, pectH: 6, pectX: .72, mouth: 'low', eyeX: .84, eyeY: .3, pat: 'spots', dens: .05, seed: 17 }, col: { base: '#7a8090', belly: '#c8ccd8', fin: '#8a90a0', mark: '#5a6070', eye: '#104020', eyeW: '#80e0a0' } },
-  oarfish:   { gen: { w: 64, h: 14, cy: .55, tail: 'none', ped: .35, peak: .8, snout: .55, bodyH: .55, dorsal: { type: 'long', from: .02, to: .98, h: 3 }, dorsal2: { type: 'sail', from: .84, to: .99, h: 6 }, pat: 'spots', dens: .06, seed: 19, eyeX: .9 }, col: { base: '#a8b8c8', belly: '#e8f0f8', fin: '#e04040', mark: '#2a3a4a' } },
-  coelacanth:{ gen: { w: 54, h: 20, bodyH: .62, peak: .45, ped: .3, snout: .3, tail: 'round', tailLen: .14, dorsal: { type: 'spiny', from: .3, to: .42, h: 4 }, dorsal2: { type: 'soft', from: .55, to: .68, h: 3 }, anal: { type: 'soft', from: .55, to: .68, h: 3 }, pectH: 5, pelvic: .5, pat: 'spots', dens: .09, seed: 21 }, col: { base: '#2a4a6a', belly: '#4a6a8a', fin: '#3a5a7a', mark: '#d8e8f0' } },
+  hagfish:   { gen: { w: 48, h: 11, tail: 'none', ped: .15, peak: .4, snout: .5, bodyH: .55, noEye: true, anal: { type: 'long', from: .02, to: .9, h: 1 }, barbel: true, pect: false, sheen: false }, col: { base: '#c890b0', belly: '#f0c8d8', fin: '#b080a0', mark: '#8a5078' } },
+  lanternfish:{ gen: { w: 24, h: 15, bodyH: .55, peak: .4, ped: .2, snout: .3, bigMouth: true, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .6, h: 3 }, anal: { type: 'soft', from: .45, to: .7, h: 2 }, eyeX: .82, eyeY: .3, pat: 'bellylights' }, col: { base: '#3a60c0', belly: '#70a0ff', fin: '#5080e0', mark: '#1a3080', glow: '#a0f0ff' } },
+  grenadier: { gen: { w: 48, h: 20, bodyH: .62, peak: .7, ped: .04, snout: .4, tail: 'none', dorsal: { type: 'tri', from: .7, to: .85, h: 5 }, dorsal2: { type: 'long', from: .1, to: .65, h: 2 }, anal: { type: 'long', from: .1, to: .65, h: 2 }, mouth: 'low', barbel: true, eyeX: .88, eyeY: .3 }, col: { base: '#9aa0c8', belly: '#e0e4ff', fin: '#b0b8d8', mark: '#5a6090' } },
+  sablefish: { gen: { w: 42, h: 18, bodyH: .48, peak: .45, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .3, to: .42, h: 3 }, dorsal2: { type: 'soft', from: .55, to: .72, h: 3 }, anal: { type: 'soft', from: .55, to: .72, h: 2 } }, col: { base: '#3a4060', belly: '#8a90b8', fin: '#505880', mark: '#1a2040' } },
+  viperfish: { gen: { w: 40, h: 15, bodyH: .45, peak: .75, ped: .15, snout: .5, tail: 'fork', tailLen: .12, jaws: { len: .22, gap: .45, teeth: true }, dorsal: { type: 'tri', from: .55, to: .68, h: 6 }, anal: { type: 'soft', from: .3, to: .5, h: 2 }, eyeX: .78, pat: 'bellylights' }, col: { base: '#203060', belly: '#4868a0', fin: '#304880', mark: '#101838', glow: '#60e0ff' } },
+  fangtooth: { gen: { w: 26, h: 22, bodyH: .7, peak: .6, ped: .15, snout: .45, tail: 'fork', jaws: { len: .3, gap: .3, teeth: true }, eye: 1, eyeX: .8, eyeY: .3, dorsal: { type: 'soft', from: .35, to: .6, h: 3 }, anal: { type: 'soft', from: .35, to: .55, h: 2 } }, col: { base: '#5a2a40', belly: '#a05070', fin: '#703850', mark: '#1a0a10' } },
+  anglerfish:{ gen: { w: 38, h: 28, cy: .58, bodyH: .62, peak: .6, ped: .15, snout: .5, tail: 'round', tailLen: .12, jaws: { len: .35, gap: .38, teeth: true }, lure: true, dorsal: { type: 'soft', from: .35, to: .55, h: 3 }, anal: { type: 'soft', from: .35, to: .5, h: 2 }, eye: 1, eyeX: .76, eyeY: .3 }, col: { base: '#5a3870', belly: '#9a68b0', fin: '#704888', mark: '#2a1838', glow: '#c0ffff' } },
+  gulper:    { gen: { w: 52, h: 20, bodyH: .6, peak: .72, ped: .04, snout: .5, tail: 'none', jaws: { len: .32, gap: .55 }, eye: 1, eyeX: .68, eyeY: .35, tailLight: true, pect: false, sheen: false }, col: { base: '#38385a', belly: '#8080b0', fin: '#484870', mark: '#1c1c30', glow: '#ff5050' } },
+  chimaera:  { gen: { w: 48, h: 22, bodyH: .55, peak: .62, ped: .05, snout: .4, tail: 'none', dorsal: { type: 'tri', from: .6, to: .72, h: 6 }, dorsal2: { type: 'long', from: .1, to: .55, h: 2 }, anal: { type: 'long', from: .1, to: .5, h: 1 }, pectH: 6, pectX: .72, mouth: 'low', eyeX: .84, eyeY: .3, pat: 'spots', dens: .05, seed: 17 }, col: { base: '#a0b0d0', belly: '#f0f4ff', fin: '#b8c8e0', mark: '#6070a0', eye: '#104020', eyeW: '#a0ffb0' } },
+  oarfish:   { gen: { w: 54, h: 18, cy: .55, tail: 'none', ped: .35, peak: .8, snout: .55, bodyH: .55, dorsal: { type: 'long', from: .02, to: .98, h: 3 }, dorsal2: { type: 'sail', from: .84, to: .99, h: 6 }, pat: 'spots', dens: .06, seed: 19, eyeX: .9 }, col: { base: '#b8d0f0', belly: '#ffffff', fin: '#ff3050', mark: '#2a4a80' } },
+  coelacanth:{ gen: { w: 46, h: 25, bodyH: .62, peak: .45, ped: .3, snout: .3, tail: 'round', tailLen: .14, dorsal: { type: 'spiny', from: .3, to: .42, h: 4 }, dorsal2: { type: 'soft', from: .55, to: .68, h: 3 }, anal: { type: 'soft', from: .55, to: .68, h: 3 }, pectH: 5, pelvic: .5, pat: 'spots', dens: .09, seed: 21 }, col: { base: '#3a70b0', belly: '#70a0e0', fin: '#4a80c0', mark: '#ffffff' } },
   // --- Frost Fjords ---
-  capelin:   { gen: { w: 28, h: 9, bodyH: .45, ped: .2, snout: .25, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .6, h: 2 }, adipose: true, pat: 'lateral', eye: 1 }, col: { base: '#4a7a7a', belly: '#e8f0f0', fin: '#80a0a0', mark: '#2a4a4a' } },
-  char:      { gen: { w: 46, h: 15, bodyH: .52, peak: .45, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .55, h: 3 }, adipose: true, anal: { type: 'soft', from: .6, to: .72, h: 3 }, pelvic: .55, pat: 'spots', dens: .1, seed: 23 }, col: { base: '#3a7a80', belly: '#e88060', fin: '#e07060', mark: '#f0a0b0' } },
-  cod:       { gen: { w: 50, h: 18, bodyH: .58, peak: .4, ped: .2, snout: .33, snoutY: .02, tail: 'trunc', dorsal: { type: 'soft', from: .25, to: .38, h: 4 }, dorsal2: { type: 'soft', from: .42, to: .56, h: 3 }, dorsal3: { type: 'soft', from: .6, to: .75, h: 3 }, anal: { type: 'soft', from: .42, to: .56, h: 2 }, anal2: { type: 'soft', from: .6, to: .75, h: 2 }, barbel: true, pat: ['backspots', 'lateral'], dens: .14, seed: 25 }, col: { base: '#7a7a50', belly: '#e0e0d0', fin: '#8a8a60', mark: '#e8e8d8', glow: '#4a4a28' } },
-  haddock:   { gen: { w: 46, h: 17, bodyH: .56, peak: .4, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'tri', from: .28, to: .4, h: 5 }, dorsal2: { type: 'soft', from: .45, to: .58, h: 3 }, dorsal3: { type: 'soft', from: .62, to: .75, h: 3 }, anal: { type: 'soft', from: .45, to: .58, h: 2 }, anal2: { type: 'soft', from: .62, to: .75, h: 2 }, barbel: true, pat: ['lateral', 'blotch'] }, col: { base: '#6a7a88', belly: '#e8ecf0', fin: '#8a9aa8', mark: '#1a1a24' } },
-  pike:      { gen: { w: 60, h: 13, bodyH: .5, peak: .4, ped: .25, snout: .45, headPow: 1, tail: 'fork', dorsal: { type: 'soft', from: .12, to: .3, h: 4 }, anal: { type: 'soft', from: .12, to: .3, h: 3 }, underbite: 2, pat: 'spots', dens: .1, seed: 27 }, col: { base: '#4a6a30', belly: '#d8d8a0', fin: '#6a8a40', mark: '#d8d890' } },
-  wolffish:  { gen: { w: 56, h: 15, tail: 'round', tailLen: .1, ped: .3, peak: .7, snout: .45, bodyH: .62, jaws: { len: .12, gap: .3, teeth: true }, dorsal: { type: 'long', from: .1, to: .95, h: 3 }, anal: { type: 'long', from: .1, to: .9, h: 2 }, eye: 1, eyeX: .84, pat: 'bars', barP: 6, barW: 2 }, col: { base: '#5a6a7a', belly: '#a0a8b0', fin: '#6a7a8a', mark: '#2a3a48' } },
-  lumpsucker:{ gen: { w: 32, h: 24, bodyH: .92, peak: .5, ped: .25, snout: .5, tail: 'round', tailLen: .12, dorsal: { type: 'soft', from: .25, to: .6, h: 3 }, pat: 'tubercles', eye: 1, eyeX: .8, eyeY: .4 }, col: { base: '#5a7a6a', belly: '#c0b0a0', fin: '#6a8a7a', mark: '#3a5a4a' } },
-  halibut:   { gen: { w: 60, h: 26, bodyH: .85, peak: .5, ped: .12, snout: .25, tail: 'trunc', tailLen: .12, dorsal: { type: 'long', from: .08, to: .9, h: 3 }, anal: { type: 'long', from: .08, to: .9, h: 3 }, eyeX: .8, eyeY: .2, eye2: [.87, .14], pect: false, pat: 'spots', dens: .06, seed: 29 }, col: { base: '#4a4a3a', belly: '#a8a090', fin: '#5a5a48', mark: '#6a6a58' } },
-  salmon:    { gen: { w: 54, h: 16, bodyH: .5, peak: .42, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .55, h: 3 }, adipose: true, anal: { type: 'soft', from: .62, to: .74, h: 3 }, pelvic: .55, underbite: 2, pat: 'backspots', dens: .08, seed: 31 }, col: { base: '#4a7a88', belly: '#e8f0f0', fin: '#7a9aa8', mark: '#2a3a40', glow: '#2a3a40' } },
-  greenlandshark:{ gen: { w: 64, h: 18, bodyH: .55, peak: .45, ped: .22, snout: .4, snoutY: .02, tail: 'hetero', tailH: .9, dorsal: { type: 'tri', from: .4, to: .5, h: 3 }, dorsal2: { type: 'tri', from: .68, to: .74, h: 2 }, mouth: 'low', eye: 1, eyeY: .45, sheen: false }, col: { base: '#4a4a50', belly: '#8a8a90', fin: '#5a5a60', mark: '#3a3a40' } },
+  capelin:   { gen: { w: 24, h: 11, bodyH: .45, ped: .2, snout: .25, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .6, h: 2 }, adipose: true, pat: 'lateral', eye: 1 }, col: { base: '#40b0a0', belly: '#f0fff8', fin: '#80d8c8', mark: '#1a5a50' } },
+  char:      { gen: { w: 40, h: 19, bodyH: .52, peak: .45, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .55, h: 3 }, adipose: true, anal: { type: 'soft', from: .6, to: .72, h: 3 }, pelvic: .55, pat: 'spots', dens: .1, seed: 23 }, col: { base: '#2a9aa0', belly: '#ff7040', fin: '#ff6a4a', mark: '#ffb0c0' } },
+  cod:       { gen: { w: 42, h: 22, bodyH: .58, peak: .4, ped: .2, snout: .33, snoutY: .02, tail: 'trunc', dorsal: { type: 'soft', from: .25, to: .38, h: 4 }, dorsal2: { type: 'soft', from: .42, to: .56, h: 3 }, dorsal3: { type: 'soft', from: .6, to: .75, h: 3 }, anal: { type: 'soft', from: .42, to: .56, h: 2 }, anal2: { type: 'soft', from: .6, to: .75, h: 2 }, barbel: true, pat: ['backspots', 'lateral'], dens: .14, seed: 25 }, col: { base: '#c8a860', belly: '#fff0d0', fin: '#d8c080', mark: '#fff8e0', glow: '#6a4a20' } },
+  haddock:   { gen: { w: 40, h: 21, bodyH: .56, peak: .4, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'tri', from: .28, to: .4, h: 5 }, dorsal2: { type: 'soft', from: .45, to: .58, h: 3 }, dorsal3: { type: 'soft', from: .62, to: .75, h: 3 }, anal: { type: 'soft', from: .45, to: .58, h: 2 }, anal2: { type: 'soft', from: .62, to: .75, h: 2 }, barbel: true, pat: ['lateral', 'blotch'] }, col: { base: '#8ab0d0', belly: '#ffffff', fin: '#a8c8e0', mark: '#101020' } },
+  pike:      { gen: { w: 52, h: 16, bodyH: .5, peak: .4, ped: .25, snout: .45, headPow: 1, tail: 'fork', dorsal: { type: 'soft', from: .12, to: .3, h: 4 }, anal: { type: 'soft', from: .12, to: .3, h: 3 }, underbite: 2, pat: 'spots', dens: .1, seed: 27 }, col: { base: '#60a030', belly: '#f0e8a0', fin: '#88c050', mark: '#f0f0a0' } },
+  wolffish:  { gen: { w: 48, h: 19, tail: 'round', tailLen: .1, ped: .3, peak: .7, snout: .45, bodyH: .62, jaws: { len: .12, gap: .3, teeth: true }, dorsal: { type: 'long', from: .1, to: .95, h: 3 }, anal: { type: 'long', from: .1, to: .9, h: 2 }, eye: 1, eyeX: .84, pat: 'bars', barP: 6, barW: 2 }, col: { base: '#6a90c0', belly: '#c8d8f0', fin: '#88a8d0', mark: '#203860' } },
+  lumpsucker:{ gen: { w: 28, h: 28, bodyH: .92, peak: .5, ped: .25, snout: .5, tail: 'round', tailLen: .12, dorsal: { type: 'soft', from: .25, to: .6, h: 3 }, pat: 'tubercles', eye: 1, eyeX: .8, eyeY: .4 }, col: { base: '#60b090', belly: '#f0d0b0', fin: '#80c8a8', mark: '#2a6a50' } },
+  halibut:   { gen: { w: 52, h: 28, bodyH: .85, peak: .5, ped: .12, snout: .25, tail: 'trunc', tailLen: .12, dorsal: { type: 'long', from: .08, to: .9, h: 3 }, anal: { type: 'long', from: .08, to: .9, h: 3 }, eyeX: .8, eyeY: .2, eye2: [.87, .14], pect: false, pat: 'spots', dens: .06, seed: 29 }, col: { base: '#6a7a50', belly: '#e8e0c0', fin: '#88986a', mark: '#a0b080' } },
+  salmon:    { gen: { w: 46, h: 20, bodyH: .5, peak: .42, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .55, h: 3 }, adipose: true, anal: { type: 'soft', from: .62, to: .74, h: 3 }, pelvic: .55, underbite: 2, pat: 'backspots', dens: .08, seed: 31 }, col: { base: '#50a8c0', belly: '#ffffff', fin: '#80c0d8', mark: '#1a3a50', glow: '#1a3a50' } },
+  greenlandshark:{ gen: { w: 54, h: 22, bodyH: .55, peak: .45, ped: .22, snout: .4, snoutY: .02, tail: 'hetero', tailH: .9, dorsal: { type: 'tri', from: .4, to: .5, h: 3 }, dorsal2: { type: 'tri', from: .68, to: .74, h: 2 }, mouth: 'low', eye: 1, eyeY: .45, sheen: false }, col: { base: '#7a7a90', belly: '#c0c0d0', fin: '#90909a', mark: '#5a5a70' } },
   // --- not fish ---
   wood: { pal: { o: '#3a2414', b: '#8a5a34', d: '#6a4224', m: '#4a2e18' }, map: [
     '.oooooooooooooooooooooo.', 'obbbbbbbbbbbbbbbbbbbbbbo', 'obddbbbbbbddddbbbbbbbddo', 'obbbbbbdbbbbbbbbbbmbbbbo', 'obbbbbbbbbbbddbbbmmbbbbo', 'obddddbbbbbbbbbbbbmbbddo', 'obbbbbbbbbbbbbbbbbbbbbbo', '.oooooooooooooooooooooo.'] },
