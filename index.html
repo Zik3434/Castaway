@@ -1,0 +1,1304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
+<title>Castaway</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
+<style>
+/* Layout: the pixel scene is a fixed canvas filling the viewport. Everything else floats over it:
+   a HUD strip at the top, open sky and water in the middle, a translucent control panel at the bottom.
+   Title and cutscene screens are full-viewport overlays on the same canvas.
+   Single theme on purpose: tar, brass and lantern light. */
+:root{
+  --ink:#0a1020;
+  --panel:rgba(11,17,34,.86);
+  --panel-solid:#141f38;
+  --panel-2:#20325a;
+  --edge:#3a5080;
+  --text:#ece6d6;
+  --muted:#a3aec6;
+  --brass:#f0c050;
+  --brass-2:#b8871c;
+  --brass-3:#5e440a;
+  --good:#8ad48a;
+  --bad:#e27b5f;
+  --display:'Press Start 2P','VT323',monospace;
+  --body:'VT323','Courier New',monospace;
+  color-scheme:dark;
+}
+html{height:100%;box-sizing:border-box}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+img{max-width:100%}
+body{margin:0;min-height:100%;display:flex;flex-direction:column;background:var(--ink);color:var(--text);font-family:var(--body);font-size:20px;line-height:1.15;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0;
+  -webkit-text-size-adjust:100%;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:linear-gradient(rgba(10,16,32,.8),rgba(10,16,32,0))}
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+button:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
+canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
+#scene{position:fixed;left:0;top:0;z-index:0;pointer-events:none}
+#fade{position:fixed;inset:0;z-index:40;background:#000;opacity:0;pointer-events:none;transition:opacity .55s}
+#fade.on{opacity:1;pointer-events:auto}
+.screen{position:fixed;inset:0;z-index:12;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:14px;
+  padding:calc(24px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(44px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+#title .logo{font-family:var(--display);font-size:clamp(26px,8.5vw,44px);color:var(--brass);letter-spacing:2px;text-align:center;
+  text-shadow:3px 3px 0 #2b1d05,6px 6px 0 rgba(0,0,0,.35)}
+#title .tagline{font-size:23px;text-shadow:2px 2px 0 #0a1020;color:var(--text)}
+#title .menu{display:grid;gap:10px;width:min(100%,300px);margin-top:14px}
+#title .vers{color:var(--muted);font-size:17px;text-shadow:1px 1px 0 #0a1020}
+#title .confirm{color:var(--bad);font-size:18px;text-shadow:1px 1px 0 #0a1020;min-height:1.2em;text-align:center}
+#cut{cursor:pointer;gap:10px}
+#cut .cap{font-family:var(--display);font-size:clamp(11px,3.4vw,15px);line-height:1.9;color:var(--text);text-align:center;text-wrap:balance;
+  text-shadow:2px 2px 0 #0a1020;max-width:440px;min-height:3.8em;opacity:0;transition:opacity .6s}
+#cut .cap.show{opacity:1}
+#cut .hint{color:var(--muted);font-size:18px;text-shadow:1px 1px 0 #0a1020}
+#cut .skip{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px))}
+#game{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;width:100%;max-width:520px;margin:0 auto}
+#hud{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;display:grid;gap:8px;padding:12px 0 14px;
+  background:linear-gradient(rgba(10,16,32,.82),rgba(10,16,32,.5) 65%,rgba(10,16,32,0))}
+#hud .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+#hud .loc{font-family:var(--display);font-size:12px;color:var(--brass);text-wrap:balance;text-shadow:2px 2px 0 #0a1020}
+#hud .sub{color:var(--text);font-size:18px;margin-top:5px;font-variant-numeric:tabular-nums;text-shadow:1px 1px 0 #0a1020}
+#hud .right{text-align:right}
+#hud .money{font-family:var(--display);font-size:12px;font-variant-numeric:tabular-nums;text-shadow:2px 2px 0 #0a1020}
+.tabs{display:flex;gap:6px}
+.tabs button{flex:1;font-family:var(--display);font-size:9px;padding:9px 4px;background:rgba(11,17,34,.72);border:2px solid var(--edge);color:var(--text)}
+.tabs button.pulse{border-color:var(--brass);color:var(--brass)}
+.spacer{flex:1;min-height:33vh}
+#panel{background:var(--panel);border:2px solid var(--edge);border-bottom:0;border-top-color:rgba(240,192,80,.55);
+  padding:9px 10px calc(14px + env(safe-area-inset-bottom,0px));display:grid;gap:8px}
+.tide{font-size:17px;color:var(--muted);text-align:center;text-wrap:balance;padding:0 2px}
+.tide b{color:var(--text);font-weight:normal}
+.slots{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.slot{width:100%;background:rgba(10,16,32,.55);border:2px solid var(--edge);padding:8px 3px 6px;display:grid;gap:4px;min-width:0;text-align:center}
+.slot .n{font-family:var(--display);font-size:8px;color:var(--muted)}
+.slot .st{font-size:17px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot.sel{border-color:var(--brass);background:var(--panel-2)}
+.slot.sel .n{color:var(--brass)}
+.slot.on .st{color:var(--brass)}
+.slot.hot{border-color:var(--bad)}
+.slot.hot .st{color:var(--bad)}
+.slot.lock{border-style:dashed;opacity:.55}
+.box{display:grid;gap:7px}
+.box h3{margin:0;font-family:var(--display);font-size:9px;color:var(--muted);letter-spacing:.5px}
+.segrow{display:flex;align-items:center;gap:6px}
+.segrow .lbl{font-family:var(--display);font-size:8px;color:var(--muted);width:42px;flex:none}
+.seg{display:flex;gap:4px;flex:1;min-width:0}
+.seg button{flex:1 1 0;min-width:0;padding:7px 3px;background:rgba(10,16,32,.6);border:2px solid var(--edge);font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seg button.sel{border-color:var(--brass);color:var(--brass);background:var(--panel-2)}
+.seg button[disabled]{opacity:.45;cursor:default}
+.note{color:var(--muted);font-size:17px}
+.cta{font-family:var(--display);font-size:13px;padding:15px 10px;background:var(--brass);color:#2b1d05;border:3px solid var(--brass-2);box-shadow:0 4px 0 var(--brass-3);text-transform:uppercase}
+.cta:active{transform:translateY(3px);box-shadow:none}
+.cta.alt{background:var(--panel-2);color:var(--text);border-color:var(--edge);box-shadow:0 4px 0 #0b1223}
+.cta.hit{background:var(--bad);border-color:#a44f36;box-shadow:0 4px 0 #5a2a1c;color:#2a0d05;animation:thump .35s infinite alternate}
+.cta[disabled]{opacity:.5;cursor:default;transform:none}
+@keyframes thump{from{transform:translateY(0)}to{transform:translateY(2px)}}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.row .name{min-width:0}
+.row .name small{display:block;color:var(--muted);font-size:17px}
+.row .price{font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--brass)}
+.buy{font-family:var(--display);font-size:9px;padding:8px 10px;background:var(--panel-2);border:2px solid var(--edge);white-space:nowrap}
+.buy[disabled]{opacity:.4;cursor:default}
+.list{display:grid;gap:2px}
+.list .row{padding:8px 6px;border-bottom:1px solid var(--edge)}
+.list .row.dim{opacity:.55}
+.list canvas.mini{width:48px;height:auto;flex:none}
+.overlay{position:fixed;inset:0;z-index:20;background:rgba(5,8,18,.8);display:flex;align-items:flex-end;justify-content:center;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.overlay.center{align-items:center;padding-bottom:env(safe-area-inset-bottom,0px)}
+.sheet{width:100%;max-width:520px;max-height:88%;overflow:auto;background:var(--panel-solid);border:3px solid var(--edge);border-bottom:0;
+  padding:12px 12px calc(16px + env(safe-area-inset-bottom,0px));display:grid;gap:10px;align-content:start}
+.sheet .head{display:flex;justify-content:space-between;align-items:center}
+.sheet h2{margin:0;font-family:var(--display);font-size:13px;color:var(--brass)}
+.x{font-family:var(--display);font-size:11px;padding:8px 10px;background:var(--panel-2);border:2px solid var(--edge)}
+.card{width:100%;max-width:360px;background:var(--panel-solid);border:3px solid var(--brass);padding:14px;display:grid;gap:8px;text-align:center;justify-items:center}
+.card h2{margin:0;font-family:var(--display);font-size:13px;color:var(--brass);text-wrap:balance}
+.card .big{font-size:22px}
+.card .tag{color:var(--good);font-family:var(--display);font-size:9px}
+.card canvas{width:144px;height:auto;background:var(--ink);border:2px solid var(--edge)}
+.fightbox{width:100%;max-width:380px;display:grid;gap:8px;justify-items:center;touch-action:none;user-select:none;-webkit-user-select:none}
+.fightbox canvas{width:min(100%,300px);height:auto;border:3px solid var(--edge)}
+.fightbox .fname{font-family:var(--display);font-size:12px;color:var(--brass);text-align:center;text-wrap:balance}
+.toasts{position:fixed;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));display:grid;gap:6px;justify-items:center;pointer-events:none;z-index:30;padding:0 16px}
+.toast{background:var(--panel-2);border:2px solid var(--brass);padding:7px 12px;font-size:19px;max-width:420px;text-align:center}
+#mapcv{width:100%;height:auto;border:3px solid #5a4630;background:#d9c8a0}
+.legend{display:grid;gap:4px}
+.legend button{width:100%;text-align:left;background:none;border:2px solid transparent;padding:6px 6px;color:inherit}
+.legend button.sel{border-color:var(--brass);background:var(--panel-2)}
+.legend button.dim{opacity:.55}
+.legend .here{color:var(--good);font-size:17px;white-space:nowrap}
+@media (prefers-reduced-motion:reduce){.cta.hit{animation:none}.cta:active{transform:none}}
+</style>
+
+<canvas id="scene" width="195" height="375"></canvas>
+<div id="fade"></div>
+
+<div class="screen" id="title">
+  <div class="logo">CASTAWAY</div>
+  <div class="tagline">Fish your way home.</div>
+  <div class="menu">
+    <button class="cta alt" data-act="continue" id="bCont" hidden>Continue</button>
+    <button class="cta" data-act="new" id="bNew">New voyage</button>
+  </div>
+  <div class="confirm" id="confirm"></div>
+  <div class="vers">prototype · everything is placeholder art</div>
+</div>
+
+<div class="screen" id="cut" hidden>
+  <button class="x skip" data-act="skip">SKIP</button>
+  <div class="cap" id="cap"></div>
+  <div class="hint">tap to continue</div>
+</div>
+
+<div id="game" hidden>
+  <header id="hud">
+    <div class="top">
+      <div><div class="loc" id="hLoc">Wreck Shoal</div><div class="sub" id="hClock">06:00 · Dawn</div></div>
+      <div class="right"><div class="money" id="hMoney">$0</div><div class="sub" id="hBucket">Bucket 0/20</div></div>
+    </div>
+    <nav class="tabs">
+      <button data-act="open" data-k="map" id="tMap">Map</button>
+      <button data-act="open" data-k="index">Index</button>
+      <button data-act="open" data-k="shop" id="tShop" hidden>Shop</button>
+      <button data-act="open" data-k="menu">Menu</button>
+    </nav>
+  </header>
+  <div class="spacer"></div>
+  <section id="panel">
+    <div class="tide" id="tide"></div>
+    <div class="slots" id="slots"></div>
+    <div class="box" id="action"></div>
+    <div id="extra" style="display:grid;gap:10px"></div>
+  </section>
+</div>
+
+<div class="toasts" id="toasts"></div>
+<div class="overlay" id="sheetWrap" hidden><div class="sheet" id="sheet"></div></div>
+<div class="overlay center" id="cardWrap" hidden><div class="card" id="card"></div></div>
+<div class="overlay center" id="fightWrap" hidden>
+  <div class="fightbox">
+    <div class="fname" id="fname"></div>
+    <canvas id="fcv" width="96" height="128"></canvas>
+    <div class="note" style="text-align:center">Hold anywhere to lift the net. Let go to drop it. Keep the fish inside.</div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const now = () => Date.now();
+const rnd = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const money = n => '$' + Math.round(n).toLocaleString('en-US');
+const pad = n => (n < 10 ? '0' : '') + n;
+const hex = c => [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)];
+const lerpC = (A, B, f) => [A[0] + (B[0] - A[0]) * f, A[1] + (B[1] - A[1]) * f, A[2] + (B[2] - A[2]) * f];
+const css = c => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
+const rgba = (c, a) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a.toFixed(3)})`;
+
+// ---------- tuning (prototype values; CLAUDE.md says what they stand in for) ----------
+const T = {
+  hourMs: 60000,                 // 1 real minute = 1 game hour, a 24-minute day
+  handWait: [2000, 6000],        // rod: seconds to a bite
+  setWait: [40000, 90000],       // set line: hooks in 40-90 s, keeps ticking while you're away
+  trophyWait: [150000, 300000],  // trophy line: 2.5-5 min
+  hitWindow: 3000,               // ms to tap Reel after a hit
+  bucketCap: 20,
+  raftWood: 6,
+};
+
+// ---------- data ----------
+const BAITS = {
+  scraps: { name: 'Shell scraps', tier: 0, price: 0 },
+  shrimp: { name: 'Shrimp', tier: 1, price: 20, qty: 5 },
+  squid:  { name: 'Squid',  tier: 2, price: 60, qty: 5 },
+};
+const RODS = [
+  { id: 'stick',  name: 'Stick rod',  bar: 0.24, price: 0 },
+  { id: 'cane',   name: 'Cane rod',   bar: 0.30, price: 250 },
+  { id: 'carbon', name: 'Carbon rod', bar: 0.36, price: 900 },
+];
+const BOATS = [
+  { id: 'none',     name: 'No boat',        range: 0, price: 0 },
+  { id: 'raft',     name: 'Driftwood raft', range: 1, price: 0 },
+  { id: 'skiff',    name: 'Skiff',          range: 2, price: 800 },
+  { id: 'cutter',   name: 'Cutter',         range: 3, price: 3500 },
+  { id: 'trawler',  name: 'Trawler',        range: 4, price: 12000 },
+  { id: 'starship', name: 'Starship',       range: 5, price: 500000, locked: true },
+];
+const SLOT_PRICES = [0, 0, 150, 450];
+const TROPHY_RIG_PRICE = 600;
+
+const LOCS = [
+  { id: 'shoal',  name: 'Wreck Shoal',  range: 0, shop: false, sell: false, x: 40,  y: 86, blurb: 'Where you washed up. No market, just a bucket.' },
+  { id: 'harbor', name: 'Gull Harbor',  range: 1, shop: true,  sell: true,  x: 92,  y: 80, blurb: 'First port. Buys the whole haul.' },
+  { id: 'reach',  name: 'Kelp Reach',   range: 2, shop: false, sell: false, x: 26,  y: 50, blurb: 'Reef and kelp. No market here.' },
+  { id: 'trench', name: 'Black Trench', range: 3, shop: false, sell: true,  x: 122, y: 44, blurb: 'Deep water. A buyer boat anchors here.' },
+  { id: 'fjord',  name: 'Frost Fjords', range: 4, shop: true,  sell: true,  x: 70,  y: 18, blurb: 'Far north. Ice station with a shop.' },
+  { id: 'stars',  name: 'The Stars',    range: 5, shop: false, sell: false, x: 142, y: 10, blurb: 'Not in this build.', locked: true },
+];
+
+// beh: smooth | dart | sinker | floater. diff 0-1. shape picks the silhouette. rare = rod or trophy line only.
+const SPECIES = [
+  { id: 'minnow',    name: 'Shoal Minnow',     loc: { shoal: 40, harbor: 20 }, size: [6, 14],    value: 2,   beh: 'smooth',  diff: 0.12, shape: 'fry' },
+  { id: 'bream',     name: 'Sand Bream',       loc: { shoal: 28, harbor: 14 }, size: [18, 38],   value: 6,   beh: 'smooth',  diff: 0.30, shape: 'bream' },
+  { id: 'perch',     name: 'Reef Perch',       loc: { shoal: 18, reach: 24 },  size: [20, 45],   value: 9,   beh: 'dart',    diff: 0.42, shape: 'bream', time: ['dawn', 'dusk'] },
+  { id: 'tarpon',    name: 'Ghost Tarpon',     loc: { shoal: 5 },              size: [80, 160],  value: 60,  beh: 'dart',    diff: 0.78, shape: 'big', time: ['night'], rare: true, minBait: 1 },
+  { id: 'mullet',    name: 'Harbor Mullet',    loc: { harbor: 34 },            size: [20, 40],   value: 7,   beh: 'smooth',  diff: 0.28, shape: 'trout' },
+  { id: 'flounder',  name: 'Dock Flounder',    loc: { harbor: 24 },            size: [22, 50],   value: 11,  beh: 'sinker',  diff: 0.40, shape: 'flat' },
+  { id: 'jack',      name: 'Striped Jack',     loc: { harbor: 14, reach: 20 }, size: [30, 70],   value: 16,  beh: 'dart',    diff: 0.55, shape: 'trout', time: ['dawn', 'dusk'], minBait: 1 },
+  { id: 'eel',       name: 'Barnacle Eel',     loc: { harbor: 9, trench: 10 }, size: [40, 110],  value: 20,  beh: 'sinker',  diff: 0.50, shape: 'eel', time: ['night'] },
+  { id: 'king',      name: 'Harbor King',      loc: { harbor: 4 },             size: [90, 150],  value: 80,  beh: 'dart',    diff: 0.80, shape: 'big', time: ['dawn'], rare: true, minBait: 1 },
+  { id: 'kelpbass',  name: 'Kelp Bass',        loc: { reach: 34 },             size: [25, 55],   value: 14,  beh: 'smooth',  diff: 0.38, shape: 'bream' },
+  { id: 'rockcod',   name: 'Rock Cod',         loc: { reach: 24 },             size: [30, 70],   value: 18,  beh: 'sinker',  diff: 0.48, shape: 'bream', minBait: 1 },
+  { id: 'dragon',    name: 'Kelp Dragon',      loc: { reach: 4 },              size: [100, 200], value: 140, beh: 'floater', diff: 0.85, shape: 'eel', time: ['dusk'], rare: true, minBait: 1, big: true },
+  { id: 'hagfish',   name: 'Trench Hagfish',   loc: { trench: 30 },            size: [30, 60],   value: 12,  beh: 'sinker',  diff: 0.35, shape: 'eel' },
+  { id: 'dory',      name: 'Lantern Dory',     loc: { trench: 34 },            size: [20, 40],   value: 22,  beh: 'floater', diff: 0.50, shape: 'bream', time: ['dusk', 'night'], minBait: 1 },
+  { id: 'grouper',   name: 'Abyss Grouper',    loc: { trench: 24 },            size: [50, 120],  value: 40,  beh: 'sinker',  diff: 0.62, shape: 'big', minBait: 2 },
+  { id: 'leviathan', name: 'Trench Leviathan', loc: { trench: 3 },             size: [200, 400], value: 400, beh: 'sinker',  diff: 0.92, shape: 'big', rare: true, minBait: 2, big: true },
+  { id: 'char',      name: 'Ice Char',         loc: { fjord: 34 },             size: [25, 60],   value: 26,  beh: 'smooth',  diff: 0.45, shape: 'trout' },
+  { id: 'pike',      name: 'Fjord Pike',       loc: { fjord: 24 },             size: [50, 110],  value: 45,  beh: 'dart',    diff: 0.66, shape: 'pike', minBait: 1 },
+  { id: 'aurora',    name: 'Aurora Salmon',    loc: { fjord: 4 },              size: [70, 130],  value: 260, beh: 'dart',    diff: 0.90, shape: 'trout', time: ['night'], rare: true, minBait: 2, big: true },
+  { id: 'wood',      name: 'Driftwood',        loc: { shoal: 38 },             size: [0, 0],     value: 0,   kind: 'wood', shape: 'wood' },
+  { id: 'boot',      name: 'Old Boot',         loc: { harbor: 6, reach: 5 },   size: [0, 0],     value: 0,   kind: 'junk', shape: 'boot' },
+];
+const SP = Object.fromEntries(SPECIES.map(s => [s.id, s]));
+const LOC = Object.fromEntries(LOCS.map(l => [l.id, l]));
+const PHASE_NAME = { dawn: 'Dawn', day: 'Day', dusk: 'Dusk', night: 'Night' };
+
+// ---------- state ----------
+function freshState() {
+  return {
+    v: 2, started: false, loc: 'shoal', money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 2, trophyRig: false,
+    bait: { shrimp: 0, squid: 0 },
+    lines: [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, { rig: 'set', bait: 'scraps', phase: 'idle' }, null, null],
+    sel: 0, index: {}, visited: { shoal: true }, sold: 0, casts: 0,
+  };
+}
+let S = freshState();
+const KEY = 'castaway-proto-v2';
+let saveT = 0;
+function saveNow() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+function save() { clearTimeout(saveT); saveT = setTimeout(saveNow, 150); }
+function load(seed) {
+  let d = seed && seed.v ? seed : null;
+  if (!d) { try { const raw = localStorage.getItem(KEY); if (raw) d = JSON.parse(raw); } catch (e) {} }
+  if (d && d.v === 2) S = Object.assign(freshState(), d);
+}
+
+const loc = () => LOC[S.loc];
+const boatRange = () => BOATS.find(b => b.id === S.boat).range;
+const rodBar = () => RODS.find(r => r.id === S.rod).bar;
+const hourAt = t => (t / T.hourMs) % 24;
+const phaseAt = t => { const h = hourAt(t); return h >= 5 && h < 7 ? 'dawn' : h >= 7 && h < 18 ? 'day' : h >= 18 && h < 20 ? 'dusk' : 'night'; };
+function clockText(t) { const h = hourAt(t), hh = Math.floor(h), mm = Math.floor((h - hh) * 60); return `${pad(hh)}:${pad(mm)} · ${PHASE_NAME[phaseAt(t)]}`; }
+
+// ---------- fishing ----------
+function pool(locId, rig, baitId, t) {
+  const ph = phaseAt(t), bt = BAITS[baitId].tier, out = [];
+  for (const s of SPECIES) {
+    const w0 = s.loc[locId]; if (!w0) continue;
+    if (s.time && !s.time.includes(ph)) continue;
+    if ((s.minBait || 0) > bt) continue;
+    if (s.rare && rig === 'set') continue;
+    let w = w0;
+    if (s.kind === 'wood' && S.raft) w = 6;
+    if (s.rare && rig === 'trophy') w *= 4;
+    if (!s.kind && bt > 0 && (s.minBait || 0) === bt) w *= 1.5;
+    if (rig === 'set' && s.shape === 'big') w *= 0.5;
+    out.push([s, w]);
+  }
+  return out;
+}
+function rollCatch(locId, rig, baitId, t) {
+  const p = pool(locId, rig, baitId, t); if (!p.length) return null;
+  const tot = p.reduce((a, x) => a + x[1], 0);
+  let r = Math.random() * tot, s = p[p.length - 1][0];
+  for (const [sp, w] of p) { r -= w; if (r <= 0) { s = sp; break; } }
+  const skew = rig === 'trophy' ? 0.45 : rig === 'set' ? 1.7 : 1;
+  const f = rig === 'set' ? Math.min(0.8, Math.pow(Math.random(), skew)) : Math.pow(Math.random(), skew); // set lines never reach trophy size
+  const cm = s.kind ? 0 : Math.round(s.size[0] + (s.size[1] - s.size[0]) * f);
+  const trophy = !s.kind && f >= 0.85;
+  const value = s.kind ? 0 : Math.round(s.value * (0.6 + 0.9 * f)) * (trophy ? 2 : 1);
+  return { id: s.id, cm, value, trophy };
+}
+function waitFor(rig) { const [a, b] = rig === 'hand' ? T.handWait : rig === 'set' ? T.setWait : T.trophyWait; return rnd(a, b); }
+
+function castLine(i) {
+  const L = S.lines[i]; if (!L || L.phase !== 'idle') return;
+  if (L.rig === 'hand' && S.lines.some((o, j) => o && j !== i && o.rig === 'hand' && o.phase !== 'idle')) { toast('One rod at a time. Pull the other one in.'); return; }
+  if (L.rig === 'trophy' && BAITS[L.bait].tier < 1) { toast('The trophy line needs shrimp or squid.'); return; }
+  if (L.bait !== 'scraps') {
+    if ((S.bait[L.bait] || 0) <= 0) { toast('Out of ' + BAITS[L.bait].name.toLowerCase() + '.'); return; }
+    S.bait[L.bait]--;
+  }
+  const at = now() + waitFor(L.rig);
+  L.phase = 'waiting'; L.at = at; L.c = rollCatch(S.loc, L.rig, L.bait, at);
+  S.casts++; save(); render();
+}
+function pullLine(i) { const L = S.lines[i]; if (!L) return; L.phase = 'idle'; L.c = null; save(); render(); }
+function reelLine(i) {
+  const L = S.lines[i]; if (!L || L.phase !== 'bite') return;
+  if (SP[L.c.id].kind) { land(i); return; }
+  startFight(i);
+}
+function haulLine(i) {
+  const L = S.lines[i]; if (!L || L.phase !== 'hooked') return;
+  if (L.rig === 'trophy' && !SP[L.c.id].kind) { startFight(i); return; }
+  land(i);
+}
+function land(i) {
+  const L = S.lines[i], c = L.c, s = SP[c.id];
+  L.phase = 'idle'; L.c = null;
+  const tags = []; let line2 = '';
+  if (s.kind) {
+    if (s.kind === 'wood' && !S.raft) {
+      S.wood++; line2 = `Driftwood ${S.wood}/${T.raftWood} for the raft.`;
+      if (S.wood >= T.raftWood) tags.push('Enough for a raft');
+    } else line2 = 'Junk. Tossed back.';
+  } else {
+    const ix = S.index[c.id] || (S.index[c.id] = { n: 0, best: 0, trophies: 0 });
+    if (ix.n === 0) tags.push('New species');
+    if (c.cm > ix.best) { if (ix.n > 0) tags.push('New record'); ix.best = c.cm; }
+    ix.n++;
+    if (c.trophy) { ix.trophies++; tags.push('Trophy size'); }
+    if (S.bucket.length < T.bucketCap) {
+      S.bucket.push({ id: c.id, cm: c.cm, value: c.value, trophy: c.trophy });
+      line2 = S.raft ? `Into the bucket. Worth ${money(c.value)} at a port.` : 'Into the bucket. No market here.';
+    } else line2 = 'Bucket full. Released.';
+  }
+  save(); render(); showCatchCard(c, s, tags, line2);
+}
+function sellHaul() {
+  if (!loc().sell || !S.bucket.length) return;
+  const total = S.bucket.reduce((a, b) => a + b.value, 0), n = S.bucket.length;
+  S.money += total; S.sold += total; S.bucket = [];
+  save(); render(); toast(`Sold ${n} fish for ${money(total)}.`);
+}
+function buildRaft() {
+  if (S.raft || S.wood < T.raftWood) return;
+  S.raft = true; S.boat = 'raft'; save(); render();
+  showCard(`<h2>Raft built</h2><div class="big">Six planks and some rope.</div><div class="note">Gull Harbor is within reach. Open the map and sail. They buy fish there.</div><div class="note">tap to close</div>`);
+}
+function sail(id) {
+  const L = LOC[id]; if (!L || L.locked || L.range > boatRange() || id === S.loc) return;
+  let pulled = 0;
+  S.lines.forEach(l => { if (l && l.phase !== 'idle') { l.phase = 'idle'; l.c = null; pulled++; } });
+  S.loc = id; S.visited[id] = true; reseedFish(); save(); closeSheet(); render();
+  toast(`Sailed to ${L.name}.` + (pulled ? ` Pulled in ${pulled} line${pulled > 1 ? 's' : ''}.` : ''));
+}
+
+// ---------- shop ----------
+function shopItems() {
+  const items = [];
+  if (S.slots < 4) items.push({ k: 'slot', name: `Line ${S.slots + 1}`, sub: 'One more line in the water.', price: SLOT_PRICES[S.slots] });
+  const ri = RODS.findIndex(r => r.id === S.rod);
+  if (ri < RODS.length - 1) { const r = RODS[ri + 1]; items.push({ k: 'rod', name: r.name, sub: `Wider net in the fight (${Math.round(r.bar * 100)}% of the track).`, price: r.price }); }
+  if (!S.trophyRig) items.push({ k: 'trig', name: 'Trophy rig', sub: 'A long passive line. Needs shrimp or squid. Hooks big fish; you still land them yourself.', price: TROPHY_RIG_PRICE });
+  items.push({ k: 'bait:shrimp', name: 'Shrimp ×5', sub: `Have ${S.bait.shrimp}. Mid-size fish, and the trophy rig.`, price: BAITS.shrimp.price });
+  items.push({ k: 'bait:squid', name: 'Squid ×5', sub: `Have ${S.bait.squid}. Deep and rare fish take only this.`, price: BAITS.squid.price });
+  const bi = BOATS.findIndex(b => b.id === S.boat);
+  if (bi >= 1 && bi < BOATS.length - 1) {
+    const b = BOATS[bi + 1];
+    items.push({ k: 'boat', name: b.name, sub: b.locked ? 'Not in this build. The price is the point.' : `Range ${b.range}: reveals the next stretch of the chart.`, price: b.price, locked: b.locked });
+  }
+  return items;
+}
+function buy(k) {
+  const it = shopItems().find(x => x.k === k); if (!it || it.locked) return;
+  if (S.money < it.price) { toast('Not enough money.'); return; }
+  S.money -= it.price;
+  if (k === 'slot') { S.slots++; S.lines[S.slots - 1] = { rig: 'set', bait: 'scraps', phase: 'idle' }; }
+  else if (k === 'rod') { const ri = RODS.findIndex(r => r.id === S.rod); S.rod = RODS[ri + 1].id; }
+  else if (k === 'trig') S.trophyRig = true;
+  else if (k.startsWith('bait:')) { const b = k.slice(5); S.bait[b] = (S.bait[b] || 0) + BAITS[b].qty; }
+  else if (k === 'boat') { const bi = BOATS.findIndex(b => b.id === S.boat); S.boat = BOATS[bi + 1].id; }
+  save(); render(); renderSheet(); toast(`Bought ${it.name}.`);
+}
+
+// ---------- ticking ----------
+let lastPhase = null;
+function tick() {
+  if (MODE !== 'game') return;
+  const t = now(); let changed = false;
+  S.lines.forEach((L, i) => {
+    if (!L) return;
+    if (L.phase === 'waiting' && t >= L.at) {
+      if (!L.c) { L.phase = 'idle'; toast(`Line ${i + 1}: nothing's biting on that.`); changed = true; return; }
+      if (L.rig === 'hand') { L.phase = 'bite'; L.exp = L.at + T.hitWindow; S.sel = i; toast(`HIT on line ${i + 1}!`); }
+      else { L.phase = 'hooked'; toast(`Line ${i + 1}: something's on.`); }
+      changed = true;
+    } else if (L.phase === 'bite' && t > L.exp) {
+      L.phase = 'idle'; L.c = null; toast(`Line ${i + 1}: it spat the hook.`); changed = true;
+    }
+  });
+  if (changed) { save(); render(); return; }
+  $('#hClock').textContent = clockText(t);
+  const ph = phaseAt(t); if (ph !== lastPhase) renderTide();
+  document.querySelectorAll('[data-line]').forEach(el => {
+    const L = S.lines[+el.dataset.line]; if (!L) return;
+    el.textContent = el.classList.contains('st') ? slotStatus(L) : waitNote(L);
+  });
+}
+
+// ---------- rendering (DOM) ----------
+function render() { if (MODE !== 'game') return; renderHUD(); renderTide(); renderSlots(); renderAction(); renderExtra(); }
+function renderHUD() {
+  $('#hLoc').textContent = loc().name;
+  $('#hClock').textContent = clockText(now());
+  $('#hMoney').textContent = money(S.money);
+  $('#hBucket').textContent = `Bucket ${S.bucket.length}/${T.bucketCap}`;
+  $('#tShop').hidden = !loc().shop;
+  $('#tMap').classList.toggle('pulse', S.raft && S.loc === 'shoal' && !S.visited.harbor);
+}
+function renderTide() {
+  const t = now(); lastPhase = phaseAt(t);
+  const names = pool(S.loc, 'hand', 'squid', t).filter(x => !x[0].kind && !x[0].rare).map(x => x[0].name);
+  $('#tide').innerHTML = `<b>${PHASE_NAME[lastPhase]}</b> · biting: ${names.slice(0, 2).join(', ') || 'not much'}`;
+}
+const RIG_NAME = { hand: 'rod', set: 'set', trophy: 'trophy' };
+function secsLeft(L) { return Math.max(1, Math.ceil((L.at - now()) / 1000)); }
+function slotStatus(L) {
+  if (L.phase === 'idle') return RIG_NAME[L.rig];
+  if (L.phase === 'waiting') return L.rig === 'hand' ? 'waiting…' : `~${secsLeft(L)}s`;
+  if (L.phase === 'bite') return 'HIT!';
+  return 'ON!';
+}
+function waitNote(L) {
+  if (L.rig === 'hand') return 'Waiting for a bite…';
+  return `${BAITS[L.bait].name} on. Hooks in ~${secsLeft(L)}s, even if you close the game.`;
+}
+function rigNote(L) {
+  if (L.rig === 'hand') return 'Tap Reel on the hit, then keep the fish in the net.';
+  if (L.rig === 'set') return 'Hooks in a minute or so, even while you are away. Common fish, no fight.';
+  return 'Takes minutes. Hooks big fish. Needs shrimp or squid. You still land it.';
+}
+function renderSlots() {
+  let h = '';
+  for (let i = 0; i < 4; i++) {
+    const L = S.lines[i];
+    if (i >= S.slots || !L) { h += `<div class="slot lock"><div class="n">LINE ${i + 1}</div><div class="st">${money(SLOT_PRICES[i])}</div></div>`; continue; }
+    const cls = ['slot', i === S.sel ? 'sel' : '', L.phase === 'bite' ? 'hot' : '', (L.phase === 'hooked' || L.phase === 'waiting') ? 'on' : ''].join(' ');
+    h += `<button class="${cls}" data-act="sel" data-i="${i}"><div class="n">LINE ${i + 1}</div><div class="st" data-line="${i}">${slotStatus(L)}</div></button>`;
+  }
+  $('#slots').innerHTML = h;
+}
+function renderAction() {
+  const i = S.sel, L = S.lines[i], box = $('#action');
+  if (!L) { box.innerHTML = '<div class="note">Pick a line.</div>'; return; }
+  if (L.phase === 'idle') {
+    const rigs = [['hand', 'Rod'], ['set', 'Set'], ['trophy', 'Trophy']];
+    box.innerHTML = `<div class="segrow"><span class="lbl">LINE ${i + 1}</span><div class="seg">${rigs.map(([k, n]) => `<button data-act="rig" data-k="${k}" class="${L.rig === k ? 'sel' : ''}" ${k === 'trophy' && !S.trophyRig ? 'disabled' : ''}>${n}</button>`).join('')}</div></div>
+      <div class="segrow"><span class="lbl">BAIT</span><div class="seg">${Object.entries(BAITS).map(([k, b]) => `<button data-act="bait" data-k="${k}" class="${L.bait === k ? 'sel' : ''}" ${k !== 'scraps' && !(S.bait[k] > 0) ? 'disabled' : ''}>${k === 'scraps' ? 'Scraps' : b.name + ' ×' + S.bait[k]}</button>`).join('')}</div></div>
+      <div class="note">${rigNote(L)}</div>
+      <button class="cta" data-act="cast" data-i="${i}">${L.rig === 'hand' ? 'Cast' : 'Set the line'}</button>`;
+  } else if (L.phase === 'waiting') {
+    box.innerHTML = `<h3>LINE ${i + 1}</h3><div class="note" data-line="${i}">${waitNote(L)}</div><button class="cta alt" data-act="pull" data-i="${i}">Pull in</button>`;
+  } else if (L.phase === 'bite') {
+    box.innerHTML = `<h3>LINE ${i + 1}</h3><div class="note">Something hit it. Now or never.</div><button class="cta hit" data-act="reel" data-i="${i}">Reel in!</button>`;
+  } else {
+    const big = L.rig === 'trophy';
+    box.innerHTML = `<h3>LINE ${i + 1}</h3><div class="note">${big ? 'Something heavy is on. It will not come in by itself.' : 'The float went under a while ago. Still on.'}</div><button class="cta ${big ? 'hit' : ''}" data-act="haul" data-i="${i}">${big ? 'Fight it' : 'Haul in'}</button>`;
+  }
+}
+function renderExtra() {
+  let h = '';
+  if (S.loc === 'shoal' && !S.raft) {
+    h += `<div class="box"><div class="row"><div>Driftwood <b>${S.wood}/${T.raftWood}</b> for a raft</div><div class="note">no market here</div></div>${S.wood >= T.raftWood ? '<button class="cta" data-act="build">Build the raft</button>' : ''}</div>`;
+  }
+  if (loc().sell) {
+    const total = S.bucket.reduce((a, b) => a + b.value, 0);
+    h += `<div class="box"><h3>MARKET</h3><div class="row"><div>${S.bucket.length} fish in the bucket</div><div class="price">${money(total)}</div></div><button class="cta" data-act="sell" ${S.bucket.length ? '' : 'disabled'}>Sell the haul</button></div>`;
+  } else if (S.raft && S.bucket.length) {
+    h += '<div class="note" style="text-align:center">No market here. Gull Harbor buys.</div>';
+  }
+  $('#extra').innerHTML = h;
+}
+
+// ---------- sheets ----------
+let sheetKind = null, mapSel = 'shoal';
+function openSheet(k) { sheetKind = k; if (k === 'map') mapSel = S.loc; $('#sheetWrap').hidden = false; renderSheet(); }
+function closeSheet() { sheetKind = null; $('#sheetWrap').hidden = true; }
+function renderSheet() {
+  const el = $('#sheet');
+  if (sheetKind === 'map') {
+    const R = boatRange();
+    const rows = LOCS.filter(l => l.range <= R + 1).map(l => {
+      const fog = l.range > R;
+      const need = fog ? BOATS.find(b => b.range === l.range) : null;
+      return `<button class="row ${l.id === mapSel ? 'sel' : ''} ${fog ? 'dim' : ''}" data-act="node" data-k="${l.id}"><div class="name">${fog ? '???' : l.name}<small>${fog ? (need && need.locked ? 'Beyond everything. Needs a ' + need.name.toLowerCase() + '.' : 'Beyond your range. Needs a ' + (need ? need.name.toLowerCase() : 'bigger boat') + '.') : l.blurb}</small></div>${l.id === S.loc ? '<div class="here">you are here</div>' : ''}</button>`;
+    }).join('');
+    const sel = LOC[mapSel];
+    const canSail = sel && !sel.locked && sel.range <= R && sel.id !== S.loc;
+    const boat = BOATS.find(b => b.id === S.boat);
+    el.innerHTML = `<div class="head"><h2>Chart</h2><button class="x" data-act="close">✕</button></div>
+      <div class="note">Boat: ${boat.name.toLowerCase()} · range ${boat.range}. The chart fills in as your boat gets bigger.</div>
+      <canvas id="mapcv" width="160" height="120"></canvas>
+      <div class="legend">${rows}</div>
+      <button class="cta" data-act="sail" ${canSail ? '' : 'disabled'}>${canSail ? 'Sail to ' + sel.name : sel && sel.id === S.loc ? 'You are here' : 'Pick a port'}</button>`;
+    drawMap();
+    $('#mapcv').addEventListener('click', mapClick);
+  } else if (sheetKind === 'index') {
+    const fish = SPECIES.filter(s => !s.kind);
+    const rows = fish.map(s => {
+      const ix = S.index[s.id], home = LOCS.find(l => s.loc[l.id]);
+      const mini = `<canvas class="mini" width="24" height="10" data-shape="${s.shape}" data-known="${ix ? 1 : 0}"></canvas>`;
+      if (ix) return `<div class="row">${mini}<div class="name" style="flex:1">${s.name}<small>${home.name}${s.rare ? ' · rare' : ''}${s.time ? ' · ' + s.time.join('/') : ''}</small></div><div class="price">×${ix.n} · ${ix.best} cm${ix.trophies ? ' · ★' + ix.trophies : ''}</div></div>`;
+      return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${S.visited[home.id] ? home.name : 'somewhere out there'}${s.rare ? ' · rare: rod or trophy line' : ''}</small></div><div class="price">—</div></div>`;
+    }).join('');
+    el.innerHTML = `<div class="head"><h2>Index ${Object.keys(S.index).length}/${fish.length}</h2><button class="x" data-act="close">✕</button></div><div class="list">${rows}</div>`;
+    el.querySelectorAll('canvas.mini').forEach(c => { const x = c.getContext('2d'); x.fillStyle = '#0a1020'; x.fillRect(0, 0, 24, 10); const m = MASKS[c.dataset.shape]; drawMaskRaw(x, m, (24 - m[0].length) >> 1, (10 - m.length) >> 1, c.dataset.known === '1' ? '#dfe9f3' : '#2d3b55', 1); });
+  } else if (sheetKind === 'shop') {
+    const rows = shopItems().map(it => `<div class="row"><div class="name">${it.name}<small>${it.sub}</small></div><div style="display:grid;gap:4px;justify-items:end"><div class="price">${money(it.price)}</div><button class="buy" data-act="buy" data-k="${it.k}" ${it.locked || S.money < it.price ? 'disabled' : ''}>${it.locked ? 'LOCKED' : 'BUY'}</button></div></div>`).join('');
+    el.innerHTML = `<div class="head"><h2>Shop · ${loc().name}</h2><button class="x" data-act="close">✕</button></div><div class="note">You have ${money(S.money)}.</div><div class="list">${rows}</div>`;
+  } else if (sheetKind === 'menu') {
+    el.innerHTML = `<div class="head"><h2>Menu</h2><button class="x" data-act="close">✕</button></div>
+      <div class="note">Caught ${Object.values(S.index).reduce((a, b) => a + b.n, 0)} fish · sold ${money(S.sold)} · ${S.casts} casts.</div>
+      <button class="cta alt" data-act="replay">Watch the opening again</button>
+      <button class="cta alt" data-act="totitle">Back to title</button>`;
+  }
+}
+function mapClick(e) {
+  const c = e.currentTarget, r = c.getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width * 160, y = (e.clientY - r.top) / r.height * 120, R = boatRange();
+  let best = null, bd = 18;
+  for (const l of LOCS) { if (l.range > R + 1) continue; const d = Math.hypot(l.x - x, l.y - y); if (d < bd) { bd = d; best = l; } }
+  if (best) { mapSel = best.id; renderSheet(); }
+}
+
+// ---------- cards & toasts ----------
+function showCard(html) { $('#card').innerHTML = html; $('#cardWrap').hidden = false; }
+function closeCard() { $('#cardWrap').hidden = true; }
+function showCatchCard(c, s, tags, line2) {
+  showCard(`<h2>${s.name}</h2><canvas id="ccv" width="48" height="32"></canvas><div class="big">${s.kind ? (s.kind === 'wood' ? 'a good plank' : 'not a fish') : c.cm + ' cm'}</div><div class="note">${line2}</div>${tags.map(t => `<div class="tag">${t}</div>`).join('')}<div class="note">tap to close</div>`);
+  const cv2 = $('#ccv'), x = cv2.getContext('2d');
+  x.fillStyle = '#0f2a44'; x.fillRect(0, 0, 48, 32);
+  const m = MASKS[s.shape], sc = s.kind ? 3 : (m[0].length > 12 ? 2 : 3), w = m[0].length * sc, h = m.length * sc;
+  drawMaskRaw(x, m, (48 - w) / 2 | 0, (32 - h) / 2 | 0, s.kind === 'wood' ? '#8a5a34' : s.kind === 'junk' ? '#5a4636' : c.trophy ? '#f0c050' : '#dfe9f3', sc);
+}
+function toast(msg) {
+  const w = $('#toasts'), d = document.createElement('div');
+  d.className = 'toast'; d.textContent = msg; w.appendChild(d);
+  while (w.children.length > 3) w.firstChild.remove();
+  setTimeout(() => d.remove(), 2800);
+}
+
+// ---------- pixel art: masks, sprites, caches ----------
+const MASKS = {
+  fry:   ['#..###.', '.######', '#..###.'],
+  bream: ['#......###..', '##..########', '.###########', '.###########', '##..########', '#......###..'],
+  trout: ['#......#####..', '##############', '##############', '#......#####..'],
+  pike:  ['#.......######..', '################', '##..############', '#.......######..'],
+  eel:   ['.##...##...#####..', '###.###.##########', '.##...##...#####..'],
+  big:   ['#.........#####...', '##.......########.', '###....###########', '.#################', '.#################', '###....###########', '##.......########.', '#.........#####...'],
+  flat:  ['#....####...', '##.########.', '.###########', '##.########.', '#....####...'],
+  wood:  ['########', '#.##.###', '########'],
+  boot:  ['..####.', '..#..#.', '..#..#.', '..#..#.', '###..#.', '#....#.', '#######'],
+  gullA: ['#.....#', '.#...#.', '..###..'],
+  gullB: ['..###..', '.#...#.', '#.....#'],
+  crab:  ['#...#', '.###.', '#.#.#'],
+  isle:  ['...#######...', '.###########.', '#############', '#############', '.###########.', '...#######...'],
+  isleIn: ['..#####..', '.#######.', '..#####..'],
+  sun:   ['..###..', '.#####.', '#######', '#######', '#######', '.#####.', '..###..'],
+  ring:  ['....#####....', '..##.....##..', '.#.........#.', '#...........#', '#...........#', '#...........#', '.#.........#.', '..##.....##..', '....#####....'],
+};
+const PAL = { h: '#c9a86a', H: '#8f7442', s: '#e0b088', S: '#b8835e', e: '#1a1410', b: '#3a2a1e', t: '#4e8f8a', T: '#356862', p: '#5b4a3a', P: '#3f3228' };
+const SPRITES = {
+  sit: [
+    '.......hhhhhhhh.........',
+    '......hhhhhhhhhh........',
+    '......hhHHHHHHhh........',
+    '..hhhhhhhhhhhhhhhhhh....',
+    '..HHHHHHHHHHHHHHHHHH....',
+    '.......ssssssss.........',
+    '.......sssssssss........',
+    '.......ssssssess........',
+    '.......sssssssss........',
+    '.......bbbbbbbb.........',
+    '........bbbbbbb.........',
+    '.........bbbbb..........',
+    '.......tttttttt.........',
+    '......tttttttttt........',
+    '.....ttttttttttttt......',
+    '.....ttttttttttttttss...',
+    '.....tttTTTttttttttsss..',
+    '.....ttttttttttttttss...',
+    '.....tttttttttttt.......',
+    '.....tttttttttttt.......',
+    '.....TTTTTTTTTTTT.......',
+    '.....ppppppppppppppp....',
+    '.....pppppppppppppppp...',
+    '.....PPPPPPPPPPpppppp...',
+    '................ppppp...',
+    '................ppppp...',
+    '................PPPPP...',
+    '...............ssssss...',
+    '..............ssssssS...',
+    '..............SSSSSSS...',
+  ],
+  lie: [
+    '...hhhhhh.........................',
+    '..hhhhhhhh........................',
+    '.hhhHHHHhhh.......................',
+    'hhhhhhhhhhhhss.ttttttttttpppppppp.',
+    '.hhhhhhhhhh.ssstttttTTTtttppppppps',
+    '......bbb...ss.ttttttttttPPPPPPPss',
+    '..........s.....................SS',
+  ],
+  float: [
+    '.....hhhhhh.....',
+    '....hhhhhhhh....',
+    '..hhhhHHHHhhhh..',
+    '..HHHHHHHHHHHH..',
+    '......ssssss..ss',
+    '......ssbbss..ss',
+  ],
+};
+const CACHE = new Map();
+function maskC(name, col, sc) {
+  const key = 'm|' + name + '|' + col + '|' + sc; let c = CACHE.get(key); if (c) return c;
+  const m = MASKS[name]; c = document.createElement('canvas'); c.width = m[0].length * sc; c.height = m.length * sc;
+  drawMaskRaw(c.getContext('2d'), m, 0, 0, col, sc); CACHE.set(key, c); return c;
+}
+function sprite(name) {
+  const key = 's|' + name; let c = CACHE.get(key); if (c) return c;
+  const map = SPRITES[name]; c = document.createElement('canvas'); c.width = map[0].length; c.height = map.length;
+  const x = c.getContext('2d');
+  for (let r = 0; r < map.length; r++) { const row = map[r]; for (let i = 0; i < row.length; i++) { const col = PAL[row[i]]; if (!col) continue; x.fillStyle = col; x.fillRect(i, r, 1, 1); } }
+  CACHE.set(key, c); return c;
+}
+function drawMaskRaw(ctx, mask, x, y, col, sc) {
+  sc = sc || 1; ctx.fillStyle = col; const w = mask[0].length;
+  for (let r = 0; r < mask.length; r++) for (let c = 0; c < w; c++) if (mask[r][c] === '#') ctx.fillRect(x + c * sc, y + r * sc, sc, sc);
+}
+function blit(ctx, c, x, y, flip) {
+  x |= 0; y |= 0;
+  if (!flip) { ctx.drawImage(c, x, y); return; }
+  ctx.save(); ctx.scale(-1, 1); ctx.drawImage(c, -x - c.width, y); ctx.restore();
+}
+function bres(ctx, x0, y0, x1, y1, col, thick) {
+  x0 |= 0; y0 |= 0; x1 |= 0; y1 |= 0; thick = thick || 1;
+  const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+  let err = dx + dy; ctx.fillStyle = col;
+  for (let n = 0; n < 600; n++) {
+    ctx.fillRect(x0, y0, thick, thick);
+    if (x0 === x1 && y0 === y1) break;
+    const e2 = 2 * err;
+    if (e2 >= dy) { err += dy; x0 += sx; }
+    if (e2 <= dx) { err += dx; y0 += sy; }
+  }
+}
+
+// ---------- sky model ----------
+const SKY = [
+  [0,   '#070b1d', '#121f45', '#0f2a44'],
+  [4.5, '#070b1d', '#121f45', '#0f2a44'],
+  [6,   '#4a3a6e', '#f0a36a', '#2a6f8e'],
+  [8,   '#4393d8', '#c2e4f4', '#2e86a6'],
+  [17,  '#3d8ad0', '#c9e2ee', '#2e86a6'],
+  [19,  '#33255a', '#ea6e49', '#255f80'],
+  [21,  '#070b1d', '#121f45', '#0f2a44'],
+  [24,  '#070b1d', '#121f45', '#0f2a44'],
+].map(k => [k[0], hex(k[1]), hex(k[2]), hex(k[3])]);
+function skyAt(h) {
+  for (let i = 0; i < SKY.length - 1; i++) {
+    const a = SKY[i], b = SKY[i + 1];
+    if (h >= a[0] && h <= b[0]) { const f = b[0] > a[0] ? (h - a[0]) / (b[0] - a[0]) : 0; return { top: lerpC(a[1], b[1], f), bot: lerpC(a[2], b[2], f), sea: lerpC(a[3], b[3], f) }; }
+  }
+  return { top: SKY[0][1], bot: SKY[0][2], sea: SKY[0][3] };
+}
+function nightness(h) { if (h >= 21 || h < 4.5) return 1; if (h < 6) return 1 - (h - 4.5) / 1.5; if (h >= 19) return (h - 19) / 2; return 0; }
+const BAYER = [0.2, 0.7, 0.95, 0.45];
+let seed = 7;
+const prand = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+const STARS = Array.from({ length: 70 }, () => [prand(), prand() * 0.9, prand() < 0.3 ? 0 : 1]);
+const CLOUDS = Array.from({ length: 7 }, (_, i) => ({ y: 0.06 + prand() * 0.5, w: 16 + (prand() * 18 | 0), spd: i % 2 ? 1.7 : 0.9, off: prand() }));
+const RAIN = Array.from({ length: 110 }, (_, i) => ({ x: prand(), y: prand(), s: 0.75 + (i % 3) * 0.25 }));
+const MOTES = Array.from({ length: 14 }, () => ({ x: prand(), y: prand(), s: 2 + prand() * 4 }));
+const SNOW = Array.from({ length: 50 }, () => ({ x: prand(), y: prand(), s: 0.5 + prand() * 0.8 }));
+
+// ---------- canvas & layout ----------
+const cv = $('#scene'), g = cv.getContext('2d');
+let W = 195, H = 375, SURF = 150, scale = 2, shoreW = 66;
+let skyKey = '', skyC = null, seaKey = '', seaC = null, curSky = null, lightX = -1, lightY = -1;
+function layout() {
+  const cw = Math.max(200, window.innerWidth), ch = Math.max(300, window.innerHeight);
+  scale = Math.max(2, Math.round(Math.min(cw / 180, ch / 320)));
+  W = Math.ceil(cw / scale); H = Math.ceil(ch / scale);
+  cv.width = W; cv.height = H; cv.style.width = (W * scale) + 'px'; cv.style.height = (H * scale) + 'px';
+  SURF = Math.round(H * (ch > cw ? 0.40 : 0.52));
+  shoreW = Math.round(W * 0.34);
+  skyKey = ''; seaKey = ''; g.imageSmoothingEnabled = false;
+  reseedFish();
+}
+function skyLayer(h) {
+  const key = Math.round(h * 12) + '|' + W + '|' + SURF; if (key === skyKey) return skyC; skyKey = key;
+  const c = document.createElement('canvas'); c.width = W; c.height = SURF;
+  const x = c.getContext('2d'), img = x.createImageData(W, SURF), d = img.data, sky = skyAt(h), bands = 10;
+  for (let y = 0; y < SURF; y++) {
+    const fb = (y / (SURF - 1)) * bands, bi = Math.floor(fb), fr = fb - bi;
+    for (let xx = 0; xx < W; xx++) {
+      const b = Math.min(bands, fr > BAYER[((y & 1) << 1) | (xx & 1)] ? bi + 1 : bi) / bands;
+      const col = lerpC(sky.top, sky.bot, b), i = (y * W + xx) * 4;
+      d[i] = col[0]; d[i + 1] = col[1]; d[i + 2] = col[2]; d[i + 3] = 255;
+    }
+  }
+  x.putImageData(img, 0, 0); skyC = c; return c;
+}
+function seaLayer(h) {
+  const key = Math.round(h * 12) + '|' + W + '|' + SURF + '|' + H; if (key === seaKey) return seaC; seaKey = key;
+  const hh = H - SURF, c = document.createElement('canvas'); c.width = W; c.height = hh;
+  const x = c.getContext('2d'), img = x.createImageData(W, hh), d = img.data, sky = skyAt(h), deep = lerpC(sky.sea, [3, 8, 18], 0.85), bands = 11;
+  for (let y = 0; y < hh; y++) {
+    const fb = Math.min(1, y / 150) * bands, bi = Math.floor(fb), fr = fb - bi;
+    for (let xx = 0; xx < W; xx++) {
+      const b = Math.min(bands, fr > BAYER[((y & 1) << 1) | (xx & 1)] ? bi + 1 : bi) / bands;
+      const col = lerpC(sky.sea, deep, b), i = (y * W + xx) * 4;
+      d[i] = col[0]; d[i + 1] = col[1]; d[i + 2] = col[2]; d[i + 3] = 255;
+    }
+  }
+  x.putImageData(img, 0, 0); seaC = c; return c;
+}
+let shaftC = null;
+function shaftLayer() {
+  if (shaftC) return shaftC; const c = document.createElement('canvas'); c.width = 70; c.height = 100; const x = c.getContext('2d');
+  for (let y = 0; y < 100; y++) { const w = 7 + y * 0.14; x.fillStyle = `rgba(210,235,255,${(0.2 * (1 - y / 100)).toFixed(3)})`; x.fillRect((22 + y * 0.4 - w / 2) | 0, y, w | 0, 1); }
+  shaftC = c; return c;
+}
+
+// ---------- scene pieces ----------
+function drawSkyBase(h, t, o) {
+  o = o || {}; curSky = skyAt(h); const nt = nightness(h);
+  g.drawImage(skyLayer(h), 0, 0);
+  if (nt > 0 && !o.noStars) for (const [sx, sy, k] of STARS) {
+    const tw = k === 0 ? 0.5 + 0.5 * Math.abs(Math.sin(t / 900 + sx * 40)) : 1;
+    g.fillStyle = `rgba(230,236,255,${(0.9 * nt * tw).toFixed(2)})`; g.fillRect((sx * W) | 0, (sy * SURF) | 0, 1, 1);
+  }
+  lightX = -1;
+  if (!o.noSun) {
+    if (h > 5.3 && h < 20.2) {
+      const f = (h - 5.3) / 14.9, sx = (W - 14 - f * (W - 28)) | 0, sy = (SURF - 3 - Math.sin(f * Math.PI) * SURF * 0.85) | 0;
+      for (let r = 9; r > 3; r -= 2) { g.fillStyle = `rgba(255,220,130,${(0.06 * (10 - r)).toFixed(2)})`; g.fillRect(sx - r, sy - r + 3, 2 * r + 1, 2 * r - 5); g.fillRect(sx - r + 3, sy - r, 2 * r - 5, 2 * r + 1); }
+      blit(g, maskC('sun', '#ffe08a', 1), sx - 3, sy - 3);
+      g.fillStyle = '#fff4cc'; g.fillRect(sx - 1, sy - 2, 3, 3);
+      lightX = sx; lightY = sy;
+    } else {
+      const nh = h >= 20.2 ? h - 20.2 : h + 3.8, f = nh / 9.1, mx = (14 + f * (W - 28)) | 0, my = (SURF - 6 - Math.sin(f * Math.PI) * SURF * 0.8) | 0;
+      blit(g, maskC('sun', '#e8ecf4', 1), mx - 3, my - 3);
+      g.fillStyle = css(curSky.top); g.fillRect(mx - 1, my - 3, 5, 5);
+      lightX = mx; lightY = my;
+    }
+  }
+  if (!o.noClouds) {
+    const base = lerpC(lerpC([250, 250, 255], curSky.bot, 0.3), [40, 50, 80], nt * 0.8), shade = lerpC(base, curSky.top, 0.35);
+    for (const c of CLOUDS) {
+      const x = (((c.off * (W + 70)) + (t / 1000) * c.spd) % (W + 70) - 50) | 0, y = (c.y * SURF) | 0, w = c.w;
+      g.fillStyle = css(base);
+      g.fillRect(x + 1, y + 3, w - 2, 4); g.fillRect(x, y + 4, w, 2);
+      g.fillRect(x + (w * 0.25 | 0), y + 1, w * 0.45 | 0, 3); g.fillRect(x + (w * 0.3 | 0), y, w * 0.3 | 0, 1);
+      g.fillRect(x + (w * 0.6 | 0), y + 2, w * 0.3 | 0, 2);
+      g.fillStyle = css(shade); g.fillRect(x + 2, y + 6, w - 4, 1);
+    }
+  }
+  if (!o.noBirds && nt < 0.6) for (let k = 0; k < 2; k++) {
+    const x = (((t / 1000) * 6 + k * W * 0.55) % (W + 24) - 12) | 0, y = (SURF * (0.28 + k * 0.12) + Math.sin(t / 700 + k) * 2) | 0;
+    blit(g, maskC(Math.floor(t / 260 + k) % 2 ? 'gullA' : 'gullB', rgba(lerpC([40, 50, 70], curSky.top, 0.2), 1), 1), x, y);
+  }
+  return nt;
+}
+function drawSeaBase(h, t, nt, o) {
+  o = o || {};
+  g.drawImage(seaLayer(h), 0, SURF);
+  if (o.tint) { g.fillStyle = o.tint; g.fillRect(0, SURF, W, H - SURF); }
+  g.fillStyle = rgba(lerpC(curSky.sea, [255, 255, 255], 0.55), 0.95); g.fillRect(0, SURF, W, 1);
+  const wave = rgba(lerpC(curSky.sea, [255, 255, 255], 0.3), 1);
+  const rows = [[2, 3, 9], [5, 4, 12], [9, 5, 15], [14, 6, 19], [21, 8, 24], [30, 9, 30]];
+  rows.forEach(([dy, len, gap], r) => { const y = SURF + dy, off = (((t / (150 + r * 40)) + r * 7) % gap) | 0; g.fillStyle = wave; for (let x = -gap + off; x < W; x += gap) g.fillRect(x, y, len, 1); });
+  if (lightX >= 0 && lightY > SURF - SURF * 0.45) {
+    const a = nt > 0.5 ? 0.12 : 0.22;
+    for (let y = SURF + 1; y < SURF + 44; y += 2) { const f = (y - SURF) / 44, w = (9 * (1 - f) + 2) | 0, j = Math.sin(t / 300 + y) * 3 * f; g.fillStyle = `rgba(255,224,150,${(a * (1 - f)).toFixed(3)})`; g.fillRect((lightX - w / 2 + j) | 0, y, w, 1); }
+  }
+  if (nt < 0.75 && !o.noShafts) {
+    const sh = shaftLayer(); g.globalAlpha = (1 - nt) * 0.9;
+    for (let k = 0; k < 5; k++) { g.globalAlpha = (1 - nt) * (0.45 + 0.45 * Math.abs(Math.sin(t / 1400 + k * 1.3))); g.drawImage(sh, (shoreW + 4 + k * ((W - shoreW) / 4.6) + Math.sin(t / 1000 + k) * 3) | 0, SURF + 1); }
+    g.globalAlpha = 1;
+  }
+  for (const m of MOTES) { const y = SURF + 8 + (((m.y * 1000 - t / 1000 * m.s) % 1 + 1) % 1) * (H - SURF - 8), x = (m.x * W + Math.sin(t / 900 + m.y * 9) * 2) | 0; g.fillStyle = 'rgba(200,225,240,0.35)'; g.fillRect(x, y | 0, 1, 1); }
+}
+let swim = [];
+function reseedFish() {
+  swim = [];
+  const p = pool(S.loc, 'hand', 'squid', now()).filter(x => !x[0].kind);
+  for (let k = 0; k < 7 && p.length; k++) {
+    const s = p[Math.floor(Math.random() * p.length)][0];
+    const deep = S.loc === 'trench' || S.loc === 'fjord' ? 110 : 54;
+    swim.push({ x: rnd(shoreW + 10, W - 10), y: rnd(SURF + 12, SURF + deep), dir: Math.random() < 0.5 ? -1 : 1, sp: rnd(3, 9) * (s.shape === 'fry' ? 1.6 : 1), shape: s.shape, sc: s.big ? 2 : 1, ph: rnd(0, 6) });
+  }
+}
+function stepFish(dt) {
+  for (const f of swim) {
+    f.x += f.dir * f.sp * dt; f.y += Math.sin(now() / 700 + f.ph) * 0.3 * dt * 10;
+    if (f.x < shoreW + 4) { f.x = shoreW + 4; f.dir = 1; } if (f.x > W - 4) { f.x = W - 4; f.dir = -1; }
+    if (Math.random() < 0.003) f.dir *= -1;
+  }
+}
+function drawFish(t) {
+  for (const f of swim) {
+    const y = f.y + Math.sin(t / 500 + f.ph) * 1.5, c = maskC(f.shape, 'rgba(6,16,30,0.72)', f.sc);
+    blit(g, c, f.dir < 0 ? f.x - c.width : f.x, y, f.dir < 0);
+  }
+}
+const sandTop = x => SURF - 2 - Math.max(0, shoreW - x) * 0.3;
+// underwater floor per location: f(x) gives the floor's y. Rendered once into a cached layer,
+// lit near the surface and murky with depth, dithered like the sea.
+const FLOORS = {
+  shoal:  { near: [172, 160, 118], deep: [50, 72, 80], f: x => x < shoreW ? SURF : x < shoreW + 26 ? SURF + (x - shoreW) * 2.5 : SURF + 64 + Math.sin(x / 9) * 1.5 + (x - shoreW - 26) * 0.06 },
+  harbor: { near: [96, 104, 92],   deep: [38, 50, 56], f: x => SURF + 86 + Math.sin(x / 11) * 2 },
+  reach:  { near: [92, 102, 112],  deep: [38, 48, 60], f: x => x < shoreW ? SURF : x < shoreW + 30 ? SURF + (x - shoreW) * 2.4 : SURF + 72 + Math.sin(x / 7) * 2 + (x - shoreW - 30) * 0.05 },
+};
+function floorLayer(id) {
+  const key = 'f|' + id + '|' + W + '|' + H + '|' + SURF; let c = CACHE.get(key); if (c) return c;
+  const fl = FLOORS[id], hh = H - SURF; c = document.createElement('canvas'); c.width = W; c.height = hh;
+  const x = c.getContext('2d'), img = x.createImageData(W, hh), d = img.data, bands = 8;
+  for (let xx = 0; xx < W; xx++) {
+    const top = Math.max(0, (fl.f(xx) | 0) - SURF); if (top >= hh) continue;
+    for (let y = top; y < hh; y++) {
+      const fb = Math.min(1, y / 90) * bands, bi = Math.floor(fb), fr = fb - bi;
+      const b = Math.min(bands, fr > BAYER[((y & 1) << 1) | (xx & 1)] ? bi + 1 : bi) / bands;
+      let col = lerpC(fl.near, fl.deep, b);
+      if (y === top) col = lerpC(col, [255, 255, 255], 0.2);
+      else if (y === top + 3 && (xx * 7) % 9 < 3) col = lerpC(col, [0, 0, 0], 0.25);
+      const i = (y * W + xx) * 4; d[i] = col[0]; d[i + 1] = col[1]; d[i + 2] = col[2]; d[i + 3] = 255;
+    }
+  }
+  x.putImageData(img, 0, 0); CACHE.set(key, c); return c;
+}
+function palmTree(x, yb, hgt, t) {
+  for (let i = 0; i < hgt; i++) { const dx = Math.round((i / hgt) * (i / hgt) * 7); g.fillStyle = i % 5 === 0 ? '#5e3e22' : '#7a5230'; g.fillRect(x + dx, yb - i, 3, 1); g.fillStyle = '#8f6a40'; g.fillRect(x + dx, yb - i, 1, 1); }
+  const cx = x + 8, cy = yb - hgt, sway = Math.sin(t / 1200);
+  const fronds = [[-2.7, 1.0], [-2.3, 0.6], [-1.9, 0.3], [-1.2, 0.3], [-0.6, 0.5], [-0.1, 1.0], [-3.0, 1.4]];
+  for (const [a, dr] of fronds) {
+    for (let s = 0; s < 18; s++) { const px = cx + Math.cos(a + sway * 0.05) * s * 1.3, py = cy + Math.sin(a) * s * 0.7 + dr * s * s * 0.045; g.fillStyle = s % 4 < 2 ? '#2f8f4e' : '#48b36a'; g.fillRect(px | 0, py | 0, 2, 1); if (s % 3 === 1) { g.fillStyle = '#2a7a44'; g.fillRect((px | 0) + (a < -1.5 ? 0 : 1), (py | 0) + 1, 1, 2); } }
+  }
+  g.fillStyle = '#5e3e22'; g.fillRect(cx - 1, cy, 2, 1); g.fillRect(cx + 1, cy + 1, 1, 1); g.fillStyle = '#8f6a40'; g.fillRect(cx - 2, cy + 1, 1, 1);
+}
+function pine(x, yb, hgt) {
+  for (let k = 0; k < 4; k++) { g.fillStyle = k % 2 ? '#1f5a3a' : '#2b7047'; const w = 3 + 2 * k; g.fillRect(x - (w >> 1), yb - hgt + k * (hgt / 4 | 0), w, hgt / 4 | 0); }
+  g.fillStyle = '#3b2a1c'; g.fillRect(x, yb - 3, 1, 3);
+  g.fillStyle = '#e9f1f7'; g.fillRect(x - 1, yb - hgt, 3, 1); g.fillRect(x - 3, yb - hgt + (hgt / 2 | 0), 2, 1);
+}
+function farIsland(x, w, withPalm) {
+  const haze = css(lerpC(curSky.bot, [20, 30, 50], 0.5));
+  g.fillStyle = haze; g.fillRect(x, SURF - 3, w, 3); g.fillRect(x + (w * 0.2 | 0), SURF - 6, w * 0.6 | 0, 3); g.fillRect(x + (w * 0.35 | 0), SURF - 8, w * 0.25 | 0, 2);
+  if (withPalm) { const px = x + (w * 0.5 | 0); g.fillRect(px, SURF - 15, 1, 8); g.fillRect(px - 3, SURF - 16, 7, 2); g.fillRect(px - 2, SURF - 14, 2, 1); g.fillRect(px + 1, SURF - 14, 2, 1); }
+}
+function drawBoat(x, y, w, kind, t, storm) {
+  g.fillStyle = '#5a3a22'; g.fillRect(x, y - 2, w, 2);
+  g.fillStyle = '#3e2816'; g.fillRect(x + 2, y, w - 4, 3);
+  g.fillStyle = '#2a1a0e'; g.fillRect(x + 6, y + 3, w - 12, 2);
+  g.fillStyle = '#8a6a44'; g.fillRect(x + 1, y - 2, w - 2, 1);
+  if (kind === 'raft') { g.fillStyle = '#7a5230'; for (let k = 0; k < w; k += 5) g.fillRect(x + k, y - 2, 1, 3); return; }
+  const mx = x + (w * 0.36 | 0), mh = kind === 'skiff' ? 24 : kind === 'cutter' ? 32 : 38;
+  g.fillStyle = '#6a4a2a'; g.fillRect(mx, y - mh - 2, 2, mh);
+  if (storm) { for (let k = 0; k < 6; k++) { g.fillStyle = '#d8ccb0'; g.fillRect(mx + 2 + k * 2 + (Math.sin(t / 90 + k) * 2 | 0), y - mh + 2 + k * 3, 3, 1); } }
+  else { for (let k = 0; k < mh - 8; k++) { g.fillStyle = k % 6 === 0 ? '#d9cdb2' : '#eee4cc'; g.fillRect(mx + 2, y - mh + k, (k * 0.55) | 0, 1); } }
+  if (kind === 'cutter' || kind === 'trawler') { g.fillStyle = '#4a3220'; g.fillRect(x + (w * 0.55 | 0), y - 10, w * 0.3 | 0, 8); g.fillStyle = '#ffd27a'; g.fillRect(x + (w * 0.62 | 0), y - 8, 3, 3); }
+  g.fillStyle = '#f0c050'; g.fillRect(x + w - 6, y - 7, 2, 3); g.fillStyle = '#3a2816'; g.fillRect(x + w - 6, y - 9, 2, 2);
+}
+function hull(x, y, w) { g.fillStyle = '#4a3220'; g.fillRect(x, y, w, 3); g.fillStyle = '#2e1f12'; g.fillRect(x + 3, y + 3, w - 6, 2); g.fillStyle = '#6a4a2a'; g.fillRect(x, y, w, 1); }
+
+// per-location shore: draws the land, the seat and the far horizon. Returns the fisherman's spot.
+function drawShore(id, t, nt, o) {
+  o = o || {};
+  const haze = css(lerpC(curSky.bot, [20, 30, 50], 0.5));
+  if (id === 'shoal') {
+    farIsland(W - 50, 42, true);
+    g.drawImage(floorLayer('shoal'), 0, SURF);
+    for (let x = 0; x < shoreW; x++) {
+      const top = sandTop(x) | 0, wet = x > shoreW - 12;
+      g.fillStyle = wet ? '#cdb47e' : '#e6cf96'; g.fillRect(x, top, 1, SURF - top);
+      g.fillStyle = '#f3e4b4'; g.fillRect(x, top, 1, 1);
+    }
+    g.fillStyle = '#d9bf84'; for (let x = 2; x < shoreW - 16; x += 5) g.fillRect(x, (sandTop(x) | 0) + 3 + (x % 3), 2, 1);
+    for (const gx of [22, 31, 47]) { const gy = sandTop(gx) | 0; g.fillStyle = '#6e9a4a'; g.fillRect(gx, gy - 3, 1, 3); g.fillRect(gx - 1, gy - 2, 1, 2); g.fillRect(gx + 1, gy - 2, 1, 2); g.fillRect(gx + 2, gy - 1, 1, 1); }
+    palmTree(5, sandTop(6) | 0, 44, t);
+    const wx = shoreW - 44, wy = sandTop(wx) | 0;
+    for (let k = 0; k < 5; k++) bres(g, wx + k * 4, wy + 1, wx + k * 4 + 8, wy - 13 + k * 2, k % 2 ? '#4a3220' : '#5a3a22', 2);
+    g.fillStyle = '#3a2614'; g.fillRect(wx - 3, wy - 1, 24, 3);
+    g.fillStyle = '#b89a66'; g.fillRect(wx - 14, wy - 2, 6, 3); g.fillStyle = '#8a7046'; g.fillRect(wx - 13, wy - 1, 4, 1);
+    g.fillStyle = '#f7efe0'; g.fillRect(16, sandTop(16) | 0, 2, 1); g.fillRect(38, (sandTop(38) | 0) - 1, 1, 1); g.fillRect(54, sandTop(54) | 0, 2, 1);
+    const px = shoreW - 26, py = (sandTop(shoreW - 10) | 0) - 3;
+    if (!o.noSeat) {
+      g.fillStyle = '#5a3a22'; g.fillRect(px, py, 18, 3); g.fillStyle = '#7a5230'; g.fillRect(px, py, 18, 1);
+      g.fillStyle = '#9fabc4'; g.fillRect(px - 9, py - 3, 6, 6); g.fillStyle = '#5a6a84'; g.fillRect(px - 8, py - 2, 4, 4);
+    }
+    return [px - 2, py - 24];
+  }
+  if (id === 'harbor') {
+    g.fillStyle = haze; g.fillRect(W - 34, SURF - 4, 30, 4); g.fillRect(W - 22, SURF - 16, 4, 12);
+    g.fillStyle = nt > 0.3 ? '#ffe08a' : haze; g.fillRect(W - 23, SURF - 18, 6, 2);
+    if (nt > 0.3) { g.fillStyle = `rgba(255,224,138,${(0.22 * nt).toFixed(2)})`; g.fillRect(W - 28, SURF - 21, 16, 7); }
+    g.drawImage(floorLayer('harbor'), 0, SURF);
+    const py = SURF - 7, pw = shoreW + 12;
+    for (const x of [6, 24, 42, pw - 6]) { g.fillStyle = '#3a2816'; g.fillRect(x, py, 3, 7); g.fillStyle = '#1e2a30'; g.fillRect(x, SURF, 3, 86); g.fillStyle = '#2f3d44'; g.fillRect(x + 1, SURF, 1, 86); }
+    g.fillStyle = '#8a6a44'; g.fillRect(0, py, pw, 4); g.fillStyle = '#a88458'; g.fillRect(0, py, pw, 1);
+    g.fillStyle = '#5f4530'; for (let x = 4; x < pw; x += 6) g.fillRect(x, py + 1, 1, 3);
+    const sx = 2, sy = py - 32;
+    g.fillStyle = '#6b4a2e'; g.fillRect(sx, sy + 6, 32, 26); g.fillStyle = '#56391f'; for (let y = sy + 9; y < sy + 32; y += 4) g.fillRect(sx, y, 32, 1);
+    g.fillStyle = '#2f2016'; g.fillRect(sx - 2, sy + 2, 38, 5); g.fillRect(sx + 2, sy, 30, 3); g.fillStyle = '#4a3222'; g.fillRect(sx - 2, sy + 2, 38, 1);
+    g.fillStyle = '#2a1a0e'; g.fillRect(sx + 21, sy + 17, 7, 15);
+    g.fillStyle = nt > 0.3 ? '#ffd27a' : '#a9c9e2'; g.fillRect(sx + 6, sy + 14, 8, 7); g.fillStyle = '#3a2816'; g.fillRect(sx + 9, sy + 14, 1, 7); g.fillRect(sx + 6, sy + 17, 8, 1);
+    if (nt > 0.3) { g.fillStyle = `rgba(255,210,122,${(0.2 * nt).toFixed(2)})`; g.fillRect(sx + 2, sy + 10, 16, 15); }
+    g.fillStyle = '#d9c389'; g.fillRect(sx + 9, sy + 9, 14, 3); g.fillStyle = '#3a2816'; g.fillRect(sx + 11, sy + 10, 2, 1); g.fillRect(sx + 15, sy + 10, 4, 1);
+    g.fillStyle = '#9a7a4e'; g.fillRect(38, py - 7, 7, 7); g.fillRect(46, py - 5, 5, 5); g.fillStyle = '#6b4a2e'; g.fillRect(38, py - 4, 7, 1); g.fillRect(41, py - 7, 1, 7);
+    g.fillStyle = '#3a2816'; g.fillRect(pw - 4, py - 20, 2, 20); g.fillStyle = '#f0c050'; g.fillRect(pw - 5, py - 23, 4, 3);
+    if (nt > 0.2) { g.fillStyle = `rgba(240,192,80,${(0.25 * nt).toFixed(2)})`; g.fillRect(pw - 11, py - 28, 16, 13); }
+    blit(g, maskC('gullB', '#f4f4f0', 1), 23, py - 4); g.fillStyle = '#f0a040'; g.fillRect(27, py - 2, 1, 1);
+    return [pw - 20, py - 24];
+  }
+  if (id === 'reach') {
+    g.fillStyle = haze; g.fillRect(W - 60, SURF - 3, 20, 3); g.fillRect(W - 24, SURF - 5, 16, 5);
+    const rockTop = x => SURF - 1 - Math.max(0, 10 + 3 * Math.sin(x * 0.35) + 6 * Math.sin(x * 0.11 + 1) - Math.max(0, x - shoreW + 14) * 0.9);
+    g.drawImage(floorLayer('reach'), 0, SURF);
+    for (let x = 0; x < shoreW; x++) {
+      const top = rockTop(x) | 0;
+      g.fillStyle = (x * 7) % 11 < 3 ? '#4b5260' : '#3e4552'; g.fillRect(x, top, 1, SURF - top);
+      g.fillStyle = '#6b7482'; g.fillRect(x, top, 1, 1); if ((x * 13) % 17 < 5) { g.fillStyle = '#3f8a4e'; g.fillRect(x, top, 1, 1); }
+    }
+    g.fillStyle = '#5a8fb0'; g.fillRect(8, rockTop(12) | 0, 12, 2); g.fillStyle = '#8fc0da'; g.fillRect(10, rockTop(12) | 0, 4, 1);
+    for (const xk of [shoreW + 36, shoreW + 64, W - 52, W - 20]) {
+      const base = SURF + 72 + Math.sin(xk / 7) * 2 + (xk - shoreW - 30) * 0.05;
+      for (let i = 0; i < 64; i++) { const x = xk + Math.round(Math.sin(i * 0.4 + t / 700) * 1.6), y = (base - i) | 0; if (y < SURF + 6) break; g.fillStyle = i % 6 < 3 ? '#2f7a4a' : '#3f9a5c'; g.fillRect(x, y, 1, 1); if (i % 5 === 2) g.fillRect(x + 1, y, 2, 1); }
+    }
+    const px = shoreW - 26, py = (rockTop(shoreW - 12) | 0) - 3;
+    g.fillStyle = '#5a6270'; g.fillRect(px, py, 18, 4); g.fillStyle = '#7a8492'; g.fillRect(px, py, 18, 1);
+    return [px - 2, py - 24];
+  }
+  if (id === 'trench') {
+    g.fillStyle = haze; g.fillRect(W - 44, SURF - 5, 30, 5); g.fillRect(W - 30, SURF - 12, 2, 7); g.fillStyle = '#f0c050'; g.fillRect(W - 31, SURF - 14, 4, 2);
+    if (nt > 0.2) { g.fillStyle = `rgba(240,192,80,${(0.25 * nt).toFixed(2)})`; g.fillRect(W - 36, SURF - 18, 14, 9); }
+    const bw = shoreW + 16, by = SURF + 1;
+    drawBoat(-6, by, bw, S.boat === 'raft' ? 'raft' : S.boat, t, false);
+    g.fillStyle = '#5a3a22'; g.fillRect(-6, by - 3, bw, 2);
+    const px = bw - 36, py = by - 6;
+    g.fillStyle = '#7a5230'; g.fillRect(px, py, 18, 3);
+    return [px - 2, py - 24];
+  }
+  if (id === 'fjord') {
+    if (nt > 0.35) for (let k = 0; k < 4; k++) { g.fillStyle = `rgba(90,220,160,${(0.09 * nt).toFixed(3)})`; for (let x = 0; x < W; x += 6) g.fillRect(x, (8 + k * 7 + Math.sin(x / 22 + t / 1300 + k) * 5) | 0, 5, 3); }
+    g.fillStyle = css(lerpC(curSky.bot, [110, 130, 160], 0.5)); g.fillRect(W - 70, SURF - 18, 56, 18); g.fillRect(W - 58, SURF - 26, 30, 8); g.fillStyle = '#e9f1f7'; g.fillRect(W - 56, SURF - 26, 26, 2); g.fillRect(W - 68, SURF - 18, 12, 1);
+    g.fillStyle = '#3a2816'; g.fillRect(W - 48, SURF - 32, 8, 6); g.fillStyle = nt > 0.3 ? '#ffd27a' : '#a9c9e2'; g.fillRect(W - 46, SURF - 30, 3, 2);
+    for (let x = 0; x < shoreW; x++) { const top = (SURF - 8 - Math.max(0, 24 - x) * 0.5) | 0; g.fillStyle = '#eef3f7'; g.fillRect(x, top, 1, SURF - top); g.fillStyle = '#cfe0ec'; g.fillRect(x, top, 1, 1); }
+    g.fillStyle = '#b7d3e6'; g.fillRect(0, SURF, shoreW, 10); g.fillStyle = '#8fb8d2'; g.fillRect(0, SURF + 10, shoreW - 6, 4);
+    g.fillStyle = '#cfe0ec'; g.fillRect(14, SURF - 7, 1, 6); g.fillRect(30, SURF - 6, 1, 5); g.fillRect(31, SURF - 3, 3, 1);
+    pine(8, SURF - 19, 22); pine(20, SURF - 15, 16);
+    for (let k = 0; k < 3; k++) { const fx = (((t / 1000) * 2 + k * (W / 3)) % (W + 40)) - 20 | 0; g.fillStyle = '#e6eef5'; g.fillRect(fx, SURF - 2, 14 + k * 4, 3); g.fillStyle = '#b7c9d8'; g.fillRect(fx, SURF + 1, 14 + k * 4, 1); }
+    for (const s of SNOW) { const y = (((s.y + t / 1000 * s.s * 0.06) % 1) * SURF) | 0, x = ((s.x * W + Math.sin(t / 800 + s.y * 10) * 3) | 0 + W) % W; g.fillStyle = 'rgba(240,246,255,0.8)'; g.fillRect(x, y, 1, 1); }
+    const px = shoreW - 26, py = SURF - 11;
+    g.fillStyle = '#7a5230'; g.fillRect(px, py, 18, 3); g.fillStyle = '#e9f1f7'; g.fillRect(px, py - 1, 18, 1);
+    return [px - 2, py - 24];
+  }
+  return [shoreW - 28, SURF - 27];
+}
+function drawFisherman(fx, fy, rodOut) {
+  blit(g, sprite('sit'), fx, fy);
+  const hx = fx + 20, hy = fy + 16;
+  const tip = rodOut ? [hx + 30, hy - 10] : [hx + 24, hy - 24];
+  bres(g, hx, hy, tip[0], tip[1], '#7a5230', 1); g.fillStyle = '#a07a4a'; g.fillRect(tip[0], tip[1], 1, 1);
+  return tip;
+}
+const floatX = i => shoreW + 20 + i * Math.floor((W - shoreW - 40) / 3);
+
+function drawGame(t) {
+  const h = hourAt(t), nt = drawSkyBase(h, t, {});
+  const tint = S.loc === 'trench' ? 'rgba(0,0,12,0.32)' : S.loc === 'fjord' ? 'rgba(120,180,220,0.1)' : null;
+  drawSeaBase(h, t, nt, { tint });
+  drawFish(t);
+  const spot = drawShore(S.loc, t, nt, {});
+  const rodOut = S.lines.some(L => L && L.rig === 'hand' && L.phase !== 'idle');
+  const tip = drawFisherman(spot[0], spot[1], rodOut);
+  const st = [shoreW - 4, (S.loc === 'shoal' ? sandTop(shoreW - 4) | 0 : SURF - 7) - 6]; g.fillStyle = '#3b2a1c'; g.fillRect(st[0], st[1], 2, 7); g.fillStyle = '#f0c050'; g.fillRect(st[0], st[1] - 1, 2, 1);
+  S.lines.forEach((L, i) => {
+    if (!L || i >= S.slots || L.phase === 'idle') return;
+    const bx = floatX(i); let by = SURF - 1 + Math.sin(t / 400 + i) * 0.8;
+    const on = L.phase === 'bite' || L.phase === 'hooked';
+    if (on) by = SURF + 2 + Math.abs(Math.sin(t / 120)) * 2;
+    by |= 0;
+    if (L.rig === 'hand') { bres(g, tip[0], tip[1], bx, by, 'rgba(225,232,240,0.9)'); g.fillStyle = '#d7362a'; g.fillRect(bx - 1, by - 1, 3, 1); g.fillStyle = '#f4f4f0'; g.fillRect(bx - 1, by, 3, 1); }
+    else {
+      bres(g, st[0] + 1, st[1], bx, by, 'rgba(207,214,221,0.85)');
+      if (L.rig === 'trophy') { g.fillStyle = '#f4f4f0'; g.fillRect(bx - 2, by - 1, 4, 3); g.fillStyle = '#2d6fb0'; g.fillRect(bx - 2, by, 4, 1); g.fillStyle = '#d7362a'; g.fillRect(bx, by - 4, 2, 2); g.fillStyle = '#e6e1d3'; g.fillRect(bx - 1, by - 4, 1, 3); }
+      else { g.fillStyle = '#f0a040'; g.fillRect(bx - 1, by - 1, 3, 2); g.fillStyle = '#ffd27a'; g.fillRect(bx - 1, by - 1, 3, 1); }
+    }
+    if (on) { const yy = (SURF - 16 - Math.abs(Math.sin(t / 150)) * 3) | 0; g.fillStyle = '#2a1e14'; g.fillRect(bx - 2, yy - 1, 4, 10); g.fillStyle = '#f0c050'; g.fillRect(bx - 1, yy, 2, 6); g.fillRect(bx - 1, yy + 7, 2, 2); }
+  });
+  g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, 0, W, 1);
+}
+
+// ---------- title & cutscene scenes ----------
+function drawTitle(t) {
+  const h = 18.9, nt = drawSkyBase(h, t, {});
+  drawSeaBase(h, t, nt, {});
+  farIsland(W - 64, 52, true);
+  const bx = (W * 0.5 - 26) | 0, by = (SURF + 1 + Math.sin(t / 900)) | 0;
+  drawBoat(bx, by, 52, 'skiff', t, false);
+  blit(g, sprite('sit'), bx + 22, by - 31);
+  const hx = bx + 42, hy = by - 15; bres(g, hx, hy, hx + 22, hy - 24, '#7a5230'); bres(g, hx + 22, hy - 24, hx + 30, by + 1, 'rgba(225,232,240,0.8)');
+  g.fillStyle = '#d7362a'; g.fillRect(hx + 29, by, 3, 1); g.fillStyle = '#f4f4f0'; g.fillRect(hx + 29, by + 1, 3, 1);
+}
+const surfStorm = (x, t) => SURF + 7 * Math.sin(x / 15 + t / 240) + 3 * Math.sin(x / 6 - t / 150) + 2 * Math.sin(x / 40 + t / 600);
+function bolt(n) {
+  let x = (W * (0.2 + ((n * 0.618) % 1) * 0.6)) | 0, y = 0, s = n * 7919 + 13;
+  while (y < SURF - 4) { s = (s * 1103515245 + 12345) & 0x7fffffff; const dx = (s % 9) - 4, dy = 4 + (s % 5); bres(g, x, y, x + dx, y + dy, '#f4f8ff', 1); x += dx; y += dy; }
+}
+function drawStorm(p, t) {
+  drawSkyBase(23.3, t, { noSun: true, noClouds: true, noBirds: true, noStars: true });
+  g.fillStyle = 'rgba(2,4,12,0.35)'; g.fillRect(0, 0, W, SURF);
+  for (let k = 0; k < 6; k++) { const x = (((k * 53) + t / 45) % (W + 90)) - 60 | 0; g.fillStyle = 'rgba(30,36,56,0.95)'; g.fillRect(x, 2 + k * 7, 70, 12); g.fillRect(x + 12, k * 7 - 3, 34, 6); g.fillStyle = 'rgba(58,66,90,0.7)'; g.fillRect(x + 4, 2 + k * 7, 60, 1); }
+  for (let x = 0; x < W; x++) {
+    const sy = surfStorm(x, t) | 0, sl = surfStorm(x + 1, t) - surfStorm(x - 1, t);
+    g.fillStyle = '#10243c'; g.fillRect(x, sy, 1, H - sy);
+    g.fillStyle = sl < -1.2 ? '#c3d0de' : sl < -0.4 ? '#4b6f90' : sl > 0.5 ? '#0a1a2c' : '#2a4b6c'; g.fillRect(x, sy, 1, sl < -1.2 ? 2 : 1);
+    if (((x + (t / 70 | 0)) % 3) === 0) { g.fillStyle = '#1a3350'; g.fillRect(x, sy + 7, 1, 1); g.fillRect(x, sy + 16, 1, 1); g.fillRect(x, sy + 27, 1, 1); }
+  }
+  g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(0, SURF + 40, W, H);
+  const bx = (W * 0.5) | 0, by = (surfStorm(bx + 20, t)) | 0;
+  drawBoat(bx - 20, by - 2, 44, 'skiff', t, true); blit(g, sprite('sit'), bx - 2, by - 33); bres(g, bx + 18, by - 17, bx + 36, by - 38, '#7a5230');
+  for (const r of RAIN) { const y = (((r.y + t / 1000 * r.s * 0.95) % 1) * H) | 0, x = ((((r.x - t / 1000 * r.s * 0.22) % 1) + 1) % 1 * W) | 0; g.fillStyle = 'rgba(190,205,230,0.42)'; g.fillRect(x, y, 1, 5); }
+  const cyc = 2700, ph = t % cyc, n = Math.floor(t / cyc);
+  if (ph < 100 || (ph > 200 && ph < 260)) { g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(0, 0, W, H); bolt(n); }
+  if (p > 0.9) { g.fillStyle = `rgba(255,255,255,${((p - 0.9) / 0.1).toFixed(2)})`; g.fillRect(0, 0, W, H); }
+}
+function drawDrift(p, t) {
+  const h = 5.5 + p * 0.8, nt = drawSkyBase(h, t, { noBirds: true });
+  drawSeaBase(h, t, nt, { noShafts: true });
+  farIsland(4, 80, true);
+  const px = (W * 0.84 - p * (W * 0.5)) | 0, py = (SURF - 5 + Math.sin(t / 420) * 1.5) | 0;
+  g.fillStyle = '#4a3220'; g.fillRect(px - 5, py + 6, 26, 3); g.fillStyle = '#6a4a2a'; g.fillRect(px - 5, py + 6, 26, 1);
+  blit(g, sprite('float'), px, py);
+  bres(g, px + 14, py + 4, px + 26, py - 16, '#8a6a44'); g.fillStyle = '#a07a4a'; g.fillRect(px + 26, py - 16, 1, 1);
+  g.fillStyle = rgba(lerpC(curSky.sea, [255, 255, 255], 0.5), 0.9); g.fillRect(px - 9, py + 8, 34, 1);
+  if (p < 0.12) { g.fillStyle = `rgba(255,255,255,${(1 - p / 0.12).toFixed(2)})`; g.fillRect(0, 0, W, H); }
+}
+function beachScene(t, h, mode) {
+  const nt = drawSkyBase(h, t, {});
+  drawSeaBase(h, t, nt, {});
+  drawFish(t);
+  const spot = drawShore('shoal', t, nt, { noSeat: mode === 'lie' });
+  const cx = (shoreW - 62 + Math.sin(t / 1300) * 9) | 0; blit(g, maskC('crab', '#c0392b', 1), cx, (sandTop(cx) | 0) - 3);
+  if (mode === 'lie') {
+    const lx = shoreW - 38, ly = (sandTop(shoreW - 6) | 0) - 7;
+    blit(g, sprite('lie'), lx, ly);
+    bres(g, lx + 2, ly - 2, lx + 30, ly - 5, '#7a5230');
+  }
+  const tide = Math.max(0, Math.sin(t / 1100)), reach = (shoreW - 1 - tide * 22) | 0;
+  for (let x = reach; x < shoreW; x++) { const y = sandTop(x) | 0; g.fillStyle = 'rgba(140,200,220,0.42)'; g.fillRect(x, y, 1, 2); }
+  g.fillStyle = 'rgba(255,255,255,0.85)'; g.fillRect(reach, sandTop(reach) | 0, 2, 1); g.fillRect(reach + 4, (sandTop(reach + 4) | 0) + 1, 3, 1);
+  if (mode !== 'lie') {
+    drawFisherman(spot[0], spot[1], false);
+    blit(g, maskC('gullB', '#f4f4f0', 1), shoreW - 44, (sandTop(shoreW - 40) | 0) - 14); g.fillStyle = '#f0a040'; g.fillRect(shoreW - 40, (sandTop(shoreW - 40) | 0) - 12, 1, 1);
+  }
+}
+const CUT = [
+  { dur: 6000, cap: 'The storm took the boat.', draw: drawStorm },
+  { dur: 5500, cap: 'It did not take the rod.', draw: drawDrift },
+  { dur: 5000, cap: 'Wreck Shoal. Morning.', draw: (p, t) => beachScene(t, 6.4 + p * 0.5, 'lie') },
+  { dur: 6000, cap: 'No boat. No market. Nobody coming.<br>Six planks make a raft.', draw: (p, t) => beachScene(t, 7.0 + p * 0.5, 'sit') },
+];
+let MODE = 'title', cut = null, capT = 0;
+function setCap() { const c = $('#cap'); c.classList.remove('show'); c.innerHTML = CUT[cut.i].cap; capT = setTimeout(() => c.classList.add('show'), 500); }
+function startCut() { MODE = 'cut'; cut = { i: 0, t0: performance.now() }; $('#title').hidden = true; $('#game').hidden = true; $('#cut').hidden = false; setCap(); }
+function cutAdvance() { if (!cut) return; cut.i++; if (cut.i >= CUT.length) { endCut(); return; } cut.t0 = performance.now(); setCap(); }
+function endCut() { cut = null; fadeTo(() => { $('#cut').hidden = true; enterGame(); toast('Line 1 is your rod. Line 2 is a set line.'); }); }
+function enterGame() { MODE = 'game'; $('#title').hidden = true; $('#cut').hidden = true; $('#game').hidden = false; reseedFish(); render(); window.scrollTo(0, 0); }
+function showTitle() { MODE = 'title'; $('#game').hidden = true; $('#cut').hidden = true; $('#title').hidden = false; $('#bCont').hidden = !S.started; $('#bNew').textContent = S.started ? 'Start over' : 'New voyage'; $('#confirm').textContent = ''; confirmNew = false; }
+function fadeTo(fn) { const f = $('#fade'); f.classList.add('on'); setTimeout(() => { fn(); setTimeout(() => f.classList.remove('on'), 80); }, 600); }
+let confirmNew = false;
+function newVoyage() {
+  if (S.started && !confirmNew) { confirmNew = true; $('#confirm').textContent = 'This wipes your save. Tap again to start over.'; return; }
+  S = freshState(); S.started = true; saveNow();
+  fadeTo(startCut);
+}
+
+// ---------- frame loop ----------
+let lastFrame = performance.now();
+function frame(ts) {
+  const dt = Math.min(0.05, (ts - lastFrame) / 1000); lastFrame = ts;
+  if (!document.hidden) {
+    const t = now();
+    if (MODE === 'game') { stepFish(dt); drawGame(t); }
+    else if (MODE === 'title') { drawTitle(t); }
+    else if (MODE === 'cut' && cut) {
+      const b = CUT[cut.i], p = Math.min(1, (ts - cut.t0) / b.dur);
+      stepFish(dt); b.draw(p, t);
+      if (p >= 1) cutAdvance();
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+// ---------- chart ----------
+function drawMap() {
+  const c = $('#mapcv'); if (!c) return; const m = c.getContext('2d'); m.imageSmoothingEnabled = false;
+  m.fillStyle = '#d9c8a0'; m.fillRect(0, 0, 160, 120);
+  for (let i = 0; i < 160; i++) { m.fillStyle = 'rgba(90,70,40,0.12)'; m.fillRect((i * 37) % 160, (i * 53) % 120, 1, 1); }
+  m.fillStyle = 'rgba(60,80,110,0.3)'; for (let y = 8; y < 120; y += 10) for (let x = ((y / 10) % 2) * 5; x < 160; x += 11) { m.fillRect(x, y, 2, 1); m.fillRect(x + 2, y - 1, 2, 1); }
+  m.fillStyle = 'rgba(40,50,80,0.18)'; for (let y = 30; y < 60; y += 2) m.fillRect(104 + (y % 4 === 0 ? 1 : 0), y, 40, 1);
+  m.fillStyle = '#5a4630'; m.fillRect(0, 0, 160, 2); m.fillRect(0, 118, 160, 2); m.fillRect(0, 0, 2, 120); m.fillRect(158, 0, 2, 120);
+  const R = boatRange(), here = LOC[S.loc];
+  m.fillStyle = '#5a4630';
+  for (const l of LOCS) { if (l.range > R || l.id === S.loc || l.locked) continue; const steps = 14; for (let k = 1; k < steps; k += 2) { const x = here.x + (l.x - here.x) * k / steps, y = here.y + (l.y - here.y) * k / steps; m.fillRect(x | 0, y | 0, 1, 1); } }
+  for (const l of LOCS) {
+    const vis = l.range <= R, fog = !vis && l.range === R + 1;
+    if (!vis && !fog) continue;
+    const x = l.x, y = l.y;
+    if (l.id === 'stars') { m.fillStyle = vis ? '#5a4630' : '#8a7a60'; m.fillRect(x - 1, y - 4, 2, 9); m.fillRect(x - 4, y - 1, 8, 2); m.fillRect(x - 2, y - 2, 4, 4); }
+    else if (l.id === 'trench') { m.fillStyle = vis ? '#2a3550' : '#7a7a7a'; for (let r = 0; r < 3; r++) m.fillRect(x - 8 + r * 2, y - 3 + r * 2, 16 - r * 4, 1); m.fillStyle = '#5a4630'; m.fillRect(x - 3, y + 3, 7, 2); if (vis) { m.fillStyle = '#b8871c'; m.fillRect(x, y + 2, 1, 1); } }
+    else {
+      const ink = vis ? '#5a4630' : '#9a8a70';
+      drawMaskRaw(m, MASKS.isle, x - 7, y - 3, ink, 1); drawMaskRaw(m, MASKS.isle, x - 5, y - 3, ink, 1); drawMaskRaw(m, MASKS.isle, x - 6, y - 4, ink, 1); drawMaskRaw(m, MASKS.isle, x - 6, y - 2, ink, 1);
+      drawMaskRaw(m, MASKS.isle, x - 6, y - 3, vis ? (l.id === 'fjord' ? '#eef3f7' : '#e6cf96') : '#cfc3a4', 1);
+      drawMaskRaw(m, MASKS.isleIn, x - 4, y - 1, vis ? (l.id === 'fjord' ? '#b7d3e6' : '#3f8f4e') : '#b8ad92', 1);
+      if (vis && l.id === 'harbor') { m.fillStyle = '#5a4630'; m.fillRect(x + 4, y + 1, 6, 1); m.fillRect(x - 2, y - 2, 3, 2); m.fillRect(x - 3, y - 3, 5, 1); }
+      if (vis && l.id === 'shoal') { m.fillStyle = '#5a4630'; m.fillRect(x + 2, y, 3, 1); m.fillRect(x + 3, y - 2, 1, 2); }
+      if (vis && l.id === 'fjord') { m.fillStyle = '#1f5a3a'; m.fillRect(x - 3, y - 2, 1, 2); m.fillRect(x, y - 3, 1, 3); m.fillRect(x + 2, y - 2, 1, 2); }
+    }
+    if (fog) { m.fillStyle = '#5a4630'; m.fillRect(x - 2, y - 13, 5, 1); m.fillRect(x + 2, y - 12, 1, 2); m.fillRect(x, y - 10, 2, 1); m.fillRect(x, y - 9, 1, 1); m.fillRect(x, y - 7, 1, 1); }
+    if (l.id === mapSel) drawMaskRaw(m, MASKS.ring, x - 6, y - 4, '#b8871c', 1);
+    if (l.id === S.loc) { m.fillStyle = '#5a4630'; m.fillRect(x - 4, y + 7, 9, 2); m.fillRect(x, y + 3, 1, 4); m.fillRect(x + 1, y + 4, 3, 2); }
+  }
+  m.fillStyle = '#5a4630'; m.fillRect(141, 8, 1, 14); m.fillRect(135, 14, 13, 1); m.fillRect(140, 10, 3, 1); m.fillRect(140, 18, 3, 1); m.fillRect(139, 13, 1, 3); m.fillRect(143, 13, 1, 3);
+  m.fillStyle = '#b8871c'; m.fillRect(141, 7, 1, 2);
+}
+
+// ---------- the fight ----------
+let F = null;
+const fcv = $('#fcv'), fg = fcv.getContext('2d');
+function startFight(i) {
+  const L = S.lines[i], s = SP[L.c.id], bar = rodBar();
+  F = { i, s, diff: clamp(s.diff + (L.rig === 'trophy' ? 0.08 : 0) + (L.c.trophy ? 0.06 : 0), 0, 0.97), fy: 0.5, tgt: 0.5, tNext: 0.4, by: 0.5 - bar / 2, bv: 0, bar, p: 0.3, hold: false, inside: false, last: performance.now(), over: false, trophy: L.c.trophy };
+  $('#fname').textContent = s.name + (L.c.trophy ? ' · trophy size' : '');
+  $('#fightWrap').hidden = false;
+  requestAnimationFrame(fightFrame);
+}
+function fightFrame(ts) {
+  if (!F || F.over) return;
+  const dt = Math.min(0.05, (ts - F.last) / 1000); F.last = ts;
+  const d = F.diff, s = F.s;
+  F.tNext -= dt;
+  if (F.tNext <= 0) {
+    if (s.beh === 'dart') { F.tgt = Math.random(); F.tNext = rnd(0.35, 0.9); }
+    else if (s.beh === 'sinker') { F.tgt = Math.random() < 0.25 ? rnd(0.05, 0.5) : rnd(0.6, 1); F.tNext = rnd(0.8, 1.8); }
+    else if (s.beh === 'floater') { F.tgt = Math.random() < 0.25 ? rnd(0.5, 0.95) : rnd(0, 0.4); F.tNext = rnd(0.8, 1.8); }
+    else { F.tgt = Math.random(); F.tNext = rnd(1.2, 2.4); }
+  }
+  const spd = (s.beh === 'dart' ? 0.9 : 0.45) + 1.2 * d, step = spd * dt, dir = Math.sign(F.tgt - F.fy);
+  F.fy = Math.abs(F.tgt - F.fy) <= step ? F.tgt : F.fy + dir * step;
+  F.bv += (F.hold ? -3.4 : 3.0) * dt; F.bv = clamp(F.bv, -1.7, 1.7); F.by += F.bv * dt;
+  if (F.by < 0) { F.by = 0; F.bv *= -0.3; }
+  if (F.by > 1 - F.bar) { F.by = 1 - F.bar; F.bv *= -0.3; }
+  F.inside = F.fy >= F.by - 0.02 && F.fy <= F.by + F.bar + 0.02;
+  F.p += (F.inside ? 0.26 : -(0.16 + 0.22 * d)) * dt; F.p = clamp(F.p, 0, 1);
+  drawFight(ts);
+  if (F.p >= 1) { endFight(true); return; }
+  if (F.p <= 0) { endFight(false); return; }
+  requestAnimationFrame(fightFrame);
+}
+function drawFight(ts) {
+  fg.imageSmoothingEnabled = false;
+  fg.fillStyle = '#0d1a2e'; fg.fillRect(0, 0, 96, 128);
+  for (let y = 0; y < 128; y++) { const f = y / 128; fg.fillStyle = css(lerpC([46, 134, 166], [6, 18, 36], Math.min(1, f * 1.1))); fg.fillRect(24, y, 36, 1); }
+  fg.fillStyle = 'rgba(255,255,255,0.35)'; for (let x = 24; x < 60; x += 6) fg.fillRect(x + ((ts / 200) % 6 | 0), 2, 3, 1);
+  fg.fillStyle = 'rgba(255,255,255,0.06)'; for (let y = 12; y < 128; y += 14) fg.fillRect(24, y, 36, 1);
+  fg.fillStyle = '#3a3020'; fg.fillRect(24, 122, 36, 6); fg.fillStyle = '#4f4230'; for (let x = 26; x < 60; x += 7) fg.fillRect(x, 122, 3, 1);
+  const by = 4 + F.by * 116, bh = F.bar * 116;
+  fg.fillStyle = F.inside ? 'rgba(240,192,80,0.45)' : 'rgba(240,192,80,0.18)'; fg.fillRect(26, by, 32, bh);
+  fg.fillStyle = '#f0c050'; fg.fillRect(26, by, 32, 1); fg.fillRect(26, by + bh - 1, 32, 1); fg.fillRect(26, by, 1, bh); fg.fillRect(57, by, 1, bh);
+  fg.fillStyle = '#b8871c'; for (let y = by + 3; y < by + bh - 2; y += 4) { fg.fillRect(26, y, 1, 1); fg.fillRect(57, y, 1, 1); }
+  const m = MASKS[F.s.shape], fh = m.length, fw = m[0].length, fyp = 4 + F.fy * 116;
+  drawMaskRaw(fg, m, 42 - (fw >> 1), clamp(fyp - (fh >> 1), 4, 120 - fh) | 0, F.inside ? (F.trophy ? '#ffe9a8' : '#fff6e0') : '#cfd9e3', 1);
+  fg.fillStyle = '#2a1c10'; fg.fillRect(66, 4, 12, 118); fg.fillStyle = '#3b2a1c'; fg.fillRect(67, 5, 10, 116);
+  const ph = Math.round(F.p * 114); fg.fillStyle = F.p > 0.5 ? '#8ad48a' : '#e27b5f'; fg.fillRect(69, 6 + 114 - ph, 6, ph);
+  fg.fillStyle = '#9fabc4'; fg.fillRect(64, 63, 2, 1); fg.fillRect(78, 63, 2, 1);
+  if (!F.inside) { fg.fillStyle = 'rgba(226,123,95,0.12)'; fg.fillRect(0, 0, 96, 128); }
+  fg.fillStyle = '#9fabc4'; fg.fillRect(8, 110, 8, 1); fg.fillRect(11, 107, 2, 7);
+  fg.fillStyle = F.hold ? '#f0c050' : '#3b5280'; fg.fillRect(6, 114, 12, 6);
+}
+function endFight(win) {
+  F.over = true; const i = F.i; $('#fightWrap').hidden = true; F = null;
+  if (win) land(i);
+  else { const L = S.lines[i]; L.phase = 'idle'; L.c = null; save(); render(); toast('It threw the hook.'); }
+}
+
+// ---------- input ----------
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const a = b.dataset.act, i = +b.dataset.i, k = b.dataset.k;
+  if (a === 'sel') { S.sel = i; save(); render(); }
+  else if (a === 'rig') { const L = S.lines[S.sel]; L.rig = k; if (k === 'trophy' && L.bait === 'scraps') L.bait = S.bait.shrimp > 0 ? 'shrimp' : S.bait.squid > 0 ? 'squid' : 'scraps'; save(); render(); }
+  else if (a === 'bait') { S.lines[S.sel].bait = k; save(); render(); }
+  else if (a === 'cast') castLine(i);
+  else if (a === 'pull') pullLine(i);
+  else if (a === 'reel') reelLine(i);
+  else if (a === 'haul') haulLine(i);
+  else if (a === 'build') buildRaft();
+  else if (a === 'sell') sellHaul();
+  else if (a === 'open') openSheet(k);
+  else if (a === 'close') closeSheet();
+  else if (a === 'node') { mapSel = k; renderSheet(); }
+  else if (a === 'sail') sail(mapSel);
+  else if (a === 'buy') buy(k);
+  else if (a === 'new') newVoyage();
+  else if (a === 'continue') fadeTo(enterGame);
+  else if (a === 'skip') { e.stopPropagation(); endCut(); }
+  else if (a === 'replay') { closeSheet(); fadeTo(startCut); }
+  else if (a === 'totitle') { closeSheet(); fadeTo(showTitle); }
+});
+$('#cut').addEventListener('click', e => { if (e.target.closest('[data-act]')) return; cutAdvance(); });
+$('#cardWrap').addEventListener('click', closeCard);
+$('#sheetWrap').addEventListener('click', e => { if (e.target.id === 'sheetWrap') closeSheet(); });
+const fw = $('#fightWrap');
+fw.addEventListener('pointerdown', e => { e.preventDefault(); if (F) F.hold = true; });
+['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => fw.addEventListener(ev, () => { if (F) F.hold = false; }));
+fw.addEventListener('contextmenu', e => e.preventDefault());
+window.addEventListener('keydown', e => { if (e.code === 'Space' && F) { e.preventDefault(); F.hold = true; } });
+window.addEventListener('keyup', e => { if (e.code === 'Space' && F) F.hold = false; });
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveNow(); });
+window.addEventListener('resize', layout);
+
+// ---------- boot ----------
+function start(data) {
+  load(data);
+  for (let i = 0; i < S.slots; i++) if (!S.lines[i]) S.lines[i] = { rig: 'set', bait: 'scraps', phase: 'idle' };
+  S.sel = clamp(S.sel, 0, S.slots - 1);
+  const t = now(); let got = 0;
+  S.lines.forEach(L => {
+    if (!L) return;
+    if (L.phase === 'waiting' && t >= L.at) {
+      if (L.rig === 'hand') { L.phase = 'idle'; L.c = null; }
+      else { L.phase = L.c ? 'hooked' : 'idle'; if (L.c) got++; }
+    } else if (L.phase === 'bite' && t > L.exp) { L.phase = 'idle'; L.c = null; }
+  });
+  layout();
+  showTitle();
+  if (got) setTimeout(() => toast(`While you were gone: ${got} line${got > 1 ? 's' : ''} hooked something.`), 900);
+  setInterval(tick, 500);
+  requestAnimationFrame(frame);
+  try { if (window.claude && window.claude.hot && window.claude.hot.snapshot) window.claude.hot.snapshot(() => S); } catch (e) {}
+}
+const boot = () => { const hot = window.claude && window.claude.hot; if (hot && hot.ready) hot.ready(start); else start(hot && hot.data ? hot.data : null); };
+boot();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => {}, () => {});
+})();
+</script>
+
+</html>
