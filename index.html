@@ -2399,9 +2399,7 @@ function drawTitle(t) {
   drawSeaBase(h, t, nt, {});
   farIsland(W - 64, 52, true);
   { // the sign
-    const sc = W >= 260 ? 4 : 3, c = woodTitle(sc), sx = (W - c.width) >> 1, sy = Math.round(SURF * 0.22) + (Math.sin(t / 1900) * 0.8 | 0);
-    const sway = Math.sin(t / 1900) * 1.5 | 0;
-    bres(g, sx + 10 + sway, 0, sx + 10, sy + 2, '#c8b080'); bres(g, sx + c.width - 10 + sway, 0, sx + c.width - 10, sy + 2, '#c8b080');
+    const sc = W >= 260 ? 4 : 3, c = woodTitle(sc), sx = (W - c.width) >> 1, sy = Math.round(SURF * 0.22);
     g.drawImage(c, sx, sy);
   }
   const B = titleBeat(t);
