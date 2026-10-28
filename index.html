@@ -151,6 +151,17 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 .catch .pill{justify-self:center;font-family:var(--display);font-size:8px;padding:6px 10px;background:#2a5a74;color:var(--text);letter-spacing:.5px}
 .catch .pill.gold{background:var(--brass-2);color:#2b1d05}
 .catch .pill.far{background:#5a3a74}
+.board{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding-top:6px}
+.poster{position:relative;background:#e8d9a8;color:#2b1d05;padding:12px 8px 8px;display:grid;gap:5px;justify-items:center;text-align:center;border:2px solid #b89a5a;box-shadow:3px 3px 0 #0a1424}
+.poster .nail{position:absolute;top:3px;left:50%;width:6px;height:6px;margin-left:-3px;background:#6a6a70;border-radius:50%;box-shadow:inset -1px -1px 0 #2a2a30}
+.poster .wanted{font-family:var(--display);font-size:11px;letter-spacing:1px;margin-top:2px}
+.poster canvas.mini{border:1px solid #b89a5a}
+.poster .pname{font-size:16px;line-height:1.1}
+.poster .pays{font-family:var(--display);font-size:8px;color:#8a4a10}
+.poster .pays.dim{color:#8a7a5a}
+.poster .buy{font-size:8px;padding:6px 6px}
+.poster.done{opacity:.55}
+.poster .stamp{font-family:var(--display);font-size:10px;color:#a02020;border:2px solid #a02020;padding:2px 6px;transform:rotate(-8deg)}
 .catch .rar{display:flex;justify-content:center;gap:8px;font-family:var(--display);font-size:9px;letter-spacing:.5px;text-shadow:2px 2px 0 #0a1424}
 .catch .rar .sep{color:var(--muted)}
 .catch .pills{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
@@ -329,9 +340,14 @@ const BOATS = [
   { id: 'trawler',  name: 'Trawler',        range: 4, price: 12000 },
   { id: 'clipper',  name: 'Clipper',        range: 5, price: 40000 },
   { id: 'ironclad', name: 'Ironclad',       range: 6, price: 120000 },
-  { id: 'starship', name: 'Starship',       range: 7, price: 500000, locked: true },
+  { id: 'starship', name: 'Starship',       range: 7, price: 500000, spaceport: true }, // sold at the spaceport only
 ];
 const SLOT_PRICES = [0, 0, 150, 450];
+// The far end of the world. A keeper on a tier-5+ island mentions the starship at these odds per talk; the chart that finds the
+// spaceport is in stock at a tier-5+ shop on a given real day at these odds (percent), at this price.
+const T_WORLD = { starRumor: 0.07, chartOdds: 12, chartPrice: 150000 };
+// Bounty boards: every shop nails up 0-4 wanted posters for its own island's fish; turning one in (once) pays worth × mult. New posters after a real day.
+const T_BOUNTY = { max: 4, mult: [3, 6], refreshMs: 24 * 3600e3 };
 const TROPHY_RIG_PRICE = 600;
 
 // The world is a chart of islands in tiers (range = boat tier that can reach it). Links are the routes drawn between them;
@@ -339,88 +355,219 @@ const TROPHY_RIG_PRICE = 600;
 // names it. Each island is its own culture: a shore scene (hand-drawn for the first five, data-driven `scene` for the rest),
 // a village with a building to press, and a hunting ground behind a gate. Exotic islands (tier 5+) have invented fish.
 const LOCS = [
-  { id: 'shoal', name: 'Wreck Shoal', range: 0, shop: false, sell: false, x: 28, y: 112, links: ['harbor', 'brine'],
+  { id: 'shoal', name: 'Wreck Shoal', range: 0, shop: false, sell: false, x: 28, y: 112, links: ['harbor', 'brine', 'tortoise'],
     blurb: 'Where you washed up. No market, just a bucket.', vibe: 'Sand, a wreck, and gulls that know too much.',
     rumor: 'A sandbar with a wreck on it. Nobody goes back there on purpose.',
     village: { kind: 'camp', props: [['palm', .78, 40], ['fire', .5], ['sign', .3]] },
     hunt: { kind: 'dunes', name: 'the dunes', gate: 'driftwood posts' }, spots: [{ id: 'wreck', name: 'The Wreck', known: 'Sheltered water under the hull. Bream and snapper; the Wreckwraith circles here on moonless nights.', fish: { sardine: 1, bream: 1.4, grunt: 1, snapper: 1.4, trigger: 0.6, wood: 1, wreckwraith: 1, sergeantmajor: 1, lizardfish: 1.2, yellowtailsnapper: 1.4, hogfish: 1.2, squirrelfish: 1.6 } }, { id: 'point', name: 'The Point', known: 'Current and open water. Needlefish, pompano at dawn and dusk, barracuda by day.', fish: { sardine: 0.6, bream: 0.5, needlefish: 1.6, pompano: 1.6, barracuda: 1.6, wood: 0.6, goatfish: .8, bluerunner: 1.6, crevalle: 1.6, hogfish: .6, cobia: 1.2, mahimahi: 1.8 } }, { id: 'lagoon', name: 'The Lagoon', known: 'Warm and shallow. Sardines in clouds, grunts, triggerfish, bonefish tailing at dawn.', fish: { sardine: 1.6, grunt: 1.4, trigger: 1.2, bonefish: 1.8, wood: 0.8, sergeantmajor: 1.4, goatfish: 1.2, eagleray: 1 } }, { id: 'hole', name: 'Tarpon Hole', known: 'A deep blue hole off the reef. Tarpon roll here at night; little else does.', fish: { tarpon: 2.5, snapper: 0.8, bream: 0.6, sardine: 0.5, wood: 0.4, lizardfish: .6, crevalle: .6, yellowtailsnapper: 1, cobia: 1, eagleray: 1.2 } }] },
-  { id: 'harbor', name: 'Gull Harbor', range: 1, shop: true, sell: true, x: 62, y: 96, links: ['shoal', 'reach', 'lantern'],
+  { id: 'harbor', name: 'Gull Harbor', range: 1, shop: true, sell: true, x: 62, y: 96, links: ['shoal', 'reach', 'lantern', 'tortoise', 'sargasso'],
     blurb: 'First port. Buys the whole haul.', vibe: 'Tar, rope, gulls on every post. Everything smells of fish and money.',
     rumor: 'A gull-ridden port a day east. The first place that will pay you.',
     keeper: { name: 'Marta', lines: ['"Fresh off the shoal? You have the look. Sell me what you have and buy a real rod."', '"Lines out at night. The eels come in under the pier when the lanterns are lit."', '"West is kelp. East is lanterns. Both want a bigger boat than that."'] },
     village: { kind: 'shack', props: [['barrel', .22], ['lamp', .62], ['crate', .7], ['gullpost', .85]] },
     hunt: { kind: 'woods', name: 'the back woods', gate: 'a stile in the hedge' }, spots: [{ id: 'pier', name: 'The Pier', known: 'Herring and mackerel under your feet, flounder on the mud, conger under the lanterns at night.', fish: { sardine: 1, herring: 1.4, mackerel: 1.2, mullet: 1, flounder: 1.2, conger: 1.2, boot: 0.6, whiting: 1.2, plaice: 1, scad: .8, smelt: .6, sole: .6, johndory: .5 } }, { id: 'breakwater', name: 'The Breakwater', known: 'Rough water off the stones. Sea bass at dawn and dusk, pollock, garfish, dogfish after dark.', fish: { seabass: 1.8, pollock: 1.4, garfish: 1.4, dogfish: 1.4, mackerel: 0.8, bream: 0.6, ballanwrasse: 1.6, gurnard: 1.4, thornbackray: .8, sandeel: 1, johndory: 1.2 } }, { id: 'estuary', name: 'The Estuary', known: 'Brown water where the river comes in. Mullet, flounder, and sturgeon older than the town at dawn.', fish: { mullet: 1.6, flounder: 1.4, sturgeon: 2, harbormaster: 1, herring: 0.5, boot: 0.8, plaice: 1.4, smelt: 1.6, sole: 1.4, thornbackray: 1.2, shad: 1.6 } }, { id: 'moorings', name: 'The Moorings', known: 'Between the hulls. Herring, mackerel, the odd eel, and more boots than anywhere.', fish: { herring: 1.2, mackerel: 1.2, conger: 0.8, sardine: 1, boot: 2, whiting: 1.2, scad: 1.6, sandeel: 1.4 } }] },
-  { id: 'brine', name: 'Brine Cay', range: 1, shop: false, sell: true, x: 52, y: 134, links: ['shoal', 'lantern'],
+  { id: 'brine', name: 'Brine Cay', range: 1, shop: false, sell: true, x: 52, y: 134, links: ['shoal', 'lantern', 'gannet', 'frogs'],
     blurb: 'Salt pans and a traders\' camp. They buy, they do not sell.', vibe: 'White ground, white light, traders in wide hats weighing salt and fish on the same scales.',
     rumor: 'South of the harbor the sea goes white. Salt traders camp there; they pay in coin for anything with fins.',
     scene: { shore: 'salt', floor: [[200, 196, 170], [70, 90, 96]], far: 'none', props: [['cairn', .2], ['cairn', .45], ['saltpan', .7], ['sign', .9]], particles: 'none', palms: false },
     village: { kind: 'tent', props: [['cairn', .18], ['scale', .62], ['sacks', .75]] },
     hunt: { kind: 'saltflat', name: 'the salt flats', gate: 'a line of salt cairns' }, spots: [{ id: 'pans', name: 'The Salt Pans', known: 'Knee-deep brine. Seatrout and ladyfish; mullet at the sluices.', fish: { seatrout: 1.6, ladyfish: 1.4, mullet: 1.2, sardine: 0.8, pinfish: 1.4, sheepsheadporgy: .8, lookdown: .6, silverperch: 1.4 } }, { id: 'channel', name: 'The Channel', known: 'The one deep cut. Red drum, permit at the edges of the day, bonefish.', fish: { redfish: 1.8, permit: 1.6, bonefish: 1, seatrout: 0.6, ladyfish: 0.6, blackdrum: 1.6, snook: 1.4, sheepsheadporgy: 1.2, tripletail: .8, gafftopsail: 1.2 } }, { id: 'flats', name: 'The Flats', known: 'Ankle-deep and white. Bonefish, rays buried in the sand, and the Saltwidow when the salt is weighed.', fish: { bonefish: 1.6, stingray: 1.8, ladyfish: 0.8, saltwidow: 1, seatrout: 0.5, cownoseray: 1.6, silverperch: 1, gafftopsail: .8 } }, { id: 'seagate', name: 'The Sea Gate', known: 'Where the cay meets open sea. Tarpon, permit, sardines pouring through.', fish: { tarpon: 1.2, permit: 1, sardine: 1.6, redfish: 0.6, mullet: 0.6, pinfish: 1, snook: 1, spanishmackerel: 1.6, tripletail: 1.2, lookdown: 1.2 } }] },
-  { id: 'reach', name: 'Kelp Reach', range: 2, shop: false, sell: false, x: 40, y: 62, links: ['harbor', 'trench'],
+  { id: 'reach', name: 'Kelp Reach', range: 2, shop: false, sell: false, x: 40, y: 62, links: ['harbor', 'trench', 'monastery', 'sargasso', 'ribcage'],
     blurb: 'Reef and kelp. No market here.', vibe: 'Cold green water, otters watching from the kelp, no one to sell to.',
     rumor: 'Kelp thick as a forest to the north-west, and bass in it as long as your arm.',
     village: { kind: 'camp', props: [['pine', .25, 34], ['fire', .5], ['pine', .8, 28]] },
     hunt: { kind: 'woods', name: 'the pinewood', gate: 'a gap in the pines' }, spots: [{ id: 'edge', name: 'Kelp Edge', known: 'The first fronds. Kelp bass, señoritas, kelp perch, opaleye.', fish: { kelpbass: 1.4, senorita: 1.4, perch: 1.4, opaleye: 1.2, boot: 0.6, halfmoon: 1.4, blacksmith: 1.4, greenling: .6, surfperch: 1.2, sculpin: .8, batray: .6 } }, { id: 'rockfall', name: 'The Rockfall', known: 'Boulders and holes. Rockfish, cabezon, sheephead by day, lingcod in the cracks.', fish: { rockfish: 1.6, cabezon: 1.6, sheephead: 1.4, lingcod: 1, perch: 0.5, greenling: 1.4, surfperch: 1, sculpin: 1.4, treefish: 1.6, hornshark: 1.2 } }, { id: 'outer', name: 'The Outer Reef', known: 'Blue water past the kelp. Yellowtail, leopard sharks at dawn, sunfish basking at noon.', fish: { yellowtail: 1.8, leopardshark: 1.6, sunfish: 1.6, kelpbass: 0.6, senorita: 0.5, blacksmith: .8, whitefishocean: 1.4, whiteseabass: 1.6, giantseabass: 1.4, batray: 1.2 } }, { id: 'heart', name: 'The Kelp Heart', known: 'Where the fronds close over you. Garibaldi, kelp bass, lingcod at night, and Verdigris at dusk.', fish: { garibaldi: 1.8, kelpbass: 1, lingcod: 1.2, verdigris: 1, opaleye: 0.8, halfmoon: 1, whiteseabass: .6, giantseabass: 1, hornshark: 1 } }] },
-  { id: 'lantern', name: 'Lantern Wharf', range: 2, shop: true, sell: true, x: 94, y: 118, links: ['harbor', 'brine', 'delta'],
+  { id: 'lantern', name: 'Lantern Wharf', range: 2, shop: true, sell: true, x: 94, y: 118, links: ['harbor', 'brine', 'delta', 'gannet', 'market'],
     blurb: 'A river-mouth town under paper lanterns. The fish here are gold.', vibe: 'Red gates, paper lanterns, tea steam, carp that cost more than boats.',
     rumor: 'Follow the lanterns upriver at dusk and you will find a wharf where the fish are gold.',
     keeper: { name: 'Auntie Mei', lines: ['"Arowana bring luck. Koi bring money. Catfish bring supper. All three bite here."', '"Pheasant in the bamboo, deer at dusk. Take the bow if you go in."', '"The delta beyond the river rains all year. Old Sajan there hears everything the sea says."'] },
     scene: { shore: 'quay', floor: [[90, 110, 96], [36, 50, 56]], far: 'mountains', props: [['torii', .58], ['lantern', .2], ['lantern', .42], ['bamboo', .05, 30], ['bamboo', .1, 36]], particles: 'petals' },
     village: { kind: 'pagoda', props: [['lantern', .14], ['lantern', .82], ['bamboo', .92, 34], ['teastall', .68]] },
     hunt: { kind: 'bamboo', name: 'the bamboo grove', gate: 'a red gate' }, spots: [{ id: 'wharf', name: 'The Wharf', known: 'Under the lanterns. Koi, gourami, catfish, and whatever fell in.', fish: { koi: 1.2, gourami: 1.4, walkingcatfish: 1.4, boot: 0.8, grasscarp: 1.2, tilapia: 1.4, climbingperch: .8, rohu: .8, swampeel: 1, siamesecarp: .8 } }, { id: 'pool', name: 'Lantern Pool', known: 'A still pool the lanterns were hung to light. Arowana, koi, and the Jade Lantern at night.', fish: { arowana: 1.8, koi: 1.2, jadelantern: 1, gourami: 0.6, tinfoilbarb: .8, knifefish: .8, giantstingray: .8, siamesecarp: 1.2, largemouth: 1.4 } }, { id: 'bend', name: 'River Bend', known: 'Dark water under the willows. Snakehead at night, catfish, golden mahseer at the edges of the day.', fish: { snakehead: 1.6, walkingcatfish: 1, mahseer: 1.8, koi: 0.5, grasscarp: 1, rohu: 1.4, knifefish: 1.4, swampeel: 1.2, giantstingray: 1.4, wallago: 1.6, largemouth: 1 } }, { id: 'steps', name: 'Teahouse Steps', known: 'Stone steps into the river. Fat koi fed by the teahouse, gourami, a shy arowana.', fish: { koi: 1.8, gourami: 1, arowana: 0.6, walkingcatfish: 0.6, tilapia: 1.2, climbingperch: 1.4, tinfoilbarb: 1.4, paradisefish: 1.6 } }] },
-  { id: 'trench', name: 'Black Trench', range: 3, shop: false, sell: true, x: 80, y: 40, links: ['reach', 'fjord', 'bell'],
+  { id: 'trench', name: 'Black Trench', range: 3, shop: false, sell: true, x: 80, y: 40, links: ['reach', 'fjord', 'bell', 'sargasso', 'whaling', 'ribcage'],
     blurb: 'Deep water. A buyer boat anchors here.', vibe: 'Black water, a buyer boat with a lamp, and cliffs full of puffins above.',
     rumor: 'A black trench where a buyer boat anchors. Deep things come up there.',
     village: { kind: 'buyerboat', props: [['barrel', .3], ['lamp', .5], ['crate', .66]] },
     hunt: { kind: 'cliffs', name: 'the puffin cliffs', gate: 'stone steps cut into the cliff' }, spots: [{ id: 'boat', name: 'Off the Buyer Boat', known: 'The lamp draws them up. Hagfish, lanternfish, grenadier, sablefish.', fish: { hagfish: 1.2, lanternfish: 1.4, grenadier: 1.2, sablefish: 1.2, snailfish: 1, cuskeel: 1.2, hatchetfish: 1 } }, { id: 'black', name: 'The Black Water', known: 'Nothing comes up here that wants to be seen. Viperfish, fangtooth, anglerfish, gulper eels.', fish: { viperfish: 1.6, fangtooth: 1.6, anglerfish: 1.6, gulper: 1.4, hagfish: 0.5, blobfish: .8, barreleye: 1.6, dragonfish: 1.6, hatchetfish: 1.2, frilledshark: 1, lancetfish: 1 } }, { id: 'chimneys', name: 'The Chimneys', known: 'Smokers on the trench floor. Ghost sharks, grenadier, oarfish, coelacanth, and Nightmaw.', fish: { chimaera: 1.6, grenadier: 0.8, oarfish: 1.6, coelacanth: 1.6, nightmaw: 1, hagfish: 0.4, frilledshark: 1.2, goblinshark: 1.6, lancetfish: 1, sixgill: 1.2 } }, { id: 'ledge', name: 'The Ledge', known: 'The last shelf before the drop. Sablefish, hagfish, conger.', fish: { sablefish: 1.6, hagfish: 1.2, conger: 1.4, lanternfish: 0.6, blobfish: 1.4, snailfish: 1.4, cuskeel: 1, tripodfish: 1.6, sixgill: .8 } }] },
-  { id: 'delta', name: 'Monsoon Delta', range: 3, shop: true, sell: true, x: 122, y: 100, links: ['lantern', 'bell', 'cinder'],
+  { id: 'delta', name: 'Monsoon Delta', range: 3, shop: true, sell: true, x: 122, y: 100, links: ['lantern', 'bell', 'cinder', 'market', 'tidal'],
     blurb: 'Mangroves, stilt houses, rain that never quite stops.', vibe: 'Warm rain, stilt houses, mud that moves. The shopkeeper hears every rumor on the sea.',
     rumor: 'Where the rain never stops, houses stand on legs and the water tastes of mud and something older.',
     keeper: { name: 'Old Sajan', exotic: true, lines: ['"Sit. The rain does not mind. You want fish? The barramundi. You want stories? Those cost nothing."', '"Sailors come through here from places that should not exist. I write down what they say."', '"The crocodile in the back channel took a boat once. Nobody has taken it back."'] },
     scene: { shore: 'stilts', floor: [[96, 86, 60], [36, 40, 36]], far: 'none', props: [['mangrove', .12], ['mangrove', .4], ['mangrove', .7], ['lantern', .9]], particles: 'rain' },
     village: { kind: 'stilt', props: [['mangrove', .08], ['mangrove', .9], ['net', .66], ['lantern', .26]] },
     hunt: { kind: 'mangrove', name: 'the back channel', gate: 'a boardwalk into the roots' }, spots: [{ id: 'stilts', name: 'Under the Stilts', known: 'Mud and shade. Mudskippers, milkfish, archerfish spitting at the lanterns, four-eyed fish.', fish: { mudskipper: 1.4, milkfish: 1.2, archerfish: 1.4, foureyed: 1.2, glassfish: 1.6, scat: 1.4, moony: 1.2, estuarycatfish: .8, halfbeak: 1 } }, { id: 'main', name: 'The Main Channel', known: 'The deep brown flow. Barramundi, mangrove jack, bull sharks at dusk.', fish: { barramundi: 1.8, mangrovejack: 1.4, bullshark: 1.6, milkfish: 0.6, threadfin: .8, sawfish: 1.4, queenfish: .6, estuarygrouper: 1.4 } }, { id: 'backwater', name: 'The Backwater', known: 'Still, black, warm. Four-eyed fish, archerfish, mudskippers, and Monsoon Mother at night.', fish: { foureyed: 1.4, archerfish: 1, mudskipper: 1, monsoonmother: 1, mangrovejack: 0.6, estuarygrouper: .8, glassfish: 1, moony: 1.2, estuarycatfish: 1.4, largemouth: 1.4 } }, { id: 'mouth', name: 'The River Mouth', known: 'Where the mud meets the sea. Milkfish, barramundi, mangrove jack, bull sharks.', fish: { milkfish: 1.6, barramundi: 1, mangrovejack: 1, bullshark: 1, mudskipper: 0.5, threadfin: 1.6, sawfish: 1, gianttrevally: 1.6, queenfish: 1.4, scat: .6, halfbeak: 1.2 } }] },
-  { id: 'fjord', name: 'Frost Fjords', range: 4, shop: true, sell: true, x: 70, y: 14, links: ['trench', 'glass'],
+  { id: 'fjord', name: 'Frost Fjords', range: 4, shop: true, sell: true, x: 70, y: 14, links: ['trench', 'glass', 'whaling', 'crater', 'iceship'],
     blurb: 'Far north. Ice station with a shop.', vibe: 'Ice, aurora, a longhouse with a fire that never goes out.',
     rumor: 'Ice and the aurora. Char the colour of the sky and a shark older than the station.',
     keeper: { name: 'Ingrid', exotic: true, lines: ['"Cod, haddock, char. Halibut if you are patient and stupid in equal parts."', '"Ptarmigan up the slope. Reindeer when the aurora is out. Take the crossbow."', '"The old men say the sea goes up past the glass atoll. I say the old men drink."'] },
     village: { kind: 'longhouse', props: [['pine', .2, 30], ['fire', .62], ['sled', .78], ['pine', .92, 26]] },
     hunt: { kind: 'tundra', name: 'the tundra', gate: 'a cairn and a frozen path' }, spots: [{ id: 'station', name: 'The Station Ice', known: 'Holes cut by the longhouse. Capelin, char, cod, haddock.', fish: { capelin: 1.4, char: 1.2, cod: 1.2, haddock: 1.2, saithe: 1.2, burbot: 1, lavaret: 1.2, shorthornsculpin: 1.4 } }, { id: 'deep', name: 'The Deep Fjord', known: 'Black water a mile down. Capelin shoals, halibut, cod, and the Greenland shark at night.', fish: { capelin: 0.8, halibut: 1.8, cod: 1, greenlandshark: 1.6, haddock: 0.6, rosefish: 1.4, ling: 1.4, tusk: 1.2, monkfish: 1.6, arcticskate: 1.2 } }, { id: 'river', name: 'The River Mouth', known: 'Where the glacier melt comes in. Char, salmon at dawn and dusk, pike, and Rimeheart.', fish: { char: 1.4, salmon: 1.8, pike: 1.4, rimeheart: 1, capelin: 0.6, seatroutnorth: 1.6, grayling: 1.6, burbot: 1.2, lavaret: 1.2 } }, { id: 'skerries', name: 'The Skerries', known: 'Rocks and weed. Haddock, lumpsucker, wolffish at night, capelin.', fish: { haddock: 1.2, lumpsucker: 1.8, wolffish: 1.6, capelin: 1, rosefish: .8, saithe: 1.2, tusk: 1, monkfish: .6, shorthornsculpin: 1, arcticskate: 1 } }] },
-  { id: 'bell', name: 'Bell Reef', range: 4, shop: false, sell: true, x: 140, y: 70, links: ['trench', 'delta', 'glass', 'cinder'],
+  { id: 'bell', name: 'Bell Reef', range: 4, shop: false, sell: true, x: 140, y: 70, links: ['trench', 'delta', 'glass', 'cinder', 'tidal', 'biolum', 'stormeye'],
     blurb: 'A drowned city. Salvagers camp on the reef and buy what you bring up.', vibe: 'Columns in the shallows, a bell no one can find, salvagers who pay in coin and say little.',
     rumor: 'On still nights the salvagers hear a bell under the reef. No one has found the tower.',
     scene: { shore: 'coral', floor: [[120, 140, 140], [30, 60, 80]], far: 'none', props: [['column', .15], ['column', .35, 1], ['bell', .62], ['column', .85]], particles: 'none' },
     village: { kind: 'tent', props: [['column', .1], ['crate', .66], ['bellsmall', .78], ['column', .92, 1]] },
     hunt: { kind: 'ruins', name: 'the drowned streets', gate: 'a fallen arch' }, spots: [{ id: 'columns', name: 'The Columns', known: 'Marble in the shallows. Parrotfish, blue tang, trumpetfish, lionfish.', fish: { parrotfish: 1.4, bluetang: 1.4, trumpetfish: 1.2, lionfish: 1, queenangel: .8, butterflyfish: 1.2, greytrigger: .8, schoolmaster: 1.4, bluestripedgrunt: 1.2, porcupinefish: 1.2 } }, { id: 'tower', name: 'The Bell Tower', known: 'The deepest ruin. Nassau grouper, moray at night, hammerheads at dawn, and the Bellringer.', fish: { nassau: 1.4, moray: 1.4, hammerhead: 1.8, bellringer: 1, trumpetfish: 0.5, cowfish: .6, nurseshark: 1.6, goliathgrouper: 1.4 } }, { id: 'gardens', name: 'The Drowned Gardens', known: 'Coral over paving stones. Parrotfish, blue tang, lionfish, trumpetfish.', fish: { parrotfish: 1.2, bluetang: 1.2, lionfish: 1.4, trumpetfish: 1.4, queenangel: 1.6, butterflyfish: 1.4, bluestripedgrunt: 1.2, surgeonfish: 1.4, cowfish: 1.4, filefish: 1 } }, { id: 'channel', name: 'The Salvage Channel', known: 'Where the salvagers work. Grouper, moray, conger, barracuda.', fish: { nassau: 1.2, moray: 1, conger: 1.4, barracuda: 1.4, trumpetfish: 0.6, greytrigger: 1.4, schoolmaster: 1, porcupinefish: 1, filefish: 1, nurseshark: .8 } }] },
-  { id: 'cinder', name: 'Cinder Isle', range: 5, shop: true, sell: true, x: 162, y: 112, links: ['delta', 'bell', 'hollow'],
+  { id: 'cinder', name: 'Cinder Isle', range: 5, shop: true, sell: true, x: 162, y: 112, links: ['delta', 'bell', 'hollow', 'pirate', 'witch', 'biolum'],
     blurb: 'A volcano that never sleeps. The fish swim in fire.', vibe: 'Black sand, red cracks, ash on everything, a smith who forges hooks that do not melt.',
     rumor: 'There is an island that glows at night. The fish there swim in fire and the smith shoes nothing.',
     keeper: { name: 'Brakka', exotic: true, lines: ['"Hooks of star-iron. Only kind that holds a magma char. Buy two."', '"The lava field has lizards worth their weight. Mind the vents."', '"Inside the hollow mountain they fish by lamplight. Say Brakka sent you. It will not help."'] },
     scene: { shore: 'lava', floor: [[60, 40, 40], [20, 10, 14]], far: 'volcano', props: [['vent', .25], ['vent', .6], ['obsidian', .42], ['obsidian', .8]], particles: 'ash', weather: 'ash' },
     village: { kind: 'forge', props: [['vent', .15], ['anvil', .66], ['obsidian', .9]] },
     hunt: { kind: 'lavafield', name: 'the lava field', gate: 'an obsidian arch' }, spots: [{ id: 'blacksand', name: 'Black Sand', known: 'Warm underfoot. Ashfin grunts, magma char, ember lanterns at night.', fish: { ashfin: 1.4, magmachar: 1.2, emberlantern: 1.2, cinderling: 1, basaltbream: 1.4, brimstoneray: 1.2, smouldertrout: .6, lavabacksnapper: .8 } }, { id: 'lavamouth', name: 'The Lava Mouth', known: 'Where the flow meets the sea and the water boils. Magma char, obsidian eels, slagbacks, and Caldera.', fish: { magmachar: 1, obsidianeel: 1.6, slagback: 1.6, caldera: 1, ashfin: 0.5, sulfurgar: 1, brimstoneray: .8, lavabacksnapper: 1.4, sooteel: 1.2, fumarolegrouper: 1.4 } }, { id: 'ashshallows', name: 'Ash Shallows', known: 'Grey water, grey fish. Ashfin grunts and ember lanterns.', fish: { ashfin: 1.8, emberlantern: 1.4, magmachar: 0.6, cinderling: 1.4, sulfurgar: 1.2, pumicepuffer: 1.6, sooteel: 1, sixeyedgoby: 1.4 } }, { id: 'spring', name: 'The Hot Spring', known: 'A pool the smith bathes in. Magma char thick as a hand, slagbacks underneath.', fish: { magmachar: 1.8, slagback: 0.8, ashfin: 0.8, basaltbream: .8, smouldertrout: 1.6, fumarolegrouper: .8, kilncarp: 1.6 } }] },
-  { id: 'glass', name: 'Glasswater Atoll', range: 5, shop: true, sell: true, x: 118, y: 30, links: ['fjord', 'bell', 'hollow', 'thunder'],
+  { id: 'glass', name: 'Glasswater Atoll', range: 5, shop: true, sell: true, x: 118, y: 30, links: ['fjord', 'bell', 'hollow', 'thunder', 'crater', 'stormeye', 'sleeper'],
     blurb: 'Water so clear the boats float on air. The fish are hard to see.', vibe: 'Glass sand, crystal shoals, light everywhere, fish you see only when they turn.',
     rumor: 'An atoll of water so clear the boats look like they float on air. The fish there are hard to see, and harder to forget.',
     keeper: { name: 'Lumen', exotic: true, lines: ['"Lensfish. Watch the eye. The rest of it is a rumor."', '"The crabs here are glass. Step carefully or step richly."', '"There is a storm that never moves, north of here. The fish bite like the lightning."'] },
     scene: { shore: 'glass', floor: [[200, 230, 235], [80, 150, 170]], far: 'island', palms: false, props: [['crystal', .2], ['crystal', .5, 1], ['crystal', .78], ['sign', .92]], particles: 'sparkle' },
     village: { kind: 'glasshouse', props: [['crystal', .12], ['crystal', .88, 1], ['lamp', .66]] },
     hunt: { kind: 'glass', name: 'the crystal shoals', gate: 'a crystal arch' }, spots: [{ id: 'shelf', name: 'The Glass Shelf', known: 'Knee-deep and perfectly clear. Glass minnows, clearfin jacks, lensfish by day.', fish: { glassminnow: 1.4, clearfinjack: 1.2, lensfish: 1.2, shardfin: 1.2, crystalwrasse: 1.6, panesole: 1.4, dewdroptetra: 1, spectrumtang: 1, prismbackbream: 1 } }, { id: 'dropoff', name: 'The Drop-off', known: 'The shelf ends and the blue begins. Prism rays, mirror marlin by day, the Unseen at dawn.', fish: { prismray: 1.6, mirrormarlin: 1.8, clearfinjack: 1, unseen: 1, glassminnow: 0.5, refractorpike: .8, halogrouper: 1.4, lucenteel: 1, miragetuna: 1.8 } }, { id: 'mirror', name: 'Mirror Pool', known: 'So still it shows the sky. Lensfish, glass minnows, prism rays.', fish: { lensfish: 1.6, glassminnow: 1.2, prismray: 1, crystalwrasse: .8, panesole: 1, lucenteel: 1.2, dewdroptetra: 1.6, prismbackbream: 1.4, insideoutperch: 1.4 } }, { id: 'reefline', name: 'The Reef Line', known: 'Crystal shoals breaking the swell. Clearfin jacks, mirror marlin.', fish: { clearfinjack: 1.8, mirrormarlin: 1.2, glassminnow: 0.8, shardfin: 1.4, refractorpike: 1.4, halogrouper: .8, spectrumtang: 1.2 } }] },
-  { id: 'hollow', name: 'Hollow Mountain', range: 6, shop: true, sell: true, x: 178, y: 50, links: ['cinder', 'glass', 'stars'],
+  { id: 'hollow', name: 'Hollow Mountain', range: 6, shop: true, sell: true, x: 178, y: 50, links: ['cinder', 'glass', 'stars', 'deadsea', 'clockwork', 'stormeye'],
     blurb: 'A lake inside a mountain. The fishermen carry lamps.', vibe: 'A cavern you sail into, lamps on every boat, glowing spores, and a singing nobody mentions.',
     rumor: 'A mountain with a lake inside it. The fishermen there carry lamps, and they do not talk about the singing.',
     keeper: { name: 'the Lamplighter', exotic: true, lines: ['"Lamp oil, hooks, silence. Which?"', '"Bats in the upper galleries. Salamanders by the drip pools. Both sell."', '"When the choir starts, cast. When it stops, leave."'] },
     scene: { shore: 'cave', floor: [[50, 60, 80], [10, 14, 30]], far: 'none', tint: 'rgba(0,0,20,0.35)', props: [['stalagmite', .2], ['glowshroom', .4], ['stalagmite', .65, 1], ['glowshroom', .85]], particles: 'spores', weather: 'cave' },
     village: { kind: 'cavehut', props: [['glowshroom', .14], ['lamp', .66], ['stalagmite', .9]] },
     hunt: { kind: 'cave', name: 'the upper galleries', gate: 'a lit tunnel' }, spots: [{ id: 'lake', name: 'Lamp Lake', known: 'The main water, ringed with lamps. Cavefish, ghostgills, dripstone loach.', fish: { cavefish: 1.4, ghostgill: 1.2, dripstoneloach: 1.2, moonmilkcatfish: .8, gloomcarp: 1.4, hollowperch: 1.4, lanterngudgeon: 1.6 } }, { id: 'drip', name: 'The Drip Gallery', known: 'Water falls from the dark. Dripstone loach, lampmouths at night, echo carp.', fish: { dripstoneloach: 1.6, lampmouth: 1.4, echocarp: 1.4, cavefish: 0.5, stalactiteeel: 1.4, gloomcarp: .6, lanterngudgeon: 1, resonancepike: .8, palelamprey: 1.4 } }, { id: 'choir', name: 'The Choir Hall', known: 'Where the singing is loudest. Ghostgills, echo carp, lampmouths, and the Deep Choir.', fish: { ghostgill: 1.2, echocarp: 1.2, lampmouth: 1, deepchoir: 1, resonancepike: 1.4, vaultsturgeon: 1.2, chimebass: 1.6 } }, { id: 'sump', name: 'The Sump', known: 'The lowest pool. Cavefish, lampmouths, loach.', fish: { cavefish: 1.6, lampmouth: 1.2, dripstoneloach: 1, stalactiteeel: 1, moonmilkcatfish: 1.4, hollowperch: 1, siltflounder: 1.6, vaultsturgeon: .8, palelamprey: .8, twinmawcarp: 1.4 } }] },
-  { id: 'thunder', name: 'Thunderhead Shoals', range: 6, shop: true, sell: true, x: 150, y: 14, links: ['glass', 'stars'],
+  { id: 'thunder', name: 'Thunderhead Shoals', range: 6, shop: true, sell: true, x: 150, y: 14, links: ['glass', 'stars', 'crater', 'clockwork'],
     blurb: 'Shoals under a storm that never moves.', vibe: 'Permanent storm, a lighthouse that hums, fish that crackle when they come out of the water.',
     rumor: 'Shoals under a storm that never moves. The fish there bite like the lightning does.',
     keeper: { name: 'Keeper Voss', exotic: true, lines: ['"Rubber gloves. Trust me."', '"Spark hares on the ridge. Hard to hit. Harder to hold."', '"Beyond the shoals the sea goes up. I have seen the boats that came back. There were none."'] },
     scene: { shore: 'rock', floor: [[50, 60, 70], [14, 18, 30]], far: 'none', tint: 'rgba(0,0,10,0.25)', props: [['deadtree', .2], ['rod', .5], ['deadtree', .75]], particles: 'rain', weather: 'storm' },
     village: { kind: 'lighthouse', props: [['deadtree', .12], ['crate', .66], ['rod', .88]] },
     hunt: { kind: 'storm', name: 'the blasted ridge', gate: 'two lightning-struck trunks' }, spots: [{ id: 'rock', name: 'Lighthouse Rock', known: 'Under the beam. Spark mackerel, cloudskimmers by day, ordinary mackerel that strayed in.', fish: { sparkmackerel: 1.4, cloudskimmer: 1.4, mackerel: 1.2, boltfish: 1.4, arcwrasse: 1.6, ozoneperch: 1, tempestsalmon: .6, hailstonepuffer: .8 } }, { id: 'stormline', name: 'The Storm Line', known: 'Where the cloud touches the water. Stormeels at night, thunderjaws, and Galvanis.', fish: { stormeel: 1.6, thunderjaw: 1.6, galvanis: 1, sparkmackerel: 0.5, gustgrouper: 1.2, fulgurtuna: 1.8, tempestsalmon: 1.4 } }, { id: 'shoals', name: 'The Shoals', known: 'Breaking white under black sky. Spark mackerel, cloudskimmers, staticfin at night.', fish: { sparkmackerel: 1.2, cloudskimmer: 1, staticfin: 1.8, squallherring: 1, gustgrouper: 1, rumbleray: 1.4, downdraftflounder: 1.4, hailstonepuffer: 1.2, knotbackeel: 1.2 } }, { id: 'lee', name: 'The Lee', known: 'The one calm corner. Mackerel, spark mackerel, the odd stormeel.', fish: { mackerel: 1.6, sparkmackerel: 1, stormeel: 0.8, boltfish: 1, squallherring: 1.4, rumbleray: .6, ozoneperch: 1.4, downdraftflounder: 1 } }] },
-  { id: 'stars', name: 'The Stars', range: 7, shop: false, sell: false, x: 188, y: 8, links: ['hollow', 'thunder'], blurb: 'Not in this build.', vibe: '', rumor: 'Beyond everything the sea goes up. Nobody who sailed that way has sailed back.', locked: true,
+  // --- the wider world: eighteen more islands and the spaceport (generated from compact data) ---
+  { id: 'tortoise', name: 'Tortoise Key', range: 1, shop: true, sell: true, x: 14, y: 88, links: ['shoal', 'harbor', 'monastery', 'frogs'],
+    blurb: 'A low key of giant tortoises and one lighthouse.', vibe: 'Tortoises older than the lighthouse, a keeper who talks to them, turtle grass to the horizon.',
+    rumor: 'A lighthouse on a key of tortoises. The keeper talks to them, and they answer slowly.',
+    keeper: { name: 'Old Pell', lines: ['"Mind Agatha. She is two hundred and does not move for anyone."', '"Houndfish in the turtle grass by day. Morays in the wrack at night. Keep your fingers."', '"Something rises to the lamp some nights. Bigger than the lamp."'] },
+    scene: { shore: 'sand', floor: [[180, 170, 120], [50, 80, 70]], far: 'island', palms: true, props: [['palm', .2], ['gullpost', .55], ['sign', .8]], particles: 'none' },
+    village: { kind: 'lighthouse', props: [['palm', .12], ['barrel', .7], ['sign', .9]] },
+    hunt: { kind: 'dunes', name: 'the tortoise meadow', gate: 'a gap in the stone wall' }, spots: [{ id: 'lamp', name: 'Lamp Rock', known: 'Under the lighthouse. Chub, bonito passing, and whatever rises to the lamp.', fish: { muttonsnapper: .8, houndfish: .6, bermudachub: 1.6, bonito: 1.2, lampkeeper: 1 } }, { id: 'grass', name: 'The Turtle Grass', known: 'Warm and shallow. Houndfish, lane snapper, ballyhoo.', fish: { lanesnapper: 1.6, houndfish: 1.8, ballyhoo: 1.4 } }, { id: 'shelf', name: 'The Shelf', known: 'Where the key drops off. Mutton snapper, bonito, morays in the holes.', fish: { muttonsnapper: 1.6, bonito: 1.4, greenmoray: 1 } }, { id: 'wrack', name: 'The Wrack Line', known: 'Weed and shells. Ballyhoo, chub, green morays at night.', fish: { lanesnapper: 1, ballyhoo: 1.4, bermudachub: 1, greenmoray: 1.6 } }] },
+  { id: 'gannet', name: 'Gannet Rock', range: 1, shop: false, sell: true, x: 84, y: 140, links: ['brine', 'lantern', 'market'],
+    blurb: 'A rock white with birds and what birds leave.', vibe: 'Ten thousand gannets, the smell, egg-traders in a tent at the foot of the cliff.',
+    rumor: 'A rock white with birds. The traders there buy fish and eggs and do not ask where either came from.',
+    scene: { shore: 'rock', floor: [[90, 100, 110], [36, 46, 58]], far: 'none', props: [['gullpost', .3], ['cairn', .6], ['gullpost', .85]], particles: 'none' },
+    village: { kind: 'tent', props: [['crate', .2], ['sacks', .8]] },
+    hunt: { kind: 'cliffs', name: 'the gannet cliffs', gate: 'a rope ladder' }, spots: [{ id: 'stack', name: 'The Stack', known: 'Deep water right under the birds. Pouting, tope, cuckoo wrasse.', fish: { cuckoowrasse: .8, pouting: 1.6, tope: 1.2 } }, { id: 'whiteshelf', name: 'The White Shelf', known: 'Guano-white rock, warm water. Dab, weevers, poor cod.', fish: { dab: 1.6, lesserweever: 1.4, poorcod: 1.2 } }, { id: 'gut', name: 'The Gut', known: 'A channel the tide rips through. Tope, pouting, dab.', fish: { pouting: 1.2, dab: 1, tope: 1.4 } }, { id: 'kelp', name: 'The Kelp Fringe', known: 'Wrasse country. Cuckoo wrasse, poor cod, and the king.', fish: { cuckoowrasse: 1.8, poorcod: 1.4, stackking: 1 } }] },
+  { id: 'market', name: 'The Floating Market', range: 2, shop: true, sell: true, x: 118, y: 134, links: ['lantern', 'gannet', 'pirate', 'delta'],
+    blurb: 'Rafts lashed together. It drifts; so does everyone on it.', vibe: 'A hundred rafts tied into a town, tea stalls, fish pens, nobody born on land for three generations.',
+    rumor: 'A market that floats. A hundred rafts tied together, and it drifts. Find it before it moves.',
+    keeper: { name: 'Auntie Nuan', lines: ['"Tea first. Then business. Then more tea."', '"Catla under the rafts, fat on what we throw over. Tigerfish in the pens, if you can get past the guard."', '"Something takes a coin from under every stall at night. We leave the coins. Cheaper."'] },
+    scene: { shore: 'stilts', floor: [[90, 90, 70], [30, 40, 36]], far: 'island', props: [['teastall', .15], ['lantern', .45], ['barrel', .7], ['sacks', .9]], particles: 'none' },
+    village: { kind: 'stilt', props: [['teastall', .08], ['lantern', .42], ['sacks', .88]] },
+    hunt: { kind: 'mangrove', name: 'the reed pens', gate: 'a bamboo footbridge' }, spots: [{ id: 'rafts', name: 'Under the Rafts', known: 'Shade and scraps. Catla, striped catfish, marble goby, and the Toll.', fish: { catla: 1.6, pangasius: 1.2, marblegoby: 1, thetoll: 1 } }, { id: 'pens', name: 'The Fish Pens', known: 'Escaped stock. Tigerfish, giant barb, featherbacks.', fish: { catla: 1, featherback: 1.2, marblegoby: .8, siamesetigerfish: 1.8, giantbarb: 1 } }, { id: 'offing', name: 'The Offing', known: 'Open water past the last raft. Striped catfish, giant barb.', fish: { catla: .8, pangasius: 1.6, giantbarb: 1.6 } }, { id: 'temple', name: 'The Temple Steps', known: 'A shrine raft. Featherbacks, marble goby, catla fed by pilgrims.', fish: { catla: 1.2, featherback: 1.6, marblegoby: 1.6 } }] },
+  { id: 'monastery', name: 'Bell Stack', range: 2, shop: true, sell: true, x: 18, y: 40, links: ['reach', 'tortoise', 'whaling', 'ribcage'],
+    blurb: 'A monastery on a sea stack. The monks fish by bell.', vibe: 'Monks on a pillar of rock, a bell for every hour, lines lowered from the refectory window.',
+    rumor: 'Monks on a sea stack who fish by the bell. They say the fish come up to hear it.',
+    keeper: { name: 'Brother Ansel', lines: ['"We ring, they rise. We do not ask why. Asking is not our order."', '"Pollack at the stack foot, black bream when the sun is low. Topknot flat against the rock, if you can see them."', '"At vespers something rises that is not on the roster. The abbot says not to fish it. The abbot is not here."'] },
+    scene: { shore: 'rock', floor: [[80, 90, 100], [30, 40, 56]], far: 'mountains', props: [['bell', .2], ['cairn', .5], ['lamp', .75], ['bellsmall', .9]], particles: 'none' },
+    village: { kind: 'longhouse', props: [['bell', .08], ['cairn', .7], ['lamp', .92]] },
+    hunt: { kind: 'cliffs', name: 'the goat ledges', gate: 'steps cut in the rock' }, spots: [{ id: 'bellpool', name: 'The Bell Pool', known: 'Where the big bell hangs over the water. Black bream, blennies, red mullet.', fish: { blackbream: 1.6, redmullet: 1.2, tompotblenny: 1.8 } }, { id: 'stackfoot', name: 'The Stack Foot', known: 'Deep at once. Pollack, bluemouth, topknot on the rock.', fish: { pollack: 1.6, topknot: 1.6, bluemouth: 1 } }, { id: 'vespers', name: 'Vespers Ledge', known: 'Fished at dusk only, by rule. Black bream, pollack, and Vespers.', fish: { pollack: 1, blackbream: 1.4, vespers: 1 } }, { id: 'deepbell', name: 'The Deep Bell', known: 'A drowned bell on the seabed. Bluemouth, red mullet, pollack.', fish: { pollack: 1, redmullet: 1.6, bluemouth: 1.8 } }] },
+  { id: 'sargasso', name: 'The Weed Sea', range: 2, shop: false, sell: false, x: 70, y: 72, links: ['harbor', 'reach', 'trench', 'tidal'],
+    blurb: 'A sea of weed you row through. Nobody lives here. Things do.', vibe: 'Golden weed to every horizon, your camp on a bank of it that holds your weight, for now.',
+    rumor: 'A sea of golden weed. Boats go in and come out slow. The fish under the mat are like nothing on a pier.',
+    scene: { shore: 'sand', floor: [[120, 110, 60], [40, 50, 50]], far: 'none', tint: 'rgba(90,110,30,0.16)', props: [['net', .3], ['rod', .6], ['net', .85]], particles: 'none' },
+    village: { kind: 'camp', props: [['net', .3]] },
+    hunt: { kind: 'dunes', name: 'the weed banks', gate: 'a path trodden in the wrack' }, spots: [{ id: 'mat', name: 'The Weed Mat', known: 'Fish in the weed itself. Sargassum fish, pipefish, triggers.', fish: { sargassumfish: 1.8, oceantrigger: 1.2, pipefish: 1.6 } }, { id: 'bluehole', name: 'The Blue Hole', known: 'A gap in the mat, deep blue. Almaco jack, pilotfish, and the Weedwife.', fish: { almacojack: 1.6, pilotfish: 1.2, weedwife: 1 } }, { id: 'edge', name: 'The Weed Edge', known: 'Where the gold meets open sea. Flying fish, almaco, triggers.', fish: { flyingfish: 1.6, almacojack: 1.2, oceantrigger: 1.4 } }, { id: 'drift', name: 'The Drift Line', known: 'Flotsam and weed in a line. Pilotfish under everything, flying fish over it.', fish: { flyingfish: 1.4, pilotfish: 1.8 } }] },
+  { id: 'pirate', name: 'Gallows Cove', range: 3, shop: true, sell: true, x: 150, y: 136, links: ['market', 'cinder', 'witch'], sellMult: 2,
+    blurb: 'A pirate cove. They buy at double and ask nothing.', vibe: 'A careened hull, a gibbet, a tavern with no name, and a buyer who pays twice the harbor and does not want to know.',
+    rumor: 'A cove where they pay double for a haul and sell nothing you could show a magistrate.',
+    keeper: { name: 'Black Maud', exotic: true, lines: ['"Double the harbor price. Do not ask what I do with them. Do not ask what I did with the last one who asked."', '"Wahoo off the point if your line is fast. Cubera in the black water if your arms are strong."', '"Something hangs in the water under the gibbet. It wears a rope. We do not fish it. You might."'] },
+    scene: { shore: 'sand', floor: [[170, 150, 110], [40, 60, 70]], far: 'island', palms: true, props: [['barrel', .2], ['deadtree', .5], ['crate', .7], ['lamp', .9]], particles: 'none' },
+    village: { kind: 'shack', props: [['barrel', .1], ['crate', .3], ['lamp', .9]] },
+    hunt: { kind: 'woods', name: 'the hanging wood', gate: 'a gibbet at the path' }, spots: [{ id: 'gallows', name: 'Gallows Point', known: 'The gibbet over the water. Cero, king mackerel, and the Hanged Man at night.', fish: { wahoo: .8, kingmackerel: 1.4, cero: 1.6, hangedman: 1 } }, { id: 'careen', name: 'The Careening Beach', known: 'Hulls on their sides. Queen triggers, cero, cubera under the keels.', fish: { cubera: 1, queentrigger: 1.6, cero: 1.2 } }, { id: 'cannon', name: 'Cannon Reef', known: 'Reef and iron. Blackfin, queen triggers, king mackerel.', fish: { kingmackerel: 1.2, blackfintuna: 1.6, queentrigger: 1.2, cero: 1 } }, { id: 'blackwater', name: 'The Black Water', known: 'Deep and still. Cubera, wahoo, blackfin.', fish: { cubera: 1.6, wahoo: 1.6, blackfintuna: 1, cero: .6 } }] },
+  { id: 'whaling', name: 'Bonehaven', range: 3, shop: true, sell: true, x: 46, y: 22, links: ['monastery', 'fjord', 'iceship', 'trench'],
+    blurb: 'A whaling town gone quiet. Bones for houses.', vibe: 'Jawbone arches, rib-beam roofs, try-pots cold for forty years, a widow who runs the only shop.',
+    rumor: 'A town built of whale bones. The whales stopped coming. The people did not stop waiting.',
+    keeper: { name: 'Widow Tarn', exotic: true, lines: ['"My husband went out for the last one. The last one came back. He did not."', '"Hake and blue whiting in the sound. Porbeagle off the bone bar if you want to lose a rod."', '"Something grey follows the sound at dawn, the way the whales did. The old men will not look at it."'] },
+    scene: { shore: 'rock', floor: [[80, 84, 96], [28, 32, 44]], far: 'mountains', tint: 'rgba(40,40,50,0.14)', props: [['column', .15], ['sled', .4], ['barrel', .65], ['column', .88]], particles: 'none' },
+    village: { kind: 'longhouse', props: [['column', .08], ['barrel', .5], ['sled', .85]] },
+    hunt: { kind: 'cliffs', name: 'the flensing yard', gate: 'a jawbone arch' }, spots: [{ id: 'flensing', name: 'The Flensing Stage', known: 'Forty years of blood in the stones. Spurdog, hake, megrim.', fish: { hake: 1, megrim: 1.6, spurdog: 1.4 } }, { id: 'bonebar', name: 'The Bone Bar', known: 'A bar of whale bone. Porbeagle, angelshark, spurdog.', fish: { porbeagle: 1.8, spurdog: 1.4, angelshark: 1.6 } }, { id: 'tryworks', name: 'The Tryworks', known: 'Cold pots over deep water. Blue whiting, hake, megrim.', fish: { hake: 1.2, bluewhiting: 1.6, megrim: 1 } }, { id: 'sound', name: 'The Sound', known: 'Where the whales came in. Hake, blue whiting, and Greywake at dawn.', fish: { hake: 1.6, bluewhiting: 1.4, greywake: 1 } }] },
+  { id: 'tidal', name: 'Causeway Island', range: 3, shop: false, sell: true, x: 104, y: 76, links: ['sargasso', 'delta', 'bell', 'sleeper'],
+    blurb: 'Reachable only at low tide. There is a clock.', vibe: 'A causeway the sea covers twice a day, a tide clock on a post, traders who leave when it chimes.',
+    rumor: 'An island with a causeway and a clock. The traders leave when the clock says. The sea comes when the clock says.',
+    scene: { shore: 'sand', floor: [[140, 130, 100], [50, 60, 60]], far: 'island', tint: 'rgba(60,70,60,0.12)', props: [['cairn', .2], ['sign', .5], ['net', .8]], particles: 'none' },
+    village: { kind: 'tent', props: [['sign', .15], ['net', .8]] },
+    hunt: { kind: 'dunes', name: 'the causeway flats', gate: 'the tide clock' }, spots: [{ id: 'causeway', name: 'The Causeway', known: 'Under the road, twice a day. Mullet, shad, sand smelt.', fish: { thicklipmullet: 1.2, goldenmullet: .8, twaiteshad: 1.4, sandsmelt: 1.6 } }, { id: 'scalps', name: 'The Mussel Scalps', known: 'Black with mussels. Smoothhound, shanny, thick-lipped mullet.', fish: { thicklipmullet: 1.4, smoothhound: 1.2, shanny: 1.8 } }, { id: 'creek', name: 'Pill Creek', known: 'A gut through the flats. Golden mullet, shad, sand smelt.', fish: { goldenmullet: 1.8, twaiteshad: 1.4, sandsmelt: 1.2 } }, { id: 'deeps', name: 'The Deeps', known: 'Off the end of the flats. Smoothhound, mullet, and the Tide-turner.', fish: { thicklipmullet: 1, smoothhound: 1.6, tideturner: 1 } }] },
+  { id: 'crater', name: 'Boil Lake', range: 4, shop: true, sell: true, x: 100, y: 10, links: ['fjord', 'glass', 'thunder'],
+    blurb: 'A crater lake of hot springs. The crayfish are blind and white.', vibe: 'Steam off the water, sinter terraces, a bathhouse, trout that taste of sulphur.',
+    rumor: 'A lake inside a crater, hot as a bath, with blind white crayfish on the bottom.',
+    keeper: { name: 'Mother Oss', exotic: true, lines: ['"Bathe first. You smell of the sea. Then we talk."', '"Kokanee in the cold arm, rainbows everywhere else. Bullheads in the crayfish beds at night."', '"The hottest spring has a trout in it boiled white that will not die. We call it the Kettle. Leave it alone or do not."'] },
+    scene: { shore: 'rock', floor: [[120, 110, 100], [50, 50, 60]], far: 'mountains', tint: 'rgba(255,200,160,0.08)', props: [['vent', .15], ['cairn', .45], ['pine', .7], ['vent', .9]], particles: 'none' },
+    village: { kind: 'longhouse', props: [['vent', .1], ['barrel', .6], ['pine', .9]] },
+    hunt: { kind: 'cliffs', name: 'the fumarole slopes', gate: 'a cairn in the steam' }, spots: [{ id: 'hotspring', name: 'The Hot Spring', known: 'Too hot to hold a hand in. Rainbows, tui chub, and the Kettle.', fish: { rainbowtrout: 1.4, tuichub: 1.6, kettle: 1 } }, { id: 'coldarm', name: 'The Cold Arm', known: 'Snowmelt side. Kokanee, cutthroat, mountain whitefish.', fish: { rainbowtrout: .8, kokanee: 1.8, cutthroat: 1.4, mountainwhitefish: 1.2 } }, { id: 'sinter', name: 'The Sinter Terraces', known: 'White steps into the lake. Rainbows, cutthroat, tui chub.', fish: { rainbowtrout: 1.6, cutthroat: 1.2, tuichub: 1.2 } }, { id: 'crayfish', name: 'The Crayfish Beds', known: 'Dark and deep. Bullheads, whitefish, kokanee.', fish: { kokanee: 1, brownbullhead: 1.8, mountainwhitefish: 1.6 } }] },
+  { id: 'iceship', name: 'The Frozen Hulk', range: 4, shop: true, sell: true, x: 28, y: 8, links: ['whaling', 'fjord'],
+    blurb: 'A ship locked in a berg. The crew still trade.', vibe: 'A three-master frozen into a berg, lamps in the ice, a quartermaster who has not seen a thaw in his life.',
+    rumor: 'A ship frozen in a berg, lamps still lit. The crew trade from the hold as if they will sail tomorrow.',
+    keeper: { name: 'Quartermaster Ivo', exotic: true, lines: ['"We sail when it thaws. Grandfather said the same. Stores are good."', '"Polar cod under the hull, Greenland halibut in the lead when it opens. Eelpout in the black ice if you like ugly."', '"There is a fish in the hold. In the ice. It is not frozen. We do not go down there."'] },
+    scene: { shore: 'ice', floor: [[150, 170, 190], [30, 44, 66]], far: 'mountains', tint: 'rgba(120,180,220,0.1)', props: [['sled', .15], ['lamp', .45], ['crate', .7], ['cairn', .9]], particles: 'snow' },
+    village: { kind: 'buyerboat', props: [['sled', .08], ['crate', .3], ['lamp', .92]] },
+    hunt: { kind: 'tundra', name: 'the berg top', gate: 'steps cut in the ice' }, spots: [{ id: 'hull', name: 'Under the Hull', known: 'Through a hole in the ice by the keel. Polar cod, sculpin, and the Hold.', fish: { polarcod: 1.8, staghornsculpin: 1.2, thehold: 1 } }, { id: 'lead', name: 'The Lead', known: 'Open water when the berg cracks. Greenland halibut, grenadier, polar cod.', fish: { polarcod: 1.2, greenlandhalibut: 1.8, roughheadgrenadier: 1.2 } }, { id: 'bergfoot', name: 'The Berg Foot', known: 'Blue ice going down forever. Arctic flounder, eelpout, grenadier.', fish: { greenlandhalibut: .6, eelpout: 1.4, arcticflounder: 1.6, roughheadgrenadier: 1.6 } }, { id: 'blackice', name: 'The Black Ice', known: 'Old ice, clear as glass. Eelpout, sculpin, arctic flounder.', fish: { eelpout: 1.6, arcticflounder: 1.2, staghornsculpin: 1.6 } }] },
+  { id: 'witch', name: 'Witchwater Mangroves', range: 4, shop: true, sell: true, x: 176, y: 130, links: ['pirate', 'cinder', 'biolum'],
+    blurb: 'A mangrove maze with a witch in it. Her bait always bites once.', vibe: 'Roots like fingers, lights that are not lanterns, a hut on stilts with a woman in it who knew your name.',
+    rumor: 'A maze of mangroves and a witch who sells bait that always bites once. Once.',
+    keeper: { name: 'Mab', exotic: true, lines: ['"You came for the bait. Everyone does. It bites once. What bites is your business."', '"Sleepers under the roots, batfish in the black pool. Whiprays where the river gives up."', '"There is a catfish in the black pool that knows your name. Do not answer it."'] },
+    scene: { shore: 'stilts', floor: [[70, 80, 50], [20, 30, 24]], far: 'island', palms: true, tint: 'rgba(20,60,20,0.16)', props: [['mangrove', .15], ['fire', .45], ['lantern', .7], ['mangrove', .92]], particles: 'sparkle' },
+    village: { kind: 'stilt', props: [['mangrove', .08], ['fire', .5], ['lantern', .9]] },
+    hunt: { kind: 'mangrove', name: 'the drowned wood', gate: 'a door of living roots' }, spots: [{ id: 'landing', name: 'The Witch\'s Landing', known: 'Her own steps. Sleepers, blackspot snapper, batfish.', fish: { sleepergoby: 1.6, silverbatfish: 1.2, blackspotsnapper: 1.4 } }, { id: 'roots', name: 'The Root Maze', known: 'Lose the boat in here. Sleepers, greasy grouper, snapper.', fish: { sleepergoby: 1.6, greasygrouper: 1.4, blackspotsnapper: 1.2 } }, { id: 'blackpool', name: 'The Black Pool', known: 'Still, deep, no bottom found. Jewfish, batfish, and the Familiar.', fish: { silverbatfish: 1.6, blackjewfish: 1.4, familiar: 1 } }, { id: 'seamouth', name: 'The Sea Mouth', known: 'Where the mangroves give up. Whiprays, greasy grouper, jewfish.', fish: { blackjewfish: 1.2, greasygrouper: 1.4, blackspotsnapper: 1, mangrovewhipray: 1.8 } }] },
+  { id: 'biolum', name: 'Lantern Bay', range: 5, shop: true, sell: true, x: 150, y: 92, links: ['bell', 'cinder', 'witch', 'deadsea'],
+    blurb: 'A bay that glows. The fish only bite in the dark.', vibe: 'Water lit from below, trees lit from within, a keeper with no lamp who does not need one.',
+    rumor: 'A bay that lights itself at night. Nothing bites there by day. Nothing needs to.',
+    keeper: { name: 'Nix', exotic: true, lines: ['"Daylight is wasted here. Sleep. I will wake you."', '"Wickfish in the glow line, phosphor bream under them. The night marlin runs the moon pool when there is no moon."', '"The light in the bay is one fish. If you land it the bay goes dark. Think about that before you cast."'] },
+    scene: { shore: 'sand', floor: [[40, 60, 90], [10, 20, 50]], far: 'island', tint: 'rgba(0,10,40,0.3)', props: [['glowshroom', .15], ['lamp', .45], ['crystal', .7], ['glowshroom', .9]], particles: 'sparkle' },
+    village: { kind: 'shack', props: [['glowshroom', .1], ['lamp', .5], ['glowshroom', .9]] },
+    hunt: { kind: 'woods', name: 'the glowing woods', gate: 'an arch of lit fungus' }, spots: [{ id: 'glowline', name: 'The Glow Line', known: 'Brightest water in the bay. Wickfish, phosphor bream, ghost herring. By day, dimlings.', fish: { dimling: 1, wickfish: 1.8, phosphorbream: 1.4, ghostherring: 1 } }, { id: 'darkshelf', name: 'The Dark Shelf', known: 'The one black patch. Lantern jaws, glow rays, ghost herring.', fish: { dimling: 1, lanternjaw: 1.6, ghostherring: 1.6, glowray: 1.2 } }, { id: 'moonpool', name: 'The Moon Pool', known: 'Round and deep. Night marlin, phosphor bream, and the Last Light.', fish: { dimling: 1, phosphorbream: 1.2, nightmarlin: 1.8, lastlight: 1 } }, { id: 'embers', name: 'The Embers', known: 'Dying glow among the roots. Wickfish, lantern jaws, glow rays.', fish: { dimling: 1, wickfish: 1.4, lanternjaw: 1.2, glowray: 1.6 } }] },
+  { id: 'deadsea', name: 'The Still Salt', range: 5, shop: true, sell: true, x: 190, y: 76, links: ['hollow', 'biolum'],
+    blurb: 'A salt sea where nothing sinks and the fish swim upside down.', vibe: 'Water thick as oil, a crust you can walk, pillars of salt, fish with their bellies to the sky.',
+    rumor: 'A dead sea where nothing sinks. The fish there swim upside down and do not seem to know.',
+    keeper: { name: 'Salt Ama', exotic: true, lines: ['"Nothing sinks. Not your float, not your line, not you. Fish accordingly."', '"Upside-down bream under the crust. Floatfish on top of it. Crystal gar where the brine is clear."', '"The tall pillar in the middle is not salt all the way through. It swims, once a year. Nobody has seen which way is up for it."'] },
+    scene: { shore: 'salt', floor: [[220, 215, 200], [120, 120, 110]], far: 'none', tint: 'rgba(255,255,255,0.1)', props: [['saltpan', .2], ['cairn', .5], ['sign', .75], ['saltpan', .9]], particles: 'none' },
+    village: { kind: 'tent', props: [['saltpan', .12], ['cairn', .85]] },
+    hunt: { kind: 'saltflat', name: 'the salt pans', gate: 'a bridge of crust' }, spots: [{ id: 'crust', name: 'The Crust', known: 'Fish through a hole you cut. Upside-down bream, saltcrust carp, brine mullet.', fish: { upsidedownbream: 1.6, saltcrustcarp: 1.2, brinemullet: 1 } }, { id: 'brinepool', name: 'The Brine Pool', known: 'Clear and heavy. Crystal gar, brine mullet, pillar fish.', fish: { brinemullet: 1.8, pillarfish: 1.2, crystalgar: 1.8 } }, { id: 'floaters', name: 'The Floaters', known: 'Fish on the surface, because they cannot go down. Floatfish, upside-down bream.', fish: { upsidedownbream: 1.6, floatfish: 1.8 } }, { id: 'pillar', name: 'The Pillar', known: 'A column of salt in the middle. Pillar fish, saltcrust carp, and the Pillar itself.', fish: { saltcrustcarp: 1.6, brinemullet: .8, pillarfish: 1.8, thepillar: 1 } }] },
+  { id: 'frogs', name: 'Lilypad Kingdom', range: 5, shop: true, sell: true, x: 10, y: 130, links: ['brine', 'tortoise'],
+    blurb: 'A kingdom of frogs on lily pads the size of boats.', vibe: 'Pads you can stand on, a palace on the biggest one, a frog king who taxes every catch in flies.',
+    rumor: 'A kingdom of frogs on lily pads big enough to moor at. They have a king. He is a frog.',
+    keeper: { name: 'King Brek', exotic: true, lines: ['"We tax every catch. One fly. Pay it or the pads will not hold you."', '"Pad perch under every leaf, lily eels in the stems. The carp are ours. The carp are also for sale."', '"There is one fish the whole kingdom fears. Old Croak. He has had three kings. He has not had me."'] },
+    scene: { shore: 'stilts', floor: [[60, 90, 50], [20, 40, 30]], far: 'island', tint: 'rgba(40,120,40,0.14)', props: [['mangrove', .15], ['lantern', .4], ['bamboo', .65], ['mangrove', .9]], particles: 'spores' },
+    village: { kind: 'pagoda', props: [['bamboo', .08], ['lantern', .5], ['mangrove', .92]] },
+    hunt: { kind: 'mangrove', name: 'the pad fields', gate: 'a bridge of lily pads' }, spots: [{ id: 'throne', name: 'The Throne Pad', known: 'Under the palace. Kings carp, pad perch, tadpole fish.', fish: { padperch: 1.4, tadpolefish: 1, kingscarp: 1.8 } }, { id: 'tadpools', name: 'The Tadpools', known: 'Nursery water, warm. Tadpole fish, stem suckers, pad perch.', fish: { padperch: 1.4, stemsucker: 1.6, tadpolefish: 1.8 } }, { id: 'stems', name: 'Under the Stems', known: 'Green dark. Lily eels, stem suckers, heronbane.', fish: { lilyeel: 1.8, stemsucker: 1.2, heronbane: 1 } }, { id: 'openwater', name: 'The Open Water', known: 'Past the last pad. Heronbane, kings carp, and Old Croak.', fish: { padperch: .8, kingscarp: 1, heronbane: 1.8, oldcroak: 1 } }] },
+  { id: 'clockwork', name: 'Cogwater', range: 6, shop: true, sell: true, x: 184, y: 28, links: ['hollow', 'thunder', 'stars'],
+    blurb: 'A clockwork island. The fishermen are brass.', vibe: 'Gears the size of houses turning under the quay, automatons casting in time, a keeper that ticks.',
+    rumor: 'An island that ticks. The fishermen there are brass and never miss a bite. They do not know what a bite is.',
+    keeper: { name: 'Unit Seven', exotic: true, lines: ['"I have sold hooks for four hundred and twelve years. I do not know what they are for."', '"Cogfish in the sluice. Brass trout in the gear pool, where the oil is. Piston pike wherever something moves."', '"There is a fish that keeps our time. If it stops, we stop. Query: would you like to buy a hook?"'] },
+    scene: { shore: 'quay', floor: [[90, 80, 60], [30, 26, 20]], far: 'none', tint: 'rgba(80,50,10,0.14)', props: [['anvil', .15], ['lamp', .4], ['scale', .65], ['barrel', .9]], particles: 'none' },
+    village: { kind: 'forge', props: [['anvil', .12], ['scale', .5], ['lamp', .9]] },
+    hunt: { kind: 'ruins', name: 'the scrapyard', gate: 'a gate of meshing gears' }, spots: [{ id: 'sluice', name: 'The Sluice', known: 'Water through the works. Cogfish, spring eels, boilerfish.', fish: { cogfish: 1.8, springeel: 1.2, boilerfish: 1.4 } }, { id: 'gearpool', name: 'The Gear Pool', known: 'Oil on the water, brass under it. Brass trout, gear rays, cogfish.', fish: { cogfish: 1.2, brasstrout: 1.8, pistonpike: .6, gearray: 1.4 } }, { id: 'mainspring', name: 'The Mainspring', known: 'The deepest works. Piston pike, gear rays, and the Escapement.', fish: { cogfish: .6, pistonpike: 1.8, gearray: 1.4, escapement: 1 } }, { id: 'oilslick', name: 'The Oil Slick', known: 'Rainbow water. Boilerfish, spring eels, brass trout.', fish: { brasstrout: 1.2, springeel: 1.6, boilerfish: 1.6 } }] },
+  { id: 'ribcage', name: 'The Ribcage', range: 6, shop: true, sell: true, x: 60, y: 48, links: ['monastery', 'trench', 'reach'],
+    blurb: 'A graveyard of leviathans. You fish from a ribcage.', vibe: 'Ribs like cathedral arches, a skull you could sail into, a hermit selling hooks of bone.',
+    rumor: 'Where the leviathans go to die. The bones make an island. A hermit lives in the skull and sells hooks.',
+    keeper: { name: 'Marrow', exotic: true, lines: ['"Bone hooks. Bone from what? From the floor you are standing on."', '"Bone gar between the ribs. Skull grouper in the skull, obviously. Marrowfish in the deep where the spine goes down."', '"Every leviathan here came to die. One came small. It is still here. It is still growing."'] },
+    scene: { shore: 'coral', floor: [[200, 195, 180], [60, 70, 80]], far: 'none', props: [['column', .12], ['cairn', .4], ['column', .62], ['deadtree', .88]], particles: 'none' },
+    village: { kind: 'cavehut', props: [['column', .1], ['column', .9]] },
+    hunt: { kind: 'ruins', name: 'the bone field', gate: 'a gap between two ribs' }, spots: [{ id: 'skull', name: 'The Skull', known: 'Fish through the eye socket. Skull grouper, rib wrasse, vertebra fish.', fish: { ribwrasse: 1.4, skullgrouper: 1.8, vertebrafish: 1.2 } }, { id: 'ribs', name: 'Between the Ribs', known: 'Arches over deep water. Bone gar, rib wrasse, vertebra fish.', fish: { bonegar: 1.8, ribwrasse: 1.6, vertebrafish: 1.4 } }, { id: 'spine', name: 'The Spine', known: 'A road of bone into the sea. Bone gar, leviathan fry, marrowfish.', fish: { bonegar: 1.2, marrowfish: 1.2, leviathanfry: 1.8 } }, { id: 'marrowdeep', name: 'The Marrow Deep', known: 'Where the spine goes down. Marrowfish, skull grouper, and the Last Leviathan.', fish: { marrowfish: 1.8, skullgrouper: 1, vertebrafish: .8, lastleviathan: 1 } }] },
+  { id: 'stormeye', name: 'The Eye', range: 6, shop: true, sell: true, x: 134, y: 52, links: ['bell', 'glass', 'sleeper', 'hollow'],
+    blurb: 'An island calm in the middle of a hurricane that never ends.', vibe: 'Blue sky in a ring, a wall of cloud all round, perfect calm, and the wind you can hear but never feel.',
+    rumor: 'A hurricane that never moves, and an island in the eye of it, calm as a pond. Getting in is the trick.',
+    keeper: { name: 'Calm Ada', exotic: true, lines: ['"You came through the wall. Good. Nobody who sells you anything here has."', '"Eyefish in the centre, wall runners where the cloud touches the water. Spiral eels wherever the water turns."', '"The storm has an eye. The eye has a fish. I will not say more. The wind might hear."'] },
+    scene: { shore: 'sand', floor: [[170, 165, 140], [40, 60, 80]], far: 'none', tint: 'rgba(20,30,60,0.12)', props: [['palm', .15], ['sign', .45], ['rod', .7], ['palm', .9]], particles: 'none' },
+    village: { kind: 'shack', props: [['palm', .1], ['sign', .5], ['palm', .9]] },
+    hunt: { kind: 'dunes', name: 'the still dunes', gate: 'a gate of driftwood' }, spots: [{ id: 'centre', name: 'Dead Centre', known: 'The stillest water on the sea. Eyefish, calm carp, pressure fish.', fish: { eyefish: 1.8, calmcarp: 1.2, pressurefish: 1 } }, { id: 'wall', name: 'The Wall', known: 'Where the cloud comes down. Wall runners, hurricane marlin, spiral eels.', fish: { wallrunner: 1.8, spiraleel: 1.2, hurricanemarlin: 1.8 } }, { id: 'updraft', name: 'The Updraft', known: 'Water that climbs. Spiral eels, eyefish, wall runners.', fish: { eyefish: 1.2, wallrunner: 1.2, spiraleel: 1.8 } }, { id: 'calmshelf', name: 'The Calm Shelf', known: 'Shallow and warm. Calm carp, pressure fish, and the Eye.', fish: { calmcarp: 1.8, pressurefish: 1.6, theeye: 1 } }] },
+  { id: 'sleeper', name: 'The Sleeper', range: 6, shop: true, sell: true, x: 108, y: 56, links: ['tidal', 'stormeye', 'glass'],
+    blurb: 'An island that is a fish, asleep. Try not to wake it.', vibe: 'Scales under the soil, a fin for a mountain, a warm wet wind twice a minute, a village that whispers.',
+    rumor: 'An island that breathes. They say it is a fish asleep, and the village on its back has agreed to whisper.',
+    keeper: { name: 'Hush', exotic: true, lines: ['"Quietly. Everything here, quietly."', '"Scale clingers along the flank. Dreamfish in the eye pool, if you can bear to look at the eye. Yawn bass when it yawns."', '"There is a fish that would wake it. We know which. We do not say. Please do not catch it. Please."'] },
+    scene: { shore: 'rock', floor: [[110, 90, 130], [40, 30, 60]], far: 'mountains', tint: 'rgba(80,40,120,0.12)', props: [['cairn', .15], ['crystal', .4], ['lamp', .65], ['cairn', .9]], particles: 'spores' },
+    village: { kind: 'cavehut', props: [['crystal', .1], ['lamp', .5], ['cairn', .9]] },
+    hunt: { kind: 'cliffs', name: 'the fin ridge', gate: 'a scale pried up' }, spots: [{ id: 'gill', name: 'The Gill Slit', known: 'Warm water in, warm water out. Gill feeders, scale clingers, lash fish.', fish: { scaleclinger: 1.6, gillfeeder: 1.8, lashfish: 1 } }, { id: 'eyepool', name: 'The Eye Pool', known: 'It is open. It is looking. Dreamfish, drowsy rays, yawn bass.', fish: { scaleclinger: .8, dreamfish: 1.8, yawnbass: 1.2, drowsyray: 1.2 } }, { id: 'finshade', name: 'The Fin\'s Shade', known: 'Cool and deep under the mountain. Scale clingers, lash fish, dreamfish.', fish: { scaleclinger: 1.6, dreamfish: 1, lashfish: 1.6 } }, { id: 'tailwash', name: 'The Tail Wash', known: 'It twitches in its sleep. Yawn bass, drowsy rays, and the Waker.', fish: { gillfeeder: .8, yawnbass: 1.6, drowsyray: 1.6, thewaker: 1 } }] },
+  { id: 'spaceport', name: 'The Gantry', range: 6, shop: true, sell: false, x: 190, y: 141, links: [], noFish: true, spaceport: true,
+    blurb: 'A spaceport at the far edge of the world. One thing for sale.', vibe: 'Concrete, floodlights, a gantry taller than any mast, and a ship on it that does not float.',
+    rumor: 'At the far edge of everything there is a dock for a ship that sails up. Nobody who told me had been.',
+    keeper: { name: 'Director Hale', exotic: true, lines: ['"You found the chart. Good. The chart finds very few."', '"No fish here. No game. Nothing but the ship, and the price of the ship. The price is the point."', '"When you can pay, the stars are tier seven. Bring squid. Nobody knows what bites up there."'] },
+    scene: { shore: 'quay', floor: [[60, 60, 70], [20, 20, 30]], far: 'none', tint: 'rgba(0,0,20,0.1)', props: [['lamp', .2], ['crate', .5], ['lamp', .8]], particles: 'none' },
+    village: { kind: 'spaceport', props: [['lamp', .06], ['crate', .3], ['barrel', .94]] },
+    hunt: { kind: 'dunes', name: '', gate: '' }, spots: [{ id: 'pad', name: 'The Pad', known: 'No fishing here. Only the ship.', fish: {  } }] },
+  { id: 'stars', name: 'The Stars', range: 7, shop: false, sell: false, x: 188, y: 8, links: ['hollow', 'thunder', 'clockwork'], blurb: 'Not in this build.', vibe: '', rumor: 'Beyond everything the sea goes up. Nobody who sailed that way has sailed back.', locked: true,
     village: { kind: 'camp', props: [] }, hunt: { kind: 'dunes', name: 'nowhere', gate: 'nothing' }, spots: [{ id: 'void', name: 'The Void', known: 'Not in this build.', fish: {  } }] },
   { id: 'sea', name: 'Open Sea', range: 99, shop: false, sell: false, x: 0, y: 0, links: [], blurb: 'Where it began.', vibe: '', rumor: '', village: { kind: 'camp', props: [] }, hunt: { kind: 'dunes', name: '', gate: '' }, spots: [{ id: 'open', name: 'Open Water', known: 'A calm sea and nothing else.', fish: { sardine: 1, herring: 1, bream: 1, mullet: 1, mackerel: 1, bonefish: 1 } }] }, // prologue only
 ];
@@ -683,6 +830,117 @@ const SPECIES = [
   { id: 'sixeyedgoby', name: 'Six-eyed Goby', loc: { cinder: 9 }, size: [8, 16], rate: 160, beh: 'smooth', diff: 0.30, shape: 'fry', mutant: true },
   { id: 'knotbackeel', name: 'Knotback Eel', loc: { thunder: 6 }, size: [60, 120], rate: 300, beh: 'dart', diff: 0.60, shape: 'eel', minBait: 1, mutant: true },
   { id: 'insideoutperch', name: 'Inside-out Perch', loc: { glass: 8 }, size: [15, 30], rate: 260, beh: 'floater', diff: 0.45, shape: 'bream', mutant: true },
+  // --- the wider world's fish, by island ---
+  { id: 'muttonsnapper', name: 'Mutton Snapper', loc: { tortoise: 16 }, size: [40, 80], rate: 70, beh: 'dart', diff: 0.50, shape: 'bream' },
+  { id: 'lanesnapper', name: 'Lane Snapper', loc: { tortoise: 22 }, size: [20, 40], rate: 45, beh: 'smooth', diff: 0.32, shape: 'bream' },
+  { id: 'houndfish', name: 'Houndfish', loc: { tortoise: 14 }, size: [60, 130], rate: 60, beh: 'dart', diff: 0.55, shape: 'pike', time: ['day', 'dusk'] },
+  { id: 'ballyhoo', name: 'Ballyhoo', loc: { tortoise: 26 }, size: [15, 35], rate: 25, beh: 'smooth', diff: 0.18, shape: 'fry' },
+  { id: 'bermudachub', name: 'Bermuda Chub', loc: { tortoise: 18 }, size: [30, 60], rate: 50, beh: 'smooth', diff: 0.40, shape: 'bream' },
+  { id: 'bonito', name: 'Atlantic Bonito', loc: { tortoise: 10 }, size: [40, 75], rate: 75, beh: 'dart', diff: 0.60, shape: 'trout', minBait: 1 },
+  { id: 'greenmoray', name: 'Green Moray', loc: { tortoise: 7 }, size: [80, 180], rate: 110, beh: 'sinker', diff: 0.65, shape: 'eel', time: ['night', 'dusk'], minBait: 1 },
+  { id: 'cuckoowrasse', name: 'Cuckoo Wrasse', loc: { gannet: 18 }, size: [20, 35], rate: 55, beh: 'sinker', diff: 0.40, shape: 'bream', time: ['day'] },
+  { id: 'pouting', name: 'Pouting', loc: { gannet: 26 }, size: [20, 40], rate: 30, beh: 'smooth', diff: 0.30, shape: 'bream' },
+  { id: 'dab', name: 'Dab', loc: { gannet: 22 }, size: [15, 35], rate: 35, beh: 'sinker', diff: 0.30, shape: 'flat' },
+  { id: 'lesserweever', name: 'Lesser Weever', loc: { gannet: 16 }, size: [10, 15], rate: 40, beh: 'sinker', diff: 0.35, shape: 'fry' },
+  { id: 'tope', name: 'Tope', loc: { gannet: 8 }, size: [100, 180], rate: 110, beh: 'dart', diff: 0.68, shape: 'big', minBait: 1, big: true },
+  { id: 'poorcod', name: 'Poor Cod', loc: { gannet: 24 }, size: [12, 25], rate: 25, beh: 'smooth', diff: 0.22, shape: 'fry' },
+  { id: 'catla', name: 'Catla', loc: { market: 22 }, size: [40, 100], rate: 55, beh: 'sinker', diff: 0.45, shape: 'bream' },
+  { id: 'pangasius', name: 'Striped Catfish', loc: { market: 18 }, size: [50, 120], rate: 60, beh: 'sinker', diff: 0.50, shape: 'big', minBait: 1 },
+  { id: 'featherback', name: 'Clown Featherback', loc: { market: 14 }, size: [40, 80], rate: 85, beh: 'dart', diff: 0.55, shape: 'eel', time: ['dusk', 'night'] },
+  { id: 'marblegoby', name: 'Marble Goby', loc: { market: 20 }, size: [20, 45], rate: 70, beh: 'sinker', diff: 0.38, shape: 'bream' },
+  { id: 'siamesetigerfish', name: 'Siamese Tigerfish', loc: { market: 6 }, size: [25, 45], rate: 220, beh: 'dart', diff: 0.66, shape: 'bream', rare: true, minBait: 1 },
+  { id: 'giantbarb', name: 'Giant Barb', loc: { market: 4 }, size: [100, 200], rate: 180, beh: 'sinker', diff: 0.78, shape: 'big', rare: true, minBait: 2, big: true },
+  { id: 'pollack', name: 'Pollack', loc: { monastery: 24 }, size: [40, 80], rate: 40, beh: 'dart', diff: 0.40, shape: 'trout' },
+  { id: 'blackbream', name: 'Black Bream', loc: { monastery: 18 }, size: [25, 50], rate: 55, beh: 'smooth', diff: 0.42, shape: 'bream', time: ['dawn', 'dusk'] },
+  { id: 'redmullet', name: 'Red Mullet', loc: { monastery: 16 }, size: [20, 40], rate: 65, beh: 'sinker', diff: 0.38, shape: 'trout' },
+  { id: 'topknot', name: 'Topknot', loc: { monastery: 12 }, size: [15, 25], rate: 50, beh: 'sinker', diff: 0.35, shape: 'flat' },
+  { id: 'tompotblenny', name: 'Tompot Blenny', loc: { monastery: 24 }, size: [8, 15], rate: 20, beh: 'smooth', diff: 0.15, shape: 'fry' },
+  { id: 'bluemouth', name: 'Bluemouth', loc: { monastery: 8 }, size: [20, 45], rate: 90, beh: 'sinker', diff: 0.50, shape: 'bream', minBait: 1 },
+  { id: 'sargassumfish', name: 'Sargassum Fish', loc: { sargasso: 24 }, size: [8, 18], rate: 60, beh: 'sinker', diff: 0.30, shape: 'bream' },
+  { id: 'flyingfish', name: 'Flying Fish', loc: { sargasso: 26 }, size: [20, 40], rate: 35, beh: 'dart', diff: 0.36, shape: 'fry', time: ['day', 'dawn'] },
+  { id: 'almacojack', name: 'Almaco Jack', loc: { sargasso: 12 }, size: [50, 100], rate: 85, beh: 'dart', diff: 0.60, shape: 'trout', minBait: 1 },
+  { id: 'pilotfish', name: 'Pilotfish', loc: { sargasso: 20 }, size: [20, 40], rate: 45, beh: 'smooth', diff: 0.35, shape: 'trout' },
+  { id: 'oceantrigger', name: 'Ocean Triggerfish', loc: { sargasso: 14 }, size: [30, 60], rate: 65, beh: 'sinker', diff: 0.48, shape: 'bream' },
+  { id: 'pipefish', name: 'Sargassum Pipefish', loc: { sargasso: 18 }, size: [10, 20], rate: 40, beh: 'smooth', diff: 0.22, shape: 'eel' },
+  { id: 'cubera', name: 'Cubera Snapper', loc: { pirate: 10 }, size: [60, 120], rate: 130, beh: 'sinker', diff: 0.68, shape: 'big', minBait: 1, big: true },
+  { id: 'wahoo', name: 'Wahoo', loc: { pirate: 8 }, size: [100, 180], rate: 160, beh: 'dart', diff: 0.80, shape: 'big', minBait: 1, big: true },
+  { id: 'kingmackerel', name: 'King Mackerel', loc: { pirate: 14 }, size: [60, 120], rate: 90, beh: 'dart', diff: 0.62, shape: 'trout', minBait: 1 },
+  { id: 'blackfintuna', name: 'Blackfin Tuna', loc: { pirate: 12 }, size: [50, 90], rate: 110, beh: 'dart', diff: 0.66, shape: 'trout', minBait: 1 },
+  { id: 'queentrigger', name: 'Queen Triggerfish', loc: { pirate: 16 }, size: [30, 50], rate: 95, beh: 'sinker', diff: 0.50, shape: 'bream', time: ['day'] },
+  { id: 'cero', name: 'Cero', loc: { pirate: 20 }, size: [40, 70], rate: 65, beh: 'dart', diff: 0.50, shape: 'trout' },
+  { id: 'hake', name: 'European Hake', loc: { whaling: 20 }, size: [50, 110], rate: 65, beh: 'dart', diff: 0.50, shape: 'trout', time: ['dusk', 'night'] },
+  { id: 'bluewhiting', name: 'Blue Whiting', loc: { whaling: 26 }, size: [20, 40], rate: 30, beh: 'smooth', diff: 0.30, shape: 'fry' },
+  { id: 'megrim', name: 'Megrim', loc: { whaling: 16 }, size: [25, 50], rate: 55, beh: 'sinker', diff: 0.42, shape: 'flat' },
+  { id: 'porbeagle', name: 'Porbeagle', loc: { whaling: 6 }, size: [150, 250], rate: 190, beh: 'dart', diff: 0.80, shape: 'big', rare: true, minBait: 2, big: true },
+  { id: 'spurdog', name: 'Spurdog', loc: { whaling: 18 }, size: [60, 110], rate: 50, beh: 'dart', diff: 0.50, shape: 'eel' },
+  { id: 'angelshark', name: 'Angelshark', loc: { whaling: 7 }, size: [100, 180], rate: 150, beh: 'sinker', diff: 0.70, shape: 'flat', minBait: 1, big: true, k: .02 },
+  { id: 'thicklipmullet', name: 'Thick-lipped Mullet', loc: { tidal: 24 }, size: [30, 60], rate: 45, beh: 'smooth', diff: 0.42, shape: 'trout' },
+  { id: 'smoothhound', name: 'Smoothhound', loc: { tidal: 12 }, size: [70, 140], rate: 90, beh: 'dart', diff: 0.60, shape: 'big', minBait: 1 },
+  { id: 'goldenmullet', name: 'Golden Grey Mullet', loc: { tidal: 20 }, size: [25, 45], rate: 45, beh: 'smooth', diff: 0.40, shape: 'trout' },
+  { id: 'twaiteshad', name: 'Twaite Shad', loc: { tidal: 18 }, size: [25, 45], rate: 55, beh: 'dart', diff: 0.45, shape: 'bream', time: ['dawn', 'dusk'] },
+  { id: 'shanny', name: 'Shanny', loc: { tidal: 26 }, size: [8, 15], rate: 20, beh: 'smooth', diff: 0.15, shape: 'fry' },
+  { id: 'sandsmelt', name: 'Sand Smelt', loc: { tidal: 28 }, size: [8, 15], rate: 20, beh: 'smooth', diff: 0.12, shape: 'fry' },
+  { id: 'rainbowtrout', name: 'Rainbow Trout', loc: { crater: 24 }, size: [30, 70], rate: 50, beh: 'dart', diff: 0.45, shape: 'trout' },
+  { id: 'kokanee', name: 'Kokanee', loc: { crater: 18 }, size: [25, 50], rate: 60, beh: 'dart', diff: 0.42, shape: 'trout', time: ['dawn', 'dusk'] },
+  { id: 'cutthroat', name: 'Cutthroat Trout', loc: { crater: 16 }, size: [30, 60], rate: 55, beh: 'dart', diff: 0.48, shape: 'trout' },
+  { id: 'tuichub', name: 'Tui Chub', loc: { crater: 26 }, size: [15, 35], rate: 25, beh: 'smooth', diff: 0.22, shape: 'fry' },
+  { id: 'brownbullhead', name: 'Brown Bullhead', loc: { crater: 14 }, size: [20, 45], rate: 45, beh: 'sinker', diff: 0.40, shape: 'bream', time: ['night', 'dusk'] },
+  { id: 'mountainwhitefish', name: 'Mountain Whitefish', loc: { crater: 16 }, size: [25, 50], rate: 45, beh: 'smooth', diff: 0.38, shape: 'trout' },
+  { id: 'polarcod', name: 'Polar Cod', loc: { iceship: 26 }, size: [15, 30], rate: 35, beh: 'smooth', diff: 0.25, shape: 'fry' },
+  { id: 'greenlandhalibut', name: 'Greenland Halibut', loc: { iceship: 10 }, size: [60, 110], rate: 120, beh: 'sinker', diff: 0.60, shape: 'flat', minBait: 1, big: true },
+  { id: 'eelpout', name: 'Eelpout', loc: { iceship: 18 }, size: [30, 60], rate: 45, beh: 'sinker', diff: 0.38, shape: 'eel' },
+  { id: 'arcticflounder', name: 'Arctic Flounder', loc: { iceship: 18 }, size: [20, 35], rate: 45, beh: 'sinker', diff: 0.35, shape: 'flat' },
+  { id: 'roughheadgrenadier', name: 'Roughhead Grenadier', loc: { iceship: 10 }, size: [60, 110], rate: 95, beh: 'sinker', diff: 0.55, shape: 'eel', minBait: 1 },
+  { id: 'staghornsculpin', name: 'Arctic Staghorn Sculpin', loc: { iceship: 20 }, size: [15, 30], rate: 40, beh: 'sinker', diff: 0.35, shape: 'bream' },
+  { id: 'sleepergoby', name: 'Marbled Sleeper', loc: { witch: 24 }, size: [30, 60], rate: 60, beh: 'sinker', diff: 0.40, shape: 'bream' },
+  { id: 'silverbatfish', name: 'Silver Batfish', loc: { witch: 16 }, size: [20, 35], rate: 70, beh: 'floater', diff: 0.42, shape: 'bream' },
+  { id: 'blackjewfish', name: 'Black Jewfish', loc: { witch: 8 }, size: [80, 150], rate: 160, beh: 'sinker', diff: 0.70, shape: 'big', minBait: 1, big: true },
+  { id: 'greasygrouper', name: 'Greasy Grouper', loc: { witch: 12 }, size: [50, 100], rate: 110, beh: 'sinker', diff: 0.60, shape: 'big', minBait: 1 },
+  { id: 'blackspotsnapper', name: 'Blackspot Snapper', loc: { witch: 20 }, size: [30, 55], rate: 60, beh: 'dart', diff: 0.45, shape: 'bream' },
+  { id: 'mangrovewhipray', name: 'Mangrove Whipray', loc: { witch: 8 }, size: [60, 120], rate: 130, beh: 'floater', diff: 0.62, shape: 'flat', minBait: 1, big: true, k: .02 },
+  { id: 'dimling', name: 'Dimling', loc: { biolum: 20 }, size: [10, 20], rate: 30, beh: 'smooth', diff: 0.20, shape: 'fry' },
+  { id: 'wickfish', name: 'Wickfish', loc: { biolum: 26 }, size: [10, 20], rate: 120, beh: 'smooth', diff: 0.25, shape: 'fry', time: ['night', 'dusk'] },
+  { id: 'phosphorbream', name: 'Phosphor Bream', loc: { biolum: 20 }, size: [25, 45], rate: 200, beh: 'smooth', diff: 0.40, shape: 'bream', time: ['night'] },
+  { id: 'lanternjaw', name: 'Lantern Jaw', loc: { biolum: 12 }, size: [40, 80], rate: 320, beh: 'sinker', diff: 0.58, shape: 'big', time: ['night'], minBait: 1 },
+  { id: 'ghostherring', name: 'Ghost Herring', loc: { biolum: 22 }, size: [15, 30], rate: 150, beh: 'dart', diff: 0.35, shape: 'fry', time: ['night', 'dusk'] },
+  { id: 'nightmarlin', name: 'Night Marlin', loc: { biolum: 4 }, size: [200, 320], rate: 900, beh: 'dart', diff: 0.90, shape: 'big', time: ['night'], rare: true, minBait: 2, big: true, k: .01 },
+  { id: 'glowray', name: 'Glow Ray', loc: { biolum: 8 }, size: [60, 120], rate: 400, beh: 'floater', diff: 0.60, shape: 'flat', time: ['night'], minBait: 1, big: true, k: .02 },
+  { id: 'upsidedownbream', name: 'Upside-down Bream', loc: { deadsea: 24 }, size: [20, 40], rate: 180, beh: 'floater', diff: 0.35, shape: 'bream' },
+  { id: 'saltcrustcarp', name: 'Saltcrust Carp', loc: { deadsea: 16 }, size: [40, 80], rate: 240, beh: 'sinker', diff: 0.50, shape: 'bream', minBait: 1 },
+  { id: 'brinemullet', name: 'Brine Mullet', loc: { deadsea: 22 }, size: [25, 50], rate: 150, beh: 'smooth', diff: 0.38, shape: 'trout' },
+  { id: 'pillarfish', name: 'Pillar Fish', loc: { deadsea: 12 }, size: [40, 90], rate: 300, beh: 'floater', diff: 0.55, shape: 'eel', minBait: 1 },
+  { id: 'crystalgar', name: 'Crystal Gar', loc: { deadsea: 10 }, size: [60, 120], rate: 350, beh: 'dart', diff: 0.65, shape: 'pike', minBait: 1 },
+  { id: 'floatfish', name: 'Floatfish', loc: { deadsea: 18 }, size: [15, 30], rate: 200, beh: 'floater', diff: 0.30, shape: 'bream' },
+  { id: 'padperch', name: 'Pad Perch', loc: { frogs: 26 }, size: [15, 30], rate: 160, beh: 'smooth', diff: 0.30, shape: 'bream' },
+  { id: 'lilyeel', name: 'Lily Eel', loc: { frogs: 16 }, size: [50, 100], rate: 260, beh: 'sinker', diff: 0.50, shape: 'eel', time: ['night', 'dusk'], minBait: 1 },
+  { id: 'stemsucker', name: 'Stem Sucker', loc: { frogs: 20 }, size: [20, 40], rate: 180, beh: 'sinker', diff: 0.38, shape: 'bream' },
+  { id: 'tadpolefish', name: 'Tadpole Fish', loc: { frogs: 28 }, size: [8, 15], rate: 120, beh: 'smooth', diff: 0.18, shape: 'fry' },
+  { id: 'kingscarp', name: 'King\'s Carp', loc: { frogs: 10 }, size: [50, 100], rate: 400, beh: 'sinker', diff: 0.55, shape: 'big', minBait: 1 },
+  { id: 'heronbane', name: 'Heronbane Pike', loc: { frogs: 8 }, size: [80, 150], rate: 450, beh: 'dart', diff: 0.72, shape: 'big', minBait: 1, big: true },
+  { id: 'cogfish', name: 'Cogfish', loc: { clockwork: 24 }, size: [15, 30], rate: 260, beh: 'smooth', diff: 0.35, shape: 'bream' },
+  { id: 'brasstrout', name: 'Brass Trout', loc: { clockwork: 18 }, size: [30, 60], rate: 320, beh: 'dart', diff: 0.50, shape: 'trout' },
+  { id: 'springeel', name: 'Spring Eel', loc: { clockwork: 16 }, size: [40, 90], rate: 300, beh: 'dart', diff: 0.55, shape: 'eel' },
+  { id: 'pistonpike', name: 'Piston Pike', loc: { clockwork: 10 }, size: [70, 130], rate: 500, beh: 'dart', diff: 0.72, shape: 'big', minBait: 1, big: true },
+  { id: 'boilerfish', name: 'Boilerfish', loc: { clockwork: 14 }, size: [20, 40], rate: 350, beh: 'floater', diff: 0.45, shape: 'bream', minBait: 1 },
+  { id: 'gearray', name: 'Gear Ray', loc: { clockwork: 8 }, size: [60, 120], rate: 600, beh: 'floater', diff: 0.62, shape: 'flat', minBait: 1, big: true, k: .02 },
+  { id: 'bonegar', name: 'Bone Gar', loc: { ribcage: 20 }, size: [60, 120], rate: 400, beh: 'dart', diff: 0.55, shape: 'pike' },
+  { id: 'marrowfish', name: 'Marrowfish', loc: { ribcage: 14 }, size: [40, 90], rate: 500, beh: 'sinker', diff: 0.60, shape: 'eel', time: ['night'], minBait: 1 },
+  { id: 'ribwrasse', name: 'Rib Wrasse', loc: { ribcage: 22 }, size: [20, 40], rate: 350, beh: 'sinker', diff: 0.40, shape: 'bream' },
+  { id: 'skullgrouper', name: 'Skull Grouper', loc: { ribcage: 10 }, size: [60, 120], rate: 700, beh: 'sinker', diff: 0.68, shape: 'big', minBait: 1, big: true },
+  { id: 'vertebrafish', name: 'Vertebra Fish', loc: { ribcage: 26 }, size: [10, 20], rate: 280, beh: 'smooth', diff: 0.28, shape: 'fry' },
+  { id: 'leviathanfry', name: 'Leviathan Fry', loc: { ribcage: 4 }, size: [150, 260], rate: 1500, beh: 'sinker', diff: 0.88, shape: 'big', rare: true, minBait: 2, big: true, k: .013 },
+  { id: 'eyefish', name: 'Eyefish', loc: { stormeye: 24 }, size: [20, 40], rate: 300, beh: 'smooth', diff: 0.35, shape: 'bream' },
+  { id: 'wallrunner', name: 'Wall Runner', loc: { stormeye: 16 }, size: [60, 110], rate: 450, beh: 'dart', diff: 0.65, shape: 'trout', minBait: 1 },
+  { id: 'calmcarp', name: 'Calm Carp', loc: { stormeye: 18 }, size: [40, 80], rate: 350, beh: 'sinker', diff: 0.40, shape: 'bream' },
+  { id: 'pressurefish', name: 'Pressure Fish', loc: { stormeye: 16 }, size: [15, 30], rate: 400, beh: 'floater', diff: 0.45, shape: 'bream', minBait: 1 },
+  { id: 'spiraleel', name: 'Spiral Eel', loc: { stormeye: 14 }, size: [50, 100], rate: 500, beh: 'dart', diff: 0.60, shape: 'eel' },
+  { id: 'hurricanemarlin', name: 'Hurricane Marlin', loc: { stormeye: 4 }, size: [220, 350], rate: 1600, beh: 'dart', diff: 0.92, shape: 'big', rare: true, minBait: 2, big: true, k: .01 },
+  { id: 'scaleclinger', name: 'Scale Clinger', loc: { sleeper: 26 }, size: [15, 30], rate: 300, beh: 'sinker', diff: 0.35, shape: 'bream' },
+  { id: 'dreamfish', name: 'Dreamfish', loc: { sleeper: 18 }, size: [25, 50], rate: 450, beh: 'floater', diff: 0.45, shape: 'bream', time: ['night', 'dusk'] },
+  { id: 'gillfeeder', name: 'Gill Feeder', loc: { sleeper: 28 }, size: [8, 15], rate: 250, beh: 'smooth', diff: 0.22, shape: 'fry' },
+  { id: 'lashfish', name: 'Lash Fish', loc: { sleeper: 16 }, size: [40, 80], rate: 400, beh: 'dart', diff: 0.50, shape: 'eel', time: ['night'] },
+  { id: 'yawnbass', name: 'Yawn Bass', loc: { sleeper: 12 }, size: [50, 100], rate: 600, beh: 'sinker', diff: 0.60, shape: 'big', minBait: 1, big: true },
+  { id: 'drowsyray', name: 'Drowsy Ray', loc: { sleeper: 8 }, size: [60, 120], rate: 700, beh: 'floater', diff: 0.55, shape: 'flat', minBait: 1, big: true, k: .02 },
   // Legends: one per location. Invented, named, caught once. Rod only, squid, a sliver of a chance, a brutal fight.
   { id: 'wreckwraith',  name: 'Wreckwraith',      loc: { shoal: 0.4 },  size: [250, 320], rate: 400, beh: 'dart',    diff: 0.97, shape: 'big', time: ['night'], rare: true, legend: true, minBait: 2, big: true, k: 0.009 },
   { id: 'harbormaster', name: 'The Harbormaster', loc: { harbor: 0.4 }, size: [350, 450], rate: 300, beh: 'sinker',  diff: 0.97, shape: 'big', time: ['dawn'], rare: true, legend: true, minBait: 2, big: true, k: 0.005 },
@@ -698,6 +956,24 @@ const SPECIES = [
   { id: 'deepchoir',    name: 'The Deep Choir',   loc: { hollow: 0.4 }, size: [250, 320], rate: 1500, beh: 'floater', diff: 0.98, shape: 'eel', time: ['night'], rare: true, legend: true, minBait: 2, big: true, k: 0.004 },
   { id: 'galvanis',     name: 'Galvanis',         loc: { thunder: 0.4 }, size: [400, 500], rate: 1000, beh: 'dart',  diff: 0.99, shape: 'big', time: ['night'], rare: true, legend: true, minBait: 2, big: true, k: 0.006 },
   // not fish
+  { id: 'lampkeeper', name: 'The Lampkeeper', loc: { tortoise: 0.4 }, size: [300, 380], rate: 320, beh: 'sinker', diff: 0.97, shape: 'big', time: ['night'], rare: true, legend: true, minBait: 2, big: true, k: .012 },
+  { id: 'stackking', name: 'King of the Stack', loc: { gannet: 0.4 }, size: [150, 200], rate: 420, beh: 'sinker', diff: 0.97, shape: 'big', time: ['day'], rare: true, legend: true, minBait: 2, big: true, k: .018 },
+  { id: 'thetoll', name: 'The Toll', loc: { market: 0.4 }, size: [250, 320], rate: 350, beh: 'sinker', diff: 0.97, shape: 'big', time: ['night'], rare: true, legend: true, minBait: 2, big: true, k: .009 },
+  { id: 'vespers', name: 'Vespers', loc: { monastery: 0.4 }, size: [200, 260], rate: 500, beh: 'floater', diff: 0.97, shape: 'big', time: ['dusk'], rare: true, legend: true, minBait: 2, big: true, k: .02 },
+  { id: 'weedwife', name: 'The Weedwife', loc: { sargasso: 0.4 }, size: [280, 360], rate: 300, beh: 'floater', diff: 0.97, shape: 'big', time: ['dawn'], rare: true, legend: true, minBait: 2, big: true, k: .013 },
+  { id: 'hangedman', name: 'The Hanged Man', loc: { pirate: 0.4 }, size: [220, 300], rate: 450, beh: 'dart', diff: 0.97, shape: 'big', time: ['night'], rare: true, legend: true, minBait: 2, big: true, k: .012 },
+  { id: 'greywake', name: 'Greywake', loc: { whaling: 0.4 }, size: [320, 400], rate: 280, beh: 'smooth', diff: 0.97, shape: 'big', time: ['dawn'], rare: true, legend: true, minBait: 2, big: true, k: .01 },
+  { id: 'tideturner', name: 'The Tide-turner', loc: { tidal: 0.4 }, size: [250, 320], rate: 380, beh: 'sinker', diff: 0.97, shape: 'big', time: ['dawn', 'dusk'], rare: true, legend: true, minBait: 2, big: true, k: .014 },
+  { id: 'kettle', name: 'The Kettle', loc: { crater: 0.4 }, size: [140, 180], rate: 600, beh: 'floater', diff: 0.97, shape: 'big', time: ['day'], rare: true, legend: true, minBait: 2, big: true, k: .011 },
+  { id: 'thehold', name: 'The Hold', loc: { iceship: 0.4 }, size: [280, 360], rate: 360, beh: 'sinker', diff: 0.97, shape: 'big', time: ['night'], rare: true, legend: true, minBait: 2, big: true, k: .011 },
+  { id: 'familiar', name: 'The Familiar', loc: { witch: 0.4 }, size: [220, 300], rate: 420, beh: 'sinker', diff: 0.97, shape: 'big', time: ['night'], rare: true, legend: true, minBait: 2, big: true, k: .01 },
+  { id: 'lastlight', name: 'The Last Light', loc: { biolum: 0.4 }, size: [240, 300], rate: 700, beh: 'floater', diff: 0.97, shape: 'big', time: ['night'], rare: true, legend: true, minBait: 2, big: true, k: .02 },
+  { id: 'thepillar', name: 'The Pillar', loc: { deadsea: 0.4 }, size: [300, 400], rate: 500, beh: 'sinker', diff: 0.97, shape: 'big', time: ['day'], rare: true, legend: true, minBait: 2, big: true, k: .03 },
+  { id: 'oldcroak', name: 'Old Croak', loc: { frogs: 0.4 }, size: [260, 340], rate: 600, beh: 'sinker', diff: 0.97, shape: 'big', time: ['dusk', 'night'], rare: true, legend: true, minBait: 2, big: true, k: .014 },
+  { id: 'escapement', name: 'The Escapement', loc: { clockwork: 0.4 }, size: [200, 260], rate: 1200, beh: 'dart', diff: 0.97, shape: 'big', time: ['day'], rare: true, legend: true, minBait: 2, big: true, k: .013 },
+  { id: 'lastleviathan', name: 'The Last Leviathan', loc: { ribcage: 0.4 }, size: [360, 450], rate: 1000, beh: 'sinker', diff: 0.97, shape: 'big', time: ['night'], rare: true, legend: true, minBait: 2, big: true, k: .015 },
+  { id: 'theeye', name: 'The Eye', loc: { stormeye: 0.4 }, size: [200, 260], rate: 1400, beh: 'floater', diff: 0.97, shape: 'big', time: ['day'], rare: true, legend: true, minBait: 2, big: true, k: .022 },
+  { id: 'thewaker', name: 'The Waker', loc: { sleeper: 0.4 }, size: [120, 160], rate: 2000, beh: 'dart', diff: 0.97, shape: 'big', time: ['dawn'], rare: true, legend: true, minBait: 2, big: true, k: .011 },
   { id: 'wood',       name: 'Driftwood',             loc: { shoal: 48 },             size: [0, 0],     rate: 0,    kind: 'wood', shape: 'wood' },
   { id: 'boot',       name: 'Old Boot',              loc: { harbor: 6, reach: 5 },   size: [0, 0],     rate: 0,    kind: 'junk', shape: 'boot' },
 ];
@@ -751,6 +1027,61 @@ const GAME = [
   { id: 'blindmole',  name: 'Blind Mole',        loc: { hollow: 10 },                     kg: [0.1, 0.2],   rate: 600, diff: 0.70,  sil: 'hare', col: { base: '#6a6070', belly: '#b4b0b8', acc: '#f0b0a0', mark: '#48404a' } },
   { id: 'sparkhare',  name: 'Spark Hare',        loc: { thunder: 28 },                    kg: [2, 4],       rate: 400, diff: 0.65,  sil: 'hare', col: { base: '#c0d0ff', belly: '#e0e8ff', acc: '#f0b0a0', mark: '#7b839f', glow: '#c0e0ff' }, pat: 'lights' },
   { id: 'thunderhoof', name: 'Thunderhoof',      loc: { thunder: 8 },                     kg: [150, 300],   rate: 900, diff: 0.90,  sil: 'deer', col: { base: '#30405a', belly: '#98a0ac', acc: '#d8c8a0', mark: '#252d3c', glow: '#ffff80' }, pat: 'lights', big: true, rare: true },
+  { id: 'gianttortoise', name: 'Giant Tortoise', loc: { tortoise: 30 }, kg: [80, 200], rate: 15, diff: 0.15, sil: 'lizard', col: { base: '#6a6a50', belly: '#a8a890', acc: '#8a7a50', mark: '#3a3a28' }, big: true },
+  { id: 'tropicbird', name: 'Tropicbird', loc: { tortoise: 25 }, kg: [.6, .9], rate: 40, diff: 0.50, sil: 'bird', col: { base: '#ffffff', belly: '#ffffff', acc: '#f06030', mark: '#9a9a9a' } },
+  { id: 'landcrab', name: 'Blue Land Crab', loc: { tortoise: 20 }, kg: [.3, .6], rate: 60, diff: 0.35, sil: 'crab', col: { base: '#5070c0', belly: '#90a8e0', acc: '#3a2018', mark: '#2a3a80' }, time: ['night', 'dusk'] },
+  { id: 'gannetbird', name: 'Northern Gannet', loc: { gannet: 40 }, kg: [2.5, 3.5], rate: 25, diff: 0.45, sil: 'bird', col: { base: '#f8f8f0', belly: '#ffffff', acc: '#f0c060', mark: '#2a2a2a' } },
+  { id: 'razorbill', name: 'Razorbill', loc: { gannet: 25 }, kg: [.6, .9], rate: 55, diff: 0.55, sil: 'bird', col: { base: '#1a1a20', belly: '#f8f8f8', acc: '#2a2a2a', mark: '#ffffff' }, time: ['day'] },
+  { id: 'greyseal', name: 'Grey Seal', loc: { gannet: 10 }, kg: [100, 250], rate: 50, diff: 0.60, sil: 'seal', col: { base: '#6a6a70', belly: '#b0b0b8', acc: '#f0b0a0', mark: '#3a3a40' }, big: true },
+  { id: 'junglefowl', name: 'Jungle Fowl', loc: { market: 30 }, kg: [.8, 1.5], rate: 25, diff: 0.40, sil: 'bird', col: { base: '#c04020', belly: '#f0c060', acc: '#f0d040', mark: '#1a3a1a' } },
+  { id: 'watermonitor', name: 'Water Monitor', loc: { market: 15 }, kg: [5, 20], rate: 80, diff: 0.60, sil: 'lizard', col: { base: '#3a4a3a', belly: '#a8b088', acc: '#f0d040', mark: '#1a2a1a' }, pat: 'spots' },
+  { id: 'ricerat', name: 'Rice Rat', loc: { market: 30 }, kg: [.2, .4], rate: 15, diff: 0.45, sil: 'hare', col: { base: '#7a6a50', belly: '#b0a088', acc: '#f0b0a0', mark: '#4a3a28' }, time: ['night', 'dusk'] },
+  { id: 'feralgoat', name: 'Feral Goat', loc: { monastery: 30 }, kg: [30, 60], rate: 25, diff: 0.40, sil: 'deer', col: { base: '#d8d0c0', belly: '#f0ece0', acc: '#5a4a30', mark: '#8a8070' } },
+  { id: 'chough', name: 'Chough', loc: { monastery: 25 }, kg: [.25, .4], rate: 50, diff: 0.55, sil: 'bird', col: { base: '#1a1a20', belly: '#2a2a30', acc: '#f03020', mark: '#101014' } },
+  { id: 'stackfox', name: 'Island Fox', loc: { monastery: 12 }, kg: [2, 4], rate: 70, diff: 0.60, sil: 'fox', col: { base: '#8a7060', belly: '#d8c8b8', acc: '#f0b0a0', mark: '#4a3a30' }, time: ['dusk', 'night'] },
+  { id: 'sargassocrab', name: 'Sargassum Crab', loc: { sargasso: 40 }, kg: [.05, .1], rate: 50, diff: 0.30, sil: 'crab', col: { base: '#c8a040', belly: '#e8d090', acc: '#3a2018', mark: '#8a6a20' } },
+  { id: 'stormpetrel', name: 'Storm Petrel', loc: { sargasso: 25 }, kg: [.03, .05], rate: 120, diff: 0.70, sil: 'bird', col: { base: '#2a2a30', belly: '#5a5a60', acc: '#1a1a1a', mark: '#ffffff' } },
+  { id: 'shearwater', name: 'Shearwater', loc: { sargasso: 20 }, kg: [.4, .6], rate: 45, diff: 0.50, sil: 'bird', col: { base: '#4a4a50', belly: '#f0f0f0', acc: '#2a2a2a', mark: '#8a8a90' }, time: ['dusk', 'dawn'] },
+  { id: 'wildhog', name: 'Wild Hog', loc: { pirate: 25 }, kg: [40, 90], rate: 30, diff: 0.50, sil: 'boar', col: { base: '#3a2a20', belly: '#7a6a5a', acc: '#e8e0d0', mark: '#1a1410' } },
+  { id: 'parrot', name: 'Green Parrot', loc: { pirate: 25 }, kg: [.3, .5], rate: 80, diff: 0.60, sil: 'bird', col: { base: '#40a040', belly: '#80c060', acc: '#f03030', mark: '#206020' }, time: ['day'] },
+  { id: 'coveiguana', name: 'Cove Iguana', loc: { pirate: 20 }, kg: [2, 5], rate: 50, diff: 0.45, sil: 'lizard', col: { base: '#60a040', belly: '#b0d090', acc: '#f0a030', mark: '#305020' }, pat: 'stripes' },
+  { id: 'blackback', name: 'Great Black-backed Gull', loc: { whaling: 35 }, kg: [1.5, 2.2], rate: 25, diff: 0.45, sil: 'bird', col: { base: '#2a2a30', belly: '#f8f8f8', acc: '#f0c040', mark: '#1a1a1a' } },
+  { id: 'harbourseal', name: 'Harbour Seal', loc: { whaling: 15 }, kg: [60, 120], rate: 45, diff: 0.55, sil: 'seal', col: { base: '#8a8a90', belly: '#c0c0c8', acc: '#f0b0a0', mark: '#5a5a60' }, pat: 'spots', big: true },
+  { id: 'bonerat', name: 'Bone Rat', loc: { whaling: 30 }, kg: [.3, .5], rate: 15, diff: 0.40, sil: 'hare', col: { base: '#6a6260', belly: '#a0a0a0', acc: '#f0b0a0', mark: '#3a3230' }, time: ['night'] },
+  { id: 'oystercatcher', name: 'Oystercatcher', loc: { tidal: 35 }, kg: [.4, .7], rate: 30, diff: 0.45, sil: 'bird', col: { base: '#1a1a20', belly: '#f8f8f8', acc: '#f04020', mark: '#101014' } },
+  { id: 'curlew', name: 'Curlew', loc: { tidal: 25 }, kg: [.6, 1.2], rate: 50, diff: 0.55, sil: 'bird', col: { base: '#a89070', belly: '#e0d8c8', acc: '#5a4a30', mark: '#6a5a40' }, time: ['dawn', 'dusk'] },
+  { id: 'shorecrab', name: 'Shore Crab', loc: { tidal: 40 }, kg: [.05, .1], rate: 20, diff: 0.30, sil: 'crab', col: { base: '#3a6a40', belly: '#8aa880', acc: '#3a2018', mark: '#1a4020' } },
+  { id: 'blindcrayfish', name: 'Blind Crayfish', loc: { crater: 40 }, kg: [.1, .3], rate: 60, diff: 0.30, sil: 'crab', col: { base: '#f0ece8', belly: '#ffffff', acc: '#3a2018', mark: '#c8c0b8' }, time: ['night', 'dusk'] },
+  { id: 'marmot', name: 'Marmot', loc: { crater: 30 }, kg: [3, 6], rate: 30, diff: 0.45, sil: 'hare', col: { base: '#9a7a50', belly: '#d8c8a0', acc: '#f0b0a0', mark: '#5a4028' }, time: ['day'] },
+  { id: 'mountaingoat', name: 'Mountain Goat', loc: { crater: 10 }, kg: [60, 120], rate: 60, diff: 0.60, sil: 'deer', col: { base: '#f0ece0', belly: '#ffffff', acc: '#2a2a2a', mark: '#b0a898' }, big: true },
+  { id: 'arcticfox', name: 'Arctic Fox', loc: { iceship: 25 }, kg: [3, 5], rate: 60, diff: 0.60, sil: 'fox', col: { base: '#f0f0f4', belly: '#ffffff', acc: '#f0b0a0', mark: '#c0c0c8' } },
+  { id: 'iceptarmigan', name: 'Rock Ptarmigan', loc: { iceship: 35 }, kg: [.4, .7], rate: 30, diff: 0.45, sil: 'bird', col: { base: '#f8f8f8', belly: '#ffffff', acc: '#f03030', mark: '#d0d0d8' } },
+  { id: 'walrus', name: 'Walrus', loc: { iceship: 8 }, kg: [800, 1500], rate: 80, diff: 0.75, sil: 'seal', col: { base: '#8a6a5a', belly: '#b8a090', acc: '#f0f0e8', mark: '#5a4030' }, big: true, rare: true },
+  { id: 'saltwatercroc', name: 'Saltwater Crocodile', loc: { witch: 6 }, kg: [300, 600], rate: 400, diff: 0.90, sil: 'lizard', col: { base: '#3a4a30', belly: '#a8b088', acc: '#f0f0e0', mark: '#1a2a18' }, pat: 'stripes', big: true, rare: true },
+  { id: 'fruitbat', name: 'Flying Fox', loc: { witch: 30 }, kg: [.6, 1.2], rate: 50, diff: 0.55, sil: 'bat', col: { base: '#4a3020', belly: '#a08060', acc: '#f0c0b0', mark: '#2a1810' }, time: ['night', 'dusk'] },
+  { id: 'swamphen', name: 'Purple Swamphen', loc: { witch: 25 }, kg: [.8, 1.2], rate: 45, diff: 0.50, sil: 'bird', col: { base: '#4040a0', belly: '#7070c0', acc: '#f03030', mark: '#202060' } },
+  { id: 'dullgull', name: 'Dull Gull', loc: { biolum: 25 }, kg: [.8, 1.2], rate: 60, diff: 0.45, sil: 'bird', col: { base: '#8a9098', belly: '#c0c4c8', acc: '#a0a070', mark: '#505860' }, time: ['day', 'dawn'] },
+  { id: 'glowmoth', name: 'Glow Moth', loc: { biolum: 35 }, kg: [.01, .03], rate: 500, diff: 0.65, sil: 'moth', col: { base: '#60e0c0', belly: '#c0fff0', acc: '#ffffff', mark: '#208060', glow: '#ffffff' }, pat: 'lights', time: ['night'] },
+  { id: 'lanternbat', name: 'Lantern Bat', loc: { biolum: 25 }, kg: [.05, .1], rate: 400, diff: 0.60, sil: 'bat', col: { base: '#203050', belly: '#80a0d0', acc: '#ffff80', mark: '#101828', glow: '#ffff80' }, pat: 'lights', time: ['night', 'dusk'] },
+  { id: 'embertoad', name: 'Ember Toad', loc: { biolum: 20 }, kg: [.5, 1.5], rate: 300, diff: 0.40, sil: 'lizard', col: { base: '#4a2a30', belly: '#c08070', acc: '#ff8040', mark: '#2a1018', glow: '#ff6020' }, pat: 'lights', time: ['night'] },
+  { id: 'saltfox', name: 'Salt Fox', loc: { deadsea: 25 }, kg: [3, 5], rate: 350, diff: 0.60, sil: 'fox', col: { base: '#f0ece0', belly: '#ffffff', acc: '#f0b0a0', mark: '#c8c0b0' } },
+  { id: 'saltlizard', name: 'Crust Lizard', loc: { deadsea: 30 }, kg: [.3, .8], rate: 250, diff: 0.45, sil: 'lizard', col: { base: '#e8e0c8', belly: '#ffffff', acc: '#f0a030', mark: '#b0a890' }, pat: 'spots', time: ['day'] },
+  { id: 'cruststork', name: 'Crust Stork', loc: { deadsea: 15 }, kg: [3, 5], rate: 500, diff: 0.65, sil: 'bird', col: { base: '#f8f8f0', belly: '#ffffff', acc: '#f04040', mark: '#2a2a2a' }, time: ['dawn', 'dusk'] },
+  { id: 'giantfrog', name: 'Pad Frog', loc: { frogs: 35 }, kg: [2, 8], rate: 200, diff: 0.40, sil: 'lizard', col: { base: '#50a040', belly: '#c0e0a0', acc: '#f0e040', mark: '#205020' }, pat: 'spots' },
+  { id: 'heron', name: 'Grey Heron', loc: { frogs: 20 }, kg: [1.5, 2.5], rate: 300, diff: 0.60, sil: 'bird', col: { base: '#8a98a8', belly: '#e8ecf0', acc: '#f0d040', mark: '#2a3040' }, time: ['dawn', 'dusk'] },
+  { id: 'dragonfly', name: 'Emperor Dragonfly', loc: { frogs: 30 }, kg: [.005, .01], rate: 900, diff: 0.75, sil: 'moth', col: { base: '#3060e0', belly: '#80c0ff', acc: '#ffffff', mark: '#102080', glow: '#a0e0ff' }, pat: 'lights', time: ['day'] },
+  { id: 'brasshound', name: 'Brass Hound', loc: { clockwork: 25 }, kg: [20, 40], rate: 500, diff: 0.60, sil: 'fox', col: { base: '#b08030', belly: '#e0c070', acc: '#ff6020', mark: '#604010', glow: '#ffd040' }, pat: 'lights' },
+  { id: 'tingull', name: 'Tin Gull', loc: { clockwork: 35 }, kg: [1, 2], rate: 300, diff: 0.50, sil: 'bird', col: { base: '#c0c0c8', belly: '#e8e8f0', acc: '#f0a040', mark: '#707078' } },
+  { id: 'winduphare', name: 'Wind-up Hare', loc: { clockwork: 20 }, kg: [2, 4], rate: 450, diff: 0.70, sil: 'hare', col: { base: '#a08860', belly: '#d8c8a0', acc: '#c04020', mark: '#604830' }, time: ['day'] },
+  { id: 'bonecrab', name: 'Bone Crab', loc: { ribcage: 40 }, kg: [.5, 1.5], rate: 400, diff: 0.40, sil: 'crab', col: { base: '#e8e0d0', belly: '#ffffff', acc: '#3a2018', mark: '#a09888' } },
+  { id: 'carrionbird', name: 'Carrion Bird', loc: { ribcage: 25 }, kg: [3, 6], rate: 500, diff: 0.65, sil: 'bird', col: { base: '#2a2a30', belly: '#4a4a50', acc: '#e0c0a0', mark: '#101014' } },
+  { id: 'marrowbat', name: 'Marrow Bat', loc: { ribcage: 20 }, kg: [.1, .3], rate: 600, diff: 0.70, sil: 'bat', col: { base: '#c04050', belly: '#f0c0c8', acc: '#ffffff', mark: '#601020' }, time: ['night'] },
+  { id: 'stillbird', name: 'Still Bird', loc: { stormeye: 30 }, kg: [.5, 1], rate: 400, diff: 0.50, sil: 'bird', col: { base: '#e8ecf0', belly: '#ffffff', acc: '#4060a0', mark: '#a0a8b0' } },
+  { id: 'eyehare', name: 'Eye Hare', loc: { stormeye: 25 }, kg: [3, 5], rate: 350, diff: 0.55, sil: 'hare', col: { base: '#a8b0b8', belly: '#e0e4e8', acc: '#f0b0a0', mark: '#606870' } },
+  { id: 'windboar', name: 'Wind Boar', loc: { stormeye: 10 }, kg: [80, 160], rate: 900, diff: 0.80, sil: 'boar', col: { base: '#404858', belly: '#8a92a0', acc: '#e8e8e0', mark: '#202830', glow: '#c0e0ff' }, pat: 'lights', big: true },
+  { id: 'scalemite', name: 'Scale Mite', loc: { sleeper: 40 }, kg: [.3, .8], rate: 350, diff: 0.35, sil: 'crab', col: { base: '#8a70a0', belly: '#d0c0e0', acc: '#3a2018', mark: '#402050' } },
+  { id: 'sleepmoth', name: 'Sleep Moth', loc: { sleeper: 25 }, kg: [.02, .05], rate: 800, diff: 0.70, sil: 'moth', col: { base: '#c0a0e0', belly: '#f0e0ff', acc: '#ffffff', mark: '#604080', glow: '#ffe0ff' }, pat: 'lights', time: ['night', 'dusk'] },
+  { id: 'dreamfox', name: 'Dream Fox', loc: { sleeper: 15 }, kg: [4, 8], rate: 700, diff: 0.65, sil: 'fox', col: { base: '#9060b0', belly: '#e0c8f0', acc: '#ffffff', mark: '#402060', glow: '#ffc0ff' }, pat: 'lights', time: ['night'] },
 ];
 const GM = Object.fromEntries(GAME.map(c => [c.id, c]));
 const WEAPON = () => WEAPONS.find(w => w.id === S.weapon) || WEAPONS[0];
@@ -794,12 +1125,13 @@ const PHASE_NAME = { dawn: 'Dawn', day: 'Day', dusk: 'Dusk', night: 'Night' };
 // ---------- state ----------
 function freshState() {
   return {
-    v: 8, started: false, loc: 'shoal', money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 2, trophyRig: false,
+    v: 9, started: false, loc: 'shoal', money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 2, trophyRig: false,
     pending: null, // a landed catch waiting for Sell / Keep / Release; survives a reload
     prologue: false, proCaught: 0, // the calm-sea opening: rod only, two fish, then the storm
     known: {}, // islands named by a shopkeeper's rumor (visible on the chart before you have been)
     spot: 'wreck', // the fishing spot on the current island
     pack: [], weapon: 'sling', gindex: {}, // hunting: the game bag, the weapon, the creature record
+    bounties: {}, // per island: { at, list: [{ id, mult, done }] }, the shop's wanted posters
     bait: { shrimp: 0, squid: 0 },
     lines: [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, { rig: 'set', bait: 'scraps', phase: 'idle' }, null, null],
     sel: 0, index: {}, visited: { shoal: true }, sold: 0, casts: 0,
@@ -837,7 +1169,8 @@ function load(seed) {
   }
   if (d && d.v === 6) { d.known = d.known || {}; d.pack = d.pack || []; d.weapon = d.weapon || 'sling'; d.gindex = d.gindex || {}; d.v = 7; } // v6 -> v7: the world grew; hunting
   if (d && d.v === 7) { d.spot = (LOC[d.loc] || LOC.shoal).spots[0].id; d.v = 8; } // v7 -> v8: fishing spots
-  if (d && d.v === 8) S = Object.assign(freshState(), d);
+  if (d && d.v === 8) { d.bounties = {}; d.v = 9; } // v8 -> v9: bounty boards
+  if (d && d.v === 9) S = Object.assign(freshState(), d);
 }
 
 const loc = () => LOC[S.loc];
@@ -860,6 +1193,7 @@ function straysTo(locId) {
 }
 // Each entry is [species, weight, stray].
 function pool(locId, rig, baitId, t, spotId) {
+  if (LOC[locId].noFish) return [];
   const ph = phaseAt(t), bt = BAITS[baitId].tier, out = [], sp = spotOf(locId, spotId === undefined ? S.spot : spotId);
   const strays = rig === 'set' ? null : straysTo(locId);
   for (const s of SPECIES) {
@@ -949,7 +1283,11 @@ function resolveCatch(how) {
   const p = S.pending; if (!p) return;
   const s = SP[p.id]; S.pending = null; closeCard();
   if (!s.kind) {
-    if (how === 'sell' && loc().sell) { S.money += p.value; S.sold += p.value; toast(`Sold the ${s.name.toLowerCase()} for ${money(p.value)}.`); }
+    if (how === 'sell' && loc().sell) {
+      const b = loc().shop ? openBounty(loc(), p.id) : null, pay = Math.round(p.value * (b ? b.mult : sellMultOf(loc())));
+      if (b) b.done = true;
+      S.money += pay; S.sold += pay; toast(b ? `Bounty paid: ${money(pay)} for the ${s.name.toLowerCase()}.` : `Sold the ${s.name.toLowerCase()} for ${money(pay)}.`);
+    }
     else if (how === 'keep' && S.bucket.length < T.bucketCap) { S.bucket.push({ id: p.id, cm: p.cm, kg: p.kg, value: p.value, trophy: p.trophy, v: p.v || null }); toast(`Into the bucket. ${S.bucket.length}/${T.bucketCap}.`); }
     else toast('Released.');
   } else if (s.kind === 'junk') toast('Tossed back.');
@@ -957,12 +1295,28 @@ function resolveCatch(how) {
   save(); render();
 }
 function releaseFish(j) { if (!S.bucket[j]) return; S.bucket.splice(j, 1); save(); render(); renderSheet(); toast('Released.'); }
-function haulTotal() { return bucketTotal() + S.pack.reduce((a, b) => a + b.value, 0); }
+const sellMultOf = l => l.sellMult || 1; // Gallows Cove pays double
+function haulTotal() { return Math.round((bucketTotal() + S.pack.reduce((a, b) => a + b.value, 0)) * sellMultOf(loc())); }
 function sellHaul() {
   if (!loc().sell || !(S.bucket.length + S.pack.length)) return;
   const total = haulTotal(), n = S.bucket.length, m = S.pack.length;
   S.money += total; S.sold += total; S.bucket = []; S.pack = [];
   save(); render(); renderSheet(); toast(`Sold ${n ? n + ' fish' : ''}${n && m ? ' and ' : ''}${m ? m + ' game' : ''} for ${money(total)}.`);
+}
+// The bounty board: 0-4 of the island's own fish, each paying worth × mult once. Rolled when the shop is first opened, re-rolled after a real day.
+function boardOf(l) {
+  const b = S.bounties[l.id]; if (b && now() - b.at < T_BOUNTY.refreshMs) return b;
+  const cands = SPECIES.filter(sp => sp.loc[l.id] && !sp.kind && !sp.legend).sort(() => Math.random() - 0.5);
+  const n = Math.floor(Math.random() * (T_BOUNTY.max + 1)), [m0, m1] = T_BOUNTY.mult;
+  const nb = { at: now(), list: cands.slice(0, n).map(sp => ({ id: sp.id, mult: m0 + Math.floor(Math.random() * (m1 - m0 + 1)), done: false })) };
+  S.bounties[l.id] = nb; save(); return nb;
+}
+function openBounty(l, id) { if (!l.shop) return null; const b = S.bounties[l.id]; if (!b || now() - b.at >= T_BOUNTY.refreshMs) return null; return b.list.find(x => x.id === id && !x.done) || null; }
+function bestInBucket(id) { let best = -1; S.bucket.forEach((f, j) => { if (f.id === id && (best < 0 || f.value > S.bucket[best].value)) best = j; }); return best; }
+function claimBounty(id) {
+  const l = loc(), b = openBounty(l, id), j = bestInBucket(id); if (!b || j < 0) return;
+  const f = S.bucket[j], pay = Math.round(f.value * b.mult); S.bucket.splice(j, 1); b.done = true; S.money += pay; S.sold += pay;
+  save(); render(); renderSheet(); toast(`Bounty paid: ${money(pay)} for the ${SP[id].name.toLowerCase()}.`);
 }
 function buildRaft() {
   if (S.raft || S.wood < T.raftWood) return;
@@ -975,13 +1329,20 @@ function sail(id) {
   S.lines.forEach(l => { if (l && l.phase !== 'idle') { l.phase = 'idle'; l.c = null; pulled++; } });
   const first = !S.visited[id];
   S.loc = id; S.visited[id] = true; S.spot = L.spots[0].id; reseedFish(); save(); closeSheet();
-  if (MODE !== 'game') enterFishing(); else render();
+  if (L.noFish) { ISL = null; enterIsland('shop'); } else if (MODE !== 'game') enterFishing(); else render();
   toast(`${first ? 'Landfall: ' : 'Sailed to '}${L.name}.` + (pulled ? ` Pulled in ${pulled} line${pulled > 1 ? 's' : ''}.` : '') + (first && L.vibe ? ' ' + L.vibe : ''));
 }
 
 // ---------- shop ----------
+// Is the mysterious chart on this shop's shelf today? Fixed per island per real day, so it does not flicker.
+function chartInStock(l) { const day = Math.floor(now() / 864e5), h = (day * 7919 + l.x * 31 + l.y * 17 + l.id.length * 131) % 100; return h < T_WORLD.chartOdds; }
 function shopItems() {
-  const items = [];
+  const items = [], l = loc();
+  if (l.spaceport) {
+    const b = BOATS.find(b => b.id === 'starship'); if (S.boat === 'starship') return [];
+    return [{ k: 'boat', name: b.name, sub: S.boat === 'ironclad' ? 'Range 7. The stars. Nobody knows what bites up there.' : 'Come back with an ironclad under you. The gantry only takes one ship at a time.', price: b.price, locked: S.boat !== 'ironclad' }];
+  }
+  if (l.range >= 5 && !S.known.spaceport && !S.visited.spaceport && chartInStock(l)) items.push({ k: 'chart', name: 'A mysterious chart', sub: 'Oilcloth, salt-stiff, one island on it at the far edge of the world. The keeper will not say where it came from.', price: T_WORLD.chartPrice });
   if (S.slots < 4) items.push({ k: 'slot', name: `Line ${S.slots + 1}`, sub: 'One more line in the water.', price: SLOT_PRICES[S.slots] });
   const ri = RODS.findIndex(r => r.id === S.rod);
   if (ri < RODS.length - 1) { const r = RODS[ri + 1]; items.push({ k: 'rod', name: r.name, sub: `Wider net in the fight (${Math.round(r.bar * 100)}% of the track).`, price: r.price }); }
@@ -993,7 +1354,7 @@ function shopItems() {
   const bi = BOATS.findIndex(b => b.id === S.boat);
   if (bi >= 1 && bi < BOATS.length - 1) {
     const b = BOATS[bi + 1];
-    items.push({ k: 'boat', name: b.name, sub: b.locked ? 'Not in this build. The price is the point.' : `Range ${b.range}: reveals the next stretch of the chart.`, price: b.price, locked: b.locked });
+    items.push({ k: 'boat', name: b.name, sub: b.spaceport ? 'Not sold here. Somewhere at the far edge of the world there is a dock for it.' : `Range ${b.range}: reveals the next stretch of the chart.`, price: b.price, locked: !!b.spaceport });
   }
   return items;
 }
@@ -1007,6 +1368,7 @@ function buy(k) {
   else if (k === 'weapon') { const wi = WEAPONS.findIndex(w => w.id === S.weapon); S.weapon = WEAPONS[wi + 1].id; }
   else if (k.startsWith('bait:')) { const b = k.slice(5); S.bait[b] = (S.bait[b] || 0) + BAITS[b].qty; }
   else if (k === 'boat') { const bi = BOATS.findIndex(b => b.id === S.boat); S.boat = BOATS[bi + 1].id; }
+  else if (k === 'chart') { S.known.spaceport = true; setTimeout(() => toast('One island on it, at the far edge of the world. It is on your chart now.'), 900); }
   save(); render(); renderSheet(); toast(`Bought ${it.name}.`);
 }
 
@@ -1143,7 +1505,11 @@ function openSheet(k) { sheetKind = k; if (k === 'map') mapSel = S.loc; if (k ==
 // Shopkeepers talk. Every few lines, one who hears rumors names an island you have not seen: it appears on the chart.
 function talk() {
   const kp = loc().keeper; if (!kp) return;
-  const unknown = LOCS.filter(l => !S.visited[l.id] && !S.known[l.id] && l.id !== 'sea');
+  if (kp.exotic && loc().range >= 5 && !loc().spaceport && Math.random() < T_WORLD.starRumor) { // very low odds, every time, beyond tier 5
+    const lines = ['"There is a ship that sails up. Not north. Up. The dock for it is at the far edge of everything, and no chart I sell shows it."', '"A sailor paid me in a coin I did not know. Said it came from a port where the boats leave the water. Said the chart to it costs more than the boat."', '"Keep your money. Past the last island there is a gantry and a ship that does not float. People who find it do not come back to fish."'];
+    talkN++; S.heardStars = true; save(); talkLine = `${kp.name} lowers their voice. ${lines[Math.floor(Math.random() * lines.length)]}`; renderSheet(); return;
+  }
+  const unknown = LOCS.filter(l => !S.visited[l.id] && !S.known[l.id] && l.id !== 'sea' && !l.spaceport);
   const exoticFirst = kp.exotic ? unknown.filter(l => l.range >= 5) : [];
   const cands = (exoticFirst.length ? exoticFirst : unknown).sort((a, b) => a.range - b.range).slice(0, 3);
   talkN++;
@@ -1221,9 +1587,13 @@ function renderSheet() {
   } else if (sheetKind === 'shop') {
     const rows = shopItems().map(it => `<div class="row"><div class="name">${it.name}<small>${it.sub}</small></div><div style="display:grid;gap:4px;justify-items:end"><div class="price">${money(it.price)}</div><button class="buy" data-act="buy" data-k="${it.k}" ${it.locked || S.money < it.price ? 'disabled' : ''}>${it.locked ? 'LOCKED' : 'BUY'}</button></div></div>`).join('');
     const kp = loc().keeper, said = talkLine;
+    const board = loc().spaceport ? '' : boardOf(loc()).list.map(b => { const sp = SP[b.id], j = bestInBucket(b.id), have = j >= 0;
+      return `<div class="poster ${b.done ? 'done' : ''}"><div class="nail"></div><div class="wanted">WANTED</div><canvas class="mini" width="64" height="36" data-fish="${b.id}" data-known="1"></canvas><div class="pname">${sp.name}</div><div class="pays">Pays ×${b.mult}</div>${b.done ? '<div class="stamp">PAID</div>' : have ? `<button class="buy" data-act="bounty" data-k="${b.id}">TURN IN · ${money(Math.round(S.bucket[j].value * b.mult))}</button>` : '<div class="pays dim">Bring one in</div>'}</div>`; }).join('');
     el.innerHTML = `<div class="head"><h2>Shop · ${loc().name}</h2><button class="x" data-act="close">✕</button></div><div class="note">You have ${money(S.money)}.</div>
       ${kp ? `<div class="box"><div class="row"><div class="name">${kp.name}<small>${kp.exotic ? 'Hears every rumor on the sea.' : 'Keeps the shop.'}</small></div><button class="buy" data-act="talk">TALK</button></div>${said ? `<div class="note">${said}</div>` : ''}</div>` : ''}
-      <div class="list">${rows}</div>`;
+      <div class="list">${rows}</div>
+      ${loc().spaceport ? '' : `<div class="box"><h3>BOUNTY BOARD</h3>${board.length ? `<div class="board">${board}</div>` : '<div class="note">Nothing nailed up today.</div>'}</div>`}`;
+    drawMinis(el);
   } else if (sheetKind === 'menu') {
     el.innerHTML = `<div class="head"><h2>Menu</h2><button class="x" data-act="close">✕</button></div>
       <div class="note">Caught ${Object.values(S.index).reduce((a, b) => a + b.n, 0)} fish · sold ${money(S.sold)} · ${S.casts} casts.</div>
@@ -1255,6 +1625,24 @@ function mapClick(e) {
 function showCard(html) { $('#card').className = 'card'; $('#card').innerHTML = html; $('#cardWrap').hidden = false; }
 function closeCard() { $('#cardWrap').hidden = true; }
 const LEGEND_LORE = {
+  lampkeeper: 'It rises when the lamp turns and sinks when it passes. Old Pell says it is not a fish. Old Pell says a lot of things.',
+  stackking: 'A wrasse the size of a door, orange as a lamp, that has eaten every hook on the rock. The gannets will not dive where it swims.',
+  thetoll: 'A catfish grown fat under the market since the first two rafts were tied. It takes a coin from under every stall. Nobody has seen it take one. Everybody has lost one.',
+  vespers: 'It rises at the evening bell and hangs under the ledge like a second bell, silver, until the ringing stops. The abbot forbade fishing it. The abbot is a long time gone.',
+  weedwife: 'The shape under the mat that the weed grows on. Rowers feel it pass under the hull like a hill. Nobody has seen more than a fin, and the fin had weed on it.',
+  hangedman: 'A tarpon with a rope scar round its neck that hangs under the gibbet on moonless nights, turning slowly, as if it were still up there.',
+  greywake: 'Grey, long, and it follows the sound at dawn exactly as the whales did, right up to the flensing stage, and waits. The old men say it is waiting for the boats. The boats are bones too.',
+  tideturner: 'A flounder the width of the causeway. The traders say the tide turns when it rolls over. The clock on the post was set by watching it.',
+  kettle: 'A trout boiled white that lives in the spring nobody can put a hand in. It has been there since the first bather. It does not seem to mind.',
+  thehold: 'A cod the length of the hold, in the ice under the ship, in a pocket of water that never freezes. The crew hear it turn over at night. They have stopped going down.',
+  familiar: 'A catfish in the black pool with eyes like two lamps. It says your name, once, when the line goes down. Mab says not to answer. Mab says she did, once.',
+  lastlight: 'The light in the bay is one fish, and every other glow is borrowed from it. Nix says land it and the bay goes dark for good. Nix has not said whether that is a warning.',
+  thepillar: 'The tall pillar in the middle of the salt. Once a year it moves a boat-length and the crust cracks for a mile. Salt Ama has fished it for forty years with a line that floats.',
+  oldcroak: 'The fish the whole kingdom fears. It has eaten three kings off their own pads. The frogs sing to it at dusk so it knows where they are, which seems unwise.',
+  escapement: 'The fish that keeps the island\'s time. Every tick on Cogwater is its heartbeat. Unit Seven has calculated what happens if it is landed and declines to say.',
+  lastleviathan: 'One leviathan came here small, to die with the rest, and did not. It lives in the marrow deep and grows a hand a year. Marrow says it is the size of the island now. Marrow says the island is the size of it.',
+  theeye: 'The storm turns round one thing, and it is not the island. A round fish with one great eye that looks up. When it blinks the calm moves a yard. Calm Ada moved her hut four times.',
+  thewaker: 'Small, red, fast, and the one fish on the Sleeper that bites the Sleeper. Hush says landing it would be a kindness. Hush says this very quietly.',
   wreckwraith: 'Pale as bone, it circles the wreck on moonless nights. Some say it is the ship\'s captain, still keeping watch.',
   harbormaster: 'Older than the pier. Brass-scaled, slow, and heavier than the boat that lands it.',
   verdigris: 'A lingcod gone green-bronze with age, wreathed in kelp. The reef is quiet when it passes.',
@@ -1282,7 +1670,9 @@ function showCatch() {
     if (s.legend) pills = pills.filter(t => t !== 'New species');
     pills = pills.filter(t => t.toUpperCase() + '!' !== head); // the headline already says it
     if (full) warn = 'The bucket is full. Sell or let something go first.';
-    acts = (canSell ? `<button class="cta" data-act="catch" data-k="sell">Sell ${money(p.value)}</button>` : '')
+    const bounty = canSell && loc().shop ? openBounty(loc(), p.id) : null, pay = Math.round(p.value * (bounty ? bounty.mult : sellMultOf(loc())));
+    if (bounty) pills.unshift('Wanted');
+    acts = (canSell ? `<button class="cta" data-act="catch" data-k="sell">${bounty ? 'Bounty ' : 'Sell '}${money(pay)}</button>` : '')
       + `<button class="cta ${canSell ? 'alt' : ''}" data-act="catch" data-k="keep" ${full ? 'disabled' : ''}>Keep</button>`
       + (canSell ? '' : '<button class="cta alt" data-act="catch" data-k="release">Release</button>');
     if (canSell && full) acts += '<button class="cta alt" data-act="catch" data-k="release">Release</button>';
@@ -1297,7 +1687,7 @@ function showCatch() {
   const rarLine = rar ? `<div class="rar"><span style="color:${RARITY[rar].col}">${RARITY[rar].name.toUpperCase()}</span>${V ? `<span class="sep">·</span><span style="color:${V.col}">${V.name.toUpperCase()}${s.mutant ? '' : V.mult < 1 ? ' · HALF WORTH' : ' · ×' + V.mult + ' WORTH'}</span>` : ''}</div>` : '';
   $('#card').className = 'card catch';
   $('#card').innerHTML = `<div class="head" ${headCol}>${head}</div>
-    ${pills.length ? `<div class="pills">${pills.map(t => `<div class="pill ${t === 'Trophy size' || t === 'Legend' ? 'gold' : t === 'Far from home' ? 'far' : ''}">${t.toUpperCase()}</div>`).join('')}</div>` : ''}
+    ${pills.length ? `<div class="pills">${pills.map(t => `<div class="pill ${t === 'Trophy size' || t === 'Legend' || t === 'Wanted' ? 'gold' : t === 'Far from home' ? 'far' : ''}">${t.toUpperCase()}</div>`).join('')}</div>` : ''}
     <canvas class="art" id="ccv" width="192" height="96"></canvas>
     <div class="fish">${V ? `<span style="color:${V.col}">${V.name}</span> ` : ''}${s.name}</div>
     ${rarLine}
@@ -1711,6 +2101,117 @@ const FISH_ART = {
   sixeyedgoby: { gen: { w: 28, h: 13, bodyH: .55, peak: .35, ped: .22, snout: .3, flatHead: true, eye: 1, eye2: [.72, .3], tail: 'round', dorsal: { type: 'spiny', from: .3, to: .5, h: 3 }, dorsal2: { type: 'soft', from: .55, to: .8, h: 2 }, anal: { type: 'soft', from: .55, to: .8, h: 2 }, pat: 'blotch', dens: .1, seed: 161 }, col: { base: '#7a6a5a', belly: '#d8c8b8', fin: '#8a7a6a', mark: '#3a2a20' } },
   knotbackeel: { gen: { w: 56, h: 14, tail: 'none', ped: .3, peak: .4, snout: .3, bodyH: .8, dorsal: { type: 'long', from: .2, to: .97, h: 3 }, anal: { type: 'long', from: .4, to: .95, h: 2 }, pectX: .8, pect: false, eye: 1, pat: 'saddles', barP: 6, barW: 3 }, col: { base: '#4a5a4a', belly: '#b8c0a8', fin: '#5a6a5a', mark: '#202820' } },
   insideoutperch: { gen: { w: 34, h: 20, bodyH: .62, peak: .5, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'spiny', from: .35, to: .55, h: 4 }, dorsal2: { type: 'soft', from: .58, to: .75, h: 3 }, anal: { type: 'soft', from: .55, to: .7, h: 2 }, pat: 'bars', barP: 4, barW: 2 }, col: { base: '#c05060', belly: '#f0c0c8', fin: '#d06070', mark: '#602030' } },
+  // --- the wider world ---
+  muttonsnapper: { gen: { w: 46, h: 24, bodyH: .62, peak: .5, ped: .18, snout: .33, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .4, to: .6, h: 3 }, pat: 'lateral' }, col: { base: '#c07060', belly: '#ffe8e0', fin: '#d08878', mark: '#2a3a40' } },
+  lanesnapper: { gen: { w: 36, h: 20, bodyH: .7, peak: .5, ped: .18, snout: .33, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .4, to: .6, h: 3 }, pat: 'stripes' }, col: { base: '#e8a080', belly: '#fff0e0', fin: '#f0c0a0', mark: '#f0e040' } },
+  houndfish: { gen: { w: 56, h: 12, bodyH: .46, peak: .5, ped: .24, snout: .42, headPow: 1, tail: 'fork', dorsal: { type: 'soft', from: .15, to: .3, h: 3 }, anal: { type: 'soft', from: .15, to: .3, h: 3 }, beak: .3, tailH: .9, pat: 'lateral' }, col: { base: '#50a890', belly: '#f0fff8', fin: '#70c0a8', mark: '#2a6050' } },
+  ballyhoo: { gen: { w: 34, h: 10, bodyH: .5, ped: .18, snout: .22, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .6, h: 2 }, anal: { type: 'soft', from: .5, to: .62, h: 1 }, beak: .22, underbite: 3, pat: 'lateral' }, col: { base: '#78a0c8', belly: '#f8fcff', fin: '#90b8d8', mark: '#304868' } },
+  bermudachub: { gen: { w: 40, h: 24, bodyH: .7, peak: .5, ped: .18, snout: .33, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .4, to: .6, h: 3 }, pat: 'stripes' }, col: { base: '#8a9088', belly: '#e8ece8', fin: '#a0a8a0', mark: '#505850' } },
+  bonito: { gen: { w: 48, h: 16, bodyH: .5, peak: .45, ped: .14, snout: .26, tail: 'lunate', tailH: .95, dorsal: { type: 'sail', from: .35, to: .5, h: 5 }, dorsal2: { type: 'soft', from: .6, to: .72, h: 2 }, anal: { type: 'soft', from: .6, to: .72, h: 2 }, pat: 'stripes' }, col: { base: '#3a5a90', belly: '#f0f8ff', fin: '#5070a8', mark: '#1a2a50' } },
+  greenmoray: { gen: { w: 58, h: 15, tail: 'none', ped: .08, peak: .3, snout: .35, bodyH: .7, dorsal: { type: 'long', from: .15, to: .97, h: 2 }, anal: { type: 'long', from: .2, to: .97, h: 2 }, pectX: .8, jaws: { len: .12, gap: .3, teeth: true }, eye: 1 }, col: { base: '#5a8a40', belly: '#c8d8a0', fin: '#6a9a50', mark: '#2a4a20' } },
+  cuckoowrasse: { gen: { w: 40, h: 16, bodyH: .52, peak: .5, ped: .22, snout: .32, tail: 'round', dorsal: { type: 'long', from: .3, to: .8, h: 3 }, anal: { type: 'long', from: .45, to: .8, h: 3 }, pat: 'stripes' }, col: { base: '#f08040', belly: '#ffe8d0', fin: '#f8a060', mark: '#3060e0' } },
+  pouting: { gen: { w: 38, h: 20, bodyH: .62, peak: .4, ped: .2, snout: .33, tail: 'trunc', dorsal: { type: 'soft', from: .25, to: .38, h: 4 }, dorsal2: { type: 'soft', from: .42, to: .56, h: 3 }, dorsal3: { type: 'soft', from: .6, to: .75, h: 3 }, anal: { type: 'soft', from: .42, to: .56, h: 2 }, anal2: { type: 'soft', from: .6, to: .75, h: 2 }, barbel: true, pat: 'bars', barP: 5, barW: 2 }, col: { base: '#c0a060', belly: '#f8f0d8', fin: '#d0b070', mark: '#806030' } },
+  dab: { gen: { w: 38, h: 22, bodyH: .8, peak: .5, ped: .14, snout: .3, tail: 'round', tailLen: .12, dorsal: { type: 'long', from: .05, to: .95, h: 2 }, anal: { type: 'long', from: .05, to: .95, h: 2 }, eyeX: .8, eyeY: .2, eye2: [.87, .14], pect: false, pat: 'spots', dens: .08, seed: 202 }, col: { base: '#a89060', belly: '#f0e8d8', fin: '#b8a070', mark: '#6a5030' } },
+  lesserweever: { gen: { w: 30, h: 12, bodyH: .5, peak: .5, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'spiny', from: .5, to: .62, h: 5 }, dorsal2: { type: 'soft', from: .58, to: .75, h: 3 }, anal: { type: 'soft', from: .55, to: .7, h: 2 }, pat: 'speckle' }, col: { base: '#b8a070', belly: '#f0e8d0', fin: '#1a1a1a', mark: '#6a5a30' } },
+  tope: { gen: { w: 60, h: 17, bodyH: .5, peak: .4, ped: .2, snout: .3, snoutY: .02, tail: 'hetero', tailH: .9, dorsal: { type: 'tri', from: .4, to: .52, h: 6 }, dorsal2: { type: 'tri', from: .7, to: .76, h: 2 }, mouth: 'low', eye: 1, eyeY: .4 }, col: { base: '#7a8a90', belly: '#e8f0f0', fin: '#8a9aa0', mark: '#4a5a60' } },
+  poorcod: { gen: { w: 30, h: 13, bodyH: .56, peak: .4, ped: .2, snout: .33, tail: 'trunc', dorsal: { type: 'soft', from: .25, to: .38, h: 4 }, dorsal2: { type: 'soft', from: .42, to: .56, h: 3 }, dorsal3: { type: 'soft', from: .6, to: .75, h: 3 }, anal: { type: 'soft', from: .42, to: .56, h: 2 }, anal2: { type: 'soft', from: .6, to: .75, h: 2 }, barbel: true }, col: { base: '#c89060', belly: '#f8f0e0', fin: '#d8a070', mark: '#8a6030' } },
+  catla: { gen: { w: 50, h: 28, bodyH: .7, peak: .5, ped: .18, snout: .4, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .4, to: .6, h: 3 }, headPow: 1, pat: 'scales', dens: .08, seed: 203 }, col: { base: '#8a9ab0', belly: '#e8ecf0', fin: '#a0b0c0', mark: '#405060' } },
+  pangasius: { gen: { w: 58, h: 17, bodyH: .5, peak: .7, ped: .1, snout: .5, tail: 'fork', barbel: true, mouth: 'low', dorsal: { type: 'soft', from: .6, to: .75, h: 3 }, anal: { type: 'long', from: .1, to: .65, h: 2 }, eye: 1, eyeX: .85, eyeY: .3, pat: 'stripes' }, col: { base: '#7a8a98', belly: '#e0e8ec', fin: '#8a9aa8', mark: '#3a4a58' } },
+  featherback: { gen: { w: 56, h: 16, tail: 'none', ped: .08, peak: .35, snout: .35, bodyH: .72, anal: { type: 'long', from: .08, to: .97, h: 3 }, pectX: .8, pat: 'twospots' }, col: { base: '#8a90a0', belly: '#e8ecf0', fin: '#9aa0b0', mark: '#1a1a20' } },
+  marblegoby: { gen: { w: 38, h: 16, bodyH: .6, peak: .5, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'spiny', from: .35, to: .55, h: 4 }, dorsal2: { type: 'soft', from: .58, to: .75, h: 3 }, anal: { type: 'soft', from: .55, to: .7, h: 2 }, flatHead: true, pat: 'blotch', dens: .12, seed: 204 }, col: { base: '#8a7a5a', belly: '#e0d8c0', fin: '#9a8a6a', mark: '#3a3020' } },
+  siamesetigerfish: { gen: { w: 40, h: 24, bodyH: .7, peak: .5, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .55, h: 6 }, dorsal2: { type: 'soft', from: .58, to: .75, h: 3 }, anal: { type: 'soft', from: .55, to: .7, h: 2 }, pat: 'bars', barP: 5, barW: 3 }, col: { base: '#e8c040', belly: '#fff0c0', fin: '#f0d060', mark: '#1a1a1a' } },
+  giantbarb: { gen: { w: 60, h: 34, bodyH: .72, peak: .5, ped: .18, snout: .33, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .4, to: .6, h: 3 }, pat: 'scales', dens: .06, seed: 205 }, col: { base: '#607080', belly: '#e0e8f0', fin: '#788898', mark: '#304050' } },
+  pollack: { gen: { w: 46, h: 17, bodyH: .56, peak: .4, ped: .2, snout: .33, tail: 'trunc', dorsal: { type: 'soft', from: .25, to: .38, h: 4 }, dorsal2: { type: 'soft', from: .42, to: .56, h: 3 }, dorsal3: { type: 'soft', from: .6, to: .75, h: 3 }, anal: { type: 'soft', from: .42, to: .56, h: 2 }, anal2: { type: 'soft', from: .6, to: .75, h: 2 }, barbel: false, underbite: 2, pat: 'lateral' }, col: { base: '#6a8a60', belly: '#e8f0d8', fin: '#7a9a70', mark: '#3a5a30' } },
+  blackbream: { gen: { w: 38, h: 24, bodyH: .7, peak: .5, ped: .18, snout: .33, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .4, to: .6, h: 3 }, pat: 'stripes' }, col: { base: '#4a4a58', belly: '#d8d8e0', fin: '#5a5a68', mark: '#9a9ab0' } },
+  redmullet: { gen: { w: 38, h: 15, bodyH: .52, peak: .45, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .55, h: 3 }, anal: { type: 'soft', from: .6, to: .72, h: 3 }, barbel: true, pat: 'stripes' }, col: { base: '#e07060', belly: '#ffe8d8', fin: '#f08878', mark: '#f0d040' } },
+  topknot: { gen: { w: 34, h: 24, bodyH: .8, peak: .5, ped: .14, snout: .3, tail: 'round', tailLen: .12, dorsal: { type: 'long', from: .05, to: .95, h: 2 }, anal: { type: 'long', from: .05, to: .95, h: 2 }, eyeX: .8, eyeY: .2, eye2: [.87, .14], pect: false, pat: 'blotch', dens: .14, seed: 207 }, col: { base: '#6a5a48', belly: '#d8d0c0', fin: '#7a6a58', mark: '#2a2018' } },
+  tompotblenny: { gen: { w: 26, h: 12, bodyH: .6, ped: .18, snout: .22, tail: 'fork', dorsal: { type: 'long', from: .2, to: .9, h: 3 }, anal: { type: 'soft', from: .5, to: .62, h: 1 }, pat: 'bars', barP: 4, barW: 1 }, col: { base: '#b07050', belly: '#f0d8c0', fin: '#c08060', mark: '#5a3020' } },
+  bluemouth: { gen: { w: 38, h: 19, bodyH: .6, peak: .5, ped: .2, snout: .45, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .6, h: 5 }, dorsal2: { type: 'soft', from: .58, to: .75, h: 3 }, anal: { type: 'soft', from: .55, to: .7, h: 2 }, headPow: 1 }, col: { base: '#e05040', belly: '#ffe0d8', fin: '#f07060', mark: '#3050c0' } },
+  sargassumfish: { gen: { w: 28, h: 22, bodyH: .8, peak: .55, ped: .2, snout: .45, tail: 'round', tailLen: .12, dorsal: { type: 'soft', from: .6, to: .75, h: 3 }, anal: { type: 'soft', from: .6, to: .75, h: 3 }, eyeX: .8, eyeY: .3, lure: true, pat: 'blotch', dens: .16, seed: 209 }, col: { base: '#c8a040', belly: '#f0e0a0', fin: '#d8b050', mark: '#6a5020' } },
+  flyingfish: { gen: { w: 36, h: 12, bodyH: .5, ped: .18, snout: .22, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .6, h: 2 }, anal: { type: 'soft', from: .5, to: .62, h: 1 }, pectH: 9, pectX: .62, pat: 'lateral' }, col: { base: '#3060b0', belly: '#f0f8ff', fin: '#80b0f0', mark: '#1a3070' } },
+  almacojack: { gen: { w: 50, h: 22, bodyH: .6, peak: .45, ped: .2, snout: .3, tail: 'lunate', dorsal: { type: 'soft', from: .4, to: .55, h: 3 }, anal: { type: 'soft', from: .6, to: .72, h: 3 }, pat: 'lateral' }, col: { base: '#5a7a90', belly: '#e8f0f8', fin: '#7090a8', mark: '#2a4050' } },
+  pilotfish: { gen: { w: 38, h: 14, bodyH: .52, peak: .45, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .55, h: 3 }, anal: { type: 'soft', from: .6, to: .72, h: 3 }, pat: 'bars', barP: 6, barW: 3 }, col: { base: '#a0b0c8', belly: '#f8fcff', fin: '#b8c8d8', mark: '#1a2a40' } },
+  oceantrigger: { gen: { w: 38, h: 30, bodyH: .86, peak: .5, ped: .14, snout: .3, tail: 'trunc', dorsal: { type: 'long', from: .3, to: .75, h: 7 }, anal: { type: 'long', from: .4, to: .75, h: 7 } }, col: { base: '#8a90a0', belly: '#d8dce8', fin: '#a0a8b8', mark: '#505868' } },
+  pipefish: { gen: { w: 36, h: 6, tail: 'none', ped: .08, peak: .3, snout: .35, bodyH: .5, dorsal: { type: 'soft', from: .45, to: .6, h: 2 }, pectX: .8, pat: 'bands', barP: 5, barW: 2 }, col: { base: '#b89848', belly: '#f0e0b0', fin: '#c8a858', mark: '#6a5020' } },
+  cubera: { gen: { w: 56, h: 28, bodyH: .64, peak: .45, ped: .2, snout: .35, tail: 'round', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .55, to: .72, h: 3 }, bigMouth: true, jaws: { len: .1, gap: .25, teeth: true } }, col: { base: '#8a5a50', belly: '#e8d0c8', fin: '#9a6a60', mark: '#3a2020' } },
+  wahoo: { gen: { w: 64, h: 16, bodyH: .42, peak: .45, ped: .14, snout: .45, tail: 'lunate', tailH: .95, dorsal: { type: 'sail', from: .35, to: .5, h: 5 }, dorsal2: { type: 'soft', from: .6, to: .72, h: 2 }, anal: { type: 'soft', from: .6, to: .72, h: 2 }, headPow: 1, pat: 'bars', barP: 4, barW: 1 }, col: { base: '#3a5a80', belly: '#e8f0f8', fin: '#5070a0', mark: '#1a2a50' } },
+  kingmackerel: { gen: { w: 56, h: 15, bodyH: .44, peak: .45, ped: .14, snout: .26, tail: 'lunate', tailH: .95, dorsal: { type: 'sail', from: .35, to: .5, h: 5 }, dorsal2: { type: 'soft', from: .6, to: .72, h: 2 }, anal: { type: 'soft', from: .6, to: .72, h: 2 } }, col: { base: '#607890', belly: '#e8f0f8', fin: '#7890a8', mark: '#304050' } },
+  blackfintuna: { gen: { w: 48, h: 18, bodyH: .52, peak: .45, ped: .14, snout: .26, tail: 'lunate', tailH: .95, dorsal: { type: 'sail', from: .35, to: .5, h: 5 }, dorsal2: { type: 'soft', from: .6, to: .72, h: 2 }, anal: { type: 'soft', from: .6, to: .72, h: 2 } }, col: { base: '#2a3a60', belly: '#f0f0f0', fin: '#1a1a30', mark: '#f0c040' } },
+  queentrigger: { gen: { w: 38, h: 28, bodyH: .86, peak: .5, ped: .14, snout: .3, tail: 'trunc', dorsal: { type: 'long', from: .3, to: .75, h: 6 }, anal: { type: 'long', from: .4, to: .75, h: 6 }, pat: 'stripes' }, col: { base: '#4080a0', belly: '#f0e060', fin: '#50a0c0', mark: '#1a3060' } },
+  cero: { gen: { w: 46, h: 14, bodyH: .52, peak: .45, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .55, h: 3 }, anal: { type: 'soft', from: .6, to: .72, h: 3 }, pat: 'spots', dens: .08, seed: 211 }, col: { base: '#7090b0', belly: '#f0f8ff', fin: '#88a8c8', mark: '#f0c040' } },
+  hake: { gen: { w: 54, h: 15, bodyH: .56, peak: .4, ped: .2, snout: .33, tail: 'trunc', dorsal: { type: 'soft', from: .25, to: .38, h: 4 }, dorsal2: { type: 'soft', from: .42, to: .56, h: 3 }, anal: { type: 'soft', from: .42, to: .56, h: 2 }, anal2: { type: 'soft', from: .6, to: .75, h: 2 }, barbel: false, jaws: { len: .1, gap: .25, teeth: true } }, col: { base: '#6a7080', belly: '#e8ecf0', fin: '#7a8090', mark: '#3a4050' } },
+  bluewhiting: { gen: { w: 36, h: 11, bodyH: .42, peak: .4, ped: .2, snout: .33, tail: 'trunc', dorsal: { type: 'soft', from: .25, to: .38, h: 4 }, dorsal2: { type: 'soft', from: .42, to: .56, h: 3 }, dorsal3: { type: 'soft', from: .6, to: .75, h: 3 }, anal: { type: 'soft', from: .42, to: .56, h: 2 }, anal2: { type: 'soft', from: .6, to: .75, h: 2 }, barbel: false, pat: 'lateral' }, col: { base: '#6080a8', belly: '#f0f4f8', fin: '#7898b8', mark: '#304868' } },
+  megrim: { gen: { w: 44, h: 20, bodyH: .7, peak: .5, ped: .14, snout: .3, tail: 'round', tailLen: .12, dorsal: { type: 'long', from: .05, to: .95, h: 2 }, anal: { type: 'long', from: .05, to: .95, h: 2 }, eyeX: .8, eyeY: .2, eye2: [.87, .14], pect: false }, col: { base: '#b0a890', belly: '#f0ece0', fin: '#c0b8a0', mark: '#6a6050' } },
+  porbeagle: { gen: { w: 64, h: 22, bodyH: .5, peak: .4, ped: .2, snout: .3, snoutY: .02, tail: 'lunate', tailH: .9, dorsal: { type: 'tri', from: .4, to: .55, h: 7 }, dorsal2: { type: 'tri', from: .7, to: .76, h: 2 }, mouth: 'low', eye: 1, eyeY: .4 }, col: { base: '#4a5a6a', belly: '#e8eef0', fin: '#5a6a7a', mark: '#2a3a4a' } },
+  spurdog: { gen: { w: 54, h: 13, bodyH: .5, peak: .4, ped: .2, snout: .3, snoutY: .02, tail: 'hetero', tailH: .9, dorsal: { type: 'tri', from: .4, to: .52, h: 6 }, dorsal2: { type: 'tri', from: .7, to: .76, h: 2 }, mouth: 'low', eye: 1, eyeY: .4, pat: 'spots', dens: .06, seed: 212 }, col: { base: '#7a7a88', belly: '#e0e0e8', fin: '#8a8a98', mark: '#f0f0f0' } },
+  angelshark: { gen: { w: 56, h: 24, bodyH: .8, peak: .5, ped: .2, snout: .3, tail: 'hetero', dorsal: { type: 'long', from: .05, to: .95, h: 2 }, anal: { type: 'long', from: .05, to: .95, h: 2 }, eyeX: .8, eyeY: .15, eye2: [.87, .1], pect: false, pat: 'spots', dens: .1, seed: 213 }, col: { base: '#8a8070', belly: '#e8e0d0', fin: '#9a9080', mark: '#4a4038' } },
+  thicklipmullet: { gen: { w: 44, h: 17, bodyH: .52, peak: .45, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .55, h: 3 }, anal: { type: 'soft', from: .6, to: .72, h: 3 }, headPow: 1, pat: 'stripes' }, col: { base: '#7a8a98', belly: '#f0f4f8', fin: '#8a9aa8', mark: '#3a4a58' } },
+  smoothhound: { gen: { w: 58, h: 16, bodyH: .5, peak: .4, ped: .2, snout: .3, snoutY: .02, tail: 'hetero', tailH: .9, dorsal: { type: 'tri', from: .4, to: .52, h: 6 }, dorsal2: { type: 'tri', from: .7, to: .76, h: 2 }, mouth: 'low', eye: 1, eyeY: .4, pat: 'spots', dens: .06, seed: 214 }, col: { base: '#8a8a90', belly: '#e8e8ec', fin: '#9a9aa0', mark: '#ffffff' } },
+  goldenmullet: { gen: { w: 40, h: 15, bodyH: .52, peak: .45, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .55, h: 3 }, anal: { type: 'soft', from: .6, to: .72, h: 3 }, pat: 'lateral' }, col: { base: '#8a9080', belly: '#f8f4e8', fin: '#9aa090', mark: '#f0c040' } },
+  twaiteshad: { gen: { w: 40, h: 17, bodyH: .56, ped: .18, snout: .22, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .6, h: 2 }, anal: { type: 'soft', from: .5, to: .62, h: 1 }, pat: 'backspots', dens: .08, seed: 215 }, col: { base: '#5a7aa0', belly: '#f8fcff', fin: '#7898b8', mark: '#1a2a40' } },
+  shanny: { gen: { w: 26, h: 11, bodyH: .58, ped: .18, snout: .22, tail: 'fork', dorsal: { type: 'long', from: .2, to: .9, h: 3 }, anal: { type: 'soft', from: .5, to: .62, h: 1 }, pat: 'blotch', dens: .12, seed: 216 }, col: { base: '#6a7a50', belly: '#d8e0c0', fin: '#7a8a60', mark: '#3a4a28' } },
+  sandsmelt: { gen: { w: 28, h: 9, bodyH: .5, ped: .18, snout: .22, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .6, h: 2 }, anal: { type: 'soft', from: .5, to: .62, h: 1 }, pat: 'lateral' }, col: { base: '#b8c8c0', belly: '#ffffff', fin: '#d0e0d8', mark: '#8aa0a0' } },
+  rainbowtrout: { gen: { w: 46, h: 17, bodyH: .52, peak: .45, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .55, h: 3 }, anal: { type: 'soft', from: .6, to: .72, h: 3 }, adipose: true, pat: 'spots', dens: .1, seed: 218 }, col: { base: '#6a9a70', belly: '#f0f8f0', fin: '#80b088', mark: '#e05080' } },
+  kokanee: { gen: { w: 42, h: 16, bodyH: .52, peak: .45, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .55, h: 3 }, anal: { type: 'soft', from: .6, to: .72, h: 3 }, adipose: true, underbite: 2 }, col: { base: '#d04040', belly: '#f0d0c0', fin: '#e06050', mark: '#3a6a40' } },
+  cutthroat: { gen: { w: 46, h: 17, bodyH: .52, peak: .45, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .55, h: 3 }, anal: { type: 'soft', from: .6, to: .72, h: 3 }, adipose: true, pat: 'spots', dens: .08, seed: 219 }, col: { base: '#a0a060', belly: '#f0f0d8', fin: '#b0b070', mark: '#e04020' } },
+  tuichub: { gen: { w: 32, h: 15, bodyH: .56, peak: .5, ped: .18, snout: .33, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .4, to: .6, h: 3 }, pat: 'scales', dens: .08, seed: 220 }, col: { base: '#8a9060', belly: '#e8ecd0', fin: '#9aa070', mark: '#4a5030' } },
+  brownbullhead: { gen: { w: 40, h: 16, bodyH: .6, peak: .7, ped: .1, snout: .5, tail: 'round', barbel: true, mouth: 'low', dorsal: { type: 'soft', from: .6, to: .75, h: 3 }, anal: { type: 'long', from: .1, to: .65, h: 2 }, eye: 1, eyeX: .85, eyeY: .3 }, col: { base: '#6a5a40', belly: '#d8d0b0', fin: '#7a6a50', mark: '#3a3020' } },
+  mountainwhitefish: { gen: { w: 42, h: 15, bodyH: .52, peak: .45, ped: .2, snout: .25, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .55, h: 3 }, anal: { type: 'soft', from: .6, to: .72, h: 3 }, adipose: true, headPow: 1, pat: 'lateral' }, col: { base: '#b0b8c0', belly: '#ffffff', fin: '#c0c8d0', mark: '#707880' } },
+  polarcod: { gen: { w: 34, h: 12, bodyH: .48, peak: .4, ped: .2, snout: .33, tail: 'trunc', dorsal: { type: 'soft', from: .25, to: .38, h: 4 }, dorsal2: { type: 'soft', from: .42, to: .56, h: 3 }, dorsal3: { type: 'soft', from: .6, to: .75, h: 3 }, anal: { type: 'soft', from: .42, to: .56, h: 2 }, anal2: { type: 'soft', from: .6, to: .75, h: 2 }, barbel: true }, col: { base: '#8a9aa8', belly: '#f0f4f8', fin: '#9aaab8', mark: '#4a5a68' } },
+  greenlandhalibut: { gen: { w: 52, h: 24, bodyH: .7, peak: .5, ped: .14, snout: .3, tail: 'trunc', tailLen: .12, dorsal: { type: 'long', from: .05, to: .95, h: 2 }, anal: { type: 'long', from: .05, to: .95, h: 2 }, eyeX: .8, eyeY: .2, eye2: [.87, .14], pect: false }, col: { base: '#4a5058', belly: '#c8ccd0', fin: '#5a6068', mark: '#2a2e38' } },
+  eelpout: { gen: { w: 48, h: 13, tail: 'none', ped: .08, peak: .3, snout: .35, bodyH: .66, dorsal: { type: 'long', from: .15, to: .97, h: 2 }, anal: { type: 'long', from: .2, to: .97, h: 2 }, pectX: .8, pat: 'blotch', dens: .12, seed: 221 }, col: { base: '#8a8060', belly: '#e0d8c0', fin: '#9a9070', mark: '#4a4030' } },
+  arcticflounder: { gen: { w: 38, h: 22, bodyH: .8, peak: .5, ped: .14, snout: .3, tail: 'round', tailLen: .12, dorsal: { type: 'long', from: .05, to: .95, h: 2 }, anal: { type: 'long', from: .05, to: .95, h: 2 }, eyeX: .8, eyeY: .2, eye2: [.87, .14], pect: false, pat: 'spots', dens: .08, seed: 222 }, col: { base: '#6a6a60', belly: '#e0e0d8', fin: '#7a7a70', mark: '#3a3a30' } },
+  roughheadgrenadier: { gen: { w: 58, h: 16, tail: 'none', ped: .08, peak: .25, snout: .45, bodyH: .72, dorsal: { type: 'long', from: .15, to: .97, h: 2 }, anal: { type: 'long', from: .2, to: .97, h: 2 }, pectX: .8, headPow: 1, eye: 1 }, col: { base: '#6a6a78', belly: '#d0d0d8', fin: '#7a7a88', mark: '#3a3a48' } },
+  staghornsculpin: { gen: { w: 34, h: 17, bodyH: .6, peak: .5, ped: .2, snout: .45, tail: 'fork', dorsal: { type: 'spiny', from: .35, to: .55, h: 4 }, dorsal2: { type: 'soft', from: .58, to: .75, h: 3 }, anal: { type: 'soft', from: .55, to: .7, h: 2 }, flatHead: true, headPow: 1, pat: 'bars', barP: 5, barW: 2 }, col: { base: '#7a6a50', belly: '#d8d0b8', fin: '#8a7a60', mark: '#3a3020' } },
+  sleepergoby: { gen: { w: 42, h: 16, bodyH: .6, peak: .5, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'spiny', from: .35, to: .55, h: 4 }, dorsal2: { type: 'soft', from: .58, to: .75, h: 3 }, anal: { type: 'soft', from: .55, to: .7, h: 2 }, flatHead: true, pat: 'blotch', dens: .14, seed: 224 }, col: { base: '#6a5a40', belly: '#d0c8a8', fin: '#7a6a50', mark: '#2a2010' } },
+  silverbatfish: { gen: { w: 34, h: 32, bodyH: .86, peak: .5, ped: .14, snout: .3, tail: 'trunc', dorsal: { type: 'long', from: .3, to: .7, h: 9 }, anal: { type: 'long', from: .35, to: .7, h: 9 } }, col: { base: '#c0c8d0', belly: '#ffffff', fin: '#d0d8e0', mark: '#2a2a30' } },
+  blackjewfish: { gen: { w: 60, h: 28, bodyH: .64, peak: .45, ped: .2, snout: .35, tail: 'round', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .55, to: .72, h: 3 }, bigMouth: true }, col: { base: '#2a2a30', belly: '#9a9aa0', fin: '#3a3a40', mark: '#5a5a68' } },
+  greasygrouper: { gen: { w: 52, h: 26, bodyH: .64, peak: .45, ped: .2, snout: .35, tail: 'round', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .55, to: .72, h: 3 }, bigMouth: true, pat: 'spots', dens: .14, seed: 225 }, col: { base: '#8a7a50', belly: '#e0d8b8', fin: '#9a8a60', mark: '#3a3020' } },
+  blackspotsnapper: { gen: { w: 40, h: 20, bodyH: .7, peak: .5, ped: .18, snout: .33, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .4, to: .6, h: 3 }, pat: 'twospots' }, col: { base: '#d0a060', belly: '#fff0d8', fin: '#e0b070', mark: '#1a1a1a' } },
+  mangrovewhipray: { gen: { w: 54, h: 28, bodyH: .8, peak: .5, ped: .06, snout: .3, tail: 'none', dorsal: { type: 'long', from: .05, to: .95, h: 2 }, anal: { type: 'long', from: .05, to: .95, h: 2 }, eyeX: .8, eyeY: .15, eye2: [.87, .1], pect: false, pat: 'spots', dens: .1, seed: 226 }, col: { base: '#5a5a50', belly: '#d8d8d0', fin: '#6a6a60', mark: '#f0f0e0' } },
+  dimling: { gen: { w: 26, h: 11, bodyH: .5, ped: .18, snout: .22, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .6, h: 2 }, anal: { type: 'soft', from: .5, to: .62, h: 1 } }, col: { base: '#6a7078', belly: '#b0b4b8', fin: '#7a8088', mark: '#404448' } },
+  wickfish: { gen: { w: 28, h: 12, bodyH: .5, ped: .18, snout: .22, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .6, h: 2 }, anal: { type: 'soft', from: .5, to: .62, h: 1 }, pat: 'lights', dens: .14, seed: 227 }, col: { base: '#f0e080', belly: '#ffffff', fin: '#f8f0a0', mark: '#f0a020', glow: '#ffffc0' } },
+  phosphorbream: { gen: { w: 40, h: 24, bodyH: .7, peak: .5, ped: .18, snout: .33, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .4, to: .6, h: 3 }, pat: 'lights', dens: .1, seed: 228 }, col: { base: '#4060a0', belly: '#c0f0ff', fin: '#6080c0', mark: '#60ffe0', glow: '#a0ffff' } },
+  lanternjaw: { gen: { w: 52, h: 26, bodyH: .64, peak: .45, ped: .2, snout: .35, tail: 'round', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .55, to: .72, h: 3 }, bigMouth: true, lure: true, jaws: { len: .12, gap: .3, teeth: true }, pat: 'lights', dens: .06, seed: 229 }, col: { base: '#203050', belly: '#a0c0e0', fin: '#304060', mark: '#ffff60', glow: '#ffffa0' } },
+  ghostherring: { gen: { w: 32, h: 12, bodyH: .5, ped: .18, snout: .22, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .6, h: 2 }, anal: { type: 'soft', from: .5, to: .62, h: 1 }, pat: 'lateral' }, col: { base: '#d8e8f0', belly: '#ffffff', fin: '#e8f4f8', mark: '#a0c0d0', glow: '#ffffff' } },
+  nightmarlin: { gen: { w: 68, h: 24, bodyH: .52, peak: .45, ped: .14, snout: .26, tail: 'lunate', tailH: .95, dorsal: { type: 'sail', from: .3, to: .55, h: 9 }, dorsal2: { type: 'soft', from: .6, to: .72, h: 2 }, anal: { type: 'soft', from: .6, to: .72, h: 2 }, beak: .3, pat: 'lights', dens: .05, seed: 230 }, col: { base: '#101830', belly: '#8090c0', fin: '#202850', mark: '#60a0ff', glow: '#a0e0ff' } },
+  glowray: { gen: { w: 52, h: 26, bodyH: .8, peak: .5, ped: .06, snout: .3, tail: 'none', dorsal: { type: 'long', from: .05, to: .95, h: 2 }, anal: { type: 'long', from: .05, to: .95, h: 2 }, eyeX: .8, eyeY: .15, eye2: [.87, .1], pect: false, pat: 'lights', dens: .09, seed: 231 }, col: { base: '#304070', belly: '#c0e0f0', fin: '#405080', mark: '#80ffff', glow: '#c0ffff' } },
+  upsidedownbream: { gen: { w: 38, h: 24, bodyH: .7, peak: .5, ped: .18, snout: .33, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .4, to: .6, h: 3 }, eyeY: .7, pat: 'stripes' }, col: { base: '#d8d0b8', belly: '#8a8070', fin: '#e0d8c0', mark: '#6a6050' } },
+  saltcrustcarp: { gen: { w: 50, h: 28, bodyH: .7, peak: .5, ped: .18, snout: .33, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .4, to: .6, h: 3 }, barbel: true, pat: 'scales', dens: .08, seed: 233 }, col: { base: '#f0ece0', belly: '#ffffff', fin: '#f8f4ec', mark: '#c0b8a0' } },
+  brinemullet: { gen: { w: 44, h: 16, bodyH: .52, peak: .45, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .55, h: 3 }, anal: { type: 'soft', from: .6, to: .72, h: 3 }, pat: 'lateral' }, col: { base: '#b8c0c0', belly: '#ffffff', fin: '#c8d0d0', mark: '#788080' } },
+  pillarfish: { gen: { w: 12, h: 40, tail: 'none', ped: .08, peak: .3, snout: .35, bodyH: .9, pectX: .8, pect: false, eyeX: .5, eyeY: .08, pat: 'bands', barP: 6, barW: 2 }, col: { base: '#e8e0d0', belly: '#ffffff', fin: '#f0e8d8', mark: '#a09888' } },
+  crystalgar: { gen: { w: 58, h: 12, bodyH: .46, peak: .5, ped: .24, snout: .42, headPow: 1, tail: 'fork', dorsal: { type: 'soft', from: .15, to: .3, h: 3 }, anal: { type: 'soft', from: .15, to: .3, h: 3 }, jaws: { len: .16, gap: .3, teeth: true }, pat: 'lateral' }, col: { base: '#e0f0f0', belly: '#ffffff', fin: '#f0f8f8', mark: '#a0c0c0', glow: '#ffffff' } },
+  floatfish: { gen: { w: 30, h: 26, bodyH: .9, peak: .55, ped: .2, snout: .45, tail: 'round', tailLen: .12, dorsal: { type: 'soft', from: .6, to: .75, h: 3 }, anal: { type: 'soft', from: .6, to: .75, h: 3 }, eyeX: .8, eyeY: .3, pat: 'spots', dens: .1, seed: 234 }, col: { base: '#f0e8d0', belly: '#ffffff', fin: '#f8f0e0', mark: '#c0b090' } },
+  padperch: { gen: { w: 34, h: 18, bodyH: .6, peak: .5, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'spiny', from: .35, to: .55, h: 4 }, dorsal2: { type: 'soft', from: .58, to: .75, h: 3 }, anal: { type: 'soft', from: .55, to: .7, h: 2 }, pat: 'bars', barP: 5, barW: 2 }, col: { base: '#60a050', belly: '#e0f0c0', fin: '#70b060', mark: '#305020' } },
+  lilyeel: { gen: { w: 56, h: 13, tail: 'none', ped: .08, peak: .3, snout: .35, bodyH: .6, dorsal: { type: 'long', from: .15, to: .97, h: 2 }, anal: { type: 'long', from: .2, to: .97, h: 2 }, pectX: .8, pat: 'spots', dens: .08, seed: 235 }, col: { base: '#80a060', belly: '#e0f0c0', fin: '#90b070', mark: '#405030', glow: '#f0ffc0' } },
+  stemsucker: { gen: { w: 38, h: 14, bodyH: .5, peak: .7, ped: .1, snout: .5, tail: 'none', barbel: true, mouth: 'low', dorsal: { type: 'soft', from: .6, to: .75, h: 3 }, anal: { type: 'long', from: .1, to: .65, h: 2 }, eye: 1, eyeX: .85, eyeY: .3, pat: 'blotch', dens: .12, seed: 236 }, col: { base: '#8a9a60', belly: '#e8f0d0', fin: '#9aaa70', mark: '#4a5a30' } },
+  tadpolefish: { gen: { w: 24, h: 14, bodyH: .8, peak: .75, ped: .3, snout: .45, tail: 'none', tailLen: .12, eyeX: .8, eyeY: .3 }, col: { base: '#303828', belly: '#60705a', fin: '#404838', mark: '#1a2018' } },
+  kingscarp: { gen: { w: 54, h: 30, bodyH: .7, peak: .5, ped: .18, snout: .33, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .4, to: .6, h: 3 }, barbel: true, pat: 'scales', dens: .07, seed: 237 }, col: { base: '#e0b030', belly: '#fff0c0', fin: '#f0c850', mark: '#8a6010', glow: '#ffffa0' } },
+  heronbane: { gen: { w: 62, h: 15, bodyH: .46, peak: .5, ped: .24, snout: .42, headPow: 1, tail: 'fork', dorsal: { type: 'soft', from: .15, to: .3, h: 3 }, anal: { type: 'soft', from: .15, to: .3, h: 3 }, jaws: { len: .16, gap: .3, teeth: true }, pat: 'spots', dens: .08, seed: 238 }, col: { base: '#4a6a40', belly: '#c0d0a0', fin: '#5a7a50', mark: '#f0e040' } },
+  cogfish: { gen: { w: 34, h: 22, bodyH: .74, peak: .5, ped: .18, snout: .33, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 5 }, anal: { type: 'soft', from: .4, to: .6, h: 3 }, pat: 'scutes' }, col: { base: '#b08030', belly: '#f0d890', fin: '#c09040', mark: '#604010' } },
+  brasstrout: { gen: { w: 46, h: 17, bodyH: .52, peak: .45, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .55, h: 3 }, anal: { type: 'soft', from: .6, to: .72, h: 3 }, adipose: true, pat: 'scales', dens: .1, seed: 240 }, col: { base: '#c8a040', belly: '#fff0c0', fin: '#d8b050', mark: '#806020', glow: '#fff0a0' } },
+  springeel: { gen: { w: 54, h: 13, tail: 'none', ped: .08, peak: .3, snout: .35, bodyH: .6, dorsal: { type: 'long', from: .15, to: .97, h: 2 }, anal: { type: 'long', from: .2, to: .97, h: 2 }, pectX: .8, pat: 'bands', barP: 4, barW: 2 }, col: { base: '#8a8a90', belly: '#d8d8e0', fin: '#9a9aa0', mark: '#404048' } },
+  pistonpike: { gen: { w: 60, h: 14, bodyH: .46, peak: .5, ped: .24, snout: .42, headPow: 1, tail: 'fork', dorsal: { type: 'soft', from: .15, to: .3, h: 3 }, anal: { type: 'soft', from: .15, to: .3, h: 3 }, jaws: { len: .14, gap: .3, teeth: true }, pat: 'bands', barP: 7, barW: 2 }, col: { base: '#606068', belly: '#c8c8d0', fin: '#707078', mark: '#c04020' } },
+  boilerfish: { gen: { w: 32, h: 26, bodyH: .84, peak: .55, ped: .2, snout: .45, tail: 'round', tailLen: .12, dorsal: { type: 'soft', from: .6, to: .75, h: 3 }, anal: { type: 'soft', from: .6, to: .75, h: 3 }, eyeX: .8, eyeY: .3, pat: 'scutes' }, col: { base: '#8a4a30', belly: '#e0a080', fin: '#9a5a40', mark: '#3a1a10', glow: '#ff8040' } },
+  gearray: { gen: { w: 54, h: 28, bodyH: .8, peak: .5, ped: .06, snout: .3, tail: 'none', dorsal: { type: 'long', from: .05, to: .95, h: 2 }, anal: { type: 'long', from: .05, to: .95, h: 2 }, eyeX: .8, eyeY: .15, eye2: [.87, .1], pect: false, pat: 'scutes' }, col: { base: '#a08850', belly: '#e8d8a8', fin: '#b09860', mark: '#504020' } },
+  bonegar: { gen: { w: 56, h: 12, bodyH: .46, peak: .5, ped: .24, snout: .42, headPow: 1, tail: 'fork', dorsal: { type: 'soft', from: .15, to: .3, h: 3 }, anal: { type: 'soft', from: .15, to: .3, h: 3 }, jaws: { len: .16, gap: .3, teeth: true } }, col: { base: '#e8e0d0', belly: '#ffffff', fin: '#f0e8d8', mark: '#a09888' } },
+  marrowfish: { gen: { w: 52, h: 14, tail: 'none', ped: .08, peak: .3, snout: .35, bodyH: .7, dorsal: { type: 'long', from: .15, to: .97, h: 2 }, anal: { type: 'long', from: .2, to: .97, h: 2 }, pectX: .8, noEye: true, mouth: 'low' }, col: { base: '#c04050', belly: '#f0c0c8', fin: '#d05060', mark: '#601020' } },
+  ribwrasse: { gen: { w: 40, h: 17, bodyH: .52, peak: .5, ped: .22, snout: .32, tail: 'round', dorsal: { type: 'long', from: .3, to: .8, h: 3 }, anal: { type: 'long', from: .45, to: .8, h: 3 }, pat: 'bars', barP: 4, barW: 1 }, col: { base: '#d8d0c0', belly: '#ffffff', fin: '#e0d8c8', mark: '#8a4040' } },
+  skullgrouper: { gen: { w: 56, h: 28, bodyH: .64, peak: .45, ped: .2, snout: .35, tail: 'round', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .55, to: .72, h: 3 }, bigMouth: true, pat: 'twospots' }, col: { base: '#e0d8c8', belly: '#ffffff', fin: '#e8e0d0', mark: '#2a2a30' } },
+  vertebrafish: { gen: { w: 28, h: 11, bodyH: .5, ped: .18, snout: .22, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .6, h: 2 }, anal: { type: 'soft', from: .5, to: .62, h: 1 }, pat: 'bands', barP: 3, barW: 1 }, col: { base: '#e8e4d8', belly: '#ffffff', fin: '#f0ece0', mark: '#908880' } },
+  leviathanfry: { gen: { w: 66, h: 28, bodyH: .56, peak: .45, ped: .14, snout: .26, tail: 'lunate', tailH: .95, dorsal: { type: 'sail', from: .35, to: .5, h: 5 }, dorsal2: { type: 'soft', from: .6, to: .72, h: 2 }, anal: { type: 'soft', from: .6, to: .72, h: 2 }, pat: 'scutes' }, col: { base: '#303840', belly: '#a0a8b0', fin: '#404850', mark: '#e0e0d8' } },
+  eyefish: { gen: { w: 38, h: 24, bodyH: .7, peak: .5, ped: .18, snout: .33, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .4, to: .6, h: 3 }, eye: 2, pat: 'twospots' }, col: { base: '#6080a0', belly: '#e0f0ff', fin: '#7090b0', mark: '#ffffff', glow: '#ffffff' } },
+  wallrunner: { gen: { w: 56, h: 16, bodyH: .46, peak: .45, ped: .14, snout: .26, tail: 'lunate', tailH: .95, dorsal: { type: 'sail', from: .35, to: .5, h: 5 }, dorsal2: { type: 'soft', from: .6, to: .72, h: 2 }, anal: { type: 'soft', from: .6, to: .72, h: 2 }, pat: 'stripes' }, col: { base: '#405070', belly: '#d0e0f0', fin: '#506080', mark: '#203040' } },
+  calmcarp: { gen: { w: 50, h: 28, bodyH: .68, peak: .5, ped: .18, snout: .33, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .4, to: .6, h: 3 }, barbel: true, pat: 'scales', dens: .08, seed: 241 }, col: { base: '#a0a890', belly: '#f0f0e0', fin: '#b0b8a0', mark: '#606850' } },
+  pressurefish: { gen: { w: 30, h: 26, bodyH: .84, peak: .55, ped: .2, snout: .45, tail: 'round', tailLen: .12, dorsal: { type: 'soft', from: .6, to: .75, h: 3 }, anal: { type: 'soft', from: .6, to: .75, h: 3 }, eyeX: .8, eyeY: .3, pat: 'spots', dens: .12, seed: 242 }, col: { base: '#8090a8', belly: '#e8f0f8', fin: '#90a0b8', mark: '#405060' } },
+  spiraleel: { gen: { w: 54, h: 13, tail: 'none', ped: .08, peak: .3, snout: .35, bodyH: .6, dorsal: { type: 'long', from: .15, to: .97, h: 2 }, anal: { type: 'long', from: .2, to: .97, h: 2 }, pectX: .8, pat: 'bands', barP: 5, barW: 2 }, col: { base: '#607080', belly: '#d0e0e8', fin: '#708090', mark: '#304050', glow: '#ffffff' } },
+  hurricanemarlin: { gen: { w: 68, h: 24, bodyH: .52, peak: .45, ped: .14, snout: .26, tail: 'lunate', tailH: .95, dorsal: { type: 'sail', from: .3, to: .56, h: 10 }, dorsal2: { type: 'soft', from: .6, to: .72, h: 2 }, anal: { type: 'soft', from: .6, to: .72, h: 2 }, beak: .32, pat: 'lights', dens: .04, seed: 243 }, col: { base: '#203050', belly: '#a0b0d0', fin: '#304060', mark: '#f0f0ff', glow: '#ffffff' } },
+  scaleclinger: { gen: { w: 36, h: 15, bodyH: .52, peak: .5, ped: .22, snout: .32, tail: 'round', dorsal: { type: 'long', from: .3, to: .8, h: 3 }, anal: { type: 'long', from: .45, to: .8, h: 3 }, pat: 'scales', dens: .1, seed: 244 }, col: { base: '#8a70a0', belly: '#e0d0f0', fin: '#9a80b0', mark: '#402050' } },
+  dreamfish: { gen: { w: 40, h: 26, bodyH: .7, peak: .5, ped: .18, snout: .33, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .4, to: .6, h: 3 }, pat: 'lights', dens: .08, seed: 245 }, col: { base: '#b060c0', belly: '#f0d0ff', fin: '#c070d0', mark: '#ffffff', glow: '#ffc0ff' } },
+  gillfeeder: { gen: { w: 26, h: 11, bodyH: .5, ped: .18, snout: .22, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .6, h: 2 }, anal: { type: 'soft', from: .5, to: .62, h: 1 }, pat: 'lateral' }, col: { base: '#d08090', belly: '#ffe0e8', fin: '#e090a0', mark: '#803040' } },
+  lashfish: { gen: { w: 58, h: 10, tail: 'none', ped: .08, peak: .3, snout: .35, bodyH: .5, dorsal: { type: 'long', from: .15, to: .97, h: 2 }, anal: { type: 'long', from: .2, to: .97, h: 2 }, pectX: .8 }, col: { base: '#302838', belly: '#a090a8', fin: '#403848', mark: '#8060a0' } },
+  yawnbass: { gen: { w: 54, h: 28, bodyH: .64, peak: .45, ped: .2, snout: .35, tail: 'round', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .55, to: .72, h: 3 }, bigMouth: true, jaws: { len: .16, gap: .4, teeth: false } }, col: { base: '#705080', belly: '#d8c8e0', fin: '#806090', mark: '#301840' } },
+  drowsyray: { gen: { w: 54, h: 26, bodyH: .8, peak: .5, ped: .06, snout: .3, tail: 'none', dorsal: { type: 'long', from: .05, to: .95, h: 2 }, anal: { type: 'long', from: .05, to: .95, h: 2 }, eyeX: .8, eyeY: .15, eye2: [.87, .1], pect: false, pat: 'spots', dens: .08, seed: 246 }, col: { base: '#605070', belly: '#d0c8d8', fin: '#706080', mark: '#302040', glow: '#e0c0ff' } },
   // --- legends ---
   wreckwraith:  { gen: { w: 56, h: 30, bodyH: .6, peak: .4, ped: .2, snout: .3, mouth: 'top', snoutY: -.04, tail: 'fork', tailH: .95, dorsal: { type: 'soft', from: .4, to: .55, h: 5 }, anal: { type: 'soft', from: .45, to: .65, h: 4 }, pat: ['scales', 'lights'], dens: .05, seed: 41 }, col: { base: '#9ad8e8', belly: '#ffffff', fin: '#c8f0ff', mark: '#ffffff', glow: '#80ffff', eye: '#ff4060', eyeW: '#ffe0e8' } },
   harbormaster: { gen: { w: 60, h: 26, bodyH: .55, peak: .4, ped: .2, snout: .25, snoutY: .04, tail: 'hetero', tailH: .9, dorsal: { type: 'soft', from: .2, to: .34, h: 5 }, anal: { type: 'soft', from: .2, to: .3, h: 4 }, barbel: true, mouth: 'low', pat: 'scutes' }, col: { base: '#c8a040', belly: '#fff0c0', fin: '#e0c060', mark: '#fff8e0', eye: '#2a1a08', eyeW: '#ffe8a0' } },
@@ -1778,6 +2279,24 @@ const FISH_ART = {
   cloudskimmer: { gen: { w: 32, h: 16, bodyH: .48, peak: .45, ped: .18, snout: .3, tail: 'fork', tailH: .95, pectH: 8, pectX: .68, dorsal: { type: 'soft', from: .4, to: .55, h: 2 } }, col: { base: '#b0c8e0', belly: '#ffffff', fin: '#e8f0ff', mark: '#7090b0' } },
   staticfin:  { gen: { w: 40, h: 26, bodyH: .66, peak: .5, ped: .18, snout: .3, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 8 }, anal: { type: 'spiny', from: .5, to: .75, h: 4 }, pat: 'lights', dens: .1, seed: 84 }, col: { base: '#e0e0ff', belly: '#ffffff', fin: '#f0f0ff', mark: '#6060a0', glow: '#ffff60' } },
   galvanis:   { gen: { w: 64, h: 24, bodyH: .5, peak: .45, ped: .18, snout: .4, beak: .22, tail: 'lunate', tailH: .95, dorsal: { type: 'sail', from: .35, to: .65, h: 10 }, anal: { type: 'soft', from: .5, to: .62, h: 3 }, pat: 'lights', dens: .1, seed: 85 }, col: { base: '#2a3a6a', belly: '#90a0d0', fin: '#5060a0', mark: '#182048', glow: '#ffff80', eye: '#ffff80' } },
+  lampkeeper: { gen: { w: 62, h: 30, bodyH: .64, peak: .45, ped: .2, snout: .35, tail: 'round', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .55, to: .72, h: 3 }, bigMouth: true, pat: 'lights', dens: .05, seed: 201 }, col: { base: '#d8c070', belly: '#fff8d0', fin: '#e8d890', mark: '#8a6a20', glow: '#ffffa0' } },
+  stackking: { gen: { w: 58, h: 26, bodyH: .64, peak: .5, ped: .22, snout: .32, tail: 'round', dorsal: { type: 'long', from: .25, to: .8, h: 5 }, anal: { type: 'long', from: .45, to: .8, h: 3 }, pat: 'stripes' }, col: { base: '#f06020', belly: '#fff0d0', fin: '#f88040', mark: '#2050e0', glow: '#ffffff' } },
+  thetoll: { gen: { w: 66, h: 22, bodyH: .6, peak: .7, ped: .1, snout: .5, tail: 'fork', barbel: true, mouth: 'low', dorsal: { type: 'soft', from: .6, to: .75, h: 3 }, anal: { type: 'long', from: .1, to: .65, h: 2 }, eye: 1, eyeX: .85, eyeY: .3, pat: 'spots', dens: .05, seed: 206 }, col: { base: '#3a3a48', belly: '#c0c0d0', fin: '#4a4a58', mark: '#d0a040', glow: '#f0d060' } },
+  vespers: { gen: { w: 56, h: 34, bodyH: .74, peak: .5, ped: .18, snout: .33, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .4, to: .6, h: 3 }, pat: 'lights', dens: .05, seed: 208 }, col: { base: '#c0c8e0', belly: '#ffffff', fin: '#d0d8f0', mark: '#f0c050', glow: '#ffffff' } },
+  weedwife: { gen: { w: 64, h: 30, bodyH: .66, peak: .45, ped: .2, snout: .35, tail: 'round', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .55, to: .72, h: 3 }, bigMouth: true, pat: 'blotch', dens: .12, seed: 210 }, col: { base: '#8a8030', belly: '#e8e0a0', fin: '#a09040', mark: '#4a4010', glow: '#f0f0a0' } },
+  hangedman: { gen: { w: 62, h: 22, bodyH: .5, peak: .45, ped: .14, snout: .26, tail: 'lunate', tailH: .95, dorsal: { type: 'sail', from: .35, to: .5, h: 6 }, dorsal2: { type: 'soft', from: .6, to: .72, h: 2 }, anal: { type: 'soft', from: .6, to: .72, h: 2 }, pat: 'bands', barP: 9, barW: 1 }, col: { base: '#9aa0a8', belly: '#e8e8e8', fin: '#a8b0b8', mark: '#5a3a20', glow: '#d0c0a0' } },
+  greywake: { gen: { w: 66, h: 24, bodyH: .5, peak: .4, ped: .2, snout: .3, snoutY: .02, tail: 'lunate', tailH: .9, dorsal: { type: 'tri', from: .4, to: .52, h: 6 }, dorsal2: { type: 'tri', from: .7, to: .76, h: 2 }, mouth: 'low', eye: 1, eyeY: .4, pat: 'lateral' }, col: { base: '#8a9098', belly: '#e0e4e8', fin: '#9aa0a8', mark: '#4a5058', glow: '#c0c8d0' } },
+  tideturner: { gen: { w: 64, h: 34, bodyH: .82, peak: .5, ped: .14, snout: .3, tail: 'round', tailLen: .12, dorsal: { type: 'long', from: .05, to: .95, h: 2 }, anal: { type: 'long', from: .05, to: .95, h: 2 }, eyeX: .8, eyeY: .2, eye2: [.87, .14], pect: false, pat: 'spots', dens: .08, seed: 217 }, col: { base: '#8a7a60', belly: '#e8e0d0', fin: '#9a8a70', mark: '#3a3020', glow: '#f0e8d8' } },
+  kettle: { gen: { w: 60, h: 22, bodyH: .52, peak: .45, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .55, h: 3 }, anal: { type: 'soft', from: .6, to: .72, h: 3 }, adipose: true, eye: 1 }, col: { base: '#f0e8e0', belly: '#ffffff', fin: '#f8f0e8', mark: '#e0b0a0', glow: '#ffffff' } },
+  thehold: { gen: { w: 66, h: 26, bodyH: .6, peak: .4, ped: .2, snout: .33, tail: 'trunc', dorsal: { type: 'soft', from: .25, to: .38, h: 4 }, dorsal2: { type: 'soft', from: .42, to: .56, h: 3 }, dorsal3: { type: 'soft', from: .6, to: .75, h: 3 }, anal: { type: 'soft', from: .42, to: .56, h: 2 }, anal2: { type: 'soft', from: .6, to: .75, h: 2 }, barbel: true, pat: 'lights', dens: .04, seed: 223 }, col: { base: '#c8d8e8', belly: '#ffffff', fin: '#d8e8f0', mark: '#6a7a90', glow: '#ffffff' } },
+  familiar: { gen: { w: 66, h: 24, bodyH: .62, peak: .7, ped: .1, snout: .5, tail: 'fork', barbel: true, mouth: 'low', dorsal: { type: 'soft', from: .6, to: .75, h: 3 }, anal: { type: 'long', from: .1, to: .65, h: 2 }, eye: 1, eyeX: .85, eyeY: .3 }, col: { base: '#1a1a24', belly: '#7a7a90', fin: '#2a2a34', mark: '#f0e040', glow: '#f0e040' } },
+  lastlight: { gen: { w: 60, h: 36, bodyH: .76, peak: .5, ped: .18, snout: .33, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .4, to: .6, h: 3 }, pat: 'lights', dens: .16, seed: 232 }, col: { base: '#f0f8ff', belly: '#ffffff', fin: '#f8fcff', mark: '#80e0ff', glow: '#ffffff' } },
+  thepillar: { gen: { w: 14, h: 44, tail: 'none', ped: .08, peak: .3, snout: .35, bodyH: .92, pectX: .8, pect: false, eyeX: .5, eyeY: .06, pat: 'bands', barP: 7, barW: 2 }, col: { base: '#f8f4ec', belly: '#ffffff', fin: '#fcfaf4', mark: '#c8c0b0', glow: '#ffffff' } },
+  oldcroak: { gen: { w: 66, h: 34, bodyH: .7, peak: .45, ped: .2, snout: .35, tail: 'round', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .55, to: .72, h: 3 }, bigMouth: true, eye: 1, pat: 'blotch', dens: .1, seed: 239 }, col: { base: '#3a5a30', belly: '#b0c890', fin: '#4a6a40', mark: '#f0e040', glow: '#f0f080' } },
+  escapement: { gen: { w: 64, h: 26, bodyH: .52, peak: .45, ped: .14, snout: .26, tail: 'lunate', tailH: .95, dorsal: { type: 'sail', from: .3, to: .55, h: 8 }, dorsal2: { type: 'soft', from: .6, to: .72, h: 2 }, anal: { type: 'soft', from: .6, to: .72, h: 2 }, pat: 'scutes' }, col: { base: '#d8b040', belly: '#fff8d0', fin: '#e8c050', mark: '#604010', glow: '#ffffff' } },
+  lastleviathan: { gen: { w: 68, h: 34, bodyH: .64, peak: .45, ped: .2, snout: .35, tail: 'round', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .55, to: .72, h: 3 }, bigMouth: true, eye: 1, pat: 'scutes' }, col: { base: '#202830', belly: '#8090a0', fin: '#303840', mark: '#f0f0e8', glow: '#c0d0e0' } },
+  theeye: { gen: { w: 58, h: 40, bodyH: .84, peak: .5, ped: .18, snout: .33, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .4, to: .6, h: 3 }, eye: 3, pat: 'twospots' }, col: { base: '#f0f4ff', belly: '#ffffff', fin: '#f8faff', mark: '#2040a0', glow: '#ffffff' } },
+  thewaker: { gen: { w: 56, h: 20, bodyH: .52, peak: .45, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .55, h: 3 }, anal: { type: 'soft', from: .6, to: .72, h: 3 }, pat: 'lights', dens: .12, seed: 247 }, col: { base: '#ff4060', belly: '#ffe0e8', fin: '#ff6080', mark: '#ffffff', glow: '#ffffff' } },
   // --- not fish ---
   wood: { pal: { o: '#3a2414', b: '#8a5a34', d: '#6a4224', m: '#4a2e18' }, map: [
     '.oooooooooooooooooooooo.', 'obbbbbbbbbbbbbbbbbbbbbbo', 'obddbbbbbbddddbbbbbbbddo', 'obbbbbbdbbbbbbbbbbmbbbbo', 'obbbbbbbbbbbddbbbmmbbbbo', 'obddddbbbbbbbbbbbbmbbddo', 'obbbbbbbbbbbbbbbbbbbbbbo', '.oooooooooooooooooooooo.'] },
@@ -2252,6 +2771,7 @@ const BUILD = {
   tent: { w: 34, h: 18, wall: '#c8b080', wall2: '#a89060', roof: 'tent', roofc: '#c8b080' },
   camp: { w: 30, h: 12, wall: '#5a3a22', wall2: '#4a2e18', roof: 'leanto', roofc: '#8a6a44' },
   buyerboat: { w: 50, h: 20, wall: '#3e2816', wall2: '#2a1a0e', roof: 'cabin', roofc: '#4a3220', lamp: true },
+  spaceport: { w: 56, h: 26, wall: '#8a8a98', wall2: '#6e6e7c', roof: 'flat', roofc: '#b0b0c0', sign: true, gantry: true },
 };
 function drawBuilding(kind, x, yb, t, nt) {
   const b = BUILD[kind] || BUILD.shack, w = b.w, h = b.h, legs = b.legs || 0, top = yb - h - legs;
@@ -2275,6 +2795,17 @@ function drawBuilding(kind, x, yb, t, nt) {
   if (b.glow) { g.fillStyle = b.glow; g.fillRect(dx + 1, dy - 11, 5, 4); g.fillStyle = `rgba(255,106,32,${(0.2 + 0.1 * Math.sin(t / 200)).toFixed(2)})`; g.fillRect(dx - 6, dy - 16, 19, 16); }
   if (b.beacon) { const on = Math.sin(t / 700) > 0; g.fillStyle = on ? '#ffffb0' : '#8a8a60'; g.fillRect(x + 4, top - 4, w - 8, 3); if (on) { g.fillStyle = 'rgba(255,255,180,0.12)'; g.fillRect(x - 40, top - 10, w + 80, 14); } }
   if (b.lanterns) { PROP_FN.lantern(x - 4, yb - legs, 0, t, nt); PROP_FN.lantern(x + w + 3, yb - legs, 0, t, nt); }
+  if (b.gantry) { // the launch gantry right of the hangar, and the ship on the pad
+    const gx = x + w + 16, gh = 74;
+    g.fillStyle = '#5a5a68'; g.fillRect(gx, yb - gh, 3, gh); g.fillRect(gx + 22, yb - gh, 3, gh); for (let y = yb - gh + 6; y < yb; y += 10) { g.fillRect(gx, y, 25, 1); bres(g, gx + 2, y + 1, gx + 22, y + 9, '#4a4a58'); }
+    g.fillStyle = '#7a7a88'; g.fillRect(gx - 2, yb - gh - 3, 29, 3);
+    const rx = gx + 7, rw = 11, rh = 46, ry = yb - rh; // the ship
+    g.fillStyle = '#e8e8f0'; g.fillRect(rx, ry + 8, rw, rh - 8); g.fillStyle = '#c0c0cc'; g.fillRect(rx + rw - 3, ry + 8, 3, rh - 8);
+    g.fillStyle = '#c03030'; for (let k = 0; k < 8; k++) g.fillRect(rx + k, ry + 8 - k, rw - 2 * k, 1); g.fillRect(rx - 4, yb - 12, 4, 12); g.fillRect(rx + rw, yb - 12, 4, 12); g.fillRect(rx - 6, yb - 2, 6, 2); g.fillRect(rx + rw, yb - 2, 6, 2);
+    g.fillStyle = '#4a4a58'; g.fillRect(rx + 1, yb - 6, rw - 2, 6); g.fillStyle = '#2a3a60'; g.fillRect(rx + 3, ry + 14, 5, 5); g.fillStyle = '#a0c0ff'; g.fillRect(rx + 4, ry + 15, 2, 2);
+    const blink = Math.sin(t / 400) > 0.6; g.fillStyle = blink ? '#ff4040' : '#601010'; g.fillRect(gx + 1, yb - gh - 5, 1, 2); g.fillRect(gx + 23, yb - gh - 5, 1, 2);
+    if (nt > 0.3) { g.fillStyle = `rgba(255,255,220,${(0.08 * nt).toFixed(2)})`; g.fillRect(gx - 10, yb - gh, 45, gh); }
+  }
   if (b.sign) { g.fillStyle = '#d9c389'; g.fillRect(x + 4, top + 2, 14, 4); g.fillStyle = '#3a2816'; g.fillRect(x + 6, top + 3, 3, 1); g.fillRect(x + 11, top + 3, 5, 1); g.fillStyle = '#b8871c'; g.fillRect(x + 6, top + 4, 10, 1); }
   return [dx + 3, dy];
 }
@@ -2554,14 +3085,14 @@ function drawGame(t) {
 // The strip is three screens wide: [hunting gate][village][fishing shore]. The fishing shore is the normal scene, so
 // walking left from your seat takes you through the village to the gate. Camera follows the fisherman.
 let ISL = null;
-function isleSpots(l) { const seat = landY(l); return [
+function isleSpots(l) { const seat = landY(l); if (l.noFish) return [{ id: 'shop', x: W + 0.5 * W + 14, label: 'Into the spaceport', hint: l.keeper ? l.keeper.name + ' runs the gantry.' : 'The spaceport.' }]; return [
   { id: 'hunt', x: 0.5 * W, label: 'Into ' + (l.hunt.name || 'the wild'), hint: l.hunt.gate },
   { id: 'shop', x: W + 0.5 * W + 14, label: l.shop ? 'Into the shop' : l.sell ? 'Sell to the traders' : 'The camp', hint: l.shop ? (l.keeper ? l.keeper.name + ' keeps the shop.' : 'The shop.') : l.sell ? 'They buy the whole haul.' : 'Your bucket and your bag.' },
   { id: 'fish', x: 2 * W + shoreW - 16, label: 'Fishing spots', hint: l.spots.length + ' places to fish. Pick one.' } ]; }
 function enterIsland(at) {
   const l = loc(); MODE = 'island'; $('#game').hidden = true; $('#hunt').hidden = true; $('#isle').hidden = false;
   const spots = isleSpots(l);
-  if (!ISL || ISL.loc !== l.id) ISL = { loc: l.id, px: spots[2].x, dir: -1, walk: 0, anim: 0 };
+  if (!ISL || ISL.loc !== l.id) ISL = { loc: l.id, px: (spots[2] || spots[0]).x, dir: -1, walk: 0, anim: 0 }; // the spaceport has only the one place to press
   const sp = spots.find(s => s.id === at); if (sp) ISL.px = sp.x; ISL.dir = at === 'fish' ? -1 : 1; ISL.walk = 0;
   $('#iName').textContent = l.name; $('#iVibe').textContent = l.vibe || ''; renderIsle(); window.scrollTo(0, 0);
 }
@@ -2575,13 +3106,23 @@ function renderIsle() {
   const l = loc(); $('#iHint').innerHTML = sp ? `<b>${sp.hint}</b>` : ISL.px < W ? `${l.hunt.name ? l.hunt.name[0].toUpperCase() + l.hunt.name.slice(1) : 'The wild'} lies this way.` : ISL.px < 2 * W ? (l.shop ? 'The village. Walk up to the door.' : l.sell ? 'The traders\' camp.' : 'Your camp.') : 'The shore. Your lines are to the right.';
 }
 function stepIsle(dt) {
-  if (!ISL) return; const l = loc(), maxX = 2 * W + shoreW - 6;
-  if (ISL.walk) { ISL.px = clamp(ISL.px + ISL.walk * 42 * dt, 8, maxX); ISL.dir = ISL.walk; ISL.anim += dt * 7; renderIsle(); }
+  if (!ISL) return; const l = loc(), maxX = l.noFish ? 2 * W - 8 : 2 * W + shoreW - 6, minX = l.noFish ? W + 8 : 8;
+  if (ISL.walk) { ISL.px = clamp(ISL.px + ISL.walk * 42 * dt, minX, maxX); ISL.dir = ISL.walk; ISL.anim += dt * 7; renderIsle(); }
 }
 function drawIsland(t) {
   const l = loc(), h = hourAt(t), nt = drawSkyBase(h, t, {}); sceneWeather(l, t, nt);
   const cam = clamp(ISL.px - W / 2, 0, 2 * W) | 0, gy = landY(l), sc = l.scene;
   g.save(); g.translate(-cam, 0);
+  if (l.noFish) { // the spaceport: one long apron of concrete, the gantry, no shore and no gate
+    drawLand(l, 0, 3 * W + shoreW, t);
+    const vb = BUILD[l.village.kind] || BUILD.shack; drawBuilding(l.village.kind, ((W + 0.5 * W) | 0) - (vb.w >> 1), gy, t, nt);
+    for (const pr of l.village.props) drawProp(pr, gy, t, nt, W, W);
+    for (let k = 0; k < 7; k++) { g.fillStyle = (Math.floor(t / 400) + k) % 7 === 0 ? '#ffffff' : '#c03030'; g.fillRect(W - 30 + k * 18, gy - 2, 2, 2); } // runway lights
+    for (const sp of isleSpots(l)) { const yy = (gy - 36 + Math.sin(t / 300 + sp.x) * 1.5) | 0; g.fillStyle = '#f0c050'; g.fillRect(sp.x - 2 | 0, yy, 5, 1); g.fillRect(sp.x - 1 | 0, yy + 1, 3, 1); g.fillRect(sp.x | 0, yy + 2, 1, 1); }
+    const frame = ISL.walk && (Math.floor(ISL.anim) & 1) ? 'walk' : 'stand', spr = sprite(frame), bob = ISL.walk && (Math.floor(ISL.anim) & 1) ? 1 : 0;
+    blit(g, spr, (ISL.px - spr.width / 2) | 0, (gy - spr.height + 1 + bob) | 0, ISL.dir > 0);
+    g.restore(); g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, 0, W, 1); return;
+  }
   // fishing shore (right screen)
   g.save(); g.translate(2 * W, 0);
   drawSeaBase(h, t, nt, { tint: S.loc === 'trench' ? 'rgba(0,0,12,0.32)' : S.loc === 'fjord' ? 'rgba(120,180,220,0.1)' : (sc && sc.tint) || null });
@@ -2848,6 +3389,7 @@ function endCut() {
 function startStorm() { fadeTo(() => { $('#game').hidden = true; $('#isle').hidden = true; startCut(); }); }
 function enterGame() {
   if (S.prologue && S.proCaught >= 2) { startCut(); return; } // closed the game mid-storm: pick the storm back up
+  if (loc().noFish) { $('#title').hidden = true; $('#cut').hidden = true; ISL = null; enterIsland('shop'); if (S.pending) showCatch(); return; } // the spaceport has no shore to land on
   MODE = 'game'; $('#title').hidden = true; $('#cut').hidden = true; $('#isle').hidden = true; $('#hunt').hidden = true; $('#game').hidden = false; ISL = null; reseedFish(); render(); window.scrollTo(0, 0); if (S.pending) showCatch();
 }
 function showTitle() { MODE = 'title'; $('#game').hidden = true; $('#isle').hidden = true; $('#hunt').hidden = true; $('#cut').hidden = true; $('#title').hidden = false; $('#bCont').hidden = !S.started; $('#bNew').textContent = S.started ? 'Start over' : 'New voyage'; $('#confirm').textContent = ''; confirmNew = false; }
@@ -2898,8 +3440,8 @@ function frame(ts) {
 }
 
 // ---------- chart ----------
-const MAP_INK = { shoal: '#e6cf96', harbor: '#c8d08c', brine: '#f4f0e4', reach: '#9ac070', lantern: '#f0c8a0', trench: '#2a3550', delta: '#8aa860', fjord: '#eef3f7', bell: '#d8e8e0', cinder: '#3a2a2a', glass: '#e8fbff', hollow: '#6a6a80', thunder: '#7a8898', stars: '#5a4630' };
-const MAP_IN = { shoal: '#3f8f4e', harbor: '#3f8f4e', brine: '#d8d0b8', reach: '#2f6f3e', lantern: '#c04040', trench: '#2a3550', delta: '#4a7a3a', fjord: '#b7d3e6', bell: '#80a8a0', cinder: '#ff6a20', glass: '#a0e0f0', hollow: '#40a080', thunder: '#f0e060' };
+const MAP_INK = { tortoise: '#e8d8a0', gannet: '#f4f4ec', market: '#c8a870', monastery: '#9a9aa6', sargasso: '#c8b060', pirate: '#d8c090', whaling: '#e8e4d8', tidal: '#d8c8a0', crater: '#c8b8a8', iceship: '#eef3f7', witch: '#4a6a3a', biolum: '#2a3a60', deadsea: '#f8f8f0', frogs: '#6aa050', clockwork: '#a08040', ribcage: '#f0ece0', stormeye: '#d8d0b0', sleeper: '#8a70a0', spaceport: '#8a8a98', shoal: '#e6cf96', harbor: '#c8d08c', brine: '#f4f0e4', reach: '#9ac070', lantern: '#f0c8a0', trench: '#2a3550', delta: '#8aa860', fjord: '#eef3f7', bell: '#d8e8e0', cinder: '#3a2a2a', glass: '#e8fbff', hollow: '#6a6a80', thunder: '#7a8898', stars: '#5a4630' };
+const MAP_IN = { tortoise: '#5a9a4e', gannet: '#c8c8c0', market: '#8a6a40', monastery: '#5a5a66', sargasso: '#8a8030', pirate: '#3a6a3a', whaling: '#8a8a90', tidal: '#8a9a60', crater: '#60a0c0', iceship: '#9ac0d8', witch: '#2a3a20', biolum: '#60e0ff', deadsea: '#d0d0c0', frogs: '#3a7030', clockwork: '#604020', ribcage: '#b0a8a0', stormeye: '#3a6a60', sleeper: '#4a3060', spaceport: '#404050', shoal: '#3f8f4e', harbor: '#3f8f4e', brine: '#d8d0b8', reach: '#2f6f3e', lantern: '#c04040', trench: '#2a3550', delta: '#4a7a3a', fjord: '#b7d3e6', bell: '#80a8a0', cinder: '#ff6a20', glass: '#a0e0f0', hollow: '#40a080', thunder: '#f0e060' };
 // The world: one sea, every island drawn as a landmass, a few uninhabited sandbars, and black fog over all of it.
 // Fog clears in a wide circle around islands you have visited, a smaller one around islands a keeper named, a sliver
 // around land you have only heard the gulls over, and along the routes you have sailed. Space is not on this map.
@@ -2918,7 +3460,7 @@ function worldLayer() {
   m.fillStyle = '#4e7a9c'; m.fillRect(0, 0, MW, MH);
   for (let i = 0; i < 900; i++) { m.fillStyle = (i % 3) ? 'rgba(90,140,170,0.5)' : 'rgba(40,70,100,0.5)'; m.fillRect((i * 37) % MW, (i * 53 + (i >> 3)) % MH, 2 + (i % 2), 1); }
   m.fillStyle = 'rgba(30,50,80,0.35)'; m.fillRect(60, 20, 70, 44); m.fillRect(100, 110, 60, 30); // deeper water
-  for (const [x, y, r, sd] of [[22, 42, 3, 1], [112, 140, 2, 2], [168, 136, 3, 3], [36, 18, 2, 4], [186, 100, 2, 5], [8, 80, 2, 6], [140, 42, 2, 7]]) landBlob(m, x, y, r, sd, '#2a3a50', '#d8cfa8', '#c8b890');
+  for (const [x, y, r, sd] of [[186, 100, 2, 5], [128, 16, 2, 7], [60, 120, 2, 8], [90, 96, 2, 9]]) landBlob(m, x, y, r, sd, '#2a3a50', '#d8cfa8', '#c8b890');
   for (const l of LOCS) { if (l.id === 'sea' || l.id === 'stars') continue; landBlob(m, l.x, l.y, 6 + (l.range % 3) + (l.id === 'hollow' || l.id === 'cinder' ? 2 : 0), l.x * 0.37 + l.y * 0.11, '#2a3a50', MAP_INK[l.id] || '#e6cf96', MAP_IN[l.id] || '#3f8f4e');
     if (l.id === 'cinder') { m.fillStyle = '#ff6a20'; m.fillRect(l.x, l.y - 1, 1, 1); } if (l.id === 'hollow') { m.fillStyle = '#2a2a38'; m.fillRect(l.x - 2, l.y - 2, 4, 3); m.fillStyle = '#40a080'; m.fillRect(l.x, l.y - 1, 1, 1); } if (l.id === 'fjord') { m.fillStyle = '#ffffff'; m.fillRect(l.x - 3, l.y - 2, 2, 1); m.fillRect(l.x + 1, l.y - 3, 2, 1); } if (l.id === 'lantern') { m.fillStyle = '#c04040'; m.fillRect(l.x - 1, l.y, 3, 1); } if (l.id === 'bell') { m.fillStyle = '#5a4630'; m.fillRect(l.x, l.y - 1, 1, 2); } if (l.id === 'thunder') { m.fillStyle = '#f0e060'; m.fillRect(l.x, l.y - 2, 1, 2); } }
   WORLD_C = c; return c;
@@ -3051,6 +3593,7 @@ document.addEventListener('click', e => {
   else if (a === 'node') { mapSel = k; renderSheet(); }
   else if (a === 'sail') sail(mapSel);
   else if (a === 'buy') buy(k);
+  else if (a === 'bounty') claimBounty(k);
   else if (a === 'new') newVoyage();
   else if (a === 'continue') fadeTo(enterGame);
   else if (a === 'skip') { e.stopPropagation(); if (MODE === 'intro') endIntro(); else endCut(); }
