@@ -78,7 +78,7 @@ Everything lives in one `<script>` in `index.html`. Sections, in file order:
 | title & cutscene | `titleBeat` + `drawTitle` (the screensaver), `ripple`, `startStorm`/`endCut` (prologue hand-off), `drawStorm`, `drawDrift`, `beachScene`; `CUT` beat table (duration, caption, draw fn); `MODE` is `title`/`cut`/`game`; `fadeTo` for transitions |
 | frame loop | one `requestAnimationFrame` loop dispatching on `MODE`; pauses when the tab is hidden |
 | chart | 200×150 world canvas (`worldLayer`: sea, `landBlob` islands, sandbars) under a fog layer (`fogLayer`), routes, flags on visited islands, star on rumored ones, `???` on neighbours, ring on the selection, compass |
-| the fight | 128×128 canvas: hold indicator left, water column x 24–88 with the species sprite, progress tube right; hold to lift the net, release to drop; fish moves by behavior; progress fills inside the net, drains outside; difficulty widens the drain |
+| the fight | 128×128 canvas: hold indicator left, water column x 24–88 with a shadow of the fish, progress tube right; hold to lift the net, release to drop; fish moves by behavior; progress fills inside the net, drains outside. All numbers in `T_FIGHT`: easy fish are slow and lazy, get a wider net (×1.35 at difficulty 0.1, nothing above 0.45, ×1.25 more in the prologue) and fill the bar fast; hard fish are quick and drain it fast. A headless sim with a 250 ms-reaction player lands a sardine ~100%, a bream ~100%, a mackerel ~20%, a cod ~35%, a sturgeon ~2%, a legend ~0% on the stick rod. Re-run that sim when touching these numbers |
 | input / boot | click delegation on `data-act`, pointer hold for the fight, the walk buttons and the draw, offline resolution of lines on load, title first |
 
 `MODE` is `title` / `intro` (the card before the prologue) / `cut` / `game` (the fishing shore) / `island` (the strip) / `hunt`. Sailing lands you on the fishing shore. Passive lines keep resolving in every mode but title and cut.
@@ -104,7 +104,7 @@ Catch value: `valueOf` = `rate × kg^0.75 × (1 ± 0.15)`, ×1.5 at trophy size 
 
 ## Roadmap, in order
 
-1. Tune the first 20 minutes: time to raft, first sale amount, time to skiff. Target: raft in ~4 minutes, harbor in 5, a reason to come back to the shoal (Ghost Tarpon at night).
+1. Tune the first 20 minutes: time to raft, first sale amount, time to skiff. (The fight itself was retuned so beginner fish are easy; see `T_FIGHT`.) Target: raft in ~4 minutes, harbor in 5, a reason to come back to the shoal (Ghost Tarpon at night).
 2. Fight feel: per-species behaviors are table stakes. Add one twist that makes the mechanic ours (line tension that snaps if you hold too long, or a second axis).
 3. Index as the long-term driver: size records, rare variants, catch log per location.
 4. Weather and seasons as bite gates.
