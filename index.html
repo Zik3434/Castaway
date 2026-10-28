@@ -281,30 +281,73 @@ const LOCS = [
   { id: 'stars',  name: 'The Stars',    range: 5, shop: false, sell: false, x: 142, y: 10, blurb: 'Not in this build.', locked: true },
 ];
 
-// beh: smooth | dart | sinker | floater. diff 0-1. shape picks the silhouette. rare = rod or trophy line only.
+// beh: smooth | dart | sinker | floater. diff 0-1. shape picks the distant silhouette in the scene. rare = rod or trophy line only.
+// Real species, placed by biome. Sizes are real adult ranges in cm; values are untuned guesses.
 const SPECIES = [
-  { id: 'minnow',    name: 'Shoal Minnow',     loc: { shoal: 40, harbor: 20 }, size: [6, 14],    value: 2,   beh: 'smooth',  diff: 0.12, shape: 'fry' },
-  { id: 'bream',     name: 'Sand Bream',       loc: { shoal: 28, harbor: 14 }, size: [18, 38],   value: 6,   beh: 'smooth',  diff: 0.30, shape: 'bream' },
-  { id: 'perch',     name: 'Reef Perch',       loc: { shoal: 18, reach: 24 },  size: [20, 45],   value: 9,   beh: 'dart',    diff: 0.42, shape: 'bream', time: ['dawn', 'dusk'] },
-  { id: 'tarpon',    name: 'Ghost Tarpon',     loc: { shoal: 5 },              size: [80, 160],  value: 60,  beh: 'dart',    diff: 0.78, shape: 'big', time: ['night'], rare: true, minBait: 1 },
-  { id: 'mullet',    name: 'Harbor Mullet',    loc: { harbor: 34 },            size: [20, 40],   value: 7,   beh: 'smooth',  diff: 0.28, shape: 'trout' },
-  { id: 'flounder',  name: 'Dock Flounder',    loc: { harbor: 24 },            size: [22, 50],   value: 11,  beh: 'sinker',  diff: 0.40, shape: 'flat' },
-  { id: 'jack',      name: 'Striped Jack',     loc: { harbor: 14, reach: 20 }, size: [30, 70],   value: 16,  beh: 'dart',    diff: 0.55, shape: 'trout', time: ['dawn', 'dusk'], minBait: 1 },
-  { id: 'eel',       name: 'Barnacle Eel',     loc: { harbor: 9, trench: 10 }, size: [40, 110],  value: 20,  beh: 'sinker',  diff: 0.50, shape: 'eel', time: ['night'] },
-  { id: 'king',      name: 'Harbor King',      loc: { harbor: 4 },             size: [90, 150],  value: 80,  beh: 'dart',    diff: 0.80, shape: 'big', time: ['dawn'], rare: true, minBait: 1 },
-  { id: 'kelpbass',  name: 'Kelp Bass',        loc: { reach: 34 },             size: [25, 55],   value: 14,  beh: 'smooth',  diff: 0.38, shape: 'bream' },
-  { id: 'rockcod',   name: 'Rock Cod',         loc: { reach: 24 },             size: [30, 70],   value: 18,  beh: 'sinker',  diff: 0.48, shape: 'bream', minBait: 1 },
-  { id: 'dragon',    name: 'Kelp Dragon',      loc: { reach: 4 },              size: [100, 200], value: 140, beh: 'floater', diff: 0.85, shape: 'eel', time: ['dusk'], rare: true, minBait: 1, big: true },
-  { id: 'hagfish',   name: 'Trench Hagfish',   loc: { trench: 30 },            size: [30, 60],   value: 12,  beh: 'sinker',  diff: 0.35, shape: 'eel' },
-  { id: 'dory',      name: 'Lantern Dory',     loc: { trench: 34 },            size: [20, 40],   value: 22,  beh: 'floater', diff: 0.50, shape: 'bream', time: ['dusk', 'night'], minBait: 1 },
-  { id: 'grouper',   name: 'Abyss Grouper',    loc: { trench: 24 },            size: [50, 120],  value: 40,  beh: 'sinker',  diff: 0.62, shape: 'big', minBait: 2 },
-  { id: 'leviathan', name: 'Trench Leviathan', loc: { trench: 3 },             size: [200, 400], value: 400, beh: 'sinker',  diff: 0.92, shape: 'big', rare: true, minBait: 2, big: true },
-  { id: 'char',      name: 'Ice Char',         loc: { fjord: 34 },             size: [25, 60],   value: 26,  beh: 'smooth',  diff: 0.45, shape: 'trout' },
-  { id: 'pike',      name: 'Fjord Pike',       loc: { fjord: 24 },             size: [50, 110],  value: 45,  beh: 'dart',    diff: 0.66, shape: 'pike', minBait: 1 },
-  { id: 'aurora',    name: 'Aurora Salmon',    loc: { fjord: 4 },              size: [70, 130],  value: 260, beh: 'dart',    diff: 0.90, shape: 'trout', time: ['night'], rare: true, minBait: 2, big: true },
-  { id: 'wood',      name: 'Driftwood',        loc: { shoal: 38 },             size: [0, 0],     value: 0,   kind: 'wood', shape: 'wood' },
-  { id: 'boot',      name: 'Old Boot',         loc: { harbor: 6, reach: 5 },   size: [0, 0],     value: 0,   kind: 'junk', shape: 'boot' },
+  // Wreck Shoal: warm shallows around a wreck
+  { id: 'sardine',    name: 'Sardine',               loc: { shoal: 40, harbor: 10 }, size: [10, 20],   value: 2,   beh: 'smooth',  diff: 0.10, shape: 'fry' },
+  { id: 'bream',      name: 'Gilt-head Bream',       loc: { shoal: 24, harbor: 10 }, size: [20, 50],   value: 7,   beh: 'smooth',  diff: 0.30, shape: 'bream' },
+  { id: 'grunt',      name: 'French Grunt',          loc: { shoal: 20 },             size: [15, 30],   value: 5,   beh: 'smooth',  diff: 0.25, shape: 'bream' },
+  { id: 'needlefish', name: 'Needlefish',            loc: { shoal: 12 },             size: [40, 90],   value: 8,   beh: 'dart',    diff: 0.45, shape: 'pike', time: ['day'] },
+  { id: 'pompano',    name: 'Florida Pompano',       loc: { shoal: 10 },             size: [25, 55],   value: 14,  beh: 'dart',    diff: 0.50, shape: 'bream', time: ['dawn', 'dusk'] },
+  { id: 'snapper',    name: 'Mangrove Snapper',      loc: { shoal: 12 },             size: [25, 60],   value: 14,  beh: 'sinker',  diff: 0.45, shape: 'bream', time: ['dusk', 'night'], minBait: 1 },
+  { id: 'trigger',    name: 'Queen Triggerfish',     loc: { shoal: 6 },              size: [30, 60],   value: 20,  beh: 'dart',    diff: 0.55, shape: 'bream', time: ['day'], minBait: 1 },
+  { id: 'bonefish',   name: 'Bonefish',              loc: { shoal: 6 },              size: [40, 80],   value: 30,  beh: 'dart',    diff: 0.70, shape: 'trout', time: ['dawn'], minBait: 1 },
+  { id: 'barracuda',  name: 'Great Barracuda',       loc: { shoal: 4 },              size: [80, 170],  value: 70,  beh: 'dart',    diff: 0.80, shape: 'pike', time: ['day'], rare: true, minBait: 1, big: true },
+  { id: 'tarpon',     name: 'Tarpon',                loc: { shoal: 5 },              size: [100, 220], value: 90,  beh: 'dart',    diff: 0.85, shape: 'big', time: ['night'], rare: true, minBait: 1, big: true },
+  // Gull Harbor: a temperate pier
+  { id: 'herring',    name: 'Atlantic Herring',      loc: { harbor: 30 },            size: [20, 35],   value: 3,   beh: 'smooth',  diff: 0.15, shape: 'fry' },
+  { id: 'mackerel',   name: 'Atlantic Mackerel',     loc: { harbor: 26 },            size: [25, 50],   value: 8,   beh: 'dart',    diff: 0.40, shape: 'trout', time: ['day'] },
+  { id: 'mullet',     name: 'Grey Mullet',           loc: { harbor: 24 },            size: [30, 70],   value: 7,   beh: 'smooth',  diff: 0.30, shape: 'trout' },
+  { id: 'flounder',   name: 'European Flounder',     loc: { harbor: 20 },            size: [20, 50],   value: 11,  beh: 'sinker',  diff: 0.40, shape: 'flat' },
+  { id: 'seabass',    name: 'European Sea Bass',     loc: { harbor: 12 },            size: [40, 90],   value: 22,  beh: 'dart',    diff: 0.55, shape: 'trout', time: ['dawn', 'dusk'], minBait: 1 },
+  { id: 'garfish',    name: 'Garfish',               loc: { harbor: 10 },            size: [50, 90],   value: 10,  beh: 'dart',    diff: 0.45, shape: 'pike', time: ['day'] },
+  { id: 'pollock',    name: 'Pollock',               loc: { harbor: 10 },            size: [40, 100],  value: 16,  beh: 'smooth',  diff: 0.45, shape: 'trout', minBait: 1 },
+  { id: 'conger',     name: 'Conger Eel',            loc: { harbor: 7, trench: 6 },  size: [80, 200],  value: 35,  beh: 'sinker',  diff: 0.60, shape: 'eel', time: ['night'], minBait: 1, big: true },
+  { id: 'dogfish',    name: 'Spiny Dogfish',         loc: { harbor: 6 },             size: [60, 120],  value: 20,  beh: 'sinker',  diff: 0.50, shape: 'pike', time: ['night'] },
+  { id: 'sturgeon',   name: 'Atlantic Sturgeon',     loc: { harbor: 3 },             size: [150, 300], value: 160, beh: 'sinker',  diff: 0.80, shape: 'big', time: ['dawn'], rare: true, minBait: 1, big: true },
+  // Kelp Reach: a kelp forest
+  { id: 'senorita',   name: 'Señorita',              loc: { reach: 26 },             size: [15, 25],   value: 4,   beh: 'smooth',  diff: 0.20, shape: 'fry' },
+  { id: 'perch',      name: 'Kelp Perch',            loc: { reach: 20 },             size: [15, 22],   value: 5,   beh: 'smooth',  diff: 0.25, shape: 'bream' },
+  { id: 'kelpbass',   name: 'Kelp Bass',             loc: { reach: 30 },             size: [25, 60],   value: 14,  beh: 'smooth',  diff: 0.40, shape: 'bream' },
+  { id: 'garibaldi',  name: 'Garibaldi',             loc: { reach: 14 },             size: [20, 35],   value: 16,  beh: 'dart',    diff: 0.45, shape: 'bream', time: ['day'] },
+  { id: 'opaleye',    name: 'Opaleye',               loc: { reach: 16 },             size: [25, 50],   value: 9,   beh: 'smooth',  diff: 0.35, shape: 'bream' },
+  { id: 'rockfish',   name: 'Vermilion Rockfish',    loc: { reach: 20 },             size: [30, 75],   value: 18,  beh: 'sinker',  diff: 0.48, shape: 'bream', minBait: 1 },
+  { id: 'sheephead',  name: 'California Sheephead',  loc: { reach: 10 },             size: [40, 90],   value: 30,  beh: 'sinker',  diff: 0.60, shape: 'bream', time: ['day'], minBait: 1 },
+  { id: 'cabezon',    name: 'Cabezon',               loc: { reach: 8 },              size: [40, 90],   value: 26,  beh: 'sinker',  diff: 0.55, shape: 'bream', minBait: 1 },
+  { id: 'yellowtail', name: 'Yellowtail Amberjack',  loc: { reach: 10 },             size: [60, 120],  value: 40,  beh: 'dart',    diff: 0.65, shape: 'trout', time: ['dawn', 'dusk'], minBait: 1 },
+  { id: 'lingcod',    name: 'Lingcod',               loc: { reach: 6 },              size: [60, 150],  value: 60,  beh: 'dart',    diff: 0.72, shape: 'pike', time: ['dusk', 'night'], minBait: 2, big: true },
+  { id: 'leopardshark', name: 'Leopard Shark',       loc: { reach: 4 },              size: [100, 180], value: 120, beh: 'smooth',  diff: 0.75, shape: 'big', time: ['dawn'], rare: true, minBait: 1, big: true },
+  { id: 'sunfish',    name: 'Ocean Sunfish',         loc: { reach: 3 },              size: [150, 300], value: 250, beh: 'floater', diff: 0.80, shape: 'big', time: ['day'], rare: true, minBait: 2, big: true },
+  // Black Trench: the deep
+  { id: 'hagfish',    name: 'Hagfish',               loc: { trench: 24 },            size: [30, 60],   value: 12,  beh: 'sinker',  diff: 0.35, shape: 'eel' },
+  { id: 'lanternfish', name: 'Lanternfish',          loc: { trench: 30 },            size: [8, 15],    value: 18,  beh: 'floater', diff: 0.40, shape: 'fry', time: ['dusk', 'night'] },
+  { id: 'grenadier',  name: 'Grenadier',             loc: { trench: 20 },            size: [40, 90],   value: 22,  beh: 'sinker',  diff: 0.45, shape: 'eel', minBait: 1 },
+  { id: 'sablefish',  name: 'Sablefish',             loc: { trench: 16 },            size: [50, 100],  value: 45,  beh: 'smooth',  diff: 0.50, shape: 'trout', minBait: 1 },
+  { id: 'viperfish',  name: "Sloane's Viperfish",    loc: { trench: 10 },            size: [20, 35],   value: 40,  beh: 'dart',    diff: 0.60, shape: 'pike', time: ['night'], minBait: 1 },
+  { id: 'fangtooth',  name: 'Fangtooth',             loc: { trench: 10 },            size: [10, 18],   value: 35,  beh: 'dart',    diff: 0.55, shape: 'bream', time: ['night'], minBait: 1 },
+  { id: 'anglerfish', name: 'Humpback Anglerfish',   loc: { trench: 8 },             size: [20, 40],   value: 80,  beh: 'sinker',  diff: 0.65, shape: 'bream', time: ['night'], minBait: 2 },
+  { id: 'gulper',     name: 'Gulper Eel',            loc: { trench: 6 },             size: [60, 100],  value: 60,  beh: 'floater', diff: 0.60, shape: 'eel', minBait: 2 },
+  { id: 'chimaera',   name: 'Ghost Shark',           loc: { trench: 5 },             size: [60, 120],  value: 70,  beh: 'smooth',  diff: 0.60, shape: 'big', minBait: 2 },
+  { id: 'oarfish',    name: 'Oarfish',               loc: { trench: 3 },             size: [300, 600], value: 400, beh: 'floater', diff: 0.85, shape: 'eel', rare: true, minBait: 2, big: true },
+  { id: 'coelacanth', name: 'Coelacanth',            loc: { trench: 2 },             size: [120, 200], value: 600, beh: 'sinker',  diff: 0.92, shape: 'big', time: ['night'], rare: true, minBait: 2, big: true },
+  // Frost Fjords: cold water
+  { id: 'capelin',    name: 'Capelin',               loc: { fjord: 28 },             size: [12, 20],   value: 3,   beh: 'smooth',  diff: 0.15, shape: 'fry' },
+  { id: 'char',       name: 'Arctic Char',           loc: { fjord: 24 },             size: [30, 80],   value: 26,  beh: 'smooth',  diff: 0.45, shape: 'trout' },
+  { id: 'cod',        name: 'Atlantic Cod',          loc: { fjord: 22 },             size: [50, 120],  value: 30,  beh: 'sinker',  diff: 0.50, shape: 'trout', minBait: 1 },
+  { id: 'haddock',    name: 'Haddock',               loc: { fjord: 16 },             size: [40, 80],   value: 22,  beh: 'sinker',  diff: 0.45, shape: 'trout', minBait: 1 },
+  { id: 'pike',       name: 'Northern Pike',         loc: { fjord: 14 },             size: [50, 120],  value: 45,  beh: 'dart',    diff: 0.66, shape: 'pike', minBait: 1 },
+  { id: 'lumpsucker', name: 'Lumpsucker',            loc: { fjord: 10 },             size: [20, 40],   value: 20,  beh: 'sinker',  diff: 0.40, shape: 'bream' },
+  { id: 'wolffish',   name: 'Atlantic Wolffish',     loc: { fjord: 8 },              size: [60, 120],  value: 55,  beh: 'sinker',  diff: 0.60, shape: 'eel', time: ['night'], minBait: 1 },
+  { id: 'salmon',     name: 'Atlantic Salmon',       loc: { fjord: 5 },              size: [60, 120],  value: 120, beh: 'dart',    diff: 0.80, shape: 'trout', time: ['dawn', 'dusk'], rare: true, minBait: 1, big: true },
+  { id: 'halibut',    name: 'Atlantic Halibut',      loc: { fjord: 4 },              size: [100, 250], value: 220, beh: 'sinker',  diff: 0.80, shape: 'flat', rare: true, minBait: 2, big: true },
+  { id: 'greenlandshark', name: 'Greenland Shark',   loc: { fjord: 2 },              size: [300, 500], value: 500, beh: 'sinker',  diff: 0.90, shape: 'big', time: ['night'], rare: true, minBait: 2, big: true },
+  // not fish
+  { id: 'wood',       name: 'Driftwood',             loc: { shoal: 38 },             size: [0, 0],     value: 0,   kind: 'wood', shape: 'wood' },
+  { id: 'boot',       name: 'Old Boot',              loc: { harbor: 6, reach: 5 },   size: [0, 0],     value: 0,   kind: 'junk', shape: 'boot' },
 ];
+// v3 saves used a fictional roster; these ids map onto their nearest real species.
+const ID_MAP_V3 = { minnow: 'sardine', jack: 'yellowtail', eel: 'conger', king: 'sturgeon', rockcod: 'rockfish', dragon: 'sunfish', dory: 'lanternfish', grouper: 'sablefish', leviathan: 'coelacanth', aurora: 'salmon' };
 const SP = Object.fromEntries(SPECIES.map(s => [s.id, s]));
 const LOC = Object.fromEntries(LOCS.map(l => [l.id, l]));
 const PHASE_NAME = { dawn: 'Dawn', day: 'Day', dusk: 'Dusk', night: 'Night' };
@@ -312,7 +355,7 @@ const PHASE_NAME = { dawn: 'Dawn', day: 'Day', dusk: 'Dusk', night: 'Night' };
 // ---------- state ----------
 function freshState() {
   return {
-    v: 3, started: false, loc: 'shoal', money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 2, trophyRig: false,
+    v: 4, started: false, loc: 'shoal', money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 2, trophyRig: false,
     pending: null, // a landed catch waiting for Sell / Keep / Release; survives a reload
     bait: { shrimp: 0, squid: 0 },
     lines: [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, { rig: 'set', bait: 'scraps', phase: 'idle' }, null, null],
@@ -328,7 +371,16 @@ function load(seed) {
   let d = seed && seed.v ? seed : null;
   if (!d) { try { const raw = localStorage.getItem(KEY); if (raw) d = JSON.parse(raw); } catch (e) {} }
   if (d && d.v === 2) { d.v = 3; d.pending = null; } // v2 -> v3: the catch screen holds the fish until you decide
-  if (d && d.v === 3) S = Object.assign(freshState(), d);
+  if (d && d.v === 3) { // v3 -> v4: the roster became real species; remap ids, drop anything with no species
+    const fix = id => ID_MAP_V3[id] || id, ix = {};
+    for (const k in d.index || {}) { const n = fix(k); if (!SP[n]) continue; const a = ix[n] || (ix[n] = { n: 0, best: 0, trophies: 0 }), b = d.index[k]; a.n += b.n; a.best = Math.max(a.best, b.best); a.trophies += b.trophies; }
+    d.index = ix;
+    d.bucket = (d.bucket || []).map(f => Object.assign({}, f, { id: fix(f.id) })).filter(f => SP[f.id]);
+    if (d.pending) { d.pending.id = fix(d.pending.id); if (!SP[d.pending.id]) d.pending = null; }
+    (d.lines || []).forEach(L => { if (L && L.c) { L.c.id = fix(L.c.id); if (!SP[L.c.id]) { L.phase = 'idle'; L.c = null; } } });
+    d.v = 4;
+  }
+  if (d && d.v === 4) S = Object.assign(freshState(), d);
 }
 
 const loc = () => LOC[S.loc];
@@ -603,7 +655,7 @@ function renderSheet() {
     const fish = SPECIES.filter(s => !s.kind);
     const rows = fish.map(s => {
       const ix = S.index[s.id], home = LOCS.find(l => s.loc[l.id]);
-      const mini = `<canvas class="mini" width="48" height="20" data-fish="${s.id}" data-known="${ix ? 1 : 0}"></canvas>`;
+      const mini = `<canvas class="mini" width="64" height="28" data-fish="${s.id}" data-known="${ix ? 1 : 0}"></canvas>`;
       if (ix) return `<div class="row">${mini}<div class="name" style="flex:1">${s.name}<small>${home.name}${s.rare ? ' · rare' : ''}${s.time ? ' · ' + s.time.join('/') : ''}</small></div><div class="price">×${ix.n} · ${ix.best} cm${ix.trophies ? ' · ★' + ix.trophies : ''}</div></div>`;
       return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${S.visited[home.id] ? home.name : 'somewhere out there'}${s.rare ? ' · rare: rod or trophy line' : ''}</small></div><div class="price">—</div></div>`;
     }).join('');
@@ -611,7 +663,7 @@ function renderSheet() {
     drawMinis(el);
   } else if (sheetKind === 'inv') {
     const total = bucketTotal(), boat = BOATS.find(b => b.id === S.boat), rod = RODS.find(r => r.id === S.rod);
-    const rows = S.bucket.map((f, j) => { const sp = SP[f.id]; return `<div class="row"><canvas class="mini" width="48" height="20" data-fish="${f.id}" data-known="1"></canvas><div class="name" style="flex:1">${sp.name}<small>${f.cm} cm${f.trophy ? ' · ★ trophy' : ''}</small></div><div class="price">${money(f.value)}</div><button class="buy" data-act="release" data-i="${j}">LET GO</button></div>`; }).join('');
+    const rows = S.bucket.map((f, j) => { const sp = SP[f.id]; return `<div class="row"><canvas class="mini" width="64" height="28" data-fish="${f.id}" data-known="1"></canvas><div class="name" style="flex:1">${sp.name}<small>${f.cm} cm${f.trophy ? ' · ★ trophy' : ''}</small></div><div class="price">${money(f.value)}</div><button class="buy" data-act="release" data-i="${j}">LET GO</button></div>`; }).join('');
     const market = loc().sell ? `<button class="cta" data-act="sell" ${S.bucket.length ? '' : 'disabled'}>Sell the haul · ${money(total)}</button>`
       : `<div class="note">${S.raft ? 'No market here. Gull Harbor buys the whole bucket.' : 'No market on the shoal. Build the raft first.'}</div>`;
     el.innerHTML = `<div class="head"><h2>Inventory</h2><button class="x" data-act="close">✕</button></div>
@@ -639,7 +691,7 @@ function renderSheet() {
   }
 }
 function drawMinis(el) {
-  el.querySelectorAll('canvas.mini').forEach(c => { const x = c.getContext('2d'); x.fillStyle = '#0f2238'; x.fillRect(0, 0, 48, 20); x.fillStyle = '#152638'; x.fillRect(0, 18, 48, 2); blitFishCentered(x, c.dataset.fish, 24, 10, 1, c.dataset.known === '1' ? 'color' : 'dim'); });
+  el.querySelectorAll('canvas.mini').forEach(c => { const x = c.getContext('2d'); x.fillStyle = '#0f2238'; x.fillRect(0, 0, 64, 28); x.fillStyle = '#152638'; x.fillRect(0, 26, 64, 2); blitFishCentered(x, c.dataset.fish, 32, 13, 1, c.dataset.known === '1' ? 'color' : 'dim'); });
 }
 function mapClick(e) {
   const c = e.currentTarget, r = c.getBoundingClientRect();
@@ -678,7 +730,7 @@ function showCatch() {
   $('#card').className = 'card catch';
   $('#card').innerHTML = `<div class="head">${head}</div>
     ${pills.length ? `<div class="pills">${pills.map(t => `<div class="pill ${t === 'Trophy size' ? 'gold' : ''}">${t.toUpperCase()}</div>`).join('')}</div>` : ''}
-    <canvas class="art" id="ccv" width="128" height="64"></canvas>
+    <canvas class="art" id="ccv" width="192" height="96"></canvas>
     <div class="fish">${s.name}</div>
     ${s.kind ? '' : `<div class="size">${p.trophy ? '★ ' : ''}${p.cm} cm</div>`}
     <div class="sub">${sub}</div>
@@ -688,14 +740,13 @@ function showCatch() {
   $('#cardWrap').hidden = false;
   const cv2 = $('#ccv'), x = cv2.getContext('2d');
   x.imageSmoothingEnabled = false;
-  const g = x.createLinearGradient(0, 0, 0, 64); g.addColorStop(0, p.trophy ? '#2c4d6b' : '#1f4a6a'); g.addColorStop(1, '#0a1a2c');
-  x.fillStyle = g; x.fillRect(0, 0, 128, 64);
-  for (const [sx, sw, a] of [[18, 9, .05], [52, 6, .04], [79, 11, .05], [111, 5, .03]]) { const sg = x.createLinearGradient(0, 0, 0, 60); sg.addColorStop(0, `rgba(255,255,255,${a})`); sg.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = sg; x.fillRect(sx, 0, sw, 60); } // light shafts
-  x.fillStyle = 'rgba(255,255,255,0.35)'; for (let k = 0; k < 128; k += 7) x.fillRect(k + (k % 3), 1, 3, 1); // surface glints
-  x.fillStyle = '#152638'; x.fillRect(0, 60, 128, 4); x.fillStyle = '#1e3448'; for (let k = 3; k < 128; k += 11) x.fillRect(k, 59, 4, 1); // seabed
-  x.fillStyle = 'rgba(223,233,243,.35)'; for (let k = 0; k < 9; k++) x.fillRect((k * 41 + 9) % 128, (k * 17 + 7) % 56, 1, 1); // motes
-  const m = fishMap(p.id), sc = Math.max(1, Math.min(3, Math.floor(118 / m[0].length), Math.floor(52 / m.length)));
-  blitFishCentered(x, p.id, 64, 30, sc, 'color');
+  const g = x.createLinearGradient(0, 0, 0, 96); g.addColorStop(0, p.trophy ? '#2c4d6b' : '#1f4a6a'); g.addColorStop(1, '#0a1a2c');
+  x.fillStyle = g; x.fillRect(0, 0, 192, 96);
+  for (const [sx, sw, a] of [[22, 12, .05], [70, 8, .04], [112, 15, .05], [162, 7, .03]]) { const sg = x.createLinearGradient(0, 0, 0, 90); sg.addColorStop(0, `rgba(255,255,255,${a})`); sg.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = sg; x.fillRect(sx, 0, sw, 90); } // light shafts
+  x.fillStyle = 'rgba(255,255,255,0.35)'; for (let k = 0; k < 192; k += 7) x.fillRect(k + (k % 3), 1, 3, 1); // surface glints
+  x.fillStyle = '#152638'; x.fillRect(0, 90, 192, 6); x.fillStyle = '#1e3448'; for (let k = 3; k < 192; k += 11) x.fillRect(k, 89, 4, 1); // seabed
+  x.fillStyle = 'rgba(223,233,243,.35)'; for (let k = 0; k < 12; k++) x.fillRect((k * 41 + 9) % 192, (k * 17 + 7) % 84, 1, 1); // motes
+  blitFishCentered(x, p.id, 96, 46, 3, 'color'); // fixed 3x, so a sardine reads small next to a halibut
 }
 function toast(msg) {
   const w = $('#toasts'), d = document.createElement('div');
@@ -723,298 +774,214 @@ const MASKS = {
   sun:   ['..###..', '.#####.', '#######', '#######', '#######', '.#####.', '..###..'],
   ring:  ['....#####....', '..##.....##..', '.#.........#.', '#...........#', '#...........#', '#...........#', '.#.........#.', '..##.....##..', '....#####....'],
 };
-// Species sprites. Head to the right. Letters: o outline, b body, d body dark, l belly, h highlight,
-// f fin, F fin dark, m marking, n marking 2 / glow, e eye, w eye white, . transparent.
-// Rows may be ragged; fishMap() pads them to the widest row.
+// ---------- species sprites: body plans, rasterised and shaded in code ----------
+// Each species gives a body plan (gen) or a hand-drawn silhouette (sil), plus a palette (col).
+// Silhouette letters: # body, f tail/pectoral fin (rays run as rows), g dorsal/anal fin (rays run as columns),
+// p pectoral on the body side, e eye, o forced dark pixel, m / n explicit markings, t tooth, . empty.
+// shadeSil() adds the outline, back/mid/belly tones, a sheen line, fin rays, the eye and the pattern.
+const ss = u => { u = u < 0 ? 0 : u > 1 ? 1 : u; return u * u * (3 - 2 * u); };
+function genSil(g) {
+  const W = g.w, H = g.h, rows = Array.from({ length: H }, () => Array(W).fill('.'));
+  const put = (r, c, ch) => { r = Math.round(r); c = Math.round(c); if (r < 0 || c < 0 || r >= H || c >= W) return; if ((ch === 'f' || ch === 'g') && rows[r][c] !== '.') return; rows[r][c] = ch; };
+  const vfill = (c, y0, y1, ch) => { const a = Math.round(Math.min(y0, y1)), b = Math.round(Math.max(y0, y1)); for (let r = a; r <= b; r++) put(r, c, ch); };
+  const cy = (g.cy || 0.5) * H, tailLen = g.tail === 'none' ? 0 : Math.round(W * (g.tailLen || 0.17)), beak = g.beak ? Math.round(W * g.beak) : 0;
+  const x0 = tailLen, x1 = W - 1 - beak, L = x1 - x0;
+  const bodyH = (g.bodyH || 0.6) * H, topFrac = g.topFrac || 0.5, pk = g.peak || 0.45, ped = g.ped || 0.22, sn = g.snout || 0.3, flat = g.flatHead || 0;
+  const tops = [], bots = [];
+  for (let x = x0; x <= x1; x++) {
+    let u = (x - x0) / L; const ue = flat ? Math.min(u, 1 - flat) : u;
+    const t = ue < pk ? ped + (1 - ped) * ss(ue / pk) : 1 - (1 - sn) * Math.pow((ue - pk) / (1 - pk), g.headPow || 1.8);
+    const hh = t * bodyH, shift = (g.snoutY || 0) * H * Math.max(0, (u - 0.6) / 0.4);
+    tops[x] = cy - hh * topFrac + shift; bots[x] = cy + hh * (1 - topFrac) + shift;
+    vfill(x, tops[x], bots[x], '#');
+  }
+  const snoutMid = (tops[x1] + bots[x1]) / 2;
+  if (beak) for (let x = x1 + 1; x < W; x++) { put(snoutMid, x, '#'); if (x < x1 + beak * 0.5) put(snoutMid + 1, x, '#'); }
+  const mouthY = g.mouth === 'top' ? tops[x1] + 1 : g.mouth === 'low' ? bots[x1] - 1 : snoutMid + 0.5;
+  if (g.jaws) { // an open mouth: a wedge cut out of the snout, teeth along both jaws
+    const len = Math.round(L * g.jaws.len), gap = g.jaws.gap * bodyH;
+    for (let x = x1 - len; x <= x1; x++) { const v = (x - (x1 - len)) / len, gh = gap * v / 2; for (let r = Math.round(mouthY - gh); r <= Math.round(mouthY + gh); r++) if (r >= 0 && r < H && rows[r][x] === '#') rows[r][x] = '.';
+      if (g.jaws.teeth && v > 0.3 && (x & 1)) { const rt = Math.round(mouthY - gh), rb = Math.round(mouthY + gh); if (rows[rt] && rows[rt][x] === '.') rows[rt][x] = 't'; if (rows[rb] && rows[rb][x] === '.' && (x & 2)) rows[rb][x] = 't'; } }
+  } else { put(mouthY, x1, 'o'); put(mouthY, x1 - 1, 'o'); if (g.bigMouth) { put(mouthY, x1 - 2, 'o'); put(mouthY, x1 - 3, 'o'); } }
+  if (g.underbite) for (let k = 1; k <= g.underbite; k++) { put(bots[x1] - 1, x1 + k, '#'); put(bots[x1], x1 + k, '#'); }
+  if (!g.noEye) { const ex = Math.round(x0 + L * (g.eyeX || 0.86)), ey = Math.round(tops[ex] + (bots[ex] - tops[ex]) * (g.eyeY || 0.33)); put(ey, ex, 'e'); if (g.eye2) { const ex2 = Math.round(x0 + L * g.eye2[0]), ey2 = Math.round(tops[ex2] + (bots[ex2] - tops[ex2]) * g.eye2[1]); put(ey2, ex2, 'e'); } }
+  const pedH = Math.max(2, ped * bodyH), tailH = (g.tailH || 0.8) * H;
+  if (tailLen) for (let x = 0; x < x0; x++) {
+    const v = 1 - x / x0;
+    if (g.tail === 'fork' || g.tail === 'lunate' || g.tail === 'hetero') {
+      const spread = v * (tailH / 2 - pedH / 4), thick = g.tail === 'lunate' ? 1.5 : Math.max(1.5, pedH / 2 * (1 - v) + 1.5), dn = g.tail === 'hetero' ? 0.45 : 1;
+      vfill(x, cy - pedH / 4 - spread, cy - pedH / 4 - spread + thick, 'f'); vfill(x, cy + pedH / 4 + spread * dn - thick, cy + pedH / 4 + spread * dn, 'f');
+      if (v < 0.4) vfill(x, cy - pedH / 2 * (1 - v) - 0.5, cy + pedH / 2 * (1 - v) + 0.5, 'f');
+    } else if (g.tail === 'round') { const hh = Math.sqrt(Math.max(0, 1 - v * v * 0.92)) * tailH / 2; vfill(x, cy - hh, cy + hh, 'f'); }
+    else if (g.tail === 'trunc') { const hh = pedH / 2 + v * (tailH / 2 - pedH / 2); vfill(x, cy - hh, cy + hh, 'f'); }
+  }
+  const fin = (f, below) => { if (!f) return; const xa = x0 + L * f.from, xb = x0 + L * f.to; for (let x = Math.round(xa); x <= Math.round(xb); x++) { const u = (x - xa) / (xb - xa); let hp;
+    if (f.type === 'spiny') hp = f.h * (1 - 0.45 * u) - ((x & 1) ? 1 : 0);
+    else if (f.type === 'soft') hp = f.h * Math.pow(Math.sin(Math.PI * u), 0.6);
+    else if (f.type === 'long') hp = f.h * (0.7 + 0.3 * Math.sin(Math.PI * u));
+    else if (f.type === 'sail') hp = f.h * (u < 0.3 ? u / 0.3 : 1 - 0.8 * (u - 0.3) / 0.7);
+    else hp = f.h * (1 - u) + 0.5; // tri: tall at the front, sloping back
+    hp = Math.max(1, hp); if (!tops[x]) continue;
+    if (below) vfill(x, bots[x] + 1, bots[x] + hp, 'g'); else vfill(x, tops[x] - hp, tops[x] - 1, 'g'); } };
+  fin(g.dorsal); fin(g.dorsal2); fin(g.dorsal3); fin(g.anal, true); fin(g.anal2, true);
+  if (g.adipose) { const x = Math.round(x0 + L * 0.2); vfill(x, tops[x] - 2, tops[x] - 1, 'g'); vfill(x + 1, tops[x + 1] - 2, tops[x + 1] - 1, 'g'); put(tops[x + 2] - 1, x + 2, 'g'); }
+  if (g.pect !== false) { const px = Math.round(x0 + L * (g.pectX || 0.7)), ph = g.pectH || Math.max(2, Math.round(bodyH * 0.2)); for (let k = 0; k < ph; k++) { const x = px - k, y = tops[px] + (bots[px] - tops[px]) * 0.52 + k * 0.5; for (let j = 0; j <= Math.min(k, 1 + (ph > 4 ? 1 : 0)); j++) if (rows[Math.round(y + j)] && rows[Math.round(y + j)][x] === '#') rows[Math.round(y + j)][x] = 'p'; } }
+  if (g.pelvic) { const px = Math.round(x0 + L * g.pelvic); for (let k = 0; k < 3; k++) vfill(px - k, bots[px - k] + 1, bots[px - k] + (k < 2 ? 2 : 1), 'g'); }
+  if (g.barbel) { put(bots[x1 - 1] + 1, x1 - 1, 'o'); put(bots[x1 - 1] + 2, x1 - 2, 'o'); }
+  if (g.lure) { const lx = Math.round(x0 + L * 0.78); let y = tops[lx] - 1; for (let k = 0; k < 5; k++) put(y - k, lx + Math.round(k * 0.8), 'o'); put(y - 6, lx + 4, 'n'); put(y - 6, lx + 5, 'n'); put(y - 5, lx + 5, 'n'); put(y - 7, lx + 5, 'n'); }
+  if (g.tailLight) { put(cy, 0, 'n'); put(cy, 1, 'n'); }
+  return rows.map(r => r.join(''));
+}
+const hash = (r, c, s) => { const v = Math.sin(r * 12.9898 + c * 78.233 + (s || 1) * 37.719) * 43758.5453; return v - Math.floor(v); };
+function shadeSil(sil, g) {
+  const H = sil.length, W = Math.max(...sil.map(r => r.length)); sil = sil.map(r => r + '.'.repeat(W - r.length));
+  const body = ch => ch === '#' || ch === 'e' || ch === 'm' || ch === 'n' || ch === 'p', solid = ch => ch !== '.';
+  const top = Array(W).fill(-1), bot = Array(W).fill(-1), left = Array(H).fill(-1), right = Array(H).fill(-1);
+  for (let c = 0; c < W; c++) for (let r = 0; r < H; r++) if (body(sil[r][c])) { if (top[c] < 0) top[c] = r; bot[c] = r; if (left[r] < 0) left[r] = c; right[r] = c; }
+  const out = Array.from({ length: H }, () => Array(W).fill('.'));
+  const pats = [].concat(g.pat || []);
+  for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) {
+    const ch = sil[r][c];
+    if (ch === '.') { if ((r > 0 && solid(sil[r - 1][c])) || (r < H - 1 && solid(sil[r + 1][c])) || (c > 0 && solid(sil[r][c - 1])) || (c < W - 1 && solid(sil[r][c + 1]))) out[r][c] = 'o'; continue; }
+    if (ch === 'f') { out[r][c] = (r & 1) ? 'F' : 'f'; continue; }
+    if (ch === 'p') { out[r][c] = (r + 1 < H && sil[r + 1][c] === 'p') ? 'f' : 'F'; continue; }
+    if (ch === 'g') { out[r][c] = (c % 3 === 0) ? 'F' : 'f'; continue; }
+    if (ch !== '#') { out[r][c] = ch; continue; }
+    const span = Math.max(1, bot[c] - top[c]), rel = (r - top[c]) / span, u = (c - left[r]) / Math.max(1, right[r] - left[r]);
+    let v = rel < 0.1 ? (g.sheen === false ? 'd' : 'h') : rel < 0.42 ? 'd' : rel < 0.7 ? 'b' : 'l';
+    if (span < 3) v = rel < 0.5 ? 'b' : 'l';
+    for (const p of pats) {
+      if (p === 'bars' && rel > 0.08 && rel < 0.8 && ((c + (g.barOff || 0)) % (g.barP || 5)) < (g.barW || 2)) v = 'm';
+      else if (p === 'saddles' && rel > 0.08 && rel < 0.45 && ((c + (g.barOff || 0)) % (g.barP || 5)) < (g.barW || 2)) v = 'm';
+      else if (p === 'stripes' && rel > 0.2 && rel < 0.78 && (Math.floor(rel * 7) & 1)) v = 'm';
+      else if (p === 'lateral' && rel > 0.47 && rel < 0.56) v = 'm';
+      else if (p === 'spots' && rel > 0.1 && rel < 0.85 && hash(r, c, g.seed) < (g.dens || 0.12)) v = 'm';
+      else if (p === 'spots2' && rel > 0.1 && rel < 0.85 && (hash(r, c, g.seed) < (g.dens || 0.08) || hash(r, c - 1, g.seed) < (g.dens || 0.08))) v = 'm';
+      else if (p === 'backspots' && rel > 0.1 && rel < 0.5 && hash(r, c, g.seed) < (g.dens || 0.12)) v = 'n';
+      else if (p === 'scales' && rel > 0.15 && rel < 0.72 && (r & 1) === 0 && c % 3 === 0) v = 'm';
+      else if (p === 'lights' && hash(r, c, g.seed) < (g.dens || 0.06)) v = 'n';
+      else if (p === 'bellylights' && rel > 0.6 && (c % 3) === 0) v = 'n';
+      else if (p === 'tubercles' && (Math.floor(rel * 5) & 1) && (c % 3) === 0) v = 'm';
+      else if (p === 'bands' && rel < 0.86 && (u < (g.bandA || 0.3) || u > (g.bandB || 0.72))) v = 'm';
+      else if (p === 'scutes' && (rel < 0.14 || (rel > 0.46 && rel < 0.58)) && (c & 1) === 0) v = 'm';
+      else if (p === 'twospots' && rel > 0.15 && rel < 0.3 && ((u > 0.42 && u < 0.47) || (u > 0.58 && u < 0.63))) v = 'm';
+      else if (p === 'blotch' && rel > 0.3 && rel < 0.5 && u > 0.64 && u < 0.72) v = 'm';
+    }
+    out[r][c] = v;
+  }
+  // eyes: a white 2x2 (or 1x1 for small fish) with the pupil bottom right
+  for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) if (sil[r][c] === 'e') { out[r][c] = 'e'; const big = g.eye !== 1 && (bot[c] - top[c]) >= 7; if (c > 0 && body(sil[r][c - 1])) out[r][c - 1] = 'w'; if (big) { if (r > 0 && body(sil[r - 1][c])) out[r - 1][c] = 'w'; if (r > 0 && c > 0 && body(sil[r - 1][c - 1])) out[r - 1][c - 1] = 'w'; } }
+  return out.map(r => r.join(''));
+}
+// palette from four or five colours: base (back), belly, fin, mark, glow
+const mixC = (a, b, f) => { const A = hex(a), B = hex(b); return '#' + [0, 1, 2].map(i => (Math.round(A[i] + (B[i] - A[i]) * f) | 0).toString(16).padStart(2, '0')).join(''); };
+function fishPal(col) {
+  return { o: mixC(col.base, '#0a1020', 0.62), d: mixC(col.base, '#0a1020', 0.22), b: col.base, l: col.belly, h: mixC(col.base, col.belly, 0.55),
+    f: col.fin, F: mixC(col.fin, '#0a1020', 0.3), m: col.mark || col.base, n: col.glow || col.mark || col.belly, e: col.eye || '#0a0a10', w: col.eyeW || '#f4f4f0', t: '#f4f4f0' };
+}
+// gen: body plan; col: palette; pat/seed/dens: pattern. w/h is the sprite size.
 const FISH_ART = {
-  minnow: { pal: { o: '#2a3a52', b: '#7fa3c4', l: '#dfe9f3', f: '#9fb8d2', F: '#6d8ba8', e: '#101820', w: '#ffffff' }, map: [
-    '.........ooooooo....',
-    '..o....oobbbbbbboo..',
-    '.ofo..obbbbbbbbbbwo.',
-    '.ofoooblllllllllbeo.',
-    '..ofoolllllllllllo..',
-    '...oo.ollllfFlllo...',
-    '.......ooooFoooo....',
-    '...........o........'] },
-  bream: { pal: { o: '#3a2a10', b: '#c8a050', d: '#9a7030', l: '#eedcae', f: '#d8b870', F: '#8a6420', e: '#140c04', w: '#ffffff' }, map: [
-    '...........ofofofofofo......',
-    '..........oFfFfFfFfFfFo.....',
-    'oo.......ohbbbbbbbbbbbbo....',
-    'oFo.....ohhbbbbbbbbbbbbbo...',
-    'oFFo...ohhbbbbbbbbbbbbbbbo..',
-    '.oFFo.ohbbbbbbbbbbbbbbbbbbo.',
-    '..oFFoobbbbbbbbbbbbbbbbbweo.',
-    '..oFFoobbbbbbbbbbbbbbbbbbboo',
-    '.oFFo.obbddddddddddddbbbbbo.',
-    'oFFo...oddddddddddddddddbo..',
-    'oFo....ollldddddddddllllo...',
-    'oo......ollllllooollllo.....',
-    '.........ooooooofFfo........',
-    '...............ooo..........'] },
-  perch: { pal: { o: '#1e2a1a', b: '#6f8f3a', d: '#4a6428', l: '#d8c870', m: '#2f4020', f: '#e08a30', F: '#a85a18', e: '#101010', w: '#ffffff' }, map: [
-    '...........ofofofofofo......',
-    '..........oFfFfFfFfFfFo.....',
-    'oo.......obbmbbmbbmbbbo.....',
-    'oFo.....obbmbbmbbmbbmbbo....',
-    'oFFo...obbbmbbmbbmbbmbbbo...',
-    '.oFFo.obbbbmbbmbbmbbmbbbbo..',
-    '..oFFoobbbbmbbmbbmbbmbbweo..',
-    '..oFFoobbbbmbbmbbmbbmbbbboo.',
-    '.oFFo.obblmlllmlllmlllmbbo..',
-    'oFFo...ollllllllllllllllo...',
-    'oFo....ollllffllllfflllo....',
-    'oo......oooofFfooofFfoo.....',
-    '...........oFo...oFo........'] },
-  tarpon: { pal: { o: '#3a4a5e', b: '#b8c6d4', m: '#dfe9f3', l: '#eef3f8', f: '#c8d4e0', F: '#8fa0b4', e: '#101820', w: '#ffffff' }, map: [
-    '............................o...........',
-    '..........oooooooooooooooooo............',
-    'oo.......obbbbbbbbbbbbbbbbbbooo.........',
-    'oFo.....obmbmbmbmbmbmbmbmbmbmbboo.......',
-    'oFFo...obbmbmbmbmbmbmbmbmbmbmbmbboo.....',
-    'oFFFoooobmbmbmbmbmbmbmbmbmbmbmbmbbbwwo..',
-    '.oFFFolllllllllllllllllllllllllllllweo..',
-    '.oFFFollllllllllllllllllllllllllllllooo.',
-    'oFFFoooollllllllllllllllllllllllllloo...',
-    'oFFo...olllllllllllllfFflllllllllloo....',
-    'oFo.....oolllllllllloooFoolllllooo......',
-    'oo........oooooooooo..o..ooooo..........'] },
-  mullet: { pal: { o: '#22304a', b: '#8fa6bd', m: '#51667f', l: '#e5ecf2', f: '#a8b8c8', F: '#6d8197', e: '#0c0c14', w: '#ffffff' }, map: [
-    '.........ooooooooooo..........',
-    'oo......obbbbbbbbbbbbooo......',
-    'oFoo...obbbbbbbbbbbbbbbboo....',
-    'oFFFoooobmmmmmmmmmmmmmbbbbo...',
-    '.oFFFobbbbbbbbbbbbbbbbbbbweo..',
-    '..oFFobmmmmmmmmmmmmmmmbbbbboo.',
-    '.oFFFolllllllllllllllllllllo..',
-    'oFFFoooolllllllllllllllllo....',
-    'oFoo....ollllllfFfllllloo.....',
-    'oo.......oooooooFooooo........',
-    '................o.............'] },
-  flounder: { pal: { o: '#2a1e12', b: '#8a6a44', m: '#5a4428', l: '#c9ad80', f: '#a88a60', F: '#6a5030', e: '#0c0c0c', w: '#ffffff' }, map: [
-    '..........ooooooooooo.........',
-    '.......oooffffffffffffooo.....',
-    '.....oofbbbbbbbbbbbbbbbbfoo...',
-    '....ofbbbbmbbbbbbmbbbbbbbbfo..',
-    '...ofbbbbbbbbbbbbbbbbbbbbweo..',
-    '..ofbbbmbbbbbbbbmbbbbbbbbbwo..',
-    '..ofbbbbbbbbbbbbbbbbbbbbbbbo..',
-    'ooobbbbbbbmbbbbbbbbbmbbbbbbo..',
-    'oFobbbbbbbbbbbbbbbbbbbbbbbbo..',
-    'oFobbbmbbbbbbbbmbbbbbbbbbbo...',
-    'ooofbbbbbbbbbbbbbbbbbbbbbfo...',
-    '...ofbbbbbbmbbbbbbbbbbbbfo....',
-    '....ofbbbbbbbbbbbbbbbbbfo.....',
-    '.....oofffffffffffffffoo......',
-    '.......ooooooooooooooo........'] },
-  jack: { pal: { o: '#16283a', b: '#3f7f8a', m: '#e8c850', l: '#dfe9f3', f: '#8fb0c0', F: '#5a8090', e: '#0c0c14', w: '#ffffff' }, map: [
-    '...........oooooooooo...........',
-    '..........obbbbbbbbbbboo........',
-    'oo.......obbbbbbbbbbbbbbooo.....',
-    'oFo.....obbbbbbbbbbbbbbbbbboo...',
-    'oFFo...obbbbbbbbbbbbbbbbbbbbbo..',
-    '.oFFoooobmmmmmmmmmmmmmmmmbbweo..',
-    '..oFFolllllllllllllllllllllllo..',
-    '.oFFo.olllllllllllllllllllllo...',
-    'oFFo...olllllllllllfFflllloo....',
-    'oFo.....ooollllllloooFoooo......',
-    'oo.........ooooooo..o...........'] },
-  eel: { pal: { o: '#1e1a10', b: '#6a6a3a', m: '#c8c890', l: '#a8a070', F: '#3a3a20', f: '#555530', e: '#0c0c0c', w: '#ffffee' }, map: [
-    '....................ooooooooo...........',
-    '...oooo...........oobbbbbbbbbooo........',
-    '..obbbboooo.....oobbbmbbbbmbbbbbooo.....',
-    '.obbmbbbbbbooooobbbbbbbbbbbbbbbbbbboo...',
-    'obbbbbbmbbbbbbbbbbmbbbbbbbbbbmbbbbbbbwo.',
-    'obbbbbbbbbbbbbmbbbbbbbbmbbbbbbbbbbbbbeo.',
-    'ollllllllllllllllllllllllllllllllllllo..',
-    '.oFFFFFFFFFFFFFFFFFFFFFFFFlllllllllloo..',
-    '..ooooooooooooooooooooooooooooooooo.....'] },
-  king: { pal: { o: '#3a1810', b: '#c05030', d: '#8a3020', m: '#e8a040', l: '#f0d8a0', f: '#f0c050', F: '#b8871c', e: '#100808', w: '#ffffff' }, map: [
-    '..............ofofofofofofo.........',
-    '.............oFfFfFfFfFfFfFo........',
-    'oo..........obbbbbbbbbbbbbbbbo......',
-    'oFo........obbbbmbbbbbbbmbbbbbo.....',
-    'oFFo......obbbbbbbbbbbbbbbbbbbbo....',
-    'oFFFo....obbmbbbbbbbbbbbbbbbbbbbo...',
-    '.oFFFo..obbbbbbbbbbmbbbbbbbbbbwwo...',
-    '..oFFFoobbbbbbbbbbbbbbbbbbbbbbweo...',
-    '..oFFFoobbbbmbbbbbbbbbbbbbbbbbbbo...',
-    '..oFFFoobbbbbbbbbbbbbbmbbbbbbbbbboo.',
-    '.oFFFo..obbbbbbbbbbbbbbbbbbbbbbllo..',
-    'oFFFo....obbddddddddddddddddbbllo...',
-    'oFFo......olllllllllllllllllllllo...',
-    'oFo........ollllffllllllffllllo.....',
-    'oo..........ooooFfooooooFfooo.......',
-    '..............oFo......oFo..........'] },
-  kelpbass: { pal: { o: '#1a2414', b: '#5a7a3a', m: '#38502a', l: '#b8c088', f: '#7a9a4a', F: '#4a6a2a', e: '#0c100c', w: '#ffffff' }, map: [
-    '..........ofofofofofo.......',
-    '.........oFfFfFfFfFfFo......',
-    'oo......obbbbmbbbbmbbbo.....',
-    'oFo....obbmbbbbbmbbbbbbo....',
-    'oFFo..obbbbbbmbbbbbmbbbbo...',
-    '.oFFoobbmbbbbbbbmbbbbbbwwo..',
-    '..oFFobbbbbmbbbbbbbbmbbweo..',
-    '..oFFobbmbbbbbmbbbbbbbbbboo.',
-    '.oFFoobbbbbbbbbbbmbbbbbbo...',
-    'oFFo..olllllllllllllllllo...',
-    'oFo....ollllffllllllffllo...',
-    'oo......ooooFfoooooooFoo....',
-    '..........oFo.......o.......'] },
-  rockcod: { pal: { o: '#2a1410', b: '#a0503a', m: '#6a2a20', l: '#e0b890', f: '#c07050', F: '#7a3a28', e: '#0c0808', w: '#ffffff' }, map: [
-    '..........ofofofofofofo.......',
-    '.........oFfFfFfFfFfFfFo......',
-    'oo......obbbbbbbbbbbbbbbo.....',
-    'oFo....obbbmbbbbbmbbbbbbbo....',
-    'oFFo..obbbbbbbbbbbbbbbbbbbo...',
-    '.oFFoobbbbmbbbbbbbbmbbbbwwbo..',
-    '..oFFobbbbbbbbbbbbbbbbbbweoo..',
-    '..oFFobbbmbbbbbbmbbbbbbbbbboo.',
-    '.oFFoobbbbbbbbbbbbbbbbbbbbbo..',
-    'oFFo..obbbbbbbbbbbbbbbbbbllo..',
-    'oFo....ollllllllllllllllllo...',
-    'oo......olllffllllllfflllo....',
-    '.........oooFfooooooFfoo......',
-    '............oFo.....oFo.......'] },
-  dragon: { pal: { o: '#1e2a10', b: '#9ab048', m: '#d8e060', l: '#e8e8a0', f: '#6a9a30', F: '#3a6a18', e: '#0c100c', w: '#ffffff' }, map: [
-    '......f.........f...........f...........',
-    '.....ff........fff.........fff..........',
-    '....ofFo......ofFfo.......ofFfo.........',
-    '...ofbbbooo..obbbbbooo...obbbbbooo......',
-    '..obbbbbbbbooobbbbbbbbooobbbbbbbbbooo...',
-    '.obbmbbbbbbbbbbbbmbbbbbbbbbbbmbbbbbbboo.',
-    'obbbbbbbmbbbbbbbbbbbbmbbbbbbbbbbbbbbwwo.',
-    'obbbbbbbbbbbbbbmbbbbbbbbbbbmbbbbbbbbweoooo',
-    '.obbbmbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbo',
-    '..olllllllllllllllllllllllllllllllllooo...',
-    '...ofFfo....ofFfo......ofFfo..............',
-    '....fff......fff........fff...............',
-    '.....f........f..........f................'] },
-  hagfish: { pal: { o: '#3a2a30', b: '#9a7a88', l: '#c8a8b0', d: '#7a5a68', e: '#1a1018', w: '#ffffff', f: '#8a6a78', F: '#5a3a48' }, map: [
-    '...........ooooooooooooooo..........',
-    '....ooooooobbbbbbbbbbbbbbbooo.......',
-    '..oobbbbbbbbbbbbbbbbbbbbbbbbbboo....',
-    '.obbbbbbbbbbbbbbbbbbbbbbbbbbbbbbooo.',
-    'obbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbebbo',
-    'olllllllllllllllllllllllllllllllbboo',
-    '.oooooodddlllllllllllllllllllllloo.o',
-    '.......ooooooooooooooooooooooooo..o.',
-    '..................................o.'] },
-  dory: { pal: { o: '#0e1420', b: '#2a3a5a', l: '#4a5a80', n: '#f0c050', h: '#fff8d0', f: '#3a5080', F: '#1e2e4a', e: '#000000', w: '#e8f0ff' }, map: [
-    '.........o.o.o..........',
-    '........ofofofo.........',
-    '.......ofFfFfFfo........',
-    '......obbbbbbbbbbo......',
-    'oo...obbbbbbbbbbbbo.....',
-    'oFo.obbbbnnnbbbbbbbo....',
-    'oFFoobbbnnhnnbbbbbwwo...',
-    '.oFFobbbnnnnnbbbbbweo...',
-    '.oFFobbbbnnnbbbbbbbbo...',
-    'oFFoobbbbbbbbbbbbbbbo...',
-    'oFo.obbbbbbbbbbbbbbo....',
-    'oo...oblllllllllllo.....',
-    '......ollllllllllo......',
-    '.......ofFfFfFfo........',
-    '........ofofofo.........',
-    '.........o.o.o..........'] },
-  grouper: { pal: { o: '#1a1020', b: '#5a4a6a', m: '#3a2a48', l: '#9a8aa8', f: '#7a6a8a', F: '#4a3a5a', e: '#000000', w: '#ffffff' }, map: [
-    '...........ofofofofofofofo..........',
-    '..........oFfFfFfFfFfFfFfFo.........',
-    'oo.......obbbbbbbbbbbbbbbbbbo.......',
-    'oFo.....obbbmbbbbmbbbbbmbbbbbo......',
-    'oFFo...obbbbbbbbbbbbbbbbbbbbbbo.....',
-    'oFFFo.obbmbbbbbmbbbbbmbbbbbbbbbo....',
-    '.oFFFoobbbbbbbbbbbbbbbbbbbbbbwwbo...',
-    '..oFFFobbbbmbbbbbbmbbbbbbbbbbweoo...',
-    '..oFFFobbbbbbbbbbbbbbbbbbbbbbbbbbo..',
-    '..oFFFobbmbbbbbmbbbbbmbbbbbooooooo..',
-    '.oFFFoobbbbbbbbbbbbbbbbbbbllllllo...',
-    'oFFFo.obbbbbbmbbbbbbbbbbbbbllllo....',
-    'oFFo...olllllllllllllllllllllllo....',
-    'oFo.....olllllffllllllllffllllo.....',
-    'oo.......oooooFfoooooooFfoooo.......',
-    '..............oFo......oFo..........'] },
-  leviathan: { pal: { o: '#05080f', b: '#141c2c', d: '#0c1220', n: '#40b0ff', h: '#e8f4ff', l: '#a0d8ff', f: '#203048', F: '#101828', e: '#ff4040', w: '#ffd0d0' }, map: [
-    '...............o.......o.......o............',
-    '...............of......of......of...........',
-    'oo.............offo....offo....offo.........',
-    'oFo..........oobbbboooobbbboooobbbbooo......',
-    'oFFo.......oobbbbbbbbbbbbbbbbbbbbbbbbbooo...',
-    'oFFFo....oobbbnbbbbbbbnbbbbbbbnbbbbbbbbbboo.',
-    '.oFFFo..obbbbbbbbbnbbbbbbbbbbbbbbbnbbbbbwwbo',
-    '..oFFFoobbbnbbbbbbbbbbbbnbbbbbbbbbbbbbbbweoo',
-    '..oFFFoobbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbo',
-    '..oFFFoobbbbbbbnbbbbbbbbbbbbnbbbboooooooooo.',
-    '.oFFFo..obbbbbbbbbbbbbbbbbbbbbbbbohlhlhlhlo.',
-    'oFFFo....obbbbbbbbbbbbbbbbbbbbbbbbooooooooo.',
-    'oFFo.......oodddddddddddddddddddddo.........',
-    'oFo..........ooddddddddddddddddddo..........',
-    'oo.............oooooooooooooooooo...........'] },
-  char: { pal: { o: '#1a2e3a', b: '#3a7a80', m: '#f08098', l: '#e8f0e8', h: '#ffffff', f: '#e07060', F: '#a04040', e: '#0c0c14', w: '#ffffff' }, map: [
-    '..........oooooooooooo..o.....',
-    'oo.......obbbbbbbbbbbbooobo...',
-    'oFo.....obbbmbbbbmbbbbmbbbboo.',
-    'oFFo...obbbbbbbbbbbbbbbbbbbbbo',
-    '.oFFoooobmbbbbmbbbbmbbbbmbbwwo',
-    '..oFFobbbbbbbbbbbbbbbbbbbbbweo',
-    '..oFFolllllmlllllmlllllmllllo.',
-    '.oFFoolllllllllllllllllllllo..',
-    'oFFo...ollllhFfllllllhFfllo...',
-    'oFo.....oooohFoooooooFooo.....',
-    'oo..........oo........o.......'] },
-  pike: { pal: { o: '#1c2a14', b: '#5a7a38', m: '#d8d890', l: '#c8c890', f: '#6a8a40', F: '#3a5a20', e: '#0c0c0c', w: '#ffffee' }, map: [
-    '............................oo..........',
-    '.......................ooooobbo.........',
-    'oo........oooooooooooobbbbbbbbbooooo....',
-    'oFo....oobbbmbbbmbbbmbbbbbbbbbbbbbbbwoo.',
-    'oFFoooobbmbbbmbbbmbbbmbbbbbbbbbbbbbbbweo',
-    '.oFFobbbbmbbbmbbbmbbbmbbbbbbbbbbbbbbboo.',
-    '.oFFolllllllllllllllllllllllllllllooo...',
-    'oFFoooolllllFfllllllllllllllllllo.......',
-    'oFo....ooooFfoooooooooooooooooo.........',
-    'oo.........o............................'] },
-  aurora: { pal: { o: '#2a3448', b: '#a0b8c8', m: '#f090c0', n: '#80e0b0', l: '#e8f0f8', h: '#ffffff', f: '#b0c0d0', F: '#7a8aa0', e: '#0c0c14', w: '#ffffff' }, map: [
-    '...........oooooooooooo.....o.......',
-    'oo........obbbbbbbbbbbbooooobo......',
-    'oFo......obbmmbbbbbnnbbbbmmbbboo....',
-    'oFFo....obbbmmbbbbbnnbbbbbmmbbbboo..',
-    'oFFFoooobbbbbmmbbbbbnnbbbbbmmbbbbwwo',
-    '.oFFFolllllllmmlllllnnllllllmmlllweo',
-    '.oFFFolllllllllllllllllllllllllllloo',
-    'oFFFooollllllllllllllllllllllllllo..',
-    'oFFo...ollllllhFfllllllllhFfllllo...',
-    'oFo.....ooooohFooooooooooFoooo......',
-    'oo............o..........o..........'] },
+  // --- Wreck Shoal: warm shallows around a wreck ---
+  sardine:   { gen: { w: 28, h: 12, bodyH: .5, ped: .18, snout: .2, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .6, h: 2 }, anal: { type: 'soft', from: .5, to: .62, h: 1 }, pat: 'backspots', dens: .1, seed: 3 }, col: { base: '#4a6a8a', belly: '#e8f0f4', fin: '#9fb8d2', mark: '#2a3a5a', glow: '#2a3a5a' } },
+  bream:     { gen: { w: 40, h: 20, bodyH: .72, peak: .5, ped: .18, snout: .35, topFrac: .55, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .38, to: .56, h: 3 }, pat: 'lateral' }, col: { base: '#8a9ab0', belly: '#ece8dc', fin: '#a8a898', mark: '#c8a040' } },
+  grunt:     { gen: { w: 36, h: 18, bodyH: .6, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .72, h: 4 }, anal: { type: 'soft', from: .42, to: .6, h: 3 }, pat: 'stripes' }, col: { base: '#d8c050', belly: '#f0e8c0', fin: '#e8d070', mark: '#4080c0' } },
+  needlefish:{ gen: { w: 56, h: 10, bodyH: .45, ped: .3, peak: .5, snout: .5, beak: .3, tail: 'fork', tailH: .9, dorsal: { type: 'soft', from: .25, to: .45, h: 2 }, anal: { type: 'soft', from: .25, to: .45, h: 2 }, pat: 'lateral', eye: 1 }, col: { base: '#3a7a6a', belly: '#e0f0e8', fin: '#6aa090', mark: '#2a4a40' } },
+  pompano:   { gen: { w: 40, h: 22, bodyH: .76, peak: .5, ped: .12, snout: .22, tail: 'lunate', tailH: .95, dorsal: { type: 'soft', from: .4, to: .76, h: 4 }, anal: { type: 'soft', from: .4, to: .76, h: 4 } }, col: { base: '#a0b0c0', belly: '#f4f6f6', fin: '#e0c040', mark: '#c8c8c8' } },
+  snapper:   { gen: { w: 42, h: 20, bodyH: .62, peak: .45, ped: .2, snout: .33, tail: 'trunc', dorsal: { type: 'spiny', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .4, to: .6, h: 3 }, pat: 'bars', barP: 6, barW: 2, barOff: 2 }, col: { base: '#8a5a4a', belly: '#e0c8a8', fin: '#b07050', mark: '#6a4038' } },
+  trigger:   { gen: { w: 40, h: 22, bodyH: .78, peak: .5, ped: .15, snout: .35, snoutY: .05, tail: 'lunate', dorsal: { type: 'sail', from: .25, to: .45, h: 6 }, dorsal2: { type: 'soft', from: .5, to: .76, h: 4 }, anal: { type: 'soft', from: .5, to: .76, h: 4 }, pat: 'spots', dens: .07, seed: 5 }, col: { base: '#4a7a80', belly: '#d8d080', fin: '#70a0a8', mark: '#2a5060' } },
+  bonefish:  { gen: { w: 46, h: 14, bodyH: .5, peak: .45, ped: .2, snout: .25, snoutY: .03, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .6, h: 4 }, anal: { type: 'soft', from: .3, to: .4, h: 2 }, pat: 'lateral' }, col: { base: '#8898a8', belly: '#f2f2f2', fin: '#a8b8c0', mark: '#6a7a8a' } },
+  barracuda: { gen: { w: 56, h: 14, bodyH: .5, peak: .55, ped: .22, snout: .4, tail: 'fork', dorsal: { type: 'soft', from: .3, to: .4, h: 3 }, dorsal2: { type: 'soft', from: .62, to: .72, h: 3 }, anal: { type: 'soft', from: .3, to: .4, h: 3 }, jaws: { len: .2, gap: .35, teeth: true }, pat: 'saddles', barP: 5, barW: 2 }, col: { base: '#5a6a7a', belly: '#e8e8e8', fin: '#7a8a9a', mark: '#2a3a4a' } },
+  tarpon:    { gen: { w: 56, h: 20, bodyH: .6, peak: .4, ped: .2, snout: .3, mouth: 'top', snoutY: -.04, tail: 'fork', tailH: .95, dorsal: { type: 'soft', from: .4, to: .55, h: 4 }, anal: { type: 'soft', from: .45, to: .65, h: 4 }, pat: 'scales' }, col: { base: '#8a9ab0', belly: '#f4f4f8', fin: '#a8b8c8', mark: '#dfe9f3' } },
+  // --- Gull Harbor: a temperate pier ---
+  herring:   { gen: { w: 30, h: 12, bodyH: .5, ped: .18, snout: .22, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .6, h: 2 }, anal: { type: 'soft', from: .5, to: .62, h: 1 } }, col: { base: '#3a5a7a', belly: '#f0f4f8', fin: '#a0b0c0', mark: '#6a8aa0' } },
+  mackerel:  { gen: { w: 42, h: 14, bodyH: .5, peak: .45, ped: .18, snout: .25, tail: 'lunate', dorsal: { type: 'spiny', from: .3, to: .45, h: 3 }, dorsal2: { type: 'soft', from: .55, to: .65, h: 2 }, anal: { type: 'soft', from: .55, to: .65, h: 2 }, pat: 'saddles', barP: 3, barW: 1 }, col: { base: '#2a6a7a', belly: '#e8eef0', fin: '#5a8a98', mark: '#0a2a30' } },
+  mullet:    { gen: { w: 42, h: 15, bodyH: .5, peak: .4, ped: .22, snout: .4, tail: 'trunc', dorsal: { type: 'spiny', from: .4, to: .5, h: 3 }, dorsal2: { type: 'soft', from: .65, to: .75, h: 2 }, anal: { type: 'soft', from: .62, to: .72, h: 2 }, pat: 'stripes' }, col: { base: '#7a8a9a', belly: '#e8eef2', fin: '#90a0b0', mark: '#4a5a6a' } },
+  flounder:  { gen: { w: 44, h: 22, bodyH: .8, peak: .5, ped: .15, snout: .3, tail: 'round', tailLen: .12, dorsal: { type: 'long', from: .05, to: .95, h: 2 }, anal: { type: 'long', from: .05, to: .95, h: 2 }, eyeX: .8, eyeY: .2, eye2: [.87, .14], pect: false, pat: 'spots', dens: .1, seed: 2 }, col: { base: '#8a6a44', belly: '#c9ad80', fin: '#a88a60', mark: '#5a4428' } },
+  seabass:   { gen: { w: 46, h: 17, bodyH: .56, peak: .45, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'spiny', from: .35, to: .55, h: 4 }, dorsal2: { type: 'soft', from: .6, to: .75, h: 3 }, anal: { type: 'soft', from: .55, to: .7, h: 3 }, pat: 'lateral' }, col: { base: '#6a7a86', belly: '#e8ecee', fin: '#8898a0', mark: '#3a4a50' } },
+  garfish:   { gen: { w: 56, h: 9, bodyH: .45, ped: .3, peak: .5, snout: .5, beak: .3, tail: 'fork', tailH: .9, dorsal: { type: 'soft', from: .25, to: .45, h: 2 }, anal: { type: 'soft', from: .25, to: .45, h: 2 }, pat: 'lateral', eye: 1 }, col: { base: '#3a6a4a', belly: '#e8f0e8', fin: '#70a080', mark: '#2a4a3a' } },
+  pollock:   { gen: { w: 44, h: 16, bodyH: .55, peak: .4, ped: .2, snout: .3, underbite: 1, tail: 'trunc', dorsal: { type: 'soft', from: .3, to: .4, h: 3 }, dorsal2: { type: 'long', from: .45, to: .75, h: 3 }, anal: { type: 'long', from: .45, to: .75, h: 2 }, pat: 'lateral' }, col: { base: '#3a5a4a', belly: '#d8e0d8', fin: '#6a8a7a', mark: '#a8c0b0' } },
+  conger:    { gen: { w: 56, h: 12, tail: 'none', ped: .08, peak: .3, snout: .35, bodyH: .6, dorsal: { type: 'long', from: .15, to: .97, h: 2 }, anal: { type: 'long', from: .2, to: .97, h: 2 }, underbite: 1, pectX: .8 }, col: { base: '#5a6a70', belly: '#d0d8d8', fin: '#70808a', mark: '#3a4a50' } },
+  dogfish:   { gen: { w: 54, h: 14, bodyH: .48, peak: .4, ped: .2, snout: .25, snoutY: .02, tail: 'hetero', dorsal: { type: 'tri', from: .35, to: .47, h: 4 }, dorsal2: { type: 'tri', from: .65, to: .73, h: 3 }, mouth: 'low', pat: 'spots', dens: .05, seed: 7 }, col: { base: '#6a7080', belly: '#e0e4e8', fin: '#8a9098', mark: '#e8ecf0' } },
+  sturgeon:  { gen: { w: 60, h: 18, bodyH: .5, peak: .4, ped: .2, snout: .25, snoutY: .04, tail: 'hetero', tailH: .9, dorsal: { type: 'soft', from: .2, to: .32, h: 4 }, anal: { type: 'soft', from: .2, to: .3, h: 3 }, barbel: true, mouth: 'low', pat: 'scutes' }, col: { base: '#6a6a62', belly: '#d8d0c0', fin: '#7a7a70', mark: '#c8c0a8' } },
+  // --- Kelp Reach: a kelp forest ---
+  senorita:  { gen: { w: 30, h: 11, bodyH: .45, peak: .45, ped: .25, snout: .3, tail: 'trunc', dorsal: { type: 'long', from: .3, to: .8, h: 2 }, anal: { type: 'long', from: .4, to: .8, h: 2 }, pat: 'stripes' }, col: { base: '#c07a40', belly: '#f0d8b0', fin: '#d09050', mark: '#8a5020' } },
+  perch:     { gen: { w: 32, h: 14, bodyH: .6, peak: .5, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'spiny', from: .35, to: .7, h: 3 }, anal: { type: 'soft', from: .5, to: .7, h: 2 }, pat: 'stripes' }, col: { base: '#a06a40', belly: '#e8c8a0', fin: '#c08050', mark: '#6a4028' } },
+  kelpbass:  { gen: { w: 42, h: 18, bodyH: .6, peak: .45, ped: .2, snout: .3, tail: 'trunc', dorsal: { type: 'spiny', from: .3, to: .55, h: 4 }, dorsal2: { type: 'soft', from: .55, to: .75, h: 3 }, anal: { type: 'soft', from: .55, to: .7, h: 3 }, pat: 'spots2', dens: .1, seed: 4 }, col: { base: '#5a7a3a', belly: '#c8c898', fin: '#7a9a4a', mark: '#38502a' } },
+  garibaldi: { gen: { w: 34, h: 20, bodyH: .78, peak: .5, ped: .18, snout: .35, tail: 'fork', dorsal: { type: 'long', from: .3, to: .75, h: 4 }, anal: { type: 'soft', from: .5, to: .75, h: 3 } }, col: { base: '#f08030', belly: '#f8b060', fin: '#f09040', mark: '#d05010' } },
+  rockfish:  { gen: { w: 42, h: 20, bodyH: .66, peak: .4, ped: .2, snout: .33, tail: 'trunc', dorsal: { type: 'spiny', from: .3, to: .6, h: 5 }, dorsal2: { type: 'soft', from: .6, to: .75, h: 3 }, anal: { type: 'soft', from: .55, to: .7, h: 3 }, bigMouth: true, pat: 'spots', dens: .14, seed: 9 }, col: { base: '#c04a3a', belly: '#e8b090', fin: '#d06050', mark: '#8a2a20' } },
+  sheephead: { gen: { w: 46, h: 20, bodyH: .66, peak: .45, ped: .2, snout: .4, tail: 'trunc', dorsal: { type: 'long', from: .3, to: .75, h: 3 }, anal: { type: 'soft', from: .55, to: .75, h: 3 }, pat: 'bands', bandA: .3, bandB: .72, jaws: { len: .08, gap: .2, teeth: true } }, col: { base: '#c04050', belly: '#f0e0e0', fin: '#2a2a30', mark: '#2a2a30' } },
+  opaleye:   { gen: { w: 38, h: 19, bodyH: .68, peak: .5, ped: .2, snout: .33, tail: 'fork', dorsal: { type: 'spiny', from: .3, to: .75, h: 3 }, anal: { type: 'soft', from: .55, to: .75, h: 3 }, pat: 'twospots' }, col: { base: '#3a5a40', belly: '#a0b090', fin: '#4a6a50', mark: '#e8f0e0', eye: '#204080', eyeW: '#80c0e0' } },
+  cabezon:   { gen: { w: 46, h: 18, bodyH: .62, peak: .55, ped: .2, snout: .45, tail: 'round', dorsal: { type: 'spiny', from: .25, to: .5, h: 4 }, dorsal2: { type: 'soft', from: .5, to: .75, h: 3 }, anal: { type: 'soft', from: .5, to: .7, h: 3 }, bigMouth: true, pat: 'spots2', dens: .12, seed: 11 }, col: { base: '#5a6a4a', belly: '#c8c8a0', fin: '#7a8a6a', mark: '#3a4a30' } },
+  lingcod:   { gen: { w: 56, h: 15, bodyH: .5, peak: .5, ped: .22, snout: .4, tail: 'trunc', dorsal: { type: 'long', from: .25, to: .8, h: 3 }, anal: { type: 'long', from: .5, to: .8, h: 2 }, jaws: { len: .14, gap: .3, teeth: true }, pat: 'spots', dens: .14, seed: 13 }, col: { base: '#6a7a5a', belly: '#d0d8c0', fin: '#8a9a7a', mark: '#3a4a30' } },
+  yellowtail:{ gen: { w: 54, h: 16, bodyH: .5, peak: .45, ped: .16, snout: .28, tail: 'lunate', dorsal: { type: 'soft', from: .4, to: .75, h: 3 }, anal: { type: 'soft', from: .5, to: .75, h: 2 }, pat: 'lateral' }, col: { base: '#5a7a90', belly: '#e8f0f4', fin: '#e8d040', mark: '#e8c030' } },
+  leopardshark:{ gen: { w: 60, h: 16, bodyH: .48, peak: .4, ped: .2, snout: .25, snoutY: .02, tail: 'hetero', dorsal: { type: 'tri', from: .35, to: .47, h: 5 }, dorsal2: { type: 'tri', from: .62, to: .7, h: 3 }, anal: { type: 'soft', from: .62, to: .68, h: 2 }, mouth: 'low', pat: ['saddles', 'spots'], barP: 6, barW: 3, dens: .06, seed: 15 }, col: { base: '#8a8070', belly: '#e8e4d8', fin: '#9a9080', mark: '#3a3028' } },
+  sunfish:   { sil: [
+    '...............gggg.....................',
+    '..............gggggg....................',
+    '.............ggggggg....................',
+    '............gggggggg....................',
+    '...........ggggggggg....................',
+    '..........ggggggggg.....................',
+    '..........ggggggggg.....................',
+    '.........fff###########.................',
+    '.......fff################..............',
+    '.....fff#####################...........',
+    '....ff##########################........',
+    '...ff#############################......',
+    '...f###############################e....',
+    '...f################################....',
+    '...f################################....',
+    '...ff###############################....',
+    '....ff##############################....',
+    '.....fff###########################.....',
+    '.......fff########################......',
+    '.........fff####################........',
+    '..........ggggggggg#######..............',
+    '..........ggggggggg.....................',
+    '...........ggggggggg....................',
+    '............gggggggg....................',
+    '.............ggggggg....................',
+    '..............gggggg....................',
+    '...............gggg.....................'], g: { pat: 'spots', dens: .05, seed: 8 }, col: { base: '#6a7080', belly: '#c8ccd0', fin: '#7a8090', mark: '#4a5060' } },
+  // --- Black Trench: the deep ---
+  hagfish:   { gen: { w: 56, h: 9, tail: 'none', ped: .15, peak: .4, snout: .5, bodyH: .55, noEye: true, anal: { type: 'long', from: .02, to: .9, h: 1 }, barbel: true, pect: false, sheen: false }, col: { base: '#9a7a88', belly: '#c8a8b0', fin: '#8a6a78', mark: '#7a5a68' } },
+  lanternfish:{ gen: { w: 28, h: 12, bodyH: .55, peak: .4, ped: .2, snout: .3, bigMouth: true, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .6, h: 3 }, anal: { type: 'soft', from: .45, to: .7, h: 2 }, eyeX: .82, eyeY: .3, pat: 'bellylights' }, col: { base: '#2a3a5a', belly: '#4a5a80', fin: '#3a5080', mark: '#1a2a4a', glow: '#70d0ff' } },
+  grenadier: { gen: { w: 56, h: 16, bodyH: .62, peak: .7, ped: .04, snout: .4, tail: 'none', dorsal: { type: 'tri', from: .7, to: .85, h: 5 }, dorsal2: { type: 'long', from: .1, to: .65, h: 2 }, anal: { type: 'long', from: .1, to: .65, h: 2 }, mouth: 'low', barbel: true, eyeX: .88, eyeY: .3 }, col: { base: '#6a6a7a', belly: '#a0a0b0', fin: '#7a7a8a', mark: '#4a4a5a' } },
+  sablefish: { gen: { w: 50, h: 14, bodyH: .48, peak: .45, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .3, to: .42, h: 3 }, dorsal2: { type: 'soft', from: .55, to: .72, h: 3 }, anal: { type: 'soft', from: .55, to: .72, h: 2 } }, col: { base: '#2a2a30', belly: '#6a6a70', fin: '#3a3a40', mark: '#1a1a20' } },
+  viperfish: { gen: { w: 48, h: 12, bodyH: .45, peak: .75, ped: .15, snout: .5, tail: 'fork', tailLen: .12, jaws: { len: .22, gap: .45, teeth: true }, dorsal: { type: 'tri', from: .55, to: .68, h: 6 }, anal: { type: 'soft', from: .3, to: .5, h: 2 }, eyeX: .78, pat: 'bellylights' }, col: { base: '#1a2430', belly: '#3a4a5a', fin: '#2a3a48', mark: '#101820', glow: '#60c0ff' } },
+  fangtooth: { gen: { w: 30, h: 18, bodyH: .7, peak: .6, ped: .15, snout: .45, tail: 'fork', jaws: { len: .3, gap: .3, teeth: true }, eye: 1, eyeX: .8, eyeY: .3, dorsal: { type: 'soft', from: .35, to: .6, h: 3 }, anal: { type: 'soft', from: .35, to: .55, h: 2 } }, col: { base: '#2a1c20', belly: '#4a3038', fin: '#3a2830', mark: '#0a0a0a' } },
+  anglerfish:{ gen: { w: 44, h: 26, cy: .58, bodyH: .62, peak: .6, ped: .15, snout: .5, tail: 'round', tailLen: .12, jaws: { len: .35, gap: .38, teeth: true }, lure: true, dorsal: { type: 'soft', from: .35, to: .55, h: 3 }, anal: { type: 'soft', from: .35, to: .5, h: 2 }, eye: 1, eyeX: .76, eyeY: .3 }, col: { base: '#2a2430', belly: '#4a3a48', fin: '#3a3040', mark: '#1a1420', glow: '#a0f0ff' } },
+  gulper:    { gen: { w: 60, h: 16, bodyH: .6, peak: .72, ped: .04, snout: .5, tail: 'none', jaws: { len: .32, gap: .55 }, eye: 1, eyeX: .68, eyeY: .35, tailLight: true, pect: false, sheen: false }, col: { base: '#1a1a24', belly: '#2a2a38', fin: '#202030', mark: '#101018', glow: '#ff6060' } },
+  chimaera:  { gen: { w: 56, h: 18, bodyH: .55, peak: .62, ped: .05, snout: .4, tail: 'none', dorsal: { type: 'tri', from: .6, to: .72, h: 6 }, dorsal2: { type: 'long', from: .1, to: .55, h: 2 }, anal: { type: 'long', from: .1, to: .5, h: 1 }, pectH: 6, pectX: .72, mouth: 'low', eyeX: .84, eyeY: .3, pat: 'spots', dens: .05, seed: 17 }, col: { base: '#7a8090', belly: '#c8ccd8', fin: '#8a90a0', mark: '#5a6070', eye: '#104020', eyeW: '#80e0a0' } },
+  oarfish:   { gen: { w: 64, h: 14, cy: .55, tail: 'none', ped: .35, peak: .8, snout: .55, bodyH: .55, dorsal: { type: 'long', from: .02, to: .98, h: 3 }, dorsal2: { type: 'sail', from: .84, to: .99, h: 6 }, pat: 'spots', dens: .06, seed: 19, eyeX: .9 }, col: { base: '#a8b8c8', belly: '#e8f0f8', fin: '#e04040', mark: '#2a3a4a' } },
+  coelacanth:{ gen: { w: 54, h: 20, bodyH: .62, peak: .45, ped: .3, snout: .3, tail: 'round', tailLen: .14, dorsal: { type: 'spiny', from: .3, to: .42, h: 4 }, dorsal2: { type: 'soft', from: .55, to: .68, h: 3 }, anal: { type: 'soft', from: .55, to: .68, h: 3 }, pectH: 5, pelvic: .5, pat: 'spots', dens: .09, seed: 21 }, col: { base: '#2a4a6a', belly: '#4a6a8a', fin: '#3a5a7a', mark: '#d8e8f0' } },
+  // --- Frost Fjords ---
+  capelin:   { gen: { w: 28, h: 9, bodyH: .45, ped: .2, snout: .25, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .6, h: 2 }, adipose: true, pat: 'lateral', eye: 1 }, col: { base: '#4a7a7a', belly: '#e8f0f0', fin: '#80a0a0', mark: '#2a4a4a' } },
+  char:      { gen: { w: 46, h: 15, bodyH: .52, peak: .45, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .55, h: 3 }, adipose: true, anal: { type: 'soft', from: .6, to: .72, h: 3 }, pelvic: .55, pat: 'spots', dens: .1, seed: 23 }, col: { base: '#3a7a80', belly: '#e88060', fin: '#e07060', mark: '#f0a0b0' } },
+  cod:       { gen: { w: 50, h: 18, bodyH: .58, peak: .4, ped: .2, snout: .33, snoutY: .02, tail: 'trunc', dorsal: { type: 'soft', from: .25, to: .38, h: 4 }, dorsal2: { type: 'soft', from: .42, to: .56, h: 3 }, dorsal3: { type: 'soft', from: .6, to: .75, h: 3 }, anal: { type: 'soft', from: .42, to: .56, h: 2 }, anal2: { type: 'soft', from: .6, to: .75, h: 2 }, barbel: true, pat: ['backspots', 'lateral'], dens: .14, seed: 25 }, col: { base: '#7a7a50', belly: '#e0e0d0', fin: '#8a8a60', mark: '#e8e8d8', glow: '#4a4a28' } },
+  haddock:   { gen: { w: 46, h: 17, bodyH: .56, peak: .4, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'tri', from: .28, to: .4, h: 5 }, dorsal2: { type: 'soft', from: .45, to: .58, h: 3 }, dorsal3: { type: 'soft', from: .62, to: .75, h: 3 }, anal: { type: 'soft', from: .45, to: .58, h: 2 }, anal2: { type: 'soft', from: .62, to: .75, h: 2 }, barbel: true, pat: ['lateral', 'blotch'] }, col: { base: '#6a7a88', belly: '#e8ecf0', fin: '#8a9aa8', mark: '#1a1a24' } },
+  pike:      { gen: { w: 60, h: 13, bodyH: .5, peak: .4, ped: .25, snout: .45, headPow: 1, tail: 'fork', dorsal: { type: 'soft', from: .12, to: .3, h: 4 }, anal: { type: 'soft', from: .12, to: .3, h: 3 }, underbite: 2, pat: 'spots', dens: .1, seed: 27 }, col: { base: '#4a6a30', belly: '#d8d8a0', fin: '#6a8a40', mark: '#d8d890' } },
+  wolffish:  { gen: { w: 56, h: 15, tail: 'round', tailLen: .1, ped: .3, peak: .7, snout: .45, bodyH: .62, jaws: { len: .12, gap: .3, teeth: true }, dorsal: { type: 'long', from: .1, to: .95, h: 3 }, anal: { type: 'long', from: .1, to: .9, h: 2 }, eye: 1, eyeX: .84, pat: 'bars', barP: 6, barW: 2 }, col: { base: '#5a6a7a', belly: '#a0a8b0', fin: '#6a7a8a', mark: '#2a3a48' } },
+  lumpsucker:{ gen: { w: 32, h: 24, bodyH: .92, peak: .5, ped: .25, snout: .5, tail: 'round', tailLen: .12, dorsal: { type: 'soft', from: .25, to: .6, h: 3 }, pat: 'tubercles', eye: 1, eyeX: .8, eyeY: .4 }, col: { base: '#5a7a6a', belly: '#c0b0a0', fin: '#6a8a7a', mark: '#3a5a4a' } },
+  halibut:   { gen: { w: 60, h: 26, bodyH: .85, peak: .5, ped: .12, snout: .25, tail: 'trunc', tailLen: .12, dorsal: { type: 'long', from: .08, to: .9, h: 3 }, anal: { type: 'long', from: .08, to: .9, h: 3 }, eyeX: .8, eyeY: .2, eye2: [.87, .14], pect: false, pat: 'spots', dens: .06, seed: 29 }, col: { base: '#4a4a3a', belly: '#a8a090', fin: '#5a5a48', mark: '#6a6a58' } },
+  salmon:    { gen: { w: 54, h: 16, bodyH: .5, peak: .42, ped: .2, snout: .3, tail: 'fork', dorsal: { type: 'soft', from: .4, to: .55, h: 3 }, adipose: true, anal: { type: 'soft', from: .62, to: .74, h: 3 }, pelvic: .55, underbite: 2, pat: 'backspots', dens: .08, seed: 31 }, col: { base: '#4a7a88', belly: '#e8f0f0', fin: '#7a9aa8', mark: '#2a3a40', glow: '#2a3a40' } },
+  greenlandshark:{ gen: { w: 64, h: 18, bodyH: .55, peak: .45, ped: .22, snout: .4, snoutY: .02, tail: 'hetero', tailH: .9, dorsal: { type: 'tri', from: .4, to: .5, h: 3 }, dorsal2: { type: 'tri', from: .68, to: .74, h: 2 }, mouth: 'low', eye: 1, eyeY: .45, sheen: false }, col: { base: '#4a4a50', belly: '#8a8a90', fin: '#5a5a60', mark: '#3a3a40' } },
+  // --- not fish ---
   wood: { pal: { o: '#3a2414', b: '#8a5a34', d: '#6a4224', m: '#4a2e18' }, map: [
-    '.oooooooooooooooooooooo.',
-    'obbbbbbbbbbbbbbbbbbbbbbo',
-    'obddbbbbbbddddbbbbbbbddo',
-    'obbbbbbdbbbbbbbbbbmbbbbo',
-    'obbbbbbbbbbbddbbbmmbbbbo',
-    'obddddbbbbbbbbbbbbmbbddo',
-    'obbbbbbbbbbbbbbbbbbbbbbo',
-    '.oooooooooooooooooooooo.'] },
+    '.oooooooooooooooooooooo.', 'obbbbbbbbbbbbbbbbbbbbbbo', 'obddbbbbbbddddbbbbbbbddo', 'obbbbbbdbbbbbbbbbbmbbbbo', 'obbbbbbbbbbbddbbbmmbbbbo', 'obddddbbbbbbbbbbbbmbbddo', 'obbbbbbbbbbbbbbbbbbbbbbo', '.oooooooooooooooooooooo.'] },
   boot: { pal: { o: '#2a1a10', b: '#6a4a30', m: '#1a1008', d: '#4a3220' }, map: [
-    '....oooooo......',
-    '...obbbbbbo.....',
-    '...obmbbmbo.....',
-    '...obbbbbbo.....',
-    '...obmbbmbo.....',
-    '...obbbbbbo.....',
-    '...obmbbmbo.....',
-    '...obbbbbbo.....',
-    '...obbbbbboooo..',
-    '..obbbbbbbbbbbo.',
-    '.obbbbbbbbbbbbbo',
-    'obbbbbbbbbbbbbbo',
-    'oddddddddddddddo',
-    '.oooooooooooooo.'] },
+    '....oooooo......', '...obbbbbbo.....', '...obmbbmbo.....', '...obbbbbbo.....', '...obmbbmbo.....', '...obbbbbbo.....', '...obmbbmbo.....', '...obbbbbbo.....', '...obbbbbboooo..', '..obbbbbbbbbbbo.', '.obbbbbbbbbbbbbo', 'obbbbbbbbbbbbbbo', 'oddddddddddddddo', '.oooooooooooooo.'] },
 };
-// Pads ragged rows and caches the padded map per species.
+
+// A species' coloured map, built once: explicit pixel maps (wood, boot) are padded; everything else is generated and shaded.
 const FISH_MAP = {};
-function fishMap(id) { if (FISH_MAP[id]) return FISH_MAP[id]; const a = FISH_ART[id], w = Math.max(...a.map.map(r => r.length)); return FISH_MAP[id] = a.map.map(r => r + '.'.repeat(w - r.length)); }
+function fishMap(id) { if (FISH_MAP[id]) return FISH_MAP[id]; const a = FISH_ART[id]; if (a.map) { const w = Math.max(...a.map.map(r => r.length)); return FISH_MAP[id] = a.map.map(r => r + '.'.repeat(w - r.length)); } return FISH_MAP[id] = shadeSil(a.sil || genSil(a.gen), a.g || a.gen); }
+const FISH_PALS = {};
+function fishPalOf(id) { const a = FISH_ART[id]; return FISH_PALS[id] || (FISH_PALS[id] = a.pal || fishPal(a.col)); }
 // mode: 'color' (the sprite), 'dim' (unknown-species silhouette). Cached per id/scale/mode.
 function fishC(id, sc, mode) {
   const key = 'fish:' + id + ':' + sc + ':' + mode; let c = CACHE.get(key); if (c) return c;
-  const m = fishMap(id), pal = FISH_ART[id].pal; c = document.createElement('canvas'); c.width = m[0].length * sc; c.height = m.length * sc;
+  const m = fishMap(id), pal = fishPalOf(id); c = document.createElement('canvas'); c.width = m[0].length * sc; c.height = m.length * sc;
   const x = c.getContext('2d');
   for (let r = 0; r < m.length; r++) for (let i = 0; i < m[r].length; i++) { const ch = m[r][i]; if (ch === '.') continue; x.fillStyle = mode === 'dim' ? '#2d3b55' : (pal[ch] || pal.b); x.fillRect(i * sc, r * sc, sc, sc); }
   CACHE.set(key, c); return c;
