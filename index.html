@@ -75,6 +75,9 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
   padding:9px 10px calc(14px + env(safe-area-inset-bottom,0px));display:grid;gap:8px}
 .tide{font-size:17px;color:var(--muted);text-align:center;text-wrap:balance;padding:0 2px}
 .tide b{color:var(--text);font-weight:normal}
+.tide.tut{background:rgba(240,192,80,.1);border:2px solid var(--brass-2);padding:7px 8px;color:var(--text);font-size:18px}
+.tide.tut b{color:var(--brass)}
+.cta.tut{box-shadow:0 0 0 3px var(--brass),0 4px 0 var(--brass-3);animation:thump .5s infinite alternate}
 .slots{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .slots.solo{grid-template-columns:1fr}
 .slot{width:100%;background:rgba(10,16,32,.55);border:2px solid var(--edge);padding:8px 3px 6px;display:grid;gap:4px;min-width:0;text-align:center}
@@ -276,7 +279,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
   <div class="fightbox">
     <div class="fname" id="fname"></div>
     <canvas id="fcv" width="128" height="128"></canvas>
-    <div class="note" style="text-align:center">Hold anywhere to lift the net. Let go to drop it. Keep the fish inside.</div>
+    <div class="note" style="text-align:center" id="fhint">Hold anywhere to lift the net. Let go to drop it. Keep the fish inside.</div>
   </div>
 </div>
 
@@ -696,7 +699,8 @@ function pool(locId, rig, baitId, t, spotId) {
   return out;
 }
 function rollCatch(locId, rig, baitId, t) {
-  const p = pool(locId, rig, baitId, t); if (!p.length) return null;
+  let p = pool(locId, rig, baitId, t); if (!p.length) return null;
+  if (S.prologue && S.proCaught === 0) { const easy = p.filter(x => !x[0].kind && x[0].diff <= 0.2); if (easy.length) p = easy; } // the tutorial's first fight is a gentle one
   const tot = p.reduce((a, x) => a + x[1], 0);
   let r = Math.random() * tot, s = p[p.length - 1][0];
   for (const [sp, w] of p) { r -= w; if (r <= 0) { s = sp; break; } }
@@ -854,10 +858,22 @@ function renderHUD() {
   $('#tMap').hidden = S.prologue; $('#hMoney').hidden = S.prologue; // money does not exist yet
   $('#tMap').classList.toggle('pulse', S.raft && S.loc === 'shoal' && !S.visited.harbor);
 }
+// The prologue is the tutorial. Each line answers "what does the game want from me right now?"
+function tutorialText() {
+  const L = S.lines[0];
+  if (S.proCaught >= 2) return '<b>The light is going.</b>';
+  if (F && !F.over) return '<b>Hold</b> anywhere to lift the net, let go to drop it. Keep the shadow inside the net until the bar fills.';
+  if (S.pending) return '<b>Landed.</b> Keep it for supper, or let it go. Either way it goes in your index.';
+  if (!L || L.phase === 'idle') return S.casts === 0 ? '<b>Tutorial.</b> Tap <b>CAST</b>. The rod goes out to the float.' : S.proCaught === 0 ? '<b>Cast again.</b> The next bite will not be long.' : '<b>One more.</b> Cast again. Bigger fish fight harder: the bar drains faster when they slip out of the net.';
+  if (L.phase === 'waiting') return '<b>Watch the float</b> on the water. When it dips you have three seconds.';
+  if (L.phase === 'bite') return '<b>Now!</b> Tap <b>REEL IN</b> before it spits the hook.';
+  return '<b>Calm sea.</b>';
+}
 function renderTide() {
   const t = now(); lastPhase = phaseAt(t);
   const names = pool(S.loc, 'hand', 'squid', t).filter(x => !x[0].kind && !x[0].rare).map(x => x[0].name);
-  if (S.prologue) { $('#tide').innerHTML = S.proCaught < 2 ? `<b>Calm sea.</b> Cast, and catch ${S.proCaught === 0 ? 'two' : 'one more'} for supper. Then home.` : '<b>The light is going.</b>'; return; }
+  if (S.prologue) { $('#tide').innerHTML = tutorialText(); $('#tide').classList.add('tut'); return; }
+  $('#tide').classList.remove('tut');
   $('#tide').innerHTML = `<b>${PHASE_NAME[lastPhase]}</b> · biting: ${names.slice(0, 2).join(', ') || 'not much'}`;
 }
 const RIG_NAME = { hand: 'rod', set: 'set', trophy: 'trophy' };
@@ -907,7 +923,7 @@ function renderAction() {
     box.innerHTML = `<div class="rigrow ${rigOpen ? 'open' : ''}"><button class="chip" data-act="cyclerig" title="Next rig">${RIG_LABEL[L.rig]}</button><span class="dot">·</span><button class="chip" data-act="cyclebait" title="Next bait">${baitLabel(L.bait)}</button><button class="link" data-act="change">${rigOpen ? 'DONE' : 'CHANGE'}</button></div>
       ${pickers}
       <div class="note">${S.prologue && S.casts === 0 ? 'Cast the rod. When the float dips, tap Reel, then keep the fish inside the net.' : rigNote(L)}</div>
-      <button class="cta" data-act="cast" data-i="${i}">${L.rig === 'hand' ? 'Cast' : 'Set the line'}</button>`;
+      <button class="cta ${S.prologue ? 'tut' : ''}" data-act="cast" data-i="${i}">${L.rig === 'hand' ? 'Cast' : 'Set the line'}</button>`;
   } else if (L.phase === 'waiting') {
     box.innerHTML = `<div class="rigrow"><span class="chip">${RIG_LABEL[L.rig]}</span><span class="dot">·</span><span class="chip">${baitLabel(L.bait)}</span></div><div class="note" data-line="${i}">${waitNote(L)}</div><button class="cta alt" data-act="pull" data-i="${i}">Pull in</button>`;
   } else if (L.phase === 'bite') {
@@ -2561,7 +2577,7 @@ function startFight(i) {
   const L = S.lines[i], s = SP[L.c.id], bar = rodBar();
   F = { i, s, kg: L.c.kg || 0, diff: clamp(s.diff + (L.rig === 'trophy' ? 0.08 : 0) + (L.c.trophy ? 0.06 : 0), 0, 0.97), fy: 0.5, tgt: 0.5, tNext: 0.4, by: 0.5 - bar / 2, bv: 0, bar, p: 0.3, hold: false, inside: false, last: performance.now(), over: false, trophy: L.c.trophy };
   $('#fname').textContent = s.legend ? 'Something that should not be here' : L.c.trophy || s.big ? 'Something big' : s.shape === 'fry' ? 'Something small' : 'Something is on';
-  $('#fightWrap').hidden = false;
+  $('#fightWrap').hidden = false; if (S.prologue) renderTide();
   requestAnimationFrame(fightFrame);
 }
 function fightFrame(ts) {
@@ -2612,7 +2628,7 @@ function drawFight(ts) {
 function endFight(win) {
   F.over = true; const i = F.i; $('#fightWrap').hidden = true; F = null;
   if (win) land(i);
-  else { const L = S.lines[i]; L.phase = 'idle'; L.c = null; save(); render(); toast('It threw the hook.'); }
+  else { const L = S.lines[i]; L.phase = 'idle'; L.c = null; save(); render(); toast(S.prologue ? 'It threw the hook. Cast again; the next one will not be long.' : 'It threw the hook.'); }
 }
 
 // ---------- input ----------
