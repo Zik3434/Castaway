@@ -87,6 +87,23 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 .slot.lock{border-style:dashed;opacity:.55}
 .box{display:grid;gap:7px}
 .box h3{margin:0;font-family:var(--display);font-size:9px;color:var(--muted);letter-spacing:.5px}
+.lhead{display:flex;justify-content:space-between;align-items:baseline}
+.lhead h3{margin:0;font-family:var(--display);font-size:9px;color:var(--brass);letter-spacing:.5px}
+.lhead .note{font-size:17px}
+.rigrow{display:flex;align-items:center;gap:6px;background:rgba(10,16,32,.6);border:2px solid var(--edge);padding:4px 6px}
+.rigrow .chip{flex:0 1 auto;min-width:0;padding:6px 6px;background:none;border:2px solid transparent;font-family:var(--display);font-size:9px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rigrow .chip:active{border-color:var(--edge)}
+.rigrow .dot{color:var(--muted)}
+.rigrow .link{margin-left:auto;flex:none;padding:6px 4px;background:none;border:0;font-family:var(--display);font-size:9px;color:var(--brass)}
+.rigrow.open .link{color:var(--muted)}
+.bar{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.bar .tool{display:grid;gap:3px;text-align:left;padding:8px 10px;background:rgba(10,16,32,.6);border:2px solid var(--edge);min-width:0}
+.bar .tool .n{font-family:var(--display);font-size:8px;color:var(--muted)}
+.bar .tool .v{font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.bar .tool.sell{border-color:var(--brass-2)}
+.bar .tool.sell .n,.bar .tool.sell .v{color:var(--brass)}
+.bar .tool[disabled]{opacity:.5;cursor:default}
+.bar .tool:only-child{grid-column:1/-1}
 .segrow{display:flex;align-items:center;gap:6px}
 .segrow .lbl{font-family:var(--display);font-size:8px;color:var(--muted);width:42px;flex:none}
 .seg{display:flex;gap:4px;flex:1;min-width:0}
@@ -124,6 +141,22 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 .card .big{font-size:22px}
 .card .tag{color:var(--good);font-family:var(--display);font-size:9px}
 .card canvas{width:144px;height:auto;background:var(--ink);border:2px solid var(--edge)}
+.card.catch{max-width:400px;padding:16px 14px;gap:10px;justify-items:stretch}
+.catch .head{font-family:var(--display);font-size:clamp(20px,7vw,30px);color:var(--brass);text-shadow:3px 3px 0 #2b1d05;line-height:1.2}
+.catch .pill{justify-self:center;font-family:var(--display);font-size:8px;padding:6px 10px;background:#2a5a74;color:var(--text);letter-spacing:.5px}
+.catch .pill.gold{background:var(--brass-2);color:#2b1d05}
+.catch .pills{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+.catch canvas.art{width:100%;max-width:300px;justify-self:center;border:2px solid var(--edge)}
+.catch .fish{font-family:var(--display);font-size:13px;color:var(--text);text-wrap:balance}
+.catch .size{font-family:var(--display);font-size:clamp(22px,8vw,34px);color:var(--brass);text-shadow:3px 3px 0 #2b1d05}
+.catch .sub{color:var(--muted);font-size:18px}
+.catch .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:left}
+.catch .stat{background:rgba(10,16,32,.6);border:2px solid var(--edge);padding:8px 8px}
+.catch .stat .n{font-family:var(--display);font-size:8px;color:var(--brass)}
+.catch .stat .v{font-size:19px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.catch .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.catch .acts .cta:only-child{grid-column:1/-1}
+.catch .warn{color:var(--bad);font-size:17px}
 .fightbox{width:100%;max-width:380px;display:grid;gap:8px;justify-items:center;touch-action:none;user-select:none;-webkit-user-select:none}
 .fightbox canvas{width:min(100%,300px);height:auto;border:3px solid var(--edge)}
 .fightbox .fname{font-family:var(--display);font-size:12px;color:var(--brass);text-align:center;text-wrap:balance}
@@ -174,9 +207,10 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
   <div class="spacer"></div>
   <section id="panel">
     <div class="tide" id="tide"></div>
+    <div class="lhead"><h3>LINES</h3><div class="note" id="ready"></div></div>
     <div class="slots" id="slots"></div>
     <div class="box" id="action"></div>
-    <div id="extra" style="display:grid;gap:10px"></div>
+    <div id="extra" style="display:grid;gap:8px"></div>
   </section>
 </div>
 
@@ -278,7 +312,8 @@ const PHASE_NAME = { dawn: 'Dawn', day: 'Day', dusk: 'Dusk', night: 'Night' };
 // ---------- state ----------
 function freshState() {
   return {
-    v: 2, started: false, loc: 'shoal', money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 2, trophyRig: false,
+    v: 3, started: false, loc: 'shoal', money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 2, trophyRig: false,
+    pending: null, // a landed catch waiting for Sell / Keep / Release; survives a reload
     bait: { shrimp: 0, squid: 0 },
     lines: [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, { rig: 'set', bait: 'scraps', phase: 'idle' }, null, null],
     sel: 0, index: {}, visited: { shoal: true }, sold: 0, casts: 0,
@@ -292,7 +327,8 @@ function save() { clearTimeout(saveT); saveT = setTimeout(saveNow, 150); }
 function load(seed) {
   let d = seed && seed.v ? seed : null;
   if (!d) { try { const raw = localStorage.getItem(KEY); if (raw) d = JSON.parse(raw); } catch (e) {} }
-  if (d && d.v === 2) S = Object.assign(freshState(), d);
+  if (d && d.v === 2) { d.v = 3; d.pending = null; } // v2 -> v3: the catch screen holds the fish until you decide
+  if (d && d.v === 3) S = Object.assign(freshState(), d);
 }
 
 const loc = () => LOC[S.loc];
@@ -342,7 +378,7 @@ function castLine(i) {
     S.bait[L.bait]--;
   }
   const at = now() + waitFor(L.rig);
-  L.phase = 'waiting'; L.at = at; L.c = rollCatch(S.loc, L.rig, L.bait, at);
+  L.phase = 'waiting'; L.t0 = now(); L.at = at; L.c = rollCatch(S.loc, L.rig, L.bait, at);
   S.casts++; save(); render();
 }
 function pullLine(i) { const L = S.lines[i]; if (!L) return; L.phase = 'idle'; L.c = null; save(); render(); }
@@ -359,25 +395,30 @@ function haulLine(i) {
 function land(i) {
   const L = S.lines[i], c = L.c, s = SP[c.id];
   L.phase = 'idle'; L.c = null;
-  const tags = []; let line2 = '';
+  const p = { id: c.id, cm: c.cm, value: c.value, trophy: c.trophy, bait: L.bait, rig: L.rig, phase: phaseAt(now()), wait: L.t0 ? Math.max(0, (L.at || now()) - L.t0) : 0, tags: [] };
   if (s.kind) {
-    if (s.kind === 'wood' && !S.raft) {
-      S.wood++; line2 = `Driftwood ${S.wood}/${T.raftWood} for the raft.`;
-      if (S.wood >= T.raftWood) tags.push('Enough for a raft');
-    } else line2 = 'Junk. Tossed back.';
+    if (s.kind === 'wood' && !S.raft) { S.wood++; if (S.wood >= T.raftWood) p.tags.push('Enough for a raft'); }
   } else {
     const ix = S.index[c.id] || (S.index[c.id] = { n: 0, best: 0, trophies: 0 });
-    if (ix.n === 0) tags.push('New species');
-    if (c.cm > ix.best) { if (ix.n > 0) tags.push('New record'); ix.best = c.cm; }
+    if (ix.n === 0) p.tags.push('New species');
+    if (c.cm > ix.best) { if (ix.n > 0) p.tags.push('New record'); ix.best = c.cm; }
     ix.n++;
-    if (c.trophy) { ix.trophies++; tags.push('Trophy size'); }
-    if (S.bucket.length < T.bucketCap) {
-      S.bucket.push({ id: c.id, cm: c.cm, value: c.value, trophy: c.trophy });
-      line2 = S.raft ? `Into the bucket. Worth ${money(c.value)} at a port.` : 'Into the bucket. No market here.';
-    } else line2 = 'Bucket full. Released.';
+    if (c.trophy) { ix.trophies++; p.tags.push('Trophy size'); }
   }
-  save(); render(); showCatchCard(c, s, tags, line2);
+  S.pending = p; save(); render(); showCatch();
 }
+// how: 'sell' (market only) | 'keep' (bucket) | 'release' | 'ok' (wood and junk)
+function resolveCatch(how) {
+  const p = S.pending; if (!p) return;
+  const s = SP[p.id]; S.pending = null; closeCard();
+  if (!s.kind) {
+    if (how === 'sell' && loc().sell) { S.money += p.value; S.sold += p.value; toast(`Sold the ${s.name.toLowerCase()} for ${money(p.value)}.`); }
+    else if (how === 'keep' && S.bucket.length < T.bucketCap) { S.bucket.push({ id: p.id, cm: p.cm, value: p.value, trophy: p.trophy }); toast(`Into the bucket. ${S.bucket.length}/${T.bucketCap}.`); }
+    else toast('Released.');
+  } else if (s.kind === 'junk') toast('Tossed back.');
+  save(); render();
+}
+function releaseFish(j) { if (!S.bucket[j]) return; S.bucket.splice(j, 1); save(); render(); renderSheet(); toast('Released.'); }
 function sellHaul() {
   if (!loc().sell || !S.bucket.length) return;
   const total = S.bucket.reduce((a, b) => a + b.value, 0), n = S.bucket.length;
@@ -444,6 +485,7 @@ function tick() {
   if (changed) { save(); render(); return; }
   $('#hClock').textContent = clockText(t);
   const ph = phaseAt(t); if (ph !== lastPhase) renderTide();
+  $('#ready').textContent = readyText();
   document.querySelectorAll('[data-line]').forEach(el => {
     const L = S.lines[+el.dataset.line]; if (!L) return;
     el.textContent = el.classList.contains('st') ? slotStatus(L) : waitNote(L);
@@ -482,7 +524,9 @@ function rigNote(L) {
   if (L.rig === 'set') return 'Hooks in a minute or so, even while you are away. Common fish, no fight.';
   return 'Takes minutes. Hooks big fish. Needs shrimp or squid. You still land it.';
 }
+function readyText() { const n = S.lines.filter(L => L && L.phase === 'idle').length, hot = S.lines.filter(L => L && (L.phase === 'bite' || L.phase === 'hooked')).length; return hot ? `${hot} on!` : `${n} line${n === 1 ? '' : 's'} ready`; }
 function renderSlots() {
+  $('#ready').textContent = readyText();
   let h = '';
   for (let i = 0; i < 4; i++) {
     const L = S.lines[i];
@@ -492,17 +536,26 @@ function renderSlots() {
   }
   $('#slots').innerHTML = h;
 }
+let rigOpen = false; // the rig and bait pickers are folded behind CHANGE unless you open them
+const RIG_LABEL = { hand: 'ROD', set: 'SET LINE', trophy: 'TROPHY' };
+function baitLabel(k) { return k === 'scraps' ? 'SCRAPS' : BAITS[k].name.toUpperCase() + ' ×' + (S.bait[k] || 0); }
+function rigsFor() { return ['hand', 'set'].concat(S.trophyRig ? ['trophy'] : []); }
+function baitsFor(L) { return Object.keys(BAITS).filter(k => k === 'scraps' ? L.rig !== 'trophy' : S.bait[k] > 0); }
+function cycleRig(L) { const r = rigsFor(), j = r.indexOf(L.rig); L.rig = r[(j + 1) % r.length]; if (L.rig === 'trophy' && L.bait === 'scraps') L.bait = S.bait.shrimp > 0 ? 'shrimp' : S.bait.squid > 0 ? 'squid' : 'scraps'; }
+function cycleBait(L) { const b = baitsFor(L); if (!b.length) return; const j = b.indexOf(L.bait); L.bait = b[(j + 1) % b.length]; }
 function renderAction() {
   const i = S.sel, L = S.lines[i], box = $('#action');
   if (!L) { box.innerHTML = '<div class="note">Pick a line.</div>'; return; }
   if (L.phase === 'idle') {
     const rigs = [['hand', 'Rod'], ['set', 'Set'], ['trophy', 'Trophy']];
-    box.innerHTML = `<div class="segrow"><span class="lbl">LINE ${i + 1}</span><div class="seg">${rigs.map(([k, n]) => `<button data-act="rig" data-k="${k}" class="${L.rig === k ? 'sel' : ''}" ${k === 'trophy' && !S.trophyRig ? 'disabled' : ''}>${n}</button>`).join('')}</div></div>
-      <div class="segrow"><span class="lbl">BAIT</span><div class="seg">${Object.entries(BAITS).map(([k, b]) => `<button data-act="bait" data-k="${k}" class="${L.bait === k ? 'sel' : ''}" ${k !== 'scraps' && !(S.bait[k] > 0) ? 'disabled' : ''}>${k === 'scraps' ? 'Scraps' : b.name + ' ×' + S.bait[k]}</button>`).join('')}</div></div>
+    const pickers = rigOpen ? `<div class="segrow"><span class="lbl">RIG</span><div class="seg">${rigs.map(([k, n]) => `<button data-act="rig" data-k="${k}" class="${L.rig === k ? 'sel' : ''}" ${k === 'trophy' && !S.trophyRig ? 'disabled' : ''}>${n}</button>`).join('')}</div></div>
+      <div class="segrow"><span class="lbl">BAIT</span><div class="seg">${Object.entries(BAITS).map(([k, b]) => `<button data-act="bait" data-k="${k}" class="${L.bait === k ? 'sel' : ''}" ${k !== 'scraps' && !(S.bait[k] > 0) ? 'disabled' : ''}>${k === 'scraps' ? 'Scraps' : b.name + ' ×' + S.bait[k]}</button>`).join('')}</div></div>` : '';
+    box.innerHTML = `<div class="rigrow ${rigOpen ? 'open' : ''}"><button class="chip" data-act="cyclerig" title="Next rig">${RIG_LABEL[L.rig]}</button><span class="dot">·</span><button class="chip" data-act="cyclebait" title="Next bait">${baitLabel(L.bait)}</button><button class="link" data-act="change">${rigOpen ? 'DONE' : 'CHANGE'}</button></div>
+      ${pickers}
       <div class="note">${rigNote(L)}</div>
       <button class="cta" data-act="cast" data-i="${i}">${L.rig === 'hand' ? 'Cast' : 'Set the line'}</button>`;
   } else if (L.phase === 'waiting') {
-    box.innerHTML = `<h3>LINE ${i + 1}</h3><div class="note" data-line="${i}">${waitNote(L)}</div><button class="cta alt" data-act="pull" data-i="${i}">Pull in</button>`;
+    box.innerHTML = `<div class="rigrow"><span class="chip">${RIG_LABEL[L.rig]}</span><span class="dot">·</span><span class="chip">${baitLabel(L.bait)}</span></div><div class="note" data-line="${i}">${waitNote(L)}</div><button class="cta alt" data-act="pull" data-i="${i}">Pull in</button>`;
   } else if (L.phase === 'bite') {
     box.innerHTML = `<h3>LINE ${i + 1}</h3><div class="note">Something hit it. Now or never.</div><button class="cta hit" data-act="reel" data-i="${i}">Reel in!</button>`;
   } else {
@@ -510,17 +563,16 @@ function renderAction() {
     box.innerHTML = `<h3>LINE ${i + 1}</h3><div class="note">${big ? 'Something heavy is on. It will not come in by itself.' : 'The float went under a while ago. Still on.'}</div><button class="cta ${big ? 'hit' : ''}" data-act="haul" data-i="${i}">${big ? 'Fight it' : 'Haul in'}</button>`;
   }
 }
+function bucketTotal() { return S.bucket.reduce((a, b) => a + b.value, 0); }
 function renderExtra() {
   let h = '';
   if (S.loc === 'shoal' && !S.raft) {
     h += `<div class="box"><div class="row"><div>Driftwood <b>${S.wood}/${T.raftWood}</b> for a raft</div><div class="note">no market here</div></div>${S.wood >= T.raftWood ? '<button class="cta" data-act="build">Build the raft</button>' : ''}</div>`;
   }
-  if (loc().sell) {
-    const total = S.bucket.reduce((a, b) => a + b.value, 0);
-    h += `<div class="box"><h3>MARKET</h3><div class="row"><div>${S.bucket.length} fish in the bucket</div><div class="price">${money(total)}</div></div><button class="cta" data-act="sell" ${S.bucket.length ? '' : 'disabled'}>Sell the haul</button></div>`;
-  } else if (S.raft && S.bucket.length) {
-    h += '<div class="note" style="text-align:center">No market here. Gull Harbor buys.</div>';
-  }
+  const total = bucketTotal();
+  h += `<div class="bar"><button class="tool" data-act="open" data-k="inv"><span class="n">INVENTORY</span><span class="v">${S.bucket.length}/${T.bucketCap} fish${S.raft || S.loc !== 'shoal' ? ' · ' + money(total) : ''}</span></button>`;
+  if (loc().sell) h += `<button class="tool sell" data-act="sell" ${S.bucket.length ? '' : 'disabled'}><span class="n">MARKET</span><span class="v">${S.bucket.length ? 'Sell haul ' + money(total) : 'Nothing to sell'}</span></button>`;
+  h += '</div>';
   $('#extra').innerHTML = h;
 }
 
@@ -556,7 +608,26 @@ function renderSheet() {
       return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${S.visited[home.id] ? home.name : 'somewhere out there'}${s.rare ? ' · rare: rod or trophy line' : ''}</small></div><div class="price">—</div></div>`;
     }).join('');
     el.innerHTML = `<div class="head"><h2>Index ${Object.keys(S.index).length}/${fish.length}</h2><button class="x" data-act="close">✕</button></div><div class="list">${rows}</div>`;
-    el.querySelectorAll('canvas.mini').forEach(c => { const x = c.getContext('2d'); x.fillStyle = '#0a1020'; x.fillRect(0, 0, 24, 10); const m = MASKS[c.dataset.shape]; drawMaskRaw(x, m, (24 - m[0].length) >> 1, (10 - m.length) >> 1, c.dataset.known === '1' ? '#dfe9f3' : '#2d3b55', 1); });
+    drawMinis(el);
+  } else if (sheetKind === 'inv') {
+    const total = bucketTotal(), boat = BOATS.find(b => b.id === S.boat), rod = RODS.find(r => r.id === S.rod);
+    const rows = S.bucket.map((f, j) => { const sp = SP[f.id]; return `<div class="row"><canvas class="mini" width="24" height="10" data-shape="${sp.shape}" data-known="${f.trophy ? 2 : 1}"></canvas><div class="name" style="flex:1">${sp.name}<small>${f.cm} cm${f.trophy ? ' · ★ trophy' : ''}</small></div><div class="price">${money(f.value)}</div><button class="buy" data-act="release" data-i="${j}">LET GO</button></div>`; }).join('');
+    const market = loc().sell ? `<button class="cta" data-act="sell" ${S.bucket.length ? '' : 'disabled'}>Sell the haul · ${money(total)}</button>`
+      : `<div class="note">${S.raft ? 'No market here. Gull Harbor buys the whole bucket.' : 'No market on the shoal. Build the raft first.'}</div>`;
+    el.innerHTML = `<div class="head"><h2>Inventory</h2><button class="x" data-act="close">✕</button></div>
+      <div class="box"><h3>BUCKET ${S.bucket.length}/${T.bucketCap}</h3>${S.bucket.length ? `<div class="list">${rows}</div><div class="row"><div>Whole bucket</div><div class="price">${money(total)}</div></div>` : '<div class="note">Empty. Fish you keep land here.</div>'}${market}</div>
+      <div class="box"><h3>BAIT</h3><div class="list">
+        <div class="row"><div class="name">Shell scraps<small>Free. Picked off the rocks.</small></div><div class="price">∞</div></div>
+        <div class="row ${S.bait.shrimp ? '' : 'dim'}"><div class="name">Shrimp<small>Mid-size fish, and the trophy rig.</small></div><div class="price">×${S.bait.shrimp}</div></div>
+        <div class="row ${S.bait.squid ? '' : 'dim'}"><div class="name">Squid<small>Deep and rare fish take only this.</small></div><div class="price">×${S.bait.squid}</div></div>
+      </div></div>
+      <div class="box"><h3>GEAR</h3><div class="list">
+        <div class="row"><div class="name">${rod.name}<small>Net ${Math.round(rod.bar * 100)}% of the track.</small></div></div>
+        <div class="row"><div class="name">${boat.name}<small>Range ${boat.range}.</small></div></div>
+        <div class="row"><div class="name">${S.slots} line${S.slots > 1 ? 's' : ''}${S.trophyRig ? ' · trophy rig' : ''}<small>${S.trophyRig ? 'Any line can run as a trophy line.' : 'The trophy rig is sold at the harbor.'}</small></div></div>
+        ${S.raft ? '' : `<div class="row"><div class="name">Driftwood<small>${T.raftWood} pieces build a raft.</small></div><div class="price">${S.wood}/${T.raftWood}</div></div>`}
+      </div></div>`;
+    drawMinis(el);
   } else if (sheetKind === 'shop') {
     const rows = shopItems().map(it => `<div class="row"><div class="name">${it.name}<small>${it.sub}</small></div><div style="display:grid;gap:4px;justify-items:end"><div class="price">${money(it.price)}</div><button class="buy" data-act="buy" data-k="${it.k}" ${it.locked || S.money < it.price ? 'disabled' : ''}>${it.locked ? 'LOCKED' : 'BUY'}</button></div></div>`).join('');
     el.innerHTML = `<div class="head"><h2>Shop · ${loc().name}</h2><button class="x" data-act="close">✕</button></div><div class="note">You have ${money(S.money)}.</div><div class="list">${rows}</div>`;
@@ -567,6 +638,9 @@ function renderSheet() {
       <button class="cta alt" data-act="totitle">Back to title</button>`;
   }
 }
+function drawMinis(el) {
+  el.querySelectorAll('canvas.mini').forEach(c => { const x = c.getContext('2d'); x.fillStyle = '#0a1020'; x.fillRect(0, 0, 24, 10); const m = MASKS[c.dataset.shape]; const k = c.dataset.known; drawMaskRaw(x, m, (24 - m[0].length) >> 1, (10 - m.length) >> 1, k === '2' ? '#f0c050' : k === '1' ? '#dfe9f3' : '#2d3b55', 1); });
+}
 function mapClick(e) {
   const c = e.currentTarget, r = c.getBoundingClientRect();
   const x = (e.clientX - r.left) / r.width * 160, y = (e.clientY - r.top) / r.height * 120, R = boatRange();
@@ -576,14 +650,48 @@ function mapClick(e) {
 }
 
 // ---------- cards & toasts ----------
-function showCard(html) { $('#card').innerHTML = html; $('#cardWrap').hidden = false; }
+function showCard(html) { $('#card').className = 'card'; $('#card').innerHTML = html; $('#cardWrap').hidden = false; }
 function closeCard() { $('#cardWrap').hidden = true; }
-function showCatchCard(c, s, tags, line2) {
-  showCard(`<h2>${s.name}</h2><canvas id="ccv" width="48" height="32"></canvas><div class="big">${s.kind ? (s.kind === 'wood' ? 'a good plank' : 'not a fish') : c.cm + ' cm'}</div><div class="note">${line2}</div>${tags.map(t => `<div class="tag">${t}</div>`).join('')}<div class="note">tap to close</div>`);
+function fmtDur(ms) { const sec = Math.round(ms / 1000); if (sec < 60) return sec + 's'; const m = Math.floor(sec / 60), r = sec % 60; return m < 60 ? `${m}m${r ? ' ' + r + 's' : ''}` : `${Math.floor(m / 60)}h ${m % 60}m`; }
+// The catch screen. The fish is held in S.pending until you Sell (market only), Keep (bucket) or Release it.
+function showCatch() {
+  const p = S.pending; if (!p) return;
+  const s = SP[p.id], full = S.bucket.length >= T.bucketCap, canSell = loc().sell;
+  let head, pills = p.tags.slice(), acts, warn = '';
+  if (s.kind === 'wood') { head = S.raft ? 'DRIFTWOOD' : 'A GOOD PLANK'; acts = `<button class="cta" data-act="catch" data-k="ok">${S.raft ? 'Toss it' : 'Take it'}</button>`; }
+  else if (s.kind) { head = 'JUNK'; acts = '<button class="cta alt" data-act="catch" data-k="ok">Toss it back</button>'; }
+  else {
+    head = p.trophy ? 'TROPHY!' : pills.includes('New record') ? 'NEW RECORD!' : pills.includes('New species') ? 'NEW SPECIES!' : 'LANDED!';
+    pills = pills.filter(t => t.toUpperCase() + '!' !== head); // the headline already says it
+    if (full) warn = 'The bucket is full. Sell or let something go first.';
+    acts = (canSell ? `<button class="cta" data-act="catch" data-k="sell">Sell ${money(p.value)}</button>` : '')
+      + `<button class="cta ${canSell ? 'alt' : ''}" data-act="catch" data-k="keep" ${full ? 'disabled' : ''}>Keep</button>`
+      + (canSell ? '' : '<button class="cta alt" data-act="catch" data-k="release">Release</button>');
+    if (canSell && full) acts += '<button class="cta alt" data-act="catch" data-k="release">Release</button>';
+  }
+  const sub = s.kind ? (s.kind === 'wood' ? (S.raft ? 'You already have a raft.' : `Driftwood ${S.wood}/${T.raftWood} for the raft.`) : 'Not a fish.')
+    : `${RIG_LABEL[p.rig].toLowerCase()}${p.wait ? ' · after ' + fmtDur(p.wait) : ''}`;
+  const stats = s.kind ? '' : `<div class="stats">
+      <div class="stat"><div class="n">WORTH</div><div class="v">${money(p.value)}</div></div>
+      <div class="stat"><div class="n">BAIT</div><div class="v">${p.bait === 'scraps' ? 'Scraps' : BAITS[p.bait].name}</div></div>
+      <div class="stat"><div class="n">TIME</div><div class="v">${PHASE_NAME[p.phase]}</div></div></div>`;
+  $('#card').className = 'card catch';
+  $('#card').innerHTML = `<div class="head">${head}</div>
+    ${pills.length ? `<div class="pills">${pills.map(t => `<div class="pill ${t === 'Trophy size' ? 'gold' : ''}">${t.toUpperCase()}</div>`).join('')}</div>` : ''}
+    <canvas class="art" id="ccv" width="96" height="48"></canvas>
+    <div class="fish">${s.name}</div>
+    ${s.kind ? '' : `<div class="size">${p.trophy ? '★ ' : ''}${p.cm} cm</div>`}
+    <div class="sub">${sub}</div>
+    ${stats}${warn ? `<div class="warn">${warn}</div>` : ''}
+    ${canSell && !s.kind ? '<div class="note">Keep it to sell the whole haul later, or take the money now.</div>' : !s.kind && !S.raft ? '<div class="note">No market on the shoal. Keep it for the first port.</div>' : ''}
+    <div class="acts">${acts}</div>`;
+  $('#cardWrap').hidden = false;
   const cv2 = $('#ccv'), x = cv2.getContext('2d');
-  x.fillStyle = '#0f2a44'; x.fillRect(0, 0, 48, 32);
-  const m = MASKS[s.shape], sc = s.kind ? 3 : (m[0].length > 12 ? 2 : 3), w = m[0].length * sc, h = m.length * sc;
-  drawMaskRaw(x, m, (48 - w) / 2 | 0, (32 - h) / 2 | 0, s.kind === 'wood' ? '#8a5a34' : s.kind === 'junk' ? '#5a4636' : c.trophy ? '#f0c050' : '#dfe9f3', sc);
+  const g = x.createRadialGradient(48, 24, 2, 48, 24, 48); g.addColorStop(0, p.trophy ? '#3a4a5a' : '#1d4466'); g.addColorStop(1, '#0a1a2c');
+  x.fillStyle = g; x.fillRect(0, 0, 96, 48);
+  x.fillStyle = 'rgba(223,233,243,.25)'; for (let k = 0; k < 7; k++) x.fillRect((k * 37 + 11) % 96, (k * 23 + 5) % 48, 1, 1);
+  const m = MASKS[s.shape], sc = s.kind ? 4 : Math.max(2, Math.min(4, Math.floor(80 / m[0].length), Math.floor(40 / m.length))), w = m[0].length * sc, h = m.length * sc;
+  drawMaskRaw(x, m, (96 - w) / 2 | 0, (48 - h) / 2 | 0, s.kind === 'wood' ? '#8a5a34' : s.kind === 'junk' ? '#5a4636' : p.trophy ? '#f0c050' : '#dfe9f3', sc);
 }
 function toast(msg) {
   const w = $('#toasts'), d = document.createElement('div');
@@ -1119,7 +1227,7 @@ function setCap() { const c = $('#cap'); c.classList.remove('show'); c.innerHTML
 function startCut() { MODE = 'cut'; cut = { i: 0, t0: performance.now() }; $('#title').hidden = true; $('#game').hidden = true; $('#cut').hidden = false; setCap(); }
 function cutAdvance() { if (!cut) return; cut.i++; if (cut.i >= CUT.length) { endCut(); return; } cut.t0 = performance.now(); setCap(); }
 function endCut() { cut = null; fadeTo(() => { $('#cut').hidden = true; enterGame(); toast('Line 1 is your rod. Line 2 is a set line.'); }); }
-function enterGame() { MODE = 'game'; $('#title').hidden = true; $('#cut').hidden = true; $('#game').hidden = false; reseedFish(); render(); window.scrollTo(0, 0); }
+function enterGame() { MODE = 'game'; $('#title').hidden = true; $('#cut').hidden = true; $('#game').hidden = false; reseedFish(); render(); window.scrollTo(0, 0); if (S.pending) showCatch(); }
 function showTitle() { MODE = 'title'; $('#game').hidden = true; $('#cut').hidden = true; $('#title').hidden = false; $('#bCont').hidden = !S.started; $('#bNew').textContent = S.started ? 'Start over' : 'New voyage'; $('#confirm').textContent = ''; confirmNew = false; }
 function fadeTo(fn) { const f = $('#fade'); f.classList.add('on'); setTimeout(() => { fn(); setTimeout(() => f.classList.remove('on'), 80); }, 600); }
 let confirmNew = false;
@@ -1246,6 +1354,11 @@ document.addEventListener('click', e => {
   if (a === 'sel') { S.sel = i; save(); render(); }
   else if (a === 'rig') { const L = S.lines[S.sel]; L.rig = k; if (k === 'trophy' && L.bait === 'scraps') L.bait = S.bait.shrimp > 0 ? 'shrimp' : S.bait.squid > 0 ? 'squid' : 'scraps'; save(); render(); }
   else if (a === 'bait') { S.lines[S.sel].bait = k; save(); render(); }
+  else if (a === 'cyclerig') { const L = S.lines[S.sel]; if (L && L.phase === 'idle') { cycleRig(L); save(); render(); } }
+  else if (a === 'cyclebait') { const L = S.lines[S.sel]; if (L && L.phase === 'idle') { cycleBait(L); save(); render(); } }
+  else if (a === 'change') { rigOpen = !rigOpen; render(); }
+  else if (a === 'catch') resolveCatch(k);
+  else if (a === 'release') releaseFish(i);
   else if (a === 'cast') castLine(i);
   else if (a === 'pull') pullLine(i);
   else if (a === 'reel') reelLine(i);
@@ -1264,7 +1377,7 @@ document.addEventListener('click', e => {
   else if (a === 'totitle') { closeSheet(); fadeTo(showTitle); }
 });
 $('#cut').addEventListener('click', e => { if (e.target.closest('[data-act]')) return; cutAdvance(); });
-$('#cardWrap').addEventListener('click', closeCard);
+$('#cardWrap').addEventListener('click', e => { if (e.target.closest('[data-act]')) return; if (S.pending) resolveCatch(S.bucket.length < T.bucketCap ? 'keep' : 'release'); else closeCard(); });
 $('#sheetWrap').addEventListener('click', e => { if (e.target.id === 'sheetWrap') closeSheet(); });
 const fw = $('#fightWrap');
 fw.addEventListener('pointerdown', e => { e.preventDefault(); if (F) F.hold = true; });

@@ -33,6 +33,13 @@ A pixel-art fishing game. You are a fisherman stranded on an island. You fish yo
 - **Title screen, then an opening cutscene on New voyage.** Four beats, each tappable, skippable: the storm takes the boat; the fisherman drifts on a plank holding the rod up; washed up on Wreck Shoal; sits up on the same plank he fishes from in the game. The last beat's framing is the game's framing, so the cut into play is seamless. Continue skips it. The menu can replay it.
 - **Wipe protection.** Start over asks for a second tap.
 
+## Catch screen and control panel (third pass)
+
+- **Every landing opens a catch screen.** Headline by priority (Trophy! → New record! → New species! → Landed!), tag pills for the rest, the fish lit in a dark panel, name, size, a sub line (rig, time since the line went out), and three stat tiles: worth, bait, time of day. Driftwood and junk get the same screen with a single button.
+- **The fish is held until you decide.** At a market: **Sell** (that one fish, money now) or **Keep** (bucket, sell the haul later). Elsewhere: **Keep** or **Release**. Bucket full: Keep is disabled and Release is offered. Tapping outside the card keeps the fish (or releases it if the bucket is full). The pending catch lives in `S.pending` and is saved, so a reload reopens the screen. The index is updated at landing time, so a released fish still counts as caught.
+- **The panel is the always-there tab.** Tide line; `LINES` header with a live "n lines ready" / "n on!" count; four line cards; a compact `ROD · SCRAPS  CHANGE` row where tapping the rig or bait chip cycles to the next option and CHANGE unfolds the full rig and bait pickers; the rig note; the big Cast / Set the line / Pull in / Reel in / Haul in button; then a bottom bar with **Inventory** (bucket count and value) and, at a market, **Sell haul**. The driftwood row stays above the bar on the shoal before the raft.
+- **Inventory sheet.** Bucket list with silhouettes, size, trophy star, value and a Let go button per fish; whole-bucket total and Sell the haul at a market; bait counts; gear (rod, boat, lines, trophy rig, driftwood).
+
 ## The prototype, section by section
 
 Everything lives in one `<script>` in `index.html`. Sections, in file order:
@@ -43,11 +50,12 @@ Everything lives in one `<script>` in `index.html`. Sections, in file order:
 | `BAITS`, `RODS`, `BOATS`, `SLOT_PRICES`, `TROPHY_RIG_PRICE` | shop data |
 | `LOCS` | locations: range gate, shop/sell flags, chart coordinates, blurb |
 | `SPECIES` | fish table: location weights, bite-time windows, size range, base value, fight behavior (`smooth`/`dart`/`sinker`/`floater`), difficulty, min bait tier, rare flag, silhouette `shape` (`fry`/`bream`/`trout`/`pike`/`eel`/`big`/`flat`), `big` for double-size silhouettes; plus `wood` and `junk` entries |
-| state (`S`, `freshState`, `save`, `load`) | the whole save in one object, persisted to `localStorage` under `castaway-proto-v2` |
-| fishing (`pool`, `rollCatch`, `castLine`, `tick`, `land`, …) | the catch is rolled at cast time for the moment the bite will happen; the line just waits for that timestamp |
+| state (`S`, `freshState`, `save`, `load`) | the whole save in one object (`v: 3`), persisted to `localStorage` under `castaway-proto-v2`; `load` migrates v2 saves |
+| fishing (`pool`, `rollCatch`, `castLine`, `tick`, `land`, `resolveCatch`, …) | the catch is rolled at cast time for the moment the bite will happen; the line just waits for that timestamp. `land` records the catch in the index and parks it in `S.pending`; `resolveCatch` sells, keeps or releases it |
 | shop (`shopItems`, `buy`) | next rod, next boat, extra slots, trophy rig, bait packs |
-| rendering (DOM) | HUD, tide line, four slot cards, the action box for the selected slot, raft/market rows |
-| sheets | chart (canvas + legend + sail), index (with silhouettes), shop, menu |
+| rendering (DOM) | HUD, tide line, lines header, four slot cards, the action box for the selected slot (compact rig·bait row, `rigOpen` unfolds the pickers), the driftwood row and the inventory / sell bar |
+| sheets | chart (canvas + legend + sail), index (with silhouettes), inventory (bucket, bait, gear), shop, menu |
+| catch screen | `showCatch` renders `S.pending` into the card; `fmtDur` for the wait |
 | pixel art | `MASKS` (single-color string masks: fish shapes, gulls, crab, sun, map pieces), `SPRITES` + `PAL` (multi-color: `sit`, `lie`, `float`), cached to offscreen canvases by `maskC`/`sprite`, `blit` with flip, Bresenham `bres` |
 | sky model | `SKY` keyframes by hour, `skyAt`, `nightness`, star/cloud/rain/snow/mote particle tables seeded by a fixed LCG |
 | canvas & layout | `layout()`, cached `skyLayer`, `seaLayer`, `shaftLayer`, `floorLayer` (per-location seabed) |
@@ -94,5 +102,6 @@ Catch value: `base × (0.6 + 0.9 × sizeFraction)`, doubled at trophy size (size
 - Every wait, price and weight is data in the tables at the top; change numbers there, not in logic.
 - Never add art, names, sounds or UI copied from existing games.
 - When adding a species: location weight, time window, size range, value, behavior, difficulty, min bait, rare flag, silhouette size. Then re-run the empty-pool check.
-- Save format is versioned (`v: 1`). Bump it and write a migration in `load()` when the shape changes.
+- Save format is versioned (`v: 3`). Bump it and write a migration in `load()` when the shape changes.
+- Testing in Playwright: the game saves on `visibilitychange`, so a reload overwrites anything you put in `localStorage` from the page. Seed a save with `context.addInitScript` in a fresh context instead.
 - Reference material the designer liked: One Cast (onecast.github.io) for the fast-travel, multi-line, location-and-bite-window structure; Stardew Valley for the fight mechanic. Reference only.
