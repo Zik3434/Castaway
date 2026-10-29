@@ -89,7 +89,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 .slot.sel{border-color:var(--brass);background:var(--panel-2)}
 .slot.sel .n{color:var(--brass)}
 .slot.on .st{color:var(--brass)}
-.slot.hot{border-color:var(--bad)}
+.slot.hot{border-color:var(--bad);background:rgba(120,40,30,.35);animation:glow .9s infinite alternate}
 .slot.hot .st{color:var(--bad)}
 .slot.lock{border-style:dashed;opacity:.55}
 .box{display:grid;gap:7px}
@@ -125,9 +125,11 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 .cta{font-family:var(--display);font-size:13px;padding:15px 10px;background:var(--brass);color:#2b1d05;border:3px solid var(--brass-2);box-shadow:0 4px 0 var(--brass-3);text-transform:uppercase}
 .cta:active{transform:translateY(3px);box-shadow:none}
 .cta.alt{background:var(--panel-2);color:var(--text);border-color:var(--edge);box-shadow:0 4px 0 #0b1223}
+.cta.go{background:var(--panel-2);color:var(--brass);border-color:var(--brass-2);box-shadow:0 4px 0 #0b1223}
 .cta.hit{background:var(--bad);border-color:#a44f36;box-shadow:0 4px 0 #5a2a1c;color:#2a0d05;animation:thump .35s infinite alternate}
 .cta[disabled]{opacity:1;cursor:default;transform:none;background:#2c3444;color:#7d8697;border-color:#3b4454;box-shadow:0 4px 0 #1a2030;text-shadow:none}
 @keyframes thump{from{transform:translateY(0)}to{transform:translateY(2px)}}
+@keyframes glow{from{box-shadow:0 0 0 0 rgba(226,107,90,0)}to{box-shadow:0 0 12px 3px rgba(226,107,90,.8)}}
 .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .row .name{min-width:0}
 .row .name small{display:block;color:var(--muted);font-size:17px}
@@ -384,7 +386,7 @@ const BOATS = [
   { id: 'ironclad', name: 'Ironclad',       range: 6, price: 120000 },
   { id: 'starship', name: 'Starship',       range: 7, price: 500000, spaceport: true }, // sold at the spaceport only
 ];
-const SLOT_PRICES = [0, 0, 150, 450];
+const SLOT_PRICES = [0, 60, 150, 450]; // you start with one line; the rest are sold in shops
 // The far end of the world. A keeper on a tier-5+ island mentions the starship at these odds per talk; the chart that finds the
 // spaceport is in stock at a tier-5+ shop on a given real day at these odds (percent), at this price.
 const T_WORLD = { starRumor: 0.07, chartOdds: 12, chartPrice: 150000 };
@@ -1184,7 +1186,7 @@ const PHASE_NAME = { dawn: 'Dawn', day: 'Day', dusk: 'Dusk', night: 'Night' };
 // ---------- state ----------
 function freshState() {
   return {
-    v: 11, started: false, loc: 'shoal', money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 2, trophyRig: false,
+    v: 11, started: false, loc: 'shoal', money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 1, trophyRig: false,
     line: 'l10', pail: 'pail', // the line's test weight and the bucket in use (both bought in the shop)
     rodsOwned: ['stick'], linesOwned: ['l10'], pailsOwned: ['pail'], // everything bought stays in the rig sheet and can be put back on
     heldRod: true, noRod: false, // the storm's one question; let go and you wash up without a rod until you whittle one from a plank
@@ -1195,7 +1197,7 @@ function freshState() {
     pack: [], weapon: 'sling', gindex: {}, // hunting: the game bag, the weapon, the creature record
     bounties: {}, // per island: { at, list: [{ id, mult, done }] }, the shop's wanted posters
     bait: { shrimp: 0, squid: 0 },
-    lines: [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, { rig: 'set', bait: 'scraps', phase: 'idle' }, null, null],
+    lines: [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, null, null, null],
     sel: 0, index: {}, visited: { shoal: true }, sold: 0, casts: 0,
   };
 }
@@ -1533,7 +1535,7 @@ function slotStatus(L) {
   if (L.phase === 'idle') return RIG_NAME[L.rig];
   if (L.phase === 'waiting') return L.rig === 'hand' ? 'waiting…' : `~${secsLeft(L)}s`;
   if (L.phase === 'bite') return 'HIT!';
-  return 'ON!';
+  return 'BITE!'; // a passive line with a fish on it
 }
 function waitNote(L) {
   if (L.rig === 'hand') return 'Waiting for a bite…';
@@ -1552,7 +1554,7 @@ function renderSlots() {
   for (let i = 0; i < (S.prologue ? 1 : 4); i++) {
     const L = S.lines[i];
     if (i >= S.slots || !L) { h += `<div class="slot lock"><div class="n">LINE ${i + 1}</div><div class="st">shop</div></div>`; continue; } // lines are bought at a shop, never from here
-    const cls = ['slot', i === S.sel ? 'sel' : '', L.phase === 'bite' ? 'hot' : '', (L.phase === 'hooked' || L.phase === 'waiting') ? 'on' : ''].join(' ');
+    const cls = ['slot', i === S.sel ? 'sel' : '', L.phase === 'bite' || L.phase === 'hooked' ? 'hot' : '', L.phase === 'waiting' ? 'on' : ''].join(' '); // a bite on any line glows red
     h += `<button class="${cls}" data-act="sel" data-i="${i}"><div class="n">LINE ${i + 1}</div><div class="st" data-line="${i}">${slotStatus(L)}</div></button>`;
   }
   $('#slots').innerHTML = h;
@@ -1571,7 +1573,7 @@ function renderAction() {
   if (L.phase === 'idle') {
     box.innerHTML = `<div class="rigrow"><div class="rigsum"><div class="l1">${RIG_LABEL[L.rig]} · ${baitLabel(L.bait)}</div><div class="l2">${S.noRod ? 'No rod' : rodOf().name} · ${lineOf().name}</div></div>${S.prologue ? '' : '<button class="rigbtn" data-act="open" data-k="rig">Change rig</button>'}</div>
       <div class="note">${S.prologue && S.casts === 0 ? 'Cast the rod. When the float dips, tap Reel, then keep the fish inside the net.' : rigNote(L)}</div>
-      <button class="cta ${S.prologue ? 'tut' : ''}" data-act="cast" data-i="${i}">${L.rig === 'hand' ? 'Cast' : 'Set the line'}</button>`;
+      <button class="cta go ${S.prologue ? 'tut' : ''}" data-act="cast" data-i="${i}">${L.rig === 'hand' ? 'Cast' : 'Set the line'}</button>`;
   } else if (L.phase === 'waiting') {
     box.innerHTML = `<div class="rigrow"><span class="chip">${RIG_LABEL[L.rig]}</span><span class="dot">·</span><span class="chip">${baitLabel(L.bait)}</span></div><div class="note" data-line="${i}">${waitNote(L)}</div><button class="cta alt" data-act="pull" data-i="${i}">Pull in</button>`;
   } else if (L.phase === 'bite') {
@@ -3568,11 +3570,11 @@ function endCut() {
   cut = null;
   const wasPrologue = S.prologue;
   if (wasPrologue) { // washed up: the boat, the bucket and the skiff are gone. The index remembers the two fish.
-    S.prologue = false; S.proCaught = 0; S.loc = 'shoal'; S.spot = 'wreck'; S.boat = 'none'; S.bucket = []; S.money = 0; S.slots = 2; S.sel = 0; S.pending = null;
+    S.prologue = false; S.proCaught = 0; S.loc = 'shoal'; S.spot = 'wreck'; S.boat = 'none'; S.bucket = []; S.money = 0; S.slots = 1; S.sel = 0; S.pending = null;
     S.noRod = S.heldRod === false; // let go in the storm: set lines only until a plank becomes a rod
-    S.lines = [{ rig: S.noRod ? 'set' : 'hand', bait: 'scraps', phase: 'idle' }, { rig: 'set', bait: 'scraps', phase: 'idle' }, null, null]; S.visited = { shoal: true }; saveNow();
+    S.lines = [{ rig: S.noRod ? 'set' : 'hand', bait: 'scraps', phase: 'idle' }, null, null, null]; S.visited = { shoal: true }; saveNow();
   }
-  fadeTo(() => { $('#cut').hidden = true; enterGame(); if (wasPrologue) { toast(S.noRod ? 'The rod is gone. Two set lines, and whatever they bring up.' : 'Line 1 is your rod. Line 2 is a set line.'); setTimeout(() => toast(S.noRod ? 'Driftwood comes up on the lines. One plank whittles a rod; six more make a raft.' : 'Driftwood comes up on the lines. Six planks make a raft.'), 3200); } });
+  fadeTo(() => { $('#cut').hidden = true; enterGame(); if (wasPrologue) { toast(S.noRod ? 'The rod is gone. One set line, and whatever it brings up.' : 'One rod, one line. More lines are sold at the first port.'); setTimeout(() => toast(S.noRod ? 'Driftwood comes up on the lines. One plank whittles a rod; six more make a raft.' : 'Driftwood comes up on the lines. Six planks make a raft.'), 3200); } });
 }
 function startStorm() { fadeTo(() => { $('#game').hidden = true; $('#isle').hidden = true; startCut(); }); }
 function enterGame() {
