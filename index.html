@@ -119,7 +119,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 .cta:active{transform:translateY(3px);box-shadow:none}
 .cta.alt{background:var(--panel-2);color:var(--text);border-color:var(--edge);box-shadow:0 4px 0 #0b1223}
 .cta.hit{background:var(--bad);border-color:#a44f36;box-shadow:0 4px 0 #5a2a1c;color:#2a0d05;animation:thump .35s infinite alternate}
-.cta[disabled]{opacity:.5;cursor:default;transform:none}
+.cta[disabled]{opacity:1;cursor:default;transform:none;background:#2c3444;color:#7d8697;border-color:#3b4454;box-shadow:0 4px 0 #1a2030;text-shadow:none}
 @keyframes thump{from{transform:translateY(0)}to{transform:translateY(2px)}}
 .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .row .name{min-width:0}
@@ -1754,8 +1754,8 @@ function showCatch() {
     const bounty = canSell && loc().shop ? openBounty(loc(), p.id) : null, pay = Math.round(p.value * (bounty ? bounty.mult : sellMultOf(loc())));
     if (bounty) pills.unshift('Wanted');
     acts = (canSell ? `<button class="cta" data-act="catch" data-k="sell">${bounty ? 'Bounty ' : 'Sell '}${money(pay)}</button>` : '')
-      + `<button class="cta ${canSell ? 'alt' : ''}" data-act="catch" data-k="keep" ${full ? 'disabled' : ''}>Keep</button>`
-      + (canSell ? '' : '<button class="cta alt" data-act="catch" data-k="release">Release</button>');
+      + `<button class="cta ${canSell || full ? 'alt' : ''}" data-act="catch" data-k="keep" ${full ? 'disabled' : ''}>${full ? 'Bucket full' : 'Keep'}</button>` // no room: Keep is greyed out and says why
+      + (canSell ? '' : `<button class="cta ${full ? '' : 'alt'}" data-act="catch" data-k="release">Release</button>`); // ...and Release takes the lead
     if (canSell && full) acts += '<button class="cta alt" data-act="catch" data-k="release">Release</button>';
   }
   const sub = s.kind ? (s.kind === 'wood' ? (S.raft ? 'You already have a raft.' : `Driftwood ${S.wood}/${T.raftWood} for the raft.`) : 'Not a fish.')
