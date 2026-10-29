@@ -334,8 +334,10 @@ const rgba = (c, a) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a.toFixed(3)}
 const T = {
   hourMs: 60000,                 // 1 real minute = 1 game hour, a 24-minute day
   handWait: [2000, 6000],        // rod: seconds to a bite
-  setWait: [40000, 90000],       // set line: hooks in 40-90 s, keeps ticking while you're away
-  trophyWait: [150000, 300000],  // trophy line: 2.5-5 min
+  setMean: 60000,                // set line: a chance every second, one hook a minute on average (exponential wait), keeps ticking while you're away
+  trophyMean: 220000,            // trophy line: the same, about once every 3.5 minutes
+  soakCap: 5,                    // a passive wait is never longer than this many means
+  soakGrow: 3,                   // a fish that took soakGrow means to bite is as big as the water holds; size climbs linearly from one mean to there
   hitWindow: 4000,               // ms to tap Reel after a hit; easy fish hold the hook far longer (see hitWindowFor)
   packCap: 10,
   raftWood: 6,
@@ -1294,14 +1296,15 @@ function pool(locId, rig, baitId, t, spotId) {
   }
   return out;
 }
-function rollCatch(locId, rig, baitId, t) {
+function rollCatch(locId, rig, baitId, t, waitMs) {
   let p = pool(locId, rig, baitId, t); if (!p.length) return null;
   if (S.prologue) { const easy = p.filter(x => !x[0].kind && x[0].diff <= (S.proCaught === 0 ? 0.2 : 0.32)); if (easy.length) p = easy; } // the tutorial's fights are gentle ones
   const tot = p.reduce((a, x) => a + x[1], 0);
   let r = Math.random() * tot, s = p[p.length - 1][0], stray = false;
   for (const [sp, w, st] of p) { r -= w; if (r <= 0) { s = sp; stray = !!st; break; } }
   const skew = rig === 'trophy' ? 0.45 : rig === 'set' ? 1.7 : 1;
-  let f = rig === 'set' ? Math.min(0.8, Math.pow(Math.random(), skew)) : Math.pow(Math.random(), skew); // set lines never reach trophy size
+  let f = rig === 'set' ? Math.min(0.8, Math.pow(Math.random(), skew)) : Math.pow(Math.random(), skew); // a quick set-line hook never reaches trophy size...
+  const soak = soakBonus(rig, waitMs || 0); if (soak > 0) f = Math.min(1, f + (1 - f) * soak * 0.95); // ...but the longer it soaks, the bigger what takes it
   let v = null; // the variant, if any
   if (!s.kind && !s.legend && !S.prologue) {
     if (s.mutant) v = 'mutated';
@@ -1316,7 +1319,12 @@ function rollCatch(locId, rig, baitId, t) {
   const mult = v && !s.mutant ? VARIANTS[v].mult : 1;
   return { id: s.id, cm, kg, value: Math.round(valueOf(s, kg, trophy, rnd(-0.15, 0.15)) * mult), trophy, v, stray, capped };
 }
-function waitFor(rig) { const [a, b] = rig === 'hand' ? T.handWait : rig === 'set' ? T.setWait : T.trophyWait; return rnd(a, b); }
+// The rod bites within a few seconds. A passive line soaks: a small chance every second, so the wait is exponential (memoryless), sampled
+// once at cast time so it survives closing the game. Nothing waits longer than soakCap means.
+const passiveMean = rig => rig === 'set' ? T.setMean : T.trophyMean;
+function waitFor(rig) { if (rig === 'hand') return rnd(T.handWait[0], T.handWait[1]); const m = passiveMean(rig); return Math.min(m * T.soakCap, Math.max(1500, -m * Math.log(1 - Math.random()))); }
+// How much a long soak grows the fish: 0 at one mean or under, 1 at soakGrow means.
+const soakBonus = (rig, waitMs) => rig === 'hand' ? 0 : clamp((waitMs / passiveMean(rig) - 1) / (T.soakGrow - 1), 0, 1);
 
 function castLine(i) {
   const L = S.lines[i]; if (!L || L.phase !== 'idle') return;
@@ -1327,7 +1335,7 @@ function castLine(i) {
     if ((S.bait[L.bait] || 0) <= 0) { toast('Out of ' + BAITS[L.bait].name.toLowerCase() + '.'); return; }
     S.bait[L.bait]--;
   }
-  const at = now() + waitFor(L.rig), c = rollCatch(S.loc, L.rig, L.bait, at);
+  const wait = waitFor(L.rig), at = now() + wait, c = rollCatch(S.loc, L.rig, L.bait, at, wait);
   if (!c) { if (L.bait !== 'scraps') S.bait[L.bait]++; toast(spot().boat && S.boat === 'none' ? 'You need a boat to fish out there.' : `Nothing here will take ${lineOf().lb} lb line. Heavier line is sold in the shops.`); return; }
   L.phase = 'waiting'; L.t0 = now(); L.at = at; L.c = c;
   S.casts++; save(); render();
@@ -1533,18 +1541,18 @@ const RIG_NAME = { hand: 'rod', set: 'set', trophy: 'trophy' };
 function secsLeft(L) { return Math.max(1, Math.ceil((L.at - now()) / 1000)); }
 function slotStatus(L) {
   if (L.phase === 'idle') return RIG_NAME[L.rig];
-  if (L.phase === 'waiting') return L.rig === 'hand' ? 'waiting…' : `~${secsLeft(L)}s`;
+  if (L.phase === 'waiting') return L.rig === 'hand' ? 'waiting…' : `${fmtDur(now() - L.t0)} out`;
   if (L.phase === 'bite') return 'HIT!';
   return 'BITE!'; // a passive line with a fish on it
 }
 function waitNote(L) {
   if (L.rig === 'hand') return 'Waiting for a bite…';
-  return `${BAITS[L.bait].name} on. Hooks in ~${secsLeft(L)}s, even if you close the game.`;
+  const m = passiveMean(L.rig), soaked = now() - L.t0; return `${BAITS[L.bait].name} on, soaking ${fmtDur(soaked)}. A chance every second, even with the game closed.${soaked > m * 1.5 ? ' Whatever takes it now will not be small.' : ''}`;
 }
 function rigNote(L) {
   if (L.rig === 'hand') return 'Tap Reel on the hit, then keep the fish in the net.';
-  if (L.rig === 'set') return 'Hooks in a minute or so, even while you are away. Common fish, no fight.';
-  return 'Takes minutes. Hooks big fish. Needs shrimp or squid. You still land it.';
+  if (L.rig === 'set') return 'Soaks until something takes it, a chance every second, even while you are away. The longer it soaks, the bigger the fish. No fight.';
+  return 'Soaks for minutes. Hooks big fish, bigger the longer it waits. Needs shrimp or squid. You still land it.';
 }
 function readyText() { const n = S.lines.filter(L => L && L.phase === 'idle').length, hot = S.lines.filter(L => L && (L.phase === 'bite' || L.phase === 'hooked')).length; return hot ? `${hot} on!` : `${n} line${n === 1 ? '' : 's'} ready`; }
 function renderSlots() {
@@ -1644,7 +1652,7 @@ function renderSheet() {
     const gearRows = (list, owned, cur, kind, sub) => list.filter(x => owned.includes(x.id)).map(x => `<div class="row ${x.id === cur ? 'sel' : ''}"><div class="name">${x.name}<small>${sub(x)}</small></div>${x.id === cur ? '<div class="here">in use</div>' : `<button class="buy" data-act="equip" data-k="${kind}:${x.id}">USE</button>`}</div>`).join('');
     el.innerHTML = `<div class="head"><h2>Rig · Line ${S.sel + 1}</h2><button class="x" data-act="close">✕</button></div>
       ${busy ? '<div class="note">This line is in the water. Pull it in to change its rig or bait.</div>' : ''}
-      <div class="box"><h3>RIG</h3>${seg(rigs, L && L.rig, 'rig', k => (k === 'trophy' && !S.trophyRig) || (k === 'hand' && S.noRod))}<div class="note">${S.noRod ? 'No rod: you let it go in the storm. Whittle one from a plank.' : L && L.rig === 'hand' ? 'Tap Reel on the hit, then keep the fish in the net. Rarer fish take a better rod.' : L && L.rig === 'set' ? 'Hooks a common fish in a minute or so, even while you are away. No fight, never trophy size.' : 'Takes minutes, hooks big fish. Needs shrimp or squid. You still land it.'}${S.trophyRig ? '' : ' The trophy rig is sold at the harbor.'}</div></div>
+      <div class="box"><h3>RIG</h3>${seg(rigs, L && L.rig, 'rig', k => (k === 'trophy' && !S.trophyRig) || (k === 'hand' && S.noRod))}<div class="note">${S.noRod ? 'No rod: you let it go in the storm. Whittle one from a plank.' : L && L.rig === 'hand' ? 'Tap Reel on the hit, then keep the fish in the net. Rarer fish take a better rod.' : L && L.rig === 'set' ? 'Soaks until something takes it, a chance every second, even while you are away. A quick hook is a small fish; a long soak grows it. No fight.' : 'Soaks for minutes, a chance every second. Hooks big fish, bigger the longer it waits. Needs shrimp or squid. You still land it.'}${S.trophyRig ? '' : ' The trophy rig is sold at the harbor.'}</div></div>
       <div class="box"><h3>BAIT</h3>${seg(Object.entries(BAITS).map(([k, b]) => [k, k === 'scraps' ? 'Scraps' : b.name + ' ×' + (S.bait[k] || 0)]), L && L.bait, 'bait', k => k !== 'scraps' && !(S.bait[k] > 0))}<div class="note">Scraps are free. Shrimp and squid gate the bigger and rarer fish and tilt every cast toward them.</div></div>
       <div class="box"><h3>RODS</h3><div class="list">${S.noRod ? '<div class="note">Lost in the storm. A plank of driftwood whittles a new one.</div>' : gearRows(RODS, S.rodsOwned, S.rod, 'rod', r => `Net ${Math.round(r.bar * 100)}% of the track${r.luck ? ` · luck ${r.luck}` : ''}.`)}</div></div>
       <div class="box"><h3>LINE</h3><div class="list">${gearRows(LINE_TEST, S.linesOwned, S.line, 'line', x => `Holds fish to ${fmtKg(lbKg(x.lb))}. Heavier ones will not bite.`)}</div></div>
