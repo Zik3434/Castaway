@@ -1551,7 +1551,7 @@ function renderSlots() {
   let h = '';
   for (let i = 0; i < (S.prologue ? 1 : 4); i++) {
     const L = S.lines[i];
-    if (i >= S.slots || !L) { h += `<div class="slot lock"><div class="n">LINE ${i + 1}</div><div class="st">${money(SLOT_PRICES[i])}</div></div>`; continue; }
+    if (i >= S.slots || !L) { h += `<div class="slot lock"><div class="n">LINE ${i + 1}</div><div class="st">${loc().shop ? 'in the shop' : 'sold in shops'}</div></div>`; continue; } // lines are bought at a shop, never from here
     const cls = ['slot', i === S.sel ? 'sel' : '', L.phase === 'bite' ? 'hot' : '', (L.phase === 'hooked' || L.phase === 'waiting') ? 'on' : ''].join(' ');
     h += `<button class="${cls}" data-act="sel" data-i="${i}"><div class="n">LINE ${i + 1}</div><div class="st" data-line="${i}">${slotStatus(L)}</div></button>`;
   }
