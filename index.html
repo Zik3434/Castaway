@@ -5,7 +5,20 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
 <title>Castaway</title>
-<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="A pixel-art fishing and hunting game. Stranded on an island, you fish your way off it and across a sea of strange islands. Plays in the browser on phone and desktop.">
+<meta name="theme-color" content="#0a1020">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Castaway">
+<meta property="og:title" content="Castaway">
+<meta property="og:description" content="A pixel-art fishing and hunting game you play in the browser.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="icons/icon-512.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
@@ -3889,6 +3902,16 @@ fw.addEventListener('pointerdown', e => { e.preventDefault(); if (F) F.hold = tr
 ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => fw.addEventListener(ev, () => { if (F) F.hold = false; }));
 fw.addEventListener('contextmenu', e => e.preventDefault());
 window.addEventListener('keydown', e => { if (e.code === 'Space' && F) { e.preventDefault(); F.hold = true; } });
+// desktop: Escape closes whatever is open; Space or Enter on the fishing shore presses the selected line's big button
+window.addEventListener('keydown', e => {
+  if (e.target.closest && e.target.closest('input,textarea')) return;
+  if (e.key === 'Escape') { if (!$('#sheetWrap').hidden) closeSheet(); else if (!$('#cardWrap').hidden) $('#cardWrap').click(); return; }
+  if (e.target.closest && e.target.closest('button')) return; // a focused button already takes Space and Enter itself
+  if (MODE !== 'game' || F || !$('#sheetWrap').hidden || !$('#cardWrap').hidden || (e.code !== 'Space' && e.key !== 'Enter')) return;
+  const b = $('#action .cta:not([disabled])'); if (b) { e.preventDefault(); b.click(); }
+});
+// the site: register the service worker so the game opens offline and installs to a home screen (not on file://)
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 window.addEventListener('keyup', e => { if (e.code === 'Space' && F) F.hold = false; });
 document.addEventListener('visibilitychange', () => { if (document.hidden) saveNow(); });
 window.addEventListener('resize', layout);

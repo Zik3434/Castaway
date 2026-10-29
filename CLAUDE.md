@@ -2,7 +2,7 @@
 
 A pixel-art fishing and hunting game. You are a fisherman stranded on an island. You fish your way off it, then fish and hunt your way across a fictional sea of wildly different islands, buying rods, lines, bait, weapons and boats, and (around 200 hours in) a starship, to fish in space. Travel is by chart; on each island you walk a short strip between the fishing spot, the village and the hunting ground.
 
-`index.html` is the entire playable prototype (vanilla JS, canvas, no build step). Open it in a browser. Read this file before changing anything; it holds every design decision made so far, what is placeholder, and what comes next.
+`index.html` is the entire playable prototype (vanilla JS, canvas, no build step). It is published as a website at https://zik3434.github.io/Castaway/ (GitHub Pages, deployed by `.github/workflows/pages.yml` from the repository root on every push to `main`); open it there or open the file in a browser. Read this file before changing anything; it holds every design decision made so far, what is placeholder, and what comes next.
 
 ## Decisions already made (do not relitigate without asking)
 
@@ -103,7 +103,8 @@ Catch value: `valueOf` = `rate × kg^0.75 × (1 ± 0.15)`, ×1.5 at trophy size 
 
 ## How to run and test
 
-- Open `index.html` in any browser. Fonts load from Google Fonts; everything else is inline. Works offline except the fonts (monospace fallback).
+- **It is a website, for phone and computer.** https://zik3434.github.io/Castaway/ is the game; `.github/workflows/pages.yml` publishes the repository root to GitHub Pages on every push to `main` (and to the working branch), with nothing built. `manifest.webmanifest` and the `icons/` folder make it installable to a phone's home screen (full screen, own icon), and `sw.js` is a small service worker: network first for the page so a push lands on the next load, cache first for icons and fonts, so the game opens with no signal. It registers only over http(s), never from `file://`. Bump `VERSION` in `sw.js` when the cached shell list changes. The desktop gets keyboard play: Space or Enter presses the selected line's big button (cast, reel, haul, pull in), Space holds the net in the fight, Escape closes a sheet or the catch card, and the arrow keys walk the island strip. The layout is the same on both: the scene fills the window at an integer scale and the panel stays 520 px wide in the middle.
+- Open `index.html` in any browser, or serve the folder with any static server. Fonts load from Google Fonts; everything else is inline. Works offline except the fonts (monospace fallback) on `file://`, and fully offline once the service worker has run.
 - Reset a save: Menu → Back to title → Start over (tap twice), or in the browser console `localStorage.removeItem('castaway-proto-v2')` and reload.
 - Visual check without a phone: Playwright with a 390×760 mobile viewport, screenshot the title, each cutscene beat (click `#cut` to advance) and the game. Animated buttons (`.cta.hit`) need `{ force: true }` to click in Playwright.
 - To test the island loop fast, lower `T.setMean` or raise the `wood` weight in `SPECIES`.
