@@ -155,6 +155,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 .catch .pill.gold{background:var(--brass-2);color:#2b1d05}
 .catch .pill.far{background:#5a3a74}
 .chip.static{opacity:.75}
+.list .row.sel{border-left:3px solid var(--brass);padding-left:6px}
 .legend small .kind{color:var(--brass-2);font-family:var(--display);font-size:8px;letter-spacing:.5px}
 .board{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding-top:6px}
 .poster{position:relative;background:#e8d9a8;color:#2b1d05;padding:12px 8px 8px;display:grid;gap:5px;justify-items:center;text-align:center;border:2px solid #b89a5a;box-shadow:3px 3px 0 #0a1424}
@@ -1179,8 +1180,9 @@ const PHASE_NAME = { dawn: 'Dawn', day: 'Day', dusk: 'Dusk', night: 'Night' };
 // ---------- state ----------
 function freshState() {
   return {
-    v: 10, started: false, loc: 'shoal', money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 2, trophyRig: false,
-    line: 'l10', pail: 'pail', // the line's test weight and the bucket you carry (both bought in the shop)
+    v: 11, started: false, loc: 'shoal', money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 2, trophyRig: false,
+    line: 'l10', pail: 'pail', // the line's test weight and the bucket in use (both bought in the shop)
+    rodsOwned: ['stick'], linesOwned: ['l10'], pailsOwned: ['pail'], // everything bought stays in the rig sheet and can be put back on
     heldRod: true, noRod: false, // the storm's one question; let go and you wash up without a rod until you whittle one from a plank
     pending: null, // a landed catch waiting for Sell / Keep / Release; survives a reload
     prologue: false, proCaught: 0, // the calm-sea opening: rod only, two fish, then the storm
@@ -1227,7 +1229,11 @@ function load(seed) {
   if (d && d.v === 7) { d.spot = (LOC[d.loc] || LOC.shoal).spots[0].id; d.v = 8; } // v7 -> v8: fishing spots
   if (d && d.v === 8) { d.bounties = {}; d.v = 9; } // v8 -> v9: bounty boards
   if (d && d.v === 9) { d.line = d.rod === 'carbon' ? 'l80' : d.rod === 'cane' ? 'l40' : 'l10'; d.pail = 'basket'; d.v = 10; } // v9 -> v10: line test and bucket size; nobody loses what they could already catch or carry
-  if (d && d.v === 10) S = Object.assign(freshState(), d);
+  if (d && d.v === 10) { // v10 -> v11: the rig sheet lists everything owned; a ladder bought upward owns every rung below
+    const upto = (list, id) => { const i = list.findIndex(x => x.id === id); return list.slice(0, Math.max(0, i) + 1).map(x => x.id); };
+    d.rodsOwned = upto(RODS, d.rod); d.linesOwned = upto(LINE_TEST, d.line); d.pailsOwned = upto(BUCKETS, d.pail); d.v = 11;
+  }
+  if (d && d.v === 11) S = Object.assign(freshState(), d);
 }
 
 const loc = () => LOC[S.loc];
@@ -1417,11 +1423,12 @@ function shopItems() {
   }
   if (l.range >= 5 && !S.known.spaceport && !S.visited.spaceport && chartInStock(l)) items.push({ k: 'chart', name: 'A mysterious chart', sub: 'Oilcloth, salt-stiff, one island on it at the far edge of the world. The keeper will not say where it came from.', price: T_WORLD.chartPrice });
   if (S.slots < 4) items.push({ k: 'slot', name: `Line ${S.slots + 1}`, sub: 'One more line in the water.', price: SLOT_PRICES[S.slots] });
-  const ri = RODS.findIndex(r => r.id === S.rod);
+  const best = (list, owned) => Math.max(...owned.map(id => list.findIndex(x => x.id === id)), 0);
+  const ri = best(RODS, S.rodsOwned);
   if (ri < RODS.length - 1) { const r = RODS[ri + 1]; items.push({ k: 'rod', name: r.name, sub: `Wider net in the fight (${Math.round(r.bar * 100)}% of the track), and rarer fish take it more often.`, price: r.price }); }
-  const li = LINE_TEST.findIndex(x => x.id === S.line);
+  const li = best(LINE_TEST, S.linesOwned);
   if (li < LINE_TEST.length - 1) { const x = LINE_TEST[li + 1]; items.push({ k: 'line', name: x.name, sub: `Holds fish to ${fmtKg(lbKg(x.lb))}. Nothing heavier than your line will bite; you have ${lineOf().lb} lb.`, price: x.price }); }
-  const pi = BUCKETS.findIndex(x => x.id === S.pail);
+  const pi = best(BUCKETS, S.pailsOwned);
   if (pi < BUCKETS.length - 1) { const x = BUCKETS[pi + 1]; items.push({ k: 'pail', name: x.name, sub: `Room for ${x.cap} fish. Your ${bucketOf().name.toLowerCase()} holds ${bucketCap()}.`, price: x.price }); }
   if (!S.trophyRig) items.push({ k: 'trig', name: 'Trophy rig', sub: 'A long passive line. Needs shrimp or squid. Hooks big fish; you still land them yourself.', price: TROPHY_RIG_PRICE });
   const wi = WEAPONS.findIndex(w => w.id === S.weapon);
@@ -1440,10 +1447,10 @@ function buy(k) {
   if (S.money < it.price) { toast('Not enough money.'); return; }
   S.money -= it.price;
   if (k === 'slot') { S.slots++; S.lines[S.slots - 1] = { rig: 'set', bait: 'scraps', phase: 'idle' }; }
-  else if (k === 'rod') { const ri = RODS.findIndex(r => r.id === S.rod); S.rod = RODS[ri + 1].id; }
+  else if (k === 'rod') { const r = RODS[Math.max(...S.rodsOwned.map(id => RODS.findIndex(x => x.id === id))) + 1]; S.rodsOwned.push(r.id); S.rod = r.id; }
   else if (k === 'trig') S.trophyRig = true;
-  else if (k === 'line') { const li = LINE_TEST.findIndex(x => x.id === S.line); S.line = LINE_TEST[li + 1].id; }
-  else if (k === 'pail') { const pi = BUCKETS.findIndex(x => x.id === S.pail); S.pail = BUCKETS[pi + 1].id; }
+  else if (k === 'line') { const x = LINE_TEST[Math.max(...S.linesOwned.map(id => LINE_TEST.findIndex(y => y.id === id))) + 1]; S.linesOwned.push(x.id); S.line = x.id; }
+  else if (k === 'pail') { const x = BUCKETS[Math.max(...S.pailsOwned.map(id => BUCKETS.findIndex(y => y.id === id))) + 1]; S.pailsOwned.push(x.id); S.pail = x.id; }
   else if (k === 'weapon') { const wi = WEAPONS.findIndex(w => w.id === S.weapon); S.weapon = WEAPONS[wi + 1].id; }
   else if (k.startsWith('bait:')) { const b = k.slice(5); S.bait[b] = (S.bait[b] || 0) + BAITS[b].qty; }
   else if (k === 'boat') { const bi = BOATS.findIndex(b => b.id === S.boat); S.boat = BOATS[bi + 1].id; }
@@ -1558,11 +1565,7 @@ function renderAction() {
   const i = S.sel, L = S.lines[i], box = $('#action');
   if (!L) { box.innerHTML = '<div class="note">Pick a line.</div>'; return; }
   if (L.phase === 'idle') {
-    const rigs = [['hand', 'Rod'], ['set', 'Set'], ['trophy', 'Trophy']];
-    const pickers = rigOpen ? `<div class="segrow"><span class="lbl">RIG</span><div class="seg">${rigs.map(([k, n]) => `<button data-act="rig" data-k="${k}" class="${L.rig === k ? 'sel' : ''}" ${(k === 'trophy' && !S.trophyRig) || (S.prologue && k !== 'hand') || (k === 'hand' && S.noRod) ? 'disabled' : ''}>${n}</button>`).join('')}</div></div>
-      <div class="segrow"><span class="lbl">BAIT</span><div class="seg">${Object.entries(BAITS).map(([k, b]) => `<button data-act="bait" data-k="${k}" class="${L.bait === k ? 'sel' : ''}" ${k !== 'scraps' && !(S.bait[k] > 0) ? 'disabled' : ''}>${k === 'scraps' ? 'Scraps' : b.name + ' ×' + S.bait[k]}</button>`).join('')}</div></div>` : '';
-    box.innerHTML = `<div class="rigrow ${rigOpen ? 'open' : ''}"><button class="chip" data-act="cyclerig" title="Next rig">${RIG_LABEL[L.rig]}</button><span class="dot">·</span><button class="chip" data-act="cyclebait" title="Next bait">${baitLabel(L.bait)}</button><span class="dot">·</span><span class="chip static" title="Line test">${lineOf().lb} LB</span><button class="link" data-act="change">${rigOpen ? 'DONE' : 'CHANGE'}</button></div>
-      ${pickers}
+    box.innerHTML = `<div class="rigrow"><span class="chip static">${RIG_LABEL[L.rig]}</span><span class="dot">·</span><span class="chip static">${baitLabel(L.bait)}</span><span class="dot">·</span><span class="chip static" title="Line test">${S.noRod && L.rig !== 'hand' ? 'NO ROD' : rodOf().name.toUpperCase()} · ${lineOf().lb} LB</span>${S.prologue ? '' : '<button class="link" data-act="open" data-k="rig">CHANGE RIG</button>'}</div>
       <div class="note">${S.prologue && S.casts === 0 ? 'Cast the rod. When the float dips, tap Reel, then keep the fish inside the net.' : rigNote(L)}</div>
       <button class="cta ${S.prologue ? 'tut' : ''}" data-act="cast" data-i="${i}">${L.rig === 'hand' ? 'Cast' : 'Set the line'}</button>`;
   } else if (L.phase === 'waiting') {
@@ -1629,6 +1632,18 @@ function renderSheet() {
       <button class="cta" data-act="sail" ${canSail ? '' : 'disabled'}>${canSail ? 'Sail to ' + (mapState(sel) === 'fog' ? 'the unknown' : sel.name) : sel && sel.id === S.loc ? 'You are here' : 'Pick a port'}</button>`;
     drawMap();
     $('#mapcv').addEventListener('click', mapClick);
+  } else if (sheetKind === 'rig') { // everything you fish with: this line's rig and bait, and every rod, line and bucket you own
+    const L = S.lines[S.sel], busy = !L || L.phase !== 'idle', rigs = [['hand', 'Rod'], ['set', 'Set line'], ['trophy', 'Trophy line']];
+    const seg = (items, cur, act, dis) => `<div class="seg">${items.map(([k, n]) => `<button data-act="${act}" data-k="${k}" class="${cur === k ? 'sel' : ''}" ${busy || dis(k) ? 'disabled' : ''}>${n}</button>`).join('')}</div>`;
+    const gearRows = (list, owned, cur, kind, sub) => list.filter(x => owned.includes(x.id)).map(x => `<div class="row ${x.id === cur ? 'sel' : ''}"><div class="name">${x.name}<small>${sub(x)}</small></div>${x.id === cur ? '<div class="here">in use</div>' : `<button class="buy" data-act="equip" data-k="${kind}:${x.id}">USE</button>`}</div>`).join('');
+    el.innerHTML = `<div class="head"><h2>Rig · Line ${S.sel + 1}</h2><button class="x" data-act="close">✕</button></div>
+      ${busy ? '<div class="note">This line is in the water. Pull it in to change its rig or bait.</div>' : ''}
+      <div class="box"><h3>RIG</h3>${seg(rigs, L && L.rig, 'rig', k => (k === 'trophy' && !S.trophyRig) || (k === 'hand' && S.noRod))}<div class="note">${S.noRod ? 'No rod: you let it go in the storm. Whittle one from a plank.' : L && L.rig === 'hand' ? 'Tap Reel on the hit, then keep the fish in the net. Rarer fish take a better rod.' : L && L.rig === 'set' ? 'Hooks a common fish in a minute or so, even while you are away. No fight, never trophy size.' : 'Takes minutes, hooks big fish. Needs shrimp or squid. You still land it.'}${S.trophyRig ? '' : ' The trophy rig is sold at the harbor.'}</div></div>
+      <div class="box"><h3>BAIT</h3>${seg(Object.entries(BAITS).map(([k, b]) => [k, k === 'scraps' ? 'Scraps' : b.name + ' ×' + (S.bait[k] || 0)]), L && L.bait, 'bait', k => k !== 'scraps' && !(S.bait[k] > 0))}<div class="note">Scraps are free. Shrimp and squid gate the bigger and rarer fish and tilt every cast toward them.</div></div>
+      <div class="box"><h3>RODS</h3><div class="list">${S.noRod ? '<div class="note">Lost in the storm. A plank of driftwood whittles a new one.</div>' : gearRows(RODS, S.rodsOwned, S.rod, 'rod', r => `Net ${Math.round(r.bar * 100)}% of the track${r.luck ? ` · luck ${r.luck}` : ''}.`)}</div></div>
+      <div class="box"><h3>LINE</h3><div class="list">${gearRows(LINE_TEST, S.linesOwned, S.line, 'line', x => `Holds fish to ${fmtKg(lbKg(x.lb))}. Heavier ones will not bite.`)}</div></div>
+      <div class="box"><h3>BUCKET</h3><div class="list">${gearRows(BUCKETS, S.pailsOwned, S.pail, 'pail', x => `Room for ${x.cap} fish.`)}</div></div>
+      <div class="box"><h3>ALSO</h3><div class="list"><div class="row"><div class="name">${S.slots} line${S.slots > 1 ? 's' : ''}${S.trophyRig ? ' · trophy rig' : ''}<small>${S.slots < 4 ? 'More lines are sold in the shops.' : 'Every line you can run.'}</small></div></div><div class="row"><div class="name">${WEAPON().name}<small>For the hunt.</small></div></div><div class="row"><div class="name">${BOATS.find(b => b.id === S.boat).name}<small>Range ${boatRange()}.</small></div></div></div></div>`;
   } else if (sheetKind === 'spots') {
     const l = loc();
     const rows = l.spots.map(sp => { const locked = sp.boat && S.boat === 'none'; return `<button class="row ${sp.id === S.spot ? 'sel' : ''} ${locked ? 'dim' : ''}" data-act="spot" data-k="${sp.id}"><div class="name">${sp.name}<small><b class="kind">${(KIND_NAME[sp.kind] || 'Shore').toUpperCase()}${sp.boat ? ' · FROM THE BOAT' : ''}</b> · ${locked ? 'Needs a boat. ' : ''}${sp.known}</small></div>${sp.id === S.spot ? '<div class="here">fishing here</div>' : ''}</button>`; }).join('');
@@ -3738,8 +3753,9 @@ document.addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const a = b.dataset.act, i = +b.dataset.i, k = b.dataset.k;
   if (a === 'sel') { S.sel = i; save(); render(); }
-  else if (a === 'rig') { const L = S.lines[S.sel]; L.rig = k; if (k === 'trophy' && L.bait === 'scraps') L.bait = S.bait.shrimp > 0 ? 'shrimp' : S.bait.squid > 0 ? 'squid' : 'scraps'; save(); render(); }
-  else if (a === 'bait') { S.lines[S.sel].bait = k; save(); render(); }
+  else if (a === 'rig') { const L = S.lines[S.sel]; L.rig = k; if (k === 'trophy' && L.bait === 'scraps') L.bait = S.bait.shrimp > 0 ? 'shrimp' : S.bait.squid > 0 ? 'squid' : 'scraps'; save(); render(); renderSheet(); }
+  else if (a === 'bait') { S.lines[S.sel].bait = k; save(); render(); renderSheet(); }
+  else if (a === 'equip') { const [kind, id] = k.split(':'); if (kind === 'rod' && S.rodsOwned.includes(id)) S.rod = id; else if (kind === 'line' && S.linesOwned.includes(id)) S.line = id; else if (kind === 'pail' && S.pailsOwned.includes(id)) { if (S.bucket.length > (BUCKETS.find(b => b.id === id) || {}).cap) { toast('Too many fish in the bucket for that one.'); return; } S.pail = id; } save(); render(); renderSheet(); }
   else if (a === 'cyclerig') { const L = S.lines[S.sel]; if (L && L.phase === 'idle') { cycleRig(L); save(); render(); } }
   else if (a === 'cyclebait') { const L = S.lines[S.sel]; if (L && L.phase === 'idle') { cycleBait(L); save(); render(); } }
   else if (a === 'change') { rigOpen = !rigOpen; render(); }
