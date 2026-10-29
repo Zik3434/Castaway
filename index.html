@@ -121,6 +121,11 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 .seg button{flex:1 1 0;min-width:0;padding:7px 3px;background:rgba(10,16,32,.6);border:2px solid var(--edge);font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .seg button.sel{border-color:var(--brass);color:var(--brass);background:var(--panel-2)}
 .seg button[disabled]{opacity:.45;cursor:default}
+.seg.icons button{display:grid;justify-items:center;gap:4px;padding:8px 3px 7px}
+.seg.icons button span{font-size:16px}
+canvas.icon{width:40px;height:40px;image-rendering:pixelated;flex:none}
+.row canvas.icon{background:rgba(10,16,32,.6);border:2px solid var(--edge);padding:2px;box-sizing:content-box}
+.row.sel canvas.icon{border-color:var(--brass)}
 .note{color:var(--muted);font-size:17px}
 .cta{font-family:var(--display);font-size:13px;padding:15px 10px;background:var(--brass);color:#2b1d05;border:3px solid var(--brass-2);box-shadow:0 4px 0 var(--brass-3);text-transform:uppercase}
 .cta:active{transform:translateY(3px);box-shadow:none}
@@ -1653,8 +1658,8 @@ function renderSheet() {
     $('#mapcv').addEventListener('click', mapClick);
   } else if (sheetKind === 'rig') { // everything you fish with: this line's rig and bait, and every rod, line and bucket you own
     const L = S.lines[S.sel], busy = !L || L.phase !== 'idle', rigs = [['hand', 'Rod'], ['set', 'Set line'], ['trophy', 'Trophy line']];
-    const seg = (items, cur, act, dis) => `<div class="seg">${items.map(([k, n]) => `<button data-act="${act}" data-k="${k}" class="${cur === k ? 'sel' : ''}" ${busy || dis(k) ? 'disabled' : ''}>${n}</button>`).join('')}</div>`;
-    const gearRows = (list, owned, cur, kind, sub) => list.filter(x => owned.includes(x.id)).map(x => `<div class="row ${x.id === cur ? 'sel' : ''}"><div class="name">${x.name}<small>${sub(x)}</small></div>${x.id === cur ? '<div class="here">in use</div>' : `<button class="buy" data-act="equip" data-k="${kind}:${x.id}">USE</button>`}</div>`).join('');
+    const seg = (items, cur, act, dis) => `<div class="seg icons">${items.map(([k, n]) => `<button data-act="${act}" data-k="${k}" class="${cur === k ? 'sel' : ''}" ${busy || dis(k) ? 'disabled' : ''}>${icon(act + ':' + k)}<span>${n}</span></button>`).join('')}</div>`;
+    const gearRows = (list, owned, cur, kind, sub) => list.filter(x => owned.includes(x.id)).map(x => `<div class="row ${x.id === cur ? 'sel' : ''}">${icon(kind + ':' + x.id)}<div class="name" style="flex:1">${x.name}<small>${sub(x)}</small></div>${x.id === cur ? '<div class="here">in use</div>' : `<button class="buy" data-act="equip" data-k="${kind}:${x.id}">USE</button>`}</div>`).join('');
     el.innerHTML = `<div class="head"><h2>Rig · Line ${S.sel + 1}</h2><button class="x" data-act="close">✕</button></div>
       ${busy ? '<div class="note">This line is in the water. Pull it in to change its rig or bait.</div>' : ''}
       <div class="box"><h3>RIG</h3>${seg(rigs, L && L.rig, 'rig', k => (k === 'trophy' && !S.trophyRig) || (k === 'hand' && S.noRod))}<div class="note">${S.noRod ? 'No rod: you let it go in the storm. Whittle one from a plank.' : L && L.rig === 'hand' ? 'Tap Reel on the hit, then keep the fish in the net. Rarer fish take a better rod.' : L && L.rig === 'set' ? 'Soaks until something takes it, a chance every second, even while you are away. A quick hook is a small fish; a long soak grows it. No fight.' : 'Soaks for minutes, a chance every second. Hooks big fish, bigger the longer it waits. Needs shrimp or squid. You still land it.'}${S.trophyRig ? '' : ' The trophy rig is sold at the harbor.'}</div></div>
@@ -1662,7 +1667,8 @@ function renderSheet() {
       <div class="box"><h3>RODS</h3><div class="list">${S.noRod ? '<div class="note">Lost in the storm. A plank of driftwood whittles a new one.</div>' : gearRows(RODS, S.rodsOwned, S.rod, 'rod', r => `Net ${Math.round(r.bar * 100)}% of the track${r.luck ? ` · luck ${r.luck}` : ''}.`)}</div></div>
       <div class="box"><h3>LINE</h3><div class="list">${gearRows(LINE_TEST, S.linesOwned, S.line, 'line', x => `Holds fish to ${fmtKg(lbKg(x.lb))}. Heavier ones will not bite.`)}</div></div>
       <div class="box"><h3>BUCKET</h3><div class="list">${gearRows(BUCKETS, S.pailsOwned, S.pail, 'pail', x => `Room for ${x.cap} fish.`)}</div></div>
-      <div class="box"><h3>ALSO</h3><div class="list"><div class="row"><div class="name">${S.slots} line${S.slots > 1 ? 's' : ''}${S.trophyRig ? ' · trophy rig' : ''}<small>${S.slots < 4 ? 'More lines are sold in the shops.' : 'Every line you can run.'}</small></div></div><div class="row"><div class="name">${WEAPON().name}<small>For the hunt.</small></div></div><div class="row"><div class="name">${BOATS.find(b => b.id === S.boat).name}<small>Range ${boatRange()}.</small></div></div></div></div>`;
+      <div class="box"><h3>ALSO</h3><div class="list"><div class="row"><div class="name">${S.slots} line${S.slots > 1 ? 's' : ''}${S.trophyRig ? ' · trophy rig' : ''}<small>${S.slots < 4 ? 'More lines are sold in the shops.' : 'Every line you can run.'}</small></div></div><div class="row">${icon('weapon:' + S.weapon)}<div class="name" style="flex:1">${WEAPON().name}<small>For the hunt.</small></div></div><div class="row">${icon('boat:' + S.boat)}<div class="name" style="flex:1">${BOATS.find(b => b.id === S.boat).name}<small>Range ${boatRange()}.</small></div></div></div></div>`;
+    drawIcons(el);
   } else if (sheetKind === 'spots') {
     const l = loc();
     const rows = l.spots.map(sp => { const locked = sp.boat && S.boat === 'none'; return `<button class="row ${sp.id === S.spot ? 'sel' : ''} ${locked ? 'dim' : ''}" data-act="spot" data-k="${sp.id}"><div class="name">${sp.name}<small><b class="kind">${(KIND_NAME[sp.kind] || 'Shore').toUpperCase()}${sp.boat ? ' · FROM THE BOAT' : ''}</b> · ${locked ? 'Needs a boat. ' : ''}${sp.known}</small></div>${sp.id === S.spot ? '<div class="here">fishing here</div>' : ''}</button>`; }).join('');
@@ -1699,17 +1705,19 @@ function renderSheet() {
         <div class="row ${S.bait.squid ? '' : 'dim'}"><div class="name">Squid<small>Deep and rare fish take only this.</small></div><div class="price">×${S.bait.squid}</div></div>
       </div></div>
       <div class="box"><h3>GEAR</h3><div class="list">
-        <div class="row"><div class="name">${S.noRod ? 'No rod' : rod.name}<small>${S.noRod ? 'Let go in the storm. A plank of driftwood whittles a new one.' : `Net ${Math.round(rod.bar * 100)}% of the track${rod.luck ? `, luck ${rod.luck}` : ''}.`}</small></div></div>
-        <div class="row"><div class="name">${lineOf().name}<small>Holds fish to ${fmtKg(lineKg())}. Heavier ones will not bite.</small></div></div>
-        <div class="row"><div class="name">${bucketOf().name}<small>Room for ${bucketCap()} fish.</small></div></div>
-        <div class="row"><div class="name">${boat.name}<small>Range ${boat.range}.</small></div></div>
+        <div class="row">${S.noRod ? '' : icon('rod:' + S.rod)}<div class="name" style="flex:1">${S.noRod ? 'No rod' : rod.name}<small>${S.noRod ? 'Let go in the storm. A plank of driftwood whittles a new one.' : `Net ${Math.round(rod.bar * 100)}% of the track${rod.luck ? `, luck ${rod.luck}` : ''}.`}</small></div></div>
+        <div class="row">${icon('line:' + S.line)}<div class="name" style="flex:1">${lineOf().name}<small>Holds fish to ${fmtKg(lineKg())}. Heavier ones will not bite.</small></div></div>
+        <div class="row">${icon('pail:' + S.pail)}<div class="name" style="flex:1">${bucketOf().name}<small>Room for ${bucketCap()} fish.</small></div></div>
+        <div class="row">${icon('boat:' + S.boat)}<div class="name" style="flex:1">${boat.name}<small>Range ${boat.range}.</small></div></div>
         <div class="row"><div class="name">${S.slots} line${S.slots > 1 ? 's' : ''}${S.trophyRig ? ' · trophy rig' : ''}<small>${S.trophyRig ? 'Any line can run as a trophy line.' : 'The trophy rig is sold at the harbor.'}</small></div></div>
-        <div class="row"><div class="name">${WEAPON().name}<small>Hunting. Hold to draw, let go on the mark.</small></div></div>
+        <div class="row">${icon('weapon:' + S.weapon)}<div class="name" style="flex:1">${WEAPON().name}<small>Hunting. Hold to draw, let go on the mark.</small></div></div>
         ${S.raft ? '' : `<div class="row"><div class="name">Driftwood<small>${T.raftWood} pieces build a raft.</small></div><div class="price">${S.wood}/${T.raftWood}</div></div>`}
       </div></div>`;
+    drawIcons(el);
     drawMinis(el);
   } else if (sheetKind === 'shop') {
-    const rows = shopItems().map(it => `<div class="row"><div class="name">${it.name}<small>${it.sub}</small></div><div style="display:grid;gap:4px;justify-items:end"><div class="price">${money(it.price)}</div><button class="buy" data-act="buy" data-k="${it.k}" ${it.locked || S.money < it.price ? 'disabled' : ''}>${it.locked ? 'LOCKED' : 'BUY'}</button></div></div>`).join('');
+    const shopIcon = it => it.k === 'rod' ? 'rod:' + RODS[Math.max(...S.rodsOwned.map(id => RODS.findIndex(x => x.id === id))) + 1].id : it.k === 'line' ? 'line:' + LINE_TEST[Math.max(...S.linesOwned.map(id => LINE_TEST.findIndex(x => x.id === id))) + 1].id : it.k === 'pail' ? 'pail:' + BUCKETS[Math.max(...S.pailsOwned.map(id => BUCKETS.findIndex(x => x.id === id))) + 1].id : it.k.startsWith('bait:') ? it.k : it.k === 'boat' ? 'boat:' + (loc().spaceport ? 'starship' : BOATS[BOATS.findIndex(b => b.id === S.boat) + 1].id) : it.k === 'weapon' ? 'weapon:' + WEAPONS[WEAPONS.findIndex(w => w.id === S.weapon) + 1].id : it.k === 'slot' ? 'rig:set' : it.k === 'trig' ? 'rig:trophy' : null;
+    const rows = shopItems().map(it => `<div class="row">${shopIcon(it) ? icon(shopIcon(it)) : ''}<div class="name" style="flex:1">${it.name}<small>${it.sub}</small></div><div style="display:grid;gap:4px;justify-items:end"><div class="price">${money(it.price)}</div><button class="buy" data-act="buy" data-k="${it.k}" ${it.locked || S.money < it.price ? 'disabled' : ''}>${it.locked ? 'LOCKED' : 'BUY'}</button></div></div>`).join('');
     const kp = loc().keeper, said = talkLine;
     const board = loc().spaceport ? '' : boardOf(loc()).list.map(b => { const sp = SP[b.id], j = bestInBucket(b.id), have = j >= 0;
       return `<div class="poster ${b.done ? 'done' : ''}"><div class="nail"></div><div class="wanted">WANTED</div><canvas class="mini" width="64" height="36" data-fish="${b.id}" data-known="1"></canvas><div class="pname">${sp.name}</div><div class="pays">Pays ×${b.mult}</div>${b.done ? '<div class="stamp">PAID</div>' : have ? `<button class="buy" data-act="bounty" data-k="${b.id}">TURN IN · ${money(Math.round(S.bucket[j].value * b.mult))}</button>` : '<div class="pays dim">Bring one in</div>'}</div>`; }).join('');
@@ -1717,7 +1725,7 @@ function renderSheet() {
       ${kp ? `<div class="box"><div class="row"><div class="name">${kp.name}<small>${kp.exotic ? 'Hears every rumor on the sea.' : 'Keeps the shop.'}</small></div><button class="buy" data-act="talk">TALK</button></div>${said ? `<div class="note">${said}</div>` : ''}</div>` : ''}
       <div class="list">${rows}</div>
       ${loc().spaceport ? '' : `<div class="box"><h3>BOUNTY BOARD</h3>${board.length ? `<div class="board">${board}</div>` : '<div class="note">Nothing nailed up today.</div>'}</div>`}`;
-    drawMinis(el);
+    drawMinis(el); drawIcons(el);
   } else if (sheetKind === 'menu') {
     el.innerHTML = `<div class="head"><h2>Menu</h2><button class="x" data-act="close">✕</button></div>
       <div class="note">Caught ${Object.values(S.index).reduce((a, b) => a + b.n, 0)} fish · sold ${money(S.sold)} · ${S.casts} casts.</div>
@@ -2428,6 +2436,65 @@ const FISH_ART = {
     '....oooooo......', '...obbbbbbo.....', '...obmbbmbo.....', '...obbbbbbo.....', '...obmbbmbo.....', '...obbbbbbo.....', '...obmbbmbo.....', '...obbbbbbo.....', '...obbbbbboooo..', '..obbbbbbbbbbbo.', '.obbbbbbbbbbbbbo', 'obbbbbbbbbbbbbbo', 'oddddddddddddddo', '.oooooooooooooo.'] },
 };
 
+
+
+// ---------- gear icons: 20x20 masks (a main, b dark, c accent, d highlight, e extra), a palette per item, cached per key/scale ----------
+const ICON_MASKS = {
+  rod: ['..................dc', '.................add.', '................a..d.', '...............a...d.', '..............a....d.', '.............a.....d.', '............a......d.', '...........a.......e.', '..........a........e.', '.........a..........',
+        '........a...........', '.......a............', '......aa............', '.....aa.............', '....bb..............', '...bb...............', '..bb................', '.bb.................', 'bb..................', '....................'],
+  spool: ['....bbbbbbbbbbbb....', '...baaaaaaaaaaaab...', '..baaaaaaaaaaaaaab..', '...baaaaaaaaaaaab...', '....bbbbbbbbbbbb....', '....b.cccccccc.b....', '....b.cccccccc.b....', '....b.cccccccc.b....', '....b.cccccccc.b....', '....b.cccccccc.b....',
+          '....b.cccccccc.b....', '....b.cccccccc.b....', '....b.cccccccc.b....', '....bbbbbbbbbbbb....', '...baaaaaaaaaaaab...', '..baaaaaaaaaaaaaab..', '...baaaaaaaaaaaab...', '....bbbbbbbbbbbb....', '.........cc.........', '..........cc........'],
+  pail: ['.......bbbbbb.......', '.....bb......bb.....', '....b..........b....', '...b............b...', '...b............b...', '..bbbbbbbbbbbbbbbb..', '..baaaaaaaaaaaaaab..', '..bacaaacaaacaaaab..', '..bacaaacaaacaaaab..', '..bbbbbbbbbbbbbbbb..',
+         '...bacaaacaaacaab...', '...bacaaacaaacaab...', '...bacaaacaaacaab...', '...bacaaacaaacaab...', '....bacaacaaacab....', '....bacaacaaacab....', '....bbbbbbbbbbbb....', '.....baaaaaaaab.....', '.....bbbbbbbbbb.....', '....................'],
+  basket: ['....................', '.......bbbbbb.......', '.....bb......bb.....', '....b..........b....', '...bbbbbbbbbbbbbb...', '..baaaaaaaaaaaaaab..', '..bacacacacacacaab..', '..baacacacacacacab..', '..bacacacacacacaab..', '..baacacacacacacab..',
+           '..bacacacacacacaab..', '...baacacacacacab...', '...bacacacacacaab...', '...baacacacacacab...', '....bacacacacaab....', '....baacacacacab....', '.....bbbbbbbbbb.....', '....................', '....................', '....................'],
+  barrel: ['....................', '....bbbbbbbbbbbb....', '...baaaaaaaaaaaab...', '..bccccccccccccccb..', '..baaaaaaaaaaaaaab..', '..baaaaaaaaaaaaaab..', '..baaaaaaaaaaaaaab..', '..bccccccccccccccb..', '..baaaaaaaaaaaaaab..', '..baaaaaaaaaaaaaab..',
+           '..baaaaaaaaaaaaaab..', '..baaaaaaaaaaaaaab..', '..bccccccccccccccb..', '..baaaaaaaaaaaaaab..', '..baaaaaaaaaaaaaab..', '..bccccccccccccccb..', '...baaaaaaaaaaaab...', '....bbbbbbbbbbbb....', '....................', '....................'],
+  chest: ['....................', '....................', '..bbbbbbbbbbbbbbbb..', '.baaaaaaaaaaaaaaaab.', '.baaaaaaaaaaaaaaaab.', '.bbbbbbbbbbbbbbbbbb.', '.bccccccccccccccccb.', '.bccccccccccccccccb.', '.bcccccccddcccccccb.', '.bcccccccddcccccccb.',
+          '.bccccccccccccccccb.', '.bccccccccccccccccb.', '.bccccccccccccccccb.', '.bccccccccccccccccb.', '.bccccccccccccccccb.', '.bbbbbbbbbbbbbbbbbb.', '..bb............bb..', '....................', '....................', '....................'],
+  hold: ['bbbbbbbbbbbbbbbbbbbb', 'baaaaaaaaaaaaaaaaaab', 'babbbbbbbbbbbbbbbbab', 'babccccccccccccccbab', 'babcbcbcbcbcbcbcbbab', 'babccccccccccccccbab', 'babcbcbcbcbcbcbcbbab', 'babccccccccccccccbab', 'babcbcbcbcbcbcbcbbab', 'babccccccccccccccbab',
+         'babcbcbcbcbcbcbcbbab', 'babccccccccccccccbab', 'babcbcbcbcbcbcbcbbab', 'babccccccccccccccbab', 'babbbbbbbbbbbbbbbbab', 'baaaaaaaaaaaaaaaaaab', 'baaaaaaadddaaaaaaaab', 'baaaaaaaaaaaaaaaaaab', 'bbbbbbbbbbbbbbbbbbbb', '....................'],
+  scraps: ['....................', '....................', '....bbb.............', '...baaab......bbb...', '..baacaab....baaab..', '..baaaaab...baacab..', '..bbbbbbb...baaaab..', '............bbbbbb..', '....................', '.......bbbbb........',
+           '......baaaaab.......', '.....baaacaaab......', '.....baaaaaaab......', '......bbbbbbb.......', '....................', '..bbbb.......bbb....', '.baaaab.....baaab...', '.baacab.....baaab...', '..bbbb.......bbb....', '....................'],
+  shrimp: ['....................', '....................', '..........bbbbb.....', '........bbaaaaab....', '.......baaaaaaaab...', '......baaacaaaaab...', '.....baaaaaaaaaabb..', '.....baaaabbbaaaab..', '....baaaab...baaab..', '....baaab.....bab...',
+           '....baaab......b....', '....baaab...........', '.....baab...........', '.....baaab..........', '......baab..........', '......bbab..........', '.......bb...........', '....................', '....................', '....................'],
+  squid: ['.........bb.........', '........baab........', '.......baaaab.......', '......baaaaaab......', '......baaaaaab......', '......baaaaaab......', '......baaaaaab......', '......baaaaaab......', '.....baacaacaab.....', '.....baaaaaaaab.....',
+          '......bbbbbbbb......', '....b.ba.ba.ab.b....', '....b.ba.ba.ab.b....', '...b..ba.ba.ab..b...', '...b..b..b..b...b...', '...b..b..b..b...b...', '..b...b.....b....b..', '..b..............b..', '....................', '....................'],
+  rigset: ['....................', '...bbbb.............', '...baab.............', '...baab.............', '...baab.............', '...baab.............', '...baab.....c.......', '...baab....c........', '...baab...c.........', '...baab..c..........',
+           '...baab..c..........', '...baab..c..........', '...baab..c..........', '...bbbb..c..........', '........bcb.........', '........bbb.........', '.........c..........', '........cc..........', '.......c.c..........', '........cc..........'],
+  rigtrophy: ['........bbbb........', '.......baaaab.......', '......baaaaaab......', '......baaddaab......', '......baaddaab......', '......baaaaaab......', '.......baaaab.......', '........bbbb........', '..........cc........', '..........cc........',
+              '..........cc........', '..........cc........', '..........cc........', '..........cc........', '..........cc........', '.....cc...cc........', '....c..c..cc........', '....c..c..cc........', '.....cc..cc.........', '......cccc..........'],
+  sling: ['....................', '....................', '...bb........bb.....', '...bab......bab.....', '...bab......bab.....', '....bab....bab......', '....bab....bab......', '.....bab..bab.......', '.....babccbab.......', '......bcccccb.......',
+          '......bcccccb.......', '.......bcccb........', '........bab.........', '........bab.........', '........bab.........', '........bab.........', '........bab.........', '........bbb.........', '....................', '....................'],
+  bow: ['....................', '.........bb.........', '........ba.b........', '.......ba..c........', '......ba...c........', '......ba...c........', '.....ba....c........', '.....ba....c........', '.....ba..ddddddd....', '.....ba....c........',
+        '.....ba....c........', '......ba...c........', '......ba...c........', '.......ba..c........', '........ba.c........', '.........bb.........', '....................', '....................', '....................', '....................'],
+  crossbow: ['....................', '....................', '....................', '..bb............bb..', '..bab..........bab..', '...bab........bab...', '....bbbbbbbbbbbb....', '....bccccccccccb....', '........bddb........', '........bddb........',
+             '........bddb........', '........bddb........', '........bddb........', '........bddb........', '.......bbddbb.......', '........bddb........', '........bbbb........', '....................', '....................', '....................'],
+  boat: ['....................', '.........bb.........', '.........bab........', '.........ba.b.......', '.........ba..b......', '.........baddb......', '.........badddb.....', '.........baddddb....', '.........baddddb....', '.........baddb......',
+         '.........bab........', '.........bab........', '..bbbbbbbbabbbbbbbb.', '..baaaaaaaaaaaaaaab.', '...baaaaaaaaaaaaab..', '....bccccccccccccb..', '.....bbbbbbbbbbbb...', '....................', '....................', '....................'],
+};
+// which mask an item uses, and its colours
+const ICON_PAL = {
+  'rig:hand': ['rod', { a: '#8a6a44', b: '#5a3a22', c: '#d8d0c0', d: '#e8e8e8', e: '#d7362a' }], 'rig:set': ['rigset', { a: '#8a6a44', b: '#4a3222', c: '#e0e0e0' }], 'rig:trophy': ['rigtrophy', { a: '#d7362a', b: '#5a1a12', c: '#e0e0e0', d: '#ffffff' }],
+  'bait:scraps': ['scraps', { a: '#e8dcc8', b: '#8a7a60', c: '#f0a0a0' }], 'bait:shrimp': ['shrimp', { a: '#f08070', b: '#8a3020', c: '#ffffff' }], 'bait:squid': ['squid', { a: '#b070c0', b: '#4a2060', c: '#f0e0ff' }],
+  'rod:stick': ['rod', { a: '#8a6a44', b: '#5a3a22', c: '#d8d0c0', d: '#e8e8e8', e: '#d7362a' }], 'rod:cane': ['rod', { a: '#d8b060', b: '#6a4a20', c: '#f0e0a0', d: '#e8e8e8', e: '#d7362a' }], 'rod:carbon': ['rod', { a: '#3a3a44', b: '#d7362a', c: '#a0a0a8', d: '#e8e8e8', e: '#f0c050' }],
+  'rod:steel': ['rod', { a: '#b8c0c8', b: '#4a4a5a', c: '#ffffff', d: '#e8e8e8', e: '#2d6fb0' }], 'rod:stariron': ['rod', { a: '#30305a', b: '#101028', c: '#a0e0ff', d: '#a0e0ff', e: '#ffffff' }],
+  'line:l10': ['spool', { a: '#8a6a44', b: '#3a2a1a', c: '#d8d8d8' }], 'line:l20': ['spool', { a: '#8a6a44', b: '#3a2a1a', c: '#ffffff' }], 'line:l40': ['spool', { a: '#8a6a44', b: '#3a2a1a', c: '#80c060' }], 'line:l80': ['spool', { a: '#8a6a44', b: '#3a2a1a', c: '#4a90e0' }],
+  'line:l150': ['spool', { a: '#8a6a44', b: '#3a2a1a', c: '#f0a030' }], 'line:l300': ['spool', { a: '#8a6a44', b: '#3a2a1a', c: '#d7362a' }], 'line:l600': ['spool', { a: '#6a6a78', b: '#2a2a34', c: '#9a9aa8' }], 'line:l2000': ['spool', { a: '#30305a', b: '#101028', c: '#f0c050' }],
+  'pail:pail': ['pail', { a: '#8a6a44', b: '#4a3222', c: '#6a4a2c' }], 'pail:basket': ['basket', { a: '#c8a860', b: '#6a4a20', c: '#a08040' }], 'pail:barrel': ['barrel', { a: '#8a5a34', b: '#3a2212', c: '#5a5a60' }], 'pail:chest': ['chest', { a: '#e8f4ff', b: '#4a6a8a', c: '#a0d0f0', d: '#ffffff' }], 'pail:hold': ['hold', { a: '#5a3a22', b: '#2a1a0e', c: '#1a2838', d: '#f0c050' }],
+  'weapon:sling': ['sling', { a: '#8a6a44', b: '#4a3222', c: '#5a4a3a' }], 'weapon:bow': ['bow', { a: '#8a6a44', b: '#4a3222', c: '#e0e0e0', d: '#d8d0c0' }], 'weapon:crossbow': ['crossbow', { a: '#5a3a22', b: '#2a1a0e', c: '#8a8a98', d: '#8a6a44' }],
+  'boat:none': ['boat', { a: '#5a3a22', b: '#2a1a0e', c: '#3e2816', d: '#5a3a22' }], 'boat:raft': ['boat', { a: '#8a6a44', b: '#4a3222', c: '#6a4a2c', d: '#8a6a44' }], 'boat:skiff': ['boat', { a: '#6a4a2c', b: '#2a1a0e', c: '#4a3222', d: '#f0ece0' }], 'boat:cutter': ['boat', { a: '#5a3a22', b: '#2a1a0e', c: '#3e2816', d: '#e8e0c8' }],
+  'boat:trawler': ['boat', { a: '#3e4a5a', b: '#1a2230', c: '#2a3440', d: '#c0c8d0' }], 'boat:clipper': ['boat', { a: '#2a2a3a', b: '#101018', c: '#4a3a2a', d: '#ffffff' }], 'boat:ironclad': ['boat', { a: '#5a5a66', b: '#2a2a30', c: '#3a3a44', d: '#8a8a96' }], 'boat:starship': ['boat', { a: '#e8e8f0', b: '#4a4a58', c: '#c03030', d: '#a0c0ff' }],
+};
+function iconC(key, sc) {
+  const k = 'icon:' + key + ':' + sc; let c = CACHE.get(k); if (c) return c;
+  const [mask, pal] = ICON_PAL[key] || ICON_PAL['rig:hand'], m = ICON_MASKS[mask];
+  c = document.createElement('canvas'); c.width = 20 * sc; c.height = 20 * sc; const x = c.getContext('2d');
+  for (let r = 0; r < m.length; r++) for (let i = 0; i < m[r].length; i++) { const ch = m[r][i]; if (ch === '.') continue; x.fillStyle = pal[ch] || pal.a; x.fillRect(i * sc, r * sc, sc, sc); }
+  CACHE.set(k, c); return c;
+}
+const icon = key => `<canvas class="icon" width="20" height="20" data-icon="${key}"></canvas>`;
+function drawIcons(el) { el.querySelectorAll('canvas.icon').forEach(c => { const x = c.getContext('2d'); x.clearRect(0, 0, 20, 20); x.drawImage(iconC(c.dataset.icon, 1), 0, 0); }); }
 
 // ---------- creature sprites ----------
 // Hand-drawn silhouettes (facing left), shaded in code like the fish: # body, l legs, a accent (ears, antlers, beak,
