@@ -325,7 +325,7 @@ const T = {
   handWait: [2000, 6000],        // rod: seconds to a bite
   setWait: [40000, 90000],       // set line: hooks in 40-90 s, keeps ticking while you're away
   trophyWait: [150000, 300000],  // trophy line: 2.5-5 min
-  hitWindow: 3000,               // ms to tap Reel after a hit
+  hitWindow: 4000,               // ms to tap Reel after a hit; easy fish hold the hook far longer (see hitWindowFor)
   packCap: 10,
   raftWood: 6,
 };
@@ -1137,7 +1137,9 @@ const WIND_NAME = { face: 'in your face', cross: 'across', back: 'at your back' 
 const DIST_NAME = ['far off', 'nearer', 'close', 'point blank'];
 // The fight. Easy fish are slow, lazy, and give a wider net and a fast fill; hard fish are quick and drain the bar fast.
 // netBonus: how much wider the net gets below difficulty 0.45 (a sardine at 0.1 gets ×1.35). Prologue adds a little more.
-const T_FIGHT = { netBonus: 1, speedBase: { dart: 0.5, other: 0.2 }, speedPerDiff: 1.5, gainBase: 0.22, gainEasy: 0.2, drainBase: 0.10, drainPerDiff: 0.25, netAccelUp: 2.6, netAccelDown: 2.4, netMaxV: 1.3, prologueNet: 1.25 };
+const T_FIGHT = { netBonus: 1.6, speedBase: { dart: 0.5, other: 0.2 }, speedPerDiff: 1.5, gainBase: 0.22, gainEasy: 0.3, drainBase: 0.05, drainPerDiff: 0.32, netAccelUp: 2.6, netAccelDown: 2.4, netMaxV: 1.3, prologueNet: 1.25, startEasy: 0.3 };
+// How long a hooked fish holds before it spits the hook: the base window, stretched up to ×2.8 for the easiest fish (and ×1.5 more in the prologue).
+const hitWindowFor = sp => T.hitWindow * (1 + Math.max(0, 0.45 - (sp.diff || 0)) * 4) * (S.prologue ? 1.5 : 1);
 const spotOf = (locId, spotId) => { const l = LOC[locId]; return l.spots.find(sp => sp.id === spotId) || l.spots[0]; };
 const spot = () => spotOf(S.loc, S.spot);
 // Weight from length: kg = k × cm³ / 1000, with k a condition factor by body shape (a species can override with `k`).
@@ -1452,7 +1454,7 @@ function tick() {
     if (!L) return;
     if (L.phase === 'waiting' && t >= L.at) {
       if (!L.c) { L.phase = 'idle'; toast(`Line ${i + 1}: nothing's biting on that.`); changed = true; return; }
-      if (L.rig === 'hand') { L.phase = 'bite'; L.exp = L.at + T.hitWindow; S.sel = i; toast(`HIT on line ${i + 1}!`); }
+      if (L.rig === 'hand') { L.phase = 'bite'; L.exp = L.at + hitWindowFor(SP[L.c.id]); S.sel = i; toast(`HIT on line ${i + 1}!`); }
       else { L.phase = 'hooked'; toast(`Line ${i + 1}: something's on.`); }
       changed = true;
     } else if (L.phase === 'bite' && t > L.exp) {
@@ -3665,7 +3667,7 @@ const fcv = $('#fcv'), fg = fcv.getContext('2d');
 function startFight(i) {
   const L = S.lines[i], s = SP[L.c.id], d0 = clamp(s.diff + (L.rig === 'trophy' ? 0.08 : 0) + (L.c.trophy ? 0.06 : 0), 0, 0.97);
   const bar = Math.min(0.6, rodBar() * (1 + Math.max(0, 0.45 - d0) * T_FIGHT.netBonus) * (S.prologue ? T_FIGHT.prologueNet : 1));
-  F = { i, s, kg: L.c.kg || 0, diff: clamp(s.diff + (L.rig === 'trophy' ? 0.08 : 0) + (L.c.trophy ? 0.06 : 0), 0, 0.97), fy: 0.5, tgt: 0.5, tNext: 0.4, by: 0.5 - bar / 2, bv: 0, bar, p: 0.3, hold: false, inside: false, last: performance.now(), over: false, trophy: L.c.trophy };
+  F = { i, s, kg: L.c.kg || 0, diff: clamp(s.diff + (L.rig === 'trophy' ? 0.08 : 0) + (L.c.trophy ? 0.06 : 0), 0, 0.97), fy: 0.5, tgt: 0.5, tNext: 0.4, by: 0.5 - bar / 2, bv: 0, bar, p: 0.3 + T_FIGHT.startEasy * Math.max(0, 0.45 - d0) / 0.45, hold: false, inside: false, last: performance.now(), over: false, trophy: L.c.trophy };
   $('#fname').textContent = s.legend ? 'Something that should not be here' : L.c.trophy || s.big ? 'Something big' : s.shape === 'fry' ? 'Something small' : 'Something is on';
   $('#fightWrap').hidden = false; if (S.prologue) renderTide();
   requestAnimationFrame(fightFrame);
