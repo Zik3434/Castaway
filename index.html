@@ -58,6 +58,9 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
   text-shadow:2px 2px 0 #0a1020;max-width:440px;min-height:3.8em;opacity:0;transition:opacity .5s}
 #cut .cap.show{opacity:1}
 #cut .hint{color:var(--muted);font-size:18px;text-shadow:1px 1px 0 #0a1020}
+#cut .choice{display:grid;gap:12px;justify-items:center;padding:14px 16px;background:rgba(10,16,32,.78);border:3px solid var(--brass);max-width:320px;width:calc(100% - 32px)}
+#cut .choice .q{font-family:var(--display);font-size:clamp(11px,3.4vw,15px);color:var(--brass);text-align:center}
+#cut .choice .opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
 #cut .skip{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px))}
 #game{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;width:100%;max-width:520px;margin:0 auto}
 #hud,.ihud{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;display:grid;gap:8px;padding:12px 0 14px;
@@ -232,7 +235,8 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 <div class="screen" id="cut" hidden>
   <button class="x skip" data-act="skip">SKIP</button>
   <div class="cap" id="cap"></div>
-  <div class="hint">tap to continue</div>
+  <div class="choice" id="choice" hidden><div class="q">Hold on to your rod?</div><div class="opts"><button class="cta" data-act="hold">Hold on</button><button class="cta alt" data-act="letgo">Let go</button></div></div>
+  <div class="hint" id="cutHint">tap to continue</div>
 </div>
 
 <div id="game" hidden>
@@ -1177,6 +1181,7 @@ function freshState() {
   return {
     v: 10, started: false, loc: 'shoal', money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 2, trophyRig: false,
     line: 'l10', pail: 'pail', // the line's test weight and the bucket you carry (both bought in the shop)
+    heldRod: true, noRod: false, // the storm's one question; let go and you wash up without a rod until you whittle one from a plank
     pending: null, // a landed catch waiting for Sell / Keep / Release; survives a reload
     prologue: false, proCaught: 0, // the calm-sea opening: rod only, two fish, then the storm
     known: {}, // islands named by a shopkeeper's rumor (visible on the chart before you have been)
@@ -1303,6 +1308,7 @@ function waitFor(rig) { const [a, b] = rig === 'hand' ? T.handWait : rig === 'se
 
 function castLine(i) {
   const L = S.lines[i]; if (!L || L.phase !== 'idle') return;
+  if (L.rig === 'hand' && S.noRod) { toast('You let go of the rod. Whittle one from a plank first.'); return; }
   if (L.rig === 'hand' && S.lines.some((o, j) => o && j !== i && o.rig === 'hand' && o.phase !== 'idle')) { toast('One rod at a time. Pull the other one in.'); return; }
   if (L.rig === 'trophy' && BAITS[L.bait].tier < 1) { toast('The trophy line needs shrimp or squid.'); return; }
   if (L.bait !== 'scraps') {
@@ -1543,7 +1549,8 @@ function renderSlots() {
 let rigOpen = false; // the rig and bait pickers are folded behind CHANGE unless you open them
 const RIG_LABEL = { hand: 'ROD', set: 'SET LINE', trophy: 'TROPHY' };
 function baitLabel(k) { return k === 'scraps' ? 'SCRAPS' : BAITS[k].name.toUpperCase() + ' ×' + (S.bait[k] || 0); }
-function rigsFor() { return S.prologue ? ['hand'] : ['hand', 'set'].concat(S.trophyRig ? ['trophy'] : []); }
+function rigsFor() { return S.prologue ? ['hand'] : (S.noRod ? [] : ['hand']).concat(['set'], S.trophyRig ? ['trophy'] : []); }
+function whittle() { if (!S.noRod || S.wood < 1) return; S.wood--; S.noRod = false; const L = S.lines[0]; if (L && L.phase === 'idle') L.rig = 'hand'; S.sel = 0; save(); render(); toast('A plank, a knife, an hour. Line 1 is a rod again.'); }
 function baitsFor(L) { return Object.keys(BAITS).filter(k => k === 'scraps' ? L.rig !== 'trophy' : S.bait[k] > 0); }
 function cycleRig(L) { const r = rigsFor(), j = r.indexOf(L.rig); L.rig = r[(j + 1) % r.length]; if (L.rig === 'trophy' && L.bait === 'scraps') L.bait = S.bait.shrimp > 0 ? 'shrimp' : S.bait.squid > 0 ? 'squid' : 'scraps'; }
 function cycleBait(L) { const b = baitsFor(L); if (!b.length) return; const j = b.indexOf(L.bait); L.bait = b[(j + 1) % b.length]; }
@@ -1552,7 +1559,7 @@ function renderAction() {
   if (!L) { box.innerHTML = '<div class="note">Pick a line.</div>'; return; }
   if (L.phase === 'idle') {
     const rigs = [['hand', 'Rod'], ['set', 'Set'], ['trophy', 'Trophy']];
-    const pickers = rigOpen ? `<div class="segrow"><span class="lbl">RIG</span><div class="seg">${rigs.map(([k, n]) => `<button data-act="rig" data-k="${k}" class="${L.rig === k ? 'sel' : ''}" ${(k === 'trophy' && !S.trophyRig) || (S.prologue && k !== 'hand') ? 'disabled' : ''}>${n}</button>`).join('')}</div></div>
+    const pickers = rigOpen ? `<div class="segrow"><span class="lbl">RIG</span><div class="seg">${rigs.map(([k, n]) => `<button data-act="rig" data-k="${k}" class="${L.rig === k ? 'sel' : ''}" ${(k === 'trophy' && !S.trophyRig) || (S.prologue && k !== 'hand') || (k === 'hand' && S.noRod) ? 'disabled' : ''}>${n}</button>`).join('')}</div></div>
       <div class="segrow"><span class="lbl">BAIT</span><div class="seg">${Object.entries(BAITS).map(([k, b]) => `<button data-act="bait" data-k="${k}" class="${L.bait === k ? 'sel' : ''}" ${k !== 'scraps' && !(S.bait[k] > 0) ? 'disabled' : ''}>${k === 'scraps' ? 'Scraps' : b.name + ' ×' + S.bait[k]}</button>`).join('')}</div></div>` : '';
     box.innerHTML = `<div class="rigrow ${rigOpen ? 'open' : ''}"><button class="chip" data-act="cyclerig" title="Next rig">${RIG_LABEL[L.rig]}</button><span class="dot">·</span><button class="chip" data-act="cyclebait" title="Next bait">${baitLabel(L.bait)}</button><span class="dot">·</span><span class="chip static" title="Line test">${lineOf().lb} LB</span><button class="link" data-act="change">${rigOpen ? 'DONE' : 'CHANGE'}</button></div>
       ${pickers}
@@ -1571,7 +1578,7 @@ function bucketTotal() { return S.bucket.reduce((a, b) => a + b.value, 0); }
 function renderExtra() {
   let h = '';
   if (S.loc === 'shoal' && !S.raft) {
-    h += `<div class="box"><div class="row"><div>Driftwood <b>${S.wood}/${T.raftWood}</b> for a raft</div><div class="note">no market here</div></div>${S.wood >= T.raftWood ? '<button class="cta" data-act="build">Build the raft</button>' : ''}</div>`;
+    h += `<div class="box"><div class="row"><div>Driftwood <b>${S.wood}/${T.raftWood}</b> for a raft</div><div class="note">no market here</div></div>${S.noRod ? `<div class="note">No rod. You let it go. One plank whittles a new one.</div><button class="cta ${S.wood >= 1 ? '' : 'alt'}" data-act="whittle" ${S.wood >= 1 ? '' : 'disabled'}>Whittle a rod</button>` : ''}${S.wood >= T.raftWood ? '<button class="cta" data-act="build">Build the raft</button>' : ''}</div>`;
   }
   const total = haulTotal(), cnt = S.bucket.length + S.pack.length;
   h += `<div class="bar"><button class="tool" data-act="open" data-k="inv"><span class="n">INVENTORY</span><span class="v">${S.bucket.length}/${bucketCap()} fish${S.pack.length ? ' · ' + S.pack.length + ' game' : ''}${!S.prologue && (S.raft || S.loc !== 'shoal') ? ' · ' + money(total) : ''}</span></button>`;
@@ -1658,7 +1665,7 @@ function renderSheet() {
         <div class="row ${S.bait.squid ? '' : 'dim'}"><div class="name">Squid<small>Deep and rare fish take only this.</small></div><div class="price">×${S.bait.squid}</div></div>
       </div></div>
       <div class="box"><h3>GEAR</h3><div class="list">
-        <div class="row"><div class="name">${rod.name}<small>Net ${Math.round(rod.bar * 100)}% of the track${rod.luck ? `, luck ${rod.luck}` : ''}.</small></div></div>
+        <div class="row"><div class="name">${S.noRod ? 'No rod' : rod.name}<small>${S.noRod ? 'Let go in the storm. A plank of driftwood whittles a new one.' : `Net ${Math.round(rod.bar * 100)}% of the track${rod.luck ? `, luck ${rod.luck}` : ''}.`}</small></div></div>
         <div class="row"><div class="name">${lineOf().name}<small>Holds fish to ${fmtKg(lineKg())}. Heavier ones will not bite.</small></div></div>
         <div class="row"><div class="name">${bucketOf().name}<small>Room for ${bucketCap()} fish.</small></div></div>
         <div class="row"><div class="name">${boat.name}<small>Range ${boat.range}.</small></div></div>
@@ -3530,22 +3537,23 @@ function beachScene(t, h, mode) {
 }
 const CUT = [
   { dur: 6000, cap: 'No warning.', draw: drawStorm },
-  { dur: 5500, cap: 'He did not let go.', draw: drawDrift },
+  { dur: 5500, cap: () => S.heldRod === false ? 'He let go.' : 'He did not let go.', draw: drawDrift },
   { dur: 5000, cap: 'Morning. Somewhere.', draw: (p, t) => beachScene(t, 6.4 + p * 0.5, 'lie') },
   { dur: 5500, cap: 'Nobody is coming.', draw: (p, t) => beachScene(t, 7.0 + p * 0.5, 'sit') },
 ];
 let MODE = 'title', cut = null, capT = 0;
-function setCap() { const c = $('#cap'), i = cut.i; clearTimeout(capT); c.classList.remove('show'); capT = setTimeout(() => { if (!cut || cut.i !== i) return; c.innerHTML = CUT[i].cap; c.classList.add('show'); }, 520); }
-function startCut() { MODE = 'cut'; cut = { i: 0, t0: performance.now() }; $('#title').hidden = true; $('#game').hidden = true; $('#isle').hidden = true; $('#hunt').hidden = true; $('#cut').hidden = false; setCap(); }
-function cutAdvance() { if (MODE === 'intro') { endIntro(); return; } if (!cut) return; cut.i++; if (cut.i >= CUT.length) { endCut(); return; } cut.t0 = performance.now(); setCap(); }
+function setCap() { const c = $('#cap'), i = cut.i; clearTimeout(capT); c.classList.remove('show'); capT = setTimeout(() => { if (!cut || cut.i !== i) return; const cap = CUT[i].cap; c.innerHTML = typeof cap === 'function' ? cap() : cap; c.classList.add('show'); }, 520); }
+function startCut() { MODE = 'cut'; cut = { i: 0, t0: performance.now(), asked: false, answered: false }; $('#choice').hidden = true; $('#cutHint').hidden = false; $('#title').hidden = true; $('#game').hidden = true; $('#isle').hidden = true; $('#hunt').hidden = true; $('#cut').hidden = false; setCap(); }
+function cutAdvance() { if (MODE === 'intro') { endIntro(); return; } if (!cut) return; if (cut.i === 0 && cut.asked && !cut.answered) return; /* the storm waits for an answer */ cut.i++; if (cut.i >= CUT.length) { endCut(); return; } cut.t0 = performance.now(); setCap(); }
 function endCut() {
   cut = null;
   const wasPrologue = S.prologue;
   if (wasPrologue) { // washed up: the boat, the bucket and the skiff are gone. The index remembers the two fish.
     S.prologue = false; S.proCaught = 0; S.loc = 'shoal'; S.spot = 'wreck'; S.boat = 'none'; S.bucket = []; S.money = 0; S.slots = 2; S.sel = 0; S.pending = null;
-    S.lines = [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, { rig: 'set', bait: 'scraps', phase: 'idle' }, null, null]; S.visited = { shoal: true }; saveNow();
+    S.noRod = S.heldRod === false; // let go in the storm: set lines only until a plank becomes a rod
+    S.lines = [{ rig: S.noRod ? 'set' : 'hand', bait: 'scraps', phase: 'idle' }, { rig: 'set', bait: 'scraps', phase: 'idle' }, null, null]; S.visited = { shoal: true }; saveNow();
   }
-  fadeTo(() => { $('#cut').hidden = true; enterGame(); if (wasPrologue) { toast('Line 1 is your rod. Line 2 is a set line.'); setTimeout(() => toast('Driftwood comes up on the lines. Six planks make a raft.'), 3200); } });
+  fadeTo(() => { $('#cut').hidden = true; enterGame(); if (wasPrologue) { toast(S.noRod ? 'The rod is gone. Two set lines, and whatever they bring up.' : 'Line 1 is your rod. Line 2 is a set line.'); setTimeout(() => toast(S.noRod ? 'Driftwood comes up on the lines. One plank whittles a rod; six more make a raft.' : 'Driftwood comes up on the lines. Six planks make a raft.'), 3200); } });
 }
 function startStorm() { fadeTo(() => { $('#game').hidden = true; $('#isle').hidden = true; startCut(); }); }
 function enterGame() {
@@ -3594,6 +3602,7 @@ function frame(ts) {
     else if (MODE === 'cut' && cut) {
       const b = CUT[cut.i], p = Math.min(1, (ts - cut.t0) / b.dur);
       stepFish(dt); b.draw(p, t);
+      if (cut.i === 0 && !cut.asked && p >= 0.4) { cut.asked = true; $('#choice').hidden = false; $('#cutHint').hidden = true; } // the one question the storm asks
       if (p >= 1) cutAdvance();
     }
   }
@@ -3749,6 +3758,7 @@ document.addEventListener('click', e => {
   else if (a === 'reel') reelLine(i);
   else if (a === 'haul') haulLine(i);
   else if (a === 'build') buildRaft();
+  else if (a === 'whittle') whittle();
   else if (a === 'sell') sellHaul();
   else if (a === 'open') openSheet(k);
   else if (a === 'close') closeSheet();
@@ -3759,6 +3769,7 @@ document.addEventListener('click', e => {
   else if (a === 'new') newVoyage();
   else if (a === 'continue') fadeTo(enterGame);
   else if (a === 'skip') { e.stopPropagation(); if (MODE === 'intro') endIntro(); else endCut(); }
+  else if (a === 'hold' || a === 'letgo') { e.stopPropagation(); if (!cut) return; S.heldRod = a === 'hold'; cut.answered = true; $('#choice').hidden = true; $('#cutHint').hidden = false; save(); cutAdvance(); }
   else if (a === 'replay') { closeSheet(); fadeTo(startCut); }
   else if (a === 'totitle') { closeSheet(); fadeTo(showTitle); }
 });
