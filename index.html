@@ -101,6 +101,10 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 .rigrow .chip{flex:0 1 auto;min-width:0;padding:6px 6px;background:none;border:2px solid transparent;font-family:var(--display);font-size:9px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rigrow .chip:active{border-color:var(--edge)}
 .rigrow .dot{color:var(--muted)}
+.rigsum{flex:1;min-width:0;display:grid;gap:3px;padding:2px 4px}
+.rigsum .l1{font-family:var(--display);font-size:9px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rigsum .l2{font-size:16px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rigbtn{flex:none;font-family:var(--display);font-size:9px;padding:10px 10px;background:var(--panel-2);color:var(--brass);border:2px solid var(--brass);text-transform:uppercase}
 .rigrow .link{margin-left:auto;flex:none;padding:6px 4px;background:none;border:0;font-family:var(--display);font-size:9px;color:var(--brass)}
 .rigrow.open .link{color:var(--muted)}
 .bar{display:grid;grid-template-columns:1fr 1fr;gap:6px}
@@ -1565,7 +1569,7 @@ function renderAction() {
   const i = S.sel, L = S.lines[i], box = $('#action');
   if (!L) { box.innerHTML = '<div class="note">Pick a line.</div>'; return; }
   if (L.phase === 'idle') {
-    box.innerHTML = `<div class="rigrow"><span class="chip static">${RIG_LABEL[L.rig]}</span><span class="dot">·</span><span class="chip static">${baitLabel(L.bait)}</span><span class="dot">·</span><span class="chip static" title="Line test">${S.noRod && L.rig !== 'hand' ? 'NO ROD' : rodOf().name.toUpperCase()} · ${lineOf().lb} LB</span>${S.prologue ? '' : '<button class="link" data-act="open" data-k="rig">CHANGE RIG</button>'}</div>
+    box.innerHTML = `<div class="rigrow"><div class="rigsum"><div class="l1">${RIG_LABEL[L.rig]} · ${baitLabel(L.bait)}</div><div class="l2">${S.noRod ? 'No rod' : rodOf().name} · ${lineOf().name}</div></div>${S.prologue ? '' : '<button class="rigbtn" data-act="open" data-k="rig">Change rig</button>'}</div>
       <div class="note">${S.prologue && S.casts === 0 ? 'Cast the rod. When the float dips, tap Reel, then keep the fish inside the net.' : rigNote(L)}</div>
       <button class="cta ${S.prologue ? 'tut' : ''}" data-act="cast" data-i="${i}">${L.rig === 'hand' ? 'Cast' : 'Set the line'}</button>`;
   } else if (L.phase === 'waiting') {
