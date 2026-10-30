@@ -990,7 +990,24 @@ const FACES = {
   folio: { kind: 'paper', bg: '#4a4a3a', skin: '#f0e8d8', hair: { style: 'bob', col: '#e8e0c8' }, eyes: 'round', eyeCol: '#1a1a24', brows: 'thin', nose: 'small', mouth: 'line', hat: { style: 'quill' }, collar: { style: 'vest', col: '#4a3a30', col2: '#e8e0c8' }, extras: ['spectacles'] },
   starfall: { bg: '#2a2a5a', skin: '#d8c8c0', hair: { style: 'wild', col: '#f0f0ff' }, eyes: 'wide', eyeCol: '#8080ff', brows: 'arch', nose: 'long', mouth: 'open', collar: { style: 'coat', col: '#3a3a6a' }, extras: ['monocle', 'starfreckles'] },
   oyster: { bg: '#7a6a48', skin: '#c89070', hair: { style: 'short', col: '#8a6a40' }, eyes: 'round', eyeCol: '#4a5a4a', brows: 'arch', nose: 'button', mouth: 'grin', freckles: true, hat: { style: 'headscarf', col: '#6a5a40', col2: '#a89070' }, collar: { style: 'apron', col: '#5a4a30', col2: '#a89070' } },
+};// What an island does as you pull in (the landfall beat of the sailing cutscene). Keyed by island; `arriveFx` draws each kind.
+const ARRIVE = {
+  shoal: { kind: 'leap' }, harbor: { kind: 'wave', n: 4 }, brine: { kind: 'wave', n: 2, cols: ['#e8e0c8', '#c8b890'] }, reach: { kind: 'birds', n: 7 }, lantern: { kind: 'lanterns', n: 5 },
+  trench: { kind: 'lanterns', n: 2, col: '#ffd27a' }, delta: { kind: 'wave', n: 5, cols: ['#e0a040', '#c04040', '#4080c0'] }, fjord: { kind: 'aurora' }, bell: { kind: 'bell' }, cinder: { kind: 'erupt' },
+  glass: { kind: 'glowfish', col: '#ffffff' }, hollow: { kind: 'glowfish', col: '#60e0a0' }, thunder: { kind: 'lightning' }, tortoise: { kind: 'wave', n: 2 }, gannet: { kind: 'birds', n: 18, col: '#f8f8f0' },
+  market: { kind: 'dhows', n: 3 }, monastery: { kind: 'bell' }, sargasso: { kind: 'fog' }, pirate: { kind: 'cannon' }, whaling: { kind: 'spout' }, tidal: { kind: 'birds', n: 9, col: '#d8d8d0' },
+  crater: { kind: 'steam', n: 3 }, iceship: { kind: 'aurora' }, witch: { kind: 'swarm', col: '#2a2a30' }, biolum: { kind: 'glowfish', col: '#60f0ff' }, deadsea: { kind: 'fog', col: '255,255,255' },
+  frogs: { kind: 'hop' }, clockwork: { kind: 'gears' }, ribcage: { kind: 'swarm', col: '#d8d0c0' }, stormeye: { kind: 'lightning' }, sleeper: { kind: 'eyes', col: '#c0a0ff' }, spaceport: { kind: 'rocket' },
+  oyster: { kind: 'wave', n: 3, cols: ['#8a6a40', '#a89070'] }, wreckers: { kind: 'lanterns', n: 1, col: '#ff9040' }, fen: { kind: 'fog' }, lazaret: { kind: 'birds', n: 6, col: '#1a1a20' }, dyers: { kind: 'wave', n: 4, cols: ['#6a2a8a', '#c03060', '#f0c050'] },
+  terrace: { kind: 'wave', n: 4, cols: ['#2a3a5a', '#8a3a2a'] }, graveyard: { kind: 'lanterns', n: 4 }, steppe: { kind: 'riders', n: 3 }, cannery: { kind: 'fog' }, whirlpool: { kind: 'whirl' },
+  coral: { kind: 'wave', n: 4, cols: ['#f06080', '#f0c050', '#40a0c0'] }, rookery: { kind: 'birds', n: 8, col: '#3a3a38' }, geyser: { kind: 'steam', n: 1, tall: true }, salmonrun: { kind: 'leap', n: 5, small: true }, throat: { kind: 'erupt', x: 56 },
+  mirage: { kind: 'shimmer' }, ink: { kind: 'eyes', col: '#ffffff' }, amber: { kind: 'glowfish', col: '#ffd060', slow: true }, runoff: { kind: 'glowfish', col: '#a0ff40' }, hanging: { kind: 'rainup' },
+  folio: { kind: 'birds', n: 10, col: '#f8f4ec' }, starfall: { kind: 'shooting' }, pilchard: { kind: 'wave', n: 5, cols: ['#e8e0d0', '#2a3a5a', '#c04040'] }, hermit: { kind: 'wave', n: 1, cols: ['#6a6a60'] }, bayou: { kind: 'eyes', col: '#f0e040' },
+  spice: { kind: 'dhows', n: 2 }, flamingo: { kind: 'birds', n: 14, col: '#f0a0b0' }, ghats: { kind: 'lanterns', n: 6, float: true }, iguanas: { kind: 'birds', n: 6, col: '#f8f8f0' }, forest: { kind: 'birds', n: 8, col: '#e04030' },
+  totem: { kind: 'birds', n: 6, col: '#0a0a10' }, caviar: { kind: 'leap', big: true }, city: { kind: 'wave', n: 5, cols: ['#e8e0d0', '#c04040', '#4080c0'], high: true }, furnace: { kind: 'steam', n: 3 }, lookingglass: { kind: 'glowfish', col: '#ffffff' },
+  sporewood: { kind: 'swarm', col: '#e8dcc0' }, belly: { kind: 'eyes', col: '#ff6060' }, ferry: { kind: 'lanterns', n: 3, col: '#40e080' }, hourglass: { kind: 'sandfall' },
 };
+
 
 
 // beh: smooth | dart | sinker | floater. diff 0-1. shape picks the distant silhouette in the scene. rare = rod or trophy line only.
@@ -2281,10 +2298,8 @@ function sail(id) {
   const L = LOC[id]; if (!L || L.locked || L.range > boatRange() || id === S.loc) return;
   let pulled = 0;
   S.lines.forEach(l => { if (l && l.phase !== 'idle') { l.phase = 'idle'; l.c = null; pulled++; } });
-  const first = !S.visited[id];
-  S.loc = id; S.visited[id] = true; if (!S.order.includes(id)) S.order.push(id); S.spot = L.spots[0].id; reseedFish(); save(); closeSheet();
-  if (L.noFish) { ISL = null; enterIsland('shop'); } else if (MODE !== 'game') enterFishing(); else render();
-  toast(`${first ? 'Landfall: ' : 'Sailed to '}${L.name}.` + (pulled ? ` Pulled in ${pulled} line${pulled > 1 ? 's' : ''}.` : '') + (first && L.vibe ? ' ' + L.vibe : ''));
+  const first = !S.visited[id]; save(); closeSheet();
+  startSail(S.loc, id, pulled, first); // casting off, open water, landfall; finishSail lands
 }
 
 // ---------- shop ----------
@@ -5115,7 +5130,7 @@ const CUT = [
 let MODE = 'title', cut = null, capT = 0;
 function setCap() { const c = $('#cap'), i = cut.i; clearTimeout(capT); c.classList.remove('show'); capT = setTimeout(() => { if (!cut || cut.i !== i) return; const cap = CUT[i].cap; c.innerHTML = typeof cap === 'function' ? cap() : cap; c.classList.add('show'); }, 520); }
 function startCut() { MODE = 'cut'; cut = { i: 0, t0: performance.now(), asked: false, answered: false }; $('#choice').hidden = true; $('#cutHint').hidden = false; $('#title').hidden = true; $('#game').hidden = true; $('#isle').hidden = true; $('#hunt').hidden = true; $('#cut').hidden = false; setCap(); }
-function cutAdvance() { if (MODE === 'intro') { endIntro(); return; } if (!cut) return; if (cut.i === 0 && cut.asked && !cut.answered) return; /* the storm waits for an answer */ cut.i++; if (cut.i >= CUT.length) { endCut(); return; } cut.t0 = performance.now(); setCap(); }
+function cutAdvance() { if (MODE === 'intro') { endIntro(); return; } if (MODE === 'sail') { sailAdvance(); return; } if (!cut) return; if (cut.i === 0 && cut.asked && !cut.answered) return; /* the storm waits for an answer */ cut.i++; if (cut.i >= CUT.length) { endCut(); return; } cut.t0 = performance.now(); setCap(); }
 function endCut() {
   cut = null;
   const wasPrologue = S.prologue;
@@ -5159,6 +5174,165 @@ function drawIntro(t) {
   g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, 0, W, 1);
 }
 
+// ---------- sailing: casting off, open water, landfall ----------
+// Sailing is a three-beat cutscene: the boat leaves the shore you were on, a wide shot of the boat alone on the sea with the day
+// turning, and the boat pulling in to the new island while the island does what it does (ARRIVE). Tap to advance, SKIP to land.
+let SAIL = null;
+const SAIL_DUR = [3600, 4200, 4600];
+const NUMWORD = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight'];
+const boatKind = () => S.boat === 'none' ? 'raft' : S.boat === 'starship' ? 'ironclad' : S.boat;
+const boatW = k => ({ raft: 30, skiff: 36, cutter: 44, trawler: 50, clipper: 56, ironclad: 62 })[k] || 40;
+const easeIn = p => p * p, easeOut = p => 1 - (1 - p) * (1 - p);
+function sailCap() {
+  const c = $('#cap'), i = SAIL.i; clearTimeout(capT); c.classList.remove('show');
+  capT = setTimeout(() => { if (!SAIL || SAIL.i !== i) return; const from = LOC[SAIL.from], to = LOC[SAIL.to];
+    c.innerHTML = i === 0 ? 'Casting off.' : i === 1 ? (SAIL.days === 1 ? 'A day under sail.' : `${NUMWORD[SAIL.days]} days under sail.`) : `${locTitle(to)}.`; c.classList.add('show'); }, 520);
+}
+function startSail(from, to, pulled, first) {
+  const a = LOC[from], b = LOC[to], d = Math.hypot(a.x - b.x, a.y - b.y);
+  SAIL = { from, to, i: 0, t0: performance.now(), pulled, first, kind: boatKind(), days: Math.max(1, Math.min(8, Math.round(d / 30))), seed: Math.floor(Math.random() * 1000), h0: hourAt(now()) };
+  MODE = 'sail'; $('#choice').hidden = true; $('#cutHint').hidden = false; $('#title').hidden = true; $('#game').hidden = true; $('#isle').hidden = true; $('#hunt').hidden = true; $('#cut').hidden = false; sailCap();
+}
+function sailAdvance() { if (!SAIL) return; SAIL.i++; if (SAIL.i >= 3) { finishSail(); return; } SAIL.t0 = performance.now(); sailCap(); }
+function finishSail() {
+  if (!SAIL) return; const { to, pulled, first } = SAIL, L = LOC[to]; SAIL = null;
+  S.loc = to; S.visited[to] = true; if (!S.order.includes(to)) S.order.push(to); S.spot = L.spots[0].id; reseedFish(); save();
+  fadeTo(() => { $('#cut').hidden = true; if (L.noFish) { ISL = null; enterIsland('shop'); } else enterFishing();
+    toast(`${first ? 'Landfall: ' : 'Sailed to '}${L.name}.` + (pulled ? ` Pulled in ${pulled} line${pulled > 1 ? 's' : ''}.` : '') + (first && L.vibe ? ' ' + L.vibe : '')); });
+}
+function drawSail(ts, t) {
+  const p = Math.min(1, (ts - SAIL.t0) / SAIL_DUR[SAIL.i]);
+  if (SAIL.i === 0) drawDepart(p, t); else if (SAIL.i === 1) drawPassage(p, t); else drawArrive(p, t);
+  if (p >= 1) sailAdvance();
+}
+const tintOf = l => l.id === 'trench' ? 'rgba(0,0,12,0.32)' : l.id === 'fjord' ? 'rgba(120,180,220,0.1)' : (l.scene && l.scene.tint) || null;
+function drawApron(l, t, nt) { // the spaceport has no shore: a concrete quay with the hangar on it
+  const st = SHORE_STYLE.quay, py = SURF - 7, pw = shoreW + 10; g.fillStyle = st[0]; g.fillRect(0, py, pw, SURF - py + 2); g.fillStyle = st[1]; g.fillRect(0, SURF - 1, pw, 3); g.fillStyle = st[2]; g.fillRect(0, py, pw, 1);
+  drawBuilding('spaceport', 2, py, t, nt);
+}
+function drawShoreFor(l, t, nt) { if (l.noFish) drawApron(l, t, nt); else drawShoreAny(l.id, t, nt); }
+function drawCrew(bx, by, bw, t) { // the boat with the fisherman seated in it
+  drawBoat(bx, by, bw, SAIL.kind, t, false);
+  if (SAIL.kind === 'raft') { crateSeat(bx + bw - 36, by - 30, by); drawFisherman(bx + bw - 36, by - 30, false, null, t); }
+  else { thwart(bx + bw - 38, by - 31, by - 2); drawFisherman(bx + bw - 38, by - 31, false, null, t); }
+}
+function wake(x0, x1, y, t) { g.fillStyle = rgba(lerpC(curSky.sea, [255, 255, 255], 0.55), 0.8); for (let x = Math.min(x0, x1); x < Math.max(x0, x1); x += 3) g.fillRect(x + ((t / 120 + x) % 3 | 0), y + ((x >> 3) % 2), 2, 1); }
+function drawDepart(p, t) {
+  const l = LOC[SAIL.from], h = hourAt(t), nt = drawSkyBase(h, t, {}); sceneWeather(l, t, nt); drawSeaBase(h, t, nt, { tint: tintOf(l) }); drawFish(t);
+  drawShoreFor(l, t, nt);
+  const bw = boatW(SAIL.kind), bx = (shoreW - 16 + easeIn(p) * (W + 70 - shoreW)) | 0, by = (SURF + 1 + Math.sin(t / 700)) | 0;
+  if (p > 0.05) wake(shoreW - 6, bx, by + 2, t);
+  drawCrew(bx, by, bw, t);
+  sceneFx(l, t, nt);
+}
+function farBoat(x, y, k, t) { // the boat seen from far off: a hull, a mast, a sail, a few pixels tall
+  const w = k === 'raft' ? 8 : k === 'skiff' ? 10 : k === 'cutter' ? 13 : 16, mh = k === 'raft' ? 0 : k === 'skiff' ? 8 : k === 'cutter' ? 11 : 14;
+  g.fillStyle = '#3e2816'; g.fillRect(x, y - 1, w, 2); g.fillStyle = '#5a3a22'; g.fillRect(x + 1, y - 2, w - 2, 1);
+  if (mh) { g.fillStyle = '#6a4a2a'; g.fillRect(x + (w * 0.4 | 0), y - mh - 2, 1, mh); for (let k2 = 0; k2 < mh - 3; k2++) { g.fillStyle = k2 % 4 === 0 ? '#d9cdb2' : '#eee4cc'; g.fillRect(x + (w * 0.4 | 0) + 1, y - mh + k2, Math.max(1, k2 * 0.5 | 0), 1); } }
+  if (k === 'ironclad' || k === 'clipper') { g.fillStyle = '#9a9a9a'; g.fillRect(x + w - 4, y - 5, 2, 4); g.fillStyle = 'rgba(200,200,210,0.5)'; g.fillRect(x + w - 6 - ((t / 300) % 4 | 0), y - 8, 3, 2); }
+  g.fillStyle = '#f0c050'; g.fillRect(x + (w * 0.4 | 0) + 1, y - 3, 1, 1);
+}
+function drawPassage(p, t) {
+  const from = LOC[SAIL.from], to = LOC[SAIL.to], h = (SAIL.h0 + p * 7) % 24, nt = drawSkyBase(h, t, {}); drawSeaBase(h, t, nt, { noShafts: true });
+  const haze = css(lerpC(curSky.bot, [20, 30, 50], 0.5));
+  if (p < 0.6) { const fx = -20 - p * 60 | 0; farIsland(fx, 56, !!(from.scene && from.scene.palms)); if (from.scene && from.scene.far === 'volcano') { g.fillStyle = haze; for (let k = 0; k < 12; k++) g.fillRect(fx + 28 - k * 2 + k, SURF - 3 - k, 2 + k * 3, 1); } }
+  if (p > 0.35) { const tx = W + 30 - (p - 0.35) * 90 | 0; farIsland(tx, 60, !!(to.scene && to.scene.palms)); if (to.scene && to.scene.far === 'volcano') { g.fillStyle = haze; for (let k = 0; k < 14; k++) g.fillRect(tx + 30 - k * 2 + k, SURF - 3 - k, 2 + k * 3, 1); g.fillStyle = `rgba(255,120,40,${(0.5 + 0.4 * Math.sin(t / 400)).toFixed(2)})`; g.fillRect(tx + 30, SURF - 17, 2, 1); } if (to.spaceport) { g.fillStyle = haze; g.fillRect(tx + 40, SURF - 22, 1, 20); g.fillRect(tx + 46, SURF - 22, 1, 20); g.fillRect(tx + 38, SURF - 23, 11, 1); g.fillStyle = Math.sin(t / 300) > 0 ? '#ff4040' : '#601010'; g.fillRect(tx + 40, SURF - 24, 1, 1); } }
+  const bx = (W * 0.18 + p * W * 0.6) | 0, by = (SURF - 2 + Math.sin(t / 600) * 1.2) | 0;
+  wake(bx - 26, bx - 1, by + 1, t); farBoat(bx, by, SAIL.kind, t);
+  for (let k = 0; k < 3; k++) { const gx = (bx - 20 + k * 14 + Math.sin(t / 900 + k) * 6) | 0, gy = (by - 22 - k * 5 + Math.sin(t / 500 + k * 2) * 2) | 0; blit(g, maskC(Math.floor(t / 220 + k) % 2 ? 'gullA' : 'gullB', nt > 0.5 ? '#9aa0a8' : '#f4f4f0', 1), gx, gy); }
+  if (p > 0.45 && p < 0.62) { // something breaches alongside, once
+    const q = (p - 0.45) / 0.17, lx = bx + 40, ly = (SURF + 4 - Math.sin(q * Math.PI) * 16) | 0, sh = maskC('big', 'rgba(10,20,36,0.9)', 1);
+    g.save(); g.translate(lx, ly); g.rotate((q - 0.5) * 1.2); blit(g, sh, -(sh.width >> 1), -(sh.height >> 1), false); g.restore();
+    if (q > 0.85) { g.fillStyle = 'rgba(240,246,255,0.85)'; for (let k = 0; k < 6; k++) g.fillRect(lx - 8 + k * 3, SURF - ((t / 70 + k) % 3 | 0), 2, 1); }
+  }
+  if (p < 0.1) { g.fillStyle = `rgba(10,16,32,${(1 - p / 0.1).toFixed(2)})`; g.fillRect(0, 0, W, H); }
+}
+function drawArrive(p, t) {
+  const l = LOC[SAIL.to], h = hourAt(t), nt = drawSkyBase(h, t, {}); sceneWeather(l, t, nt); drawSeaBase(h, t, nt, { tint: tintOf(l) }); drawFish(t);
+  g.save(); g.translate(W, 0); g.scale(-1, 1); drawShoreFor(l, t, nt); g.restore(); // the new island is on the right: the shore mirrored
+  const bw = boatW(SAIL.kind), bx = (-bw - 12 + easeOut(p) * (W - shoreW - bw + 4 + bw + 12)) | 0, by = (SURF + 1 + Math.sin(t / 700)) | 0;
+  if (p > 0.05) wake(-10, bx, by + 2, t);
+  drawCrew(bx, by, bw, t);
+  arriveFx(l, p, t, nt);
+  sceneFx(l, t, nt);
+  if (p < 0.1) { g.fillStyle = `rgba(10,16,32,${(1 - p / 0.1).toFixed(2)})`; g.fillRect(0, 0, W, H); }
+}
+// the island's welcome. Shore positions are local x in [0, shoreW) on the mirrored shore: screen X = W - 1 - x.
+function arriveFx(l, p, t, nt) {
+  const o = ARRIVE[l.id] || { kind: 'birds', n: 5 }, k = o.kind, sx = x => W - 1 - x, top = x => (l.noFish ? SURF - 7 : shoreTop(l, Math.max(0, Math.min(shoreW - 1, x)))) | 0;
+  const r = i => ((i * 7919 + SAIL.seed * 31) % 97) / 97;
+  if (k === 'wave') { // the village comes down to the water and waves
+    const n = o.n || 3, cols = o.cols || ['#c04040', '#4080c0', '#e0a040', '#3a8a40', '#8a3a8a'];
+    for (let i = 0; i < n; i++) { const q = Math.min(1, Math.max(0, (p - 0.15 - i * 0.08) / 0.3)); if (q <= 0) continue; const xl = 10 + i * 8 + (1 - q) * 30, X = sx(xl) | 0, Y = top(xl) - (o.high ? 14 : 0), col = cols[i % cols.length], up = Math.sin(t / 180 + i * 1.7) > 0;
+      g.fillStyle = '#2a1a0e'; g.fillRect(X, Y - 4, 1, 4); g.fillRect(X + 2, Y - 4, 1, 4); g.fillStyle = col; g.fillRect(X - 1, Y - 10, 5, 6); g.fillStyle = '#e8b48c'; g.fillRect(X, Y - 14, 3, 4); g.fillStyle = i % 2 ? '#3a2a1a' : '#c8a060'; g.fillRect(X - 1, Y - 15, 5, 1);
+      g.fillStyle = '#e8b48c'; if (up) { g.fillRect(X - 2, Y - 13, 1, 4); g.fillRect(X - 3, Y - 16, 1, 3); } else { g.fillRect(X - 2, Y - 9, 1, 4); }
+      if (o.high && i % 2) { g.fillStyle = '#5a4a3a'; g.fillRect(X - 3, Y, 8, 1); } }
+  } else if (k === 'birds') { // the birds lift off the shore and wheel out over the boat
+    const n = o.n || 8, col = o.col || '#f4f4f0';
+    for (let i = 0; i < n; i++) { const start = 0.1 + r(i) * 0.4, q = Math.max(0, (p - start) / (1 - start)); const xl = 6 + r(i + 3) * (shoreW - 12), X = (sx(xl) - q * (60 + r(i + 5) * 90) + Math.sin(t / 400 + i) * 3) | 0, Y = (top(xl) - 2 - q * (30 + r(i + 7) * 40) + Math.sin(t / 300 + i * 2) * 2) | 0;
+      if (q <= 0) { g.fillStyle = col; g.fillRect(X, Y - 2, 2, 2); continue; } blit(g, maskC(Math.floor(t / 140 + i) % 2 ? 'gullA' : 'gullB', col, 1), X - 3, Y - 2, false); }
+  } else if (k === 'erupt') { // the mountain answers
+    const vx = o.x || 56, vy = SURF - 40; if (p > 0.2) { const q = (p - 0.2) / 0.8; g.fillStyle = `rgba(255,90,30,${(0.10 + 0.08 * Math.sin(t / 90)).toFixed(2)})`; g.fillRect(0, 0, W, SURF);
+      for (let i = 0; i < 14; i++) { const a = r(i) * 18 - 9, up = ((t / 25 + i * 37) % 60), X = vx + a * (up / 40), Y = vy - up + up * up / 90; if (up < 58) { g.fillStyle = i % 3 ? '#ff7a30' : '#ffd060'; g.fillRect(X | 0, Y | 0, 2, 2); } }
+      for (let i = 0; i < 10; i++) { const rise = ((t / 60 + i * 13) % 70); g.fillStyle = `rgba(60,40,40,${(0.55 - rise / 140).toFixed(2)})`; g.fillRect((vx - 4 - rise * 0.25 + Math.sin(t / 500 + i) * 3) | 0, (vy - rise) | 0, 8 + rise * 0.5 | 0, 3); }
+      g.fillStyle = '#ff6020'; g.fillRect(vx - 2, vy - 1, 5, 2); }
+  } else if (k === 'lanterns') { // lights come on along the shore, one after another
+    const n = o.n || 4, col = o.col || '#ffd27a';
+    for (let i = 0; i < n; i++) { if (p < 0.2 + i * (0.6 / n)) continue; const xl = 8 + i * ((shoreW - 16) / Math.max(1, n - 1)), X = sx(xl) | 0, Y = o.float ? SURF - 1 + ((Math.sin(t / 500 + i) * 1) | 0) : top(xl) - 8; const fl = 0.7 + 0.3 * Math.sin(t / 160 + i * 3);
+      g.fillStyle = rgba(hex(col), 0.18 * fl); g.fillRect(X - 6, Y - 6, 13, 13); g.fillStyle = rgba(hex(col), 0.35 * fl); g.fillRect(X - 3, Y - 3, 7, 7); g.fillStyle = col; g.fillRect(X - 1, Y - 1, 3, 3); g.fillStyle = '#ffffff'; g.fillRect(X, Y, 1, 1);
+      if (o.float) { g.fillStyle = 'rgba(255,240,200,0.5)'; g.fillRect(X - 1, Y + 2, 3, 1); } }
+  } else if (k === 'bell') { // rings ride out over the water from the bell
+    const X = sx(o.x || shoreW * 0.5) | 0, Y = top(o.x || shoreW * 0.5) - 24; const sw = Math.sin(t / 180) * 3;
+    g.fillStyle = '#8a6a30'; g.fillRect(X - 3 + sw | 0, Y, 7, 6); g.fillRect(X - 4 + sw | 0, Y + 6, 9, 2); g.fillStyle = '#c8a040'; g.fillRect(X - 2 + sw | 0, Y + 1, 2, 4); g.fillStyle = '#5a4a3a'; g.fillRect(X, Y - 4, 1, 4);
+    for (let i = 0; i < 3; i++) { const q = ((t / 900) + i / 3) % 1, R = 6 + q * 50; g.fillStyle = `rgba(255,236,200,${(0.6 * (1 - q)).toFixed(2)})`; for (let a = 0; a < 64; a++) { const an = a / 64 * Math.PI * 2; g.fillRect((X + Math.cos(an) * R) | 0, (Y + 3 + Math.sin(an) * R * 0.5) | 0, 1, 1); } }
+  } else if (k === 'steam') { // vents and geysers blow as the boat comes in
+    const n = o.n || 2; for (let i = 0; i < n; i++) { const xl = 10 + i * ((shoreW - 20) / Math.max(1, n - 1)), X = sx(xl) | 0, Y = top(xl); const burst = o.tall ? (p > 0.4 ? 1 : 0) : 1; if (!burst) continue;
+      for (let j = 0; j < (o.tall ? 26 : 10); j++) { const rise = ((t / (o.tall ? 18 : 40) + j * 11) % (o.tall ? 80 : 30)), spread = o.tall ? rise * 0.12 : rise * 0.35; g.fillStyle = `rgba(240,246,255,${(0.75 - rise / (o.tall ? 110 : 45)).toFixed(2)})`; g.fillRect((X - spread + Math.sin(t / 200 + j) * 2) | 0, (Y - 2 - rise) | 0, (2 + spread * 2) | 0, 2); } }
+  } else if (k === 'lightning') { // the storm welcomes you the only way it knows
+    const ph = (t % 1900); if (ph < 70 || (ph > 140 && ph < 190)) { g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(0, 0, W, SURF); const X = sx(10 + r(Math.floor(t / 1900)) * (shoreW - 20)); let x = X, y = 0; g.fillStyle = '#ffffff'; while (y < top(W - 1 - X) - 6) { const ny = y + 6 + r(y) * 6, nx = x + (r(y + 1) - 0.5) * 10; bres(g, x | 0, y | 0, nx | 0, ny | 0, '#ffffff'); x = nx; y = ny; } }
+  } else if (k === 'aurora') { // lights over the ice
+    for (let b = 0; b < 3; b++) { const col = b === 1 ? '160,80,220' : '60,220,140'; for (let x = 0; x < W; x += 2) { const y = 10 + b * 14 + Math.sin(x / 22 + t / 900 + b) * 8 + Math.sin(x / 7 - t / 600) * 2, hh = 10 + Math.sin(x / 15 + t / 700) * 5; g.fillStyle = `rgba(${col},${(0.10 + 0.08 * Math.sin(t / 400 + x / 30)).toFixed(2)})`; g.fillRect(x, y | 0, 2, hh | 0); } }
+  } else if (k === 'cannon') { // a salute from the cove, and a near miss
+    for (const at of [0.35, 0.7]) { if (p < at || p > at + 0.25) continue; const q = (p - at) / 0.25, X = sx(6) | 0, Y = top(6) - 6; g.fillStyle = '#2a2a30'; g.fillRect(X - 2, Y, 8, 3); g.fillStyle = `rgba(230,230,230,${(0.7 * (1 - q)).toFixed(2)})`; g.fillRect((X - 6 - q * 20) | 0, (Y - 6 - q * 8) | 0, (6 + q * 18) | 0, (5 + q * 8) | 0);
+      if (q > 0.5) { const sp = (W - shoreW - 30 - (q - 0.5) * 40) | 0; g.fillStyle = 'rgba(240,246,255,0.85)'; for (let j = 0; j < 6; j++) g.fillRect(sp - 6 + j * 3, (SURF - 2 - (q - 0.5) * 20 * Math.sin((q - 0.5) * 2 * Math.PI)) | 0, 2, 1); } }
+  } else if (k === 'riders') { // horsemen gallop the shore to meet you
+    const n = o.n || 3; for (let i = 0; i < n; i++) { const q = Math.max(0, Math.min(1, (p - 0.1 - i * 0.07) / 0.5)), xl = 4 + q * (shoreW - 10) + i * 3, X = sx(xl) | 0, Y = top(xl), f = Math.floor(t / 110 + i) % 2;
+      g.fillStyle = i % 2 ? '#6a4a2a' : '#3a2a1a'; g.fillRect(X - 5, Y - 7, 11, 4); g.fillRect(X + 5, Y - 10, 3, 4); g.fillRect(X - 7, Y - 8, 2, 2); g.fillRect(X - 5 + (f ? 0 : 2), Y - 3, 2, 3); g.fillRect(X + 3 - (f ? 0 : 2), Y - 3, 2, 3);
+      g.fillStyle = '#c04040'; g.fillRect(X - 1, Y - 12, 3, 5); g.fillStyle = '#e8b48c'; g.fillRect(X, Y - 14, 2, 2); g.fillStyle = 'rgba(200,180,140,0.5)'; g.fillRect(X - 10, Y - 1, 4, 1); }
+  } else if (k === 'hop') { // frogs along the water's edge
+    for (let i = 0; i < 6; i++) { const ph = ((t / 700) + r(i)) % 1, xl = 4 + ((i * 11 + ph * 10) % (shoreW - 8)), X = sx(xl) | 0, Y = top(xl) - (Math.sin(ph * Math.PI) * 8) | 0; g.fillStyle = i % 2 ? '#5a9a40' : '#3a7a30'; g.fillRect(X - 2, Y - 3, 5, 3); g.fillStyle = '#f0e040'; g.fillRect(X - 1, Y - 4, 1, 1); g.fillRect(X + 1, Y - 4, 1, 1); }
+  } else if (k === 'glowfish') { // lights under the water
+    const col = hex(o.col || '#60f0ff'); for (let i = 0; i < 12; i++) { const X = (10 + r(i) * (W - shoreW - 20) + Math.sin(t / (o.slow ? 3000 : 900) + i) * 6) | 0, Y = (SURF + 6 + r(i + 4) * 30) | 0, tw = Math.sin(t / (o.slow ? 700 : 250) + i * 2); if (tw < 0.2) continue; g.fillStyle = rgba(col, 0.25 * tw); g.fillRect(X - 2, Y - 1, 5, 3); g.fillStyle = rgba(col, tw); g.fillRect(X, Y, 1, 1); }
+  } else if (k === 'fog') { // the bank rolls off the shore to meet you
+    const col = o.col || '200,210,220'; for (let i = 0; i < 5; i++) { const X = (W - shoreW - 40 - p * 80 + i * 30 + Math.sin(t / 1400 + i) * 8) | 0, Y = SURF - 14 + i * 3; g.fillStyle = `rgba(${col},${(0.22 - i * 0.03).toFixed(2)})`; g.fillRect(X, Y, 70, 10 + i * 2); }
+  } else if (k === 'gears') { // the island turns
+    for (let i = 0; i < 2; i++) { const xl = 14 + i * 26, X = sx(xl) | 0, Y = top(xl) - 14 - i * 4, R = 7 + i * 2, a0 = t / (600 + i * 300) * (i ? -1 : 1); g.fillStyle = '#8a6a30'; for (let a = 0; a < 48; a++) { const an = a / 48 * Math.PI * 2; g.fillRect((X + Math.cos(an) * R) | 0, (Y + Math.sin(an) * R) | 0, 1, 1); } for (let th = 0; th < 8; th++) { const an = a0 + th * Math.PI / 4; bres(g, X, Y, (X + Math.cos(an) * (R + 3)) | 0, (Y + Math.sin(an) * (R + 3)) | 0, '#c8a040'); } g.fillStyle = '#3a2a1a'; g.fillRect(X - 1, Y - 1, 3, 3); }
+  } else if (k === 'swarm') { // a cloud of wings comes out to look at you
+    const col = o.col || '#2a2a30'; for (let i = 0; i < 16; i++) { const q = Math.min(1, p / 0.5), X = (sx(10 + r(i) * 40) - q * (20 + r(i + 2) * 60) + Math.sin(t / 300 + i * 3) * 6) | 0, Y = (top(20) - 20 - r(i + 5) * 30 + Math.sin(t / 220 + i) * 4) | 0, f = Math.floor(t / 90 + i) % 2; g.fillStyle = col; g.fillRect(X, Y, 1, 1); g.fillRect(X - 2, Y - (f ? 1 : 0), 2, 1); g.fillRect(X + 1, Y - (f ? 1 : 0), 2, 1); }
+  } else if (k === 'eyes') { // something watches from the shore
+    const col = o.col || '#f0e040'; for (let i = 0; i < 5; i++) { if (p < 0.25 + i * 0.1) continue; const xl = 6 + r(i) * (shoreW - 12), X = sx(xl) | 0, Y = top(xl) - 3 - (r(i + 1) * 10 | 0); const blink = ((t / 1000 + r(i + 2) * 3) % 3) < 0.12; if (blink) continue; g.fillStyle = col; g.fillRect(X, Y, 1, 1); g.fillRect(X + 3, Y, 1, 1); g.fillStyle = rgba(hex(col), 0.25); g.fillRect(X - 1, Y - 1, 6, 3); }
+  } else if (k === 'rocket') { // the gantry lights up and the pad breathes
+    const X = sx(36) | 0, Y = SURF - 7; for (let i = 0; i < 6; i++) { if (p < 0.2 + i * 0.1) continue; g.fillStyle = (Math.floor(t / 250) + i) % 3 ? '#ff4040' : '#ffffff'; g.fillRect(X - 10 + i * 4, Y - 80 + (i % 2) * 3, 1, 1); }
+    for (let j = 0; j < 10; j++) { const rise = ((t / 50 + j * 9) % 24); g.fillStyle = `rgba(240,246,255,${(0.6 - rise / 40).toFixed(2)})`; g.fillRect((X - 6 - rise * 0.6) | 0, (Y - rise) | 0, 4 + rise | 0, 2); }
+  } else if (k === 'leap') { // the island's fish come up to see
+    const n = o.n || 1; for (let i = 0; i < n; i++) { const at = 0.3 + i * (0.5 / n), span = o.small ? 0.18 : 0.25; if (p < at || p > at + span) continue; const q = (p - at) / span, lx = (W - shoreW - 40 - i * 14 - r(i) * 30) | 0, ly = (SURF + 4 - Math.sin(q * Math.PI) * (o.small ? 10 : 18)) | 0, sh = maskC(o.small ? 'trout' : 'big', 'rgba(10,20,36,0.9)', o.big ? 2 : 1);
+      g.save(); g.translate(lx, ly); g.rotate((q - 0.5) * 1.3); blit(g, sh, -(sh.width >> 1), -(sh.height >> 1), false); g.restore(); if (q > 0.85 || q < 0.15) { g.fillStyle = 'rgba(240,246,255,0.85)'; for (let j = 0; j < 5; j++) g.fillRect(lx - 6 + j * 3, SURF - ((t / 70 + j) % 3 | 0), 2, 1); } }
+  } else if (k === 'dhows') { // sails cross behind you
+    const n = o.n || 2; for (let i = 0; i < n; i++) { const X = ((W - shoreW - 30) - ((t / (40 + i * 10)) % (W + 60)) + i * 50 + 60) | 0, Y = SURF - 2 - i; g.fillStyle = '#3e2816'; g.fillRect(X, Y, 14, 2); g.fillStyle = '#6a4a2a'; g.fillRect(X + 5, Y - 12, 1, 12); for (let j = 0; j < 10; j++) { g.fillStyle = j % 3 ? '#eee4cc' : '#d9cdb2'; g.fillRect(X + 6, Y - 11 + j, Math.max(1, (10 - j) * 0.8 | 0), 1); } }
+  } else if (k === 'spout') { // a whale blows, far out, then shows its back
+    const ph = (t % 4000) / 4000, X = (W * 0.45 + Math.sin(t / 5000) * 20) | 0; if (ph < 0.5) { const q = ph / 0.5; g.fillStyle = `rgba(240,246,255,${(0.8 * (1 - q)).toFixed(2)})`; g.fillRect(X - 1 - q * 4 | 0, (SURF - 3 - q * 18) | 0, 3 + q * 8 | 0, 2 + q * 6 | 0); g.fillStyle = '#1a2430'; g.fillRect(X - 6, SURF - 2, 14, 2); } else { const q = (ph - 0.5) / 0.5; g.fillStyle = '#1a2430'; for (let j = 0; j < 20; j++) g.fillRect(X - 10 + j, (SURF - 1 - Math.sin(j / 20 * Math.PI) * 5 * Math.sin(q * Math.PI)) | 0, 1, 4); if (q > 0.6) g.fillRect(X + 12, (SURF - 1 - (q - 0.6) * 15) | 0, 2, 5); }
+  } else if (k === 'whirl') { // the strait spins
+    const X = (W - shoreW - 50) | 0, Y = SURF + 10; for (let i = 0; i < 4; i++) { const R = 6 + i * 7, a0 = t / (500 + i * 150); for (let a = 0; a < 40; a++) { const an = a0 + a / 40 * Math.PI * 2, al = 0.55 - i * 0.1 + 0.2 * Math.sin(a / 40 * Math.PI * 6); g.fillStyle = `rgba(240,246,255,${al.toFixed(2)})`; g.fillRect((X + Math.cos(an) * R) | 0, (Y + Math.sin(an) * R * 0.35) | 0, 1, 1); } }
+  } else if (k === 'shimmer') { // the shore wobbles in the heat
+    const img = g.getImageData(W - shoreW - 10, SURF - 40, shoreW + 10, 40); g.putImageData(img, W - shoreW - 10, SURF - 40); for (let y = SURF - 40; y < SURF; y += 2) { const dx = Math.sin(t / 150 + y / 3) * 1.5 | 0; if (dx) g.drawImage(cv, W - shoreW - 10, y, shoreW + 10, 2, W - shoreW - 10 + dx, y, shoreW + 10, 2); }
+  } else if (k === 'rainup') { // the rain falls up here
+    for (let i = 0; i < 40; i++) { const X = (r(i) * W) | 0, Y = (SURF - ((t / 6 + r(i + 1) * 300) % SURF)) | 0; g.fillStyle = 'rgba(200,220,255,0.6)'; g.fillRect(X, Y, 1, 3); }
+  } else if (k === 'shooting') { // stars fall toward the crater
+    for (let i = 0; i < 3; i++) { const ph = ((t / 1600) + i / 3) % 1; if (ph > 0.35) continue; const q = ph / 0.35, X = (W * 0.2 + i * 40 + q * 90) | 0, Y = (4 + i * 10 + q * 50) | 0; bres(g, X - 10, Y - 6, X, Y, `rgba(220,220,255,${(0.9 - q).toFixed(2)})`); g.fillStyle = '#ffffff'; g.fillRect(X, Y, 2, 2); }
+  } else if (k === 'sandfall') { // sand pours up through the waist
+    const X = sx(shoreW * 0.5) | 0, Y = top(shoreW * 0.5); for (let i = 0; i < 30; i++) { const rise = ((t / 20 + i * 7) % 60); g.fillStyle = i % 2 ? '#f0e0b8' : '#c8a870'; g.fillRect((X - 3 + r(i) * 6 + Math.sin(t / 300 + i) * 1) | 0, (Y - 4 - rise) | 0, 1, 2); }
+  }
+}
 // ---------- frame loop ----------
 let lastFrame = performance.now();
 function frame(ts) {
@@ -5170,6 +5344,7 @@ function frame(ts) {
     else if (MODE === 'hunt') { stepHunt(dt, t); drawHunt(t); }
     else if (MODE === 'title') { drawTitle(t); }
     else if (MODE === 'intro') { drawIntro(t); if (ts - introT0 > 3800) endIntro(); }
+    else if (MODE === 'sail' && SAIL) { stepFish(dt); drawSail(ts, t); }
     else if (MODE === 'cut' && cut) {
       const b = CUT[cut.i], p = Math.min(1, (ts - cut.t0) / b.dur);
       stepFish(dt); b.draw(p, t);
@@ -5340,7 +5515,7 @@ document.addEventListener('click', e => {
   else if (a === 'bounty') claimBounty(k);
   else if (a === 'new') newVoyage();
   else if (a === 'continue') fadeTo(enterGame);
-  else if (a === 'skip') { e.stopPropagation(); if (MODE === 'intro') endIntro(); else endCut(); }
+  else if (a === 'skip') { e.stopPropagation(); if (MODE === 'intro') endIntro(); else if (MODE === 'sail') finishSail(); else endCut(); }
   else if (a === 'hold' || a === 'letgo') { e.stopPropagation(); if (!cut) return; S.heldRod = a === 'hold'; cut.answered = true; $('#choice').hidden = true; $('#cutHint').hidden = false; save(); cutAdvance(); }
   else if (a === 'replay') { closeSheet(); fadeTo(startCut); }
   else if (a === 'totitle') { closeSheet(); fadeTo(showTitle); }
@@ -5363,6 +5538,7 @@ window.addEventListener('keydown', e => { if (e.code === 'Space' && F) { e.preve
 window.addEventListener('keydown', e => {
   if (e.target.closest && e.target.closest('input,textarea')) return;
   if (e.key === 'Escape') { if (!$('#sheetWrap').hidden) closeSheet(); else if (!$('#cardWrap').hidden) $('#cardWrap').click(); return; }
+  if ((MODE === 'cut' || MODE === 'sail' || MODE === 'intro') && (e.code === 'Space' || e.key === 'Enter')) { e.preventDefault(); cutAdvance(); return; }
   if (e.target.closest && e.target.closest('button')) return; // a focused button already takes Space and Enter itself
   if (MODE !== 'game' || F || !$('#sheetWrap').hidden || !$('#cardWrap').hidden || (e.code !== 'Space' && e.key !== 'Enter')) return;
   const b = $('#action .cta:not([disabled])'); if (b) { e.preventDefault(); b.click(); }
