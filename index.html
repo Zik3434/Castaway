@@ -134,8 +134,9 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 .seg button{flex:1 1 0;min-width:0;padding:7px 3px;background:rgba(10,16,32,.6);border:2px solid var(--edge);font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .seg button.sel{border-color:var(--brass);color:var(--brass);background:var(--panel-2)}
 .seg button[disabled]{opacity:.45;cursor:default}
-.seg button.unknown{opacity:.7}
-.seg button.unknown span{color:var(--muted);letter-spacing:2px}
+.seg button.empty{border-style:dashed;opacity:.5;background:rgba(10,16,32,.3)}
+.seg button.empty span{color:var(--muted)}
+.seg button.empty .slot{width:40px;height:40px;border:1px dashed var(--edge);box-sizing:border-box}
 .seg.icons button{display:grid;justify-items:center;gap:4px;padding:8px 3px 7px}
 .seg.icons button span{font-size:16px}
 canvas.icon{width:40px;height:40px;image-rendering:pixelated;flex:none}
@@ -2599,7 +2600,7 @@ function renderSheet() {
   } else if (sheetKind === 'rig') { // everything you fish with: this line's rig and bait, and every rod, line and bucket you own
     const L = S.lines[S.sel], busy = !L || L.phase !== 'idle', rigs = [['hand', 'Rod'], ['set', 'Set line'], ['trophy', 'Trophy line']];
     const known = key => S.seen[key] || ['rig:hand', 'rig:set', 'bait:scraps'].includes(key);
-    const seg = (items, cur, act, dis) => `<div class="seg icons">${items.map(([k, n]) => { const key = act + ':' + k, un = !known(key); return `<button data-act="${act}" data-k="${k}" class="${cur === k ? 'sel' : ''} ${un ? 'unknown' : ''}" ${busy || dis(k) ? 'disabled' : ''}>${icon(key, un)}<span>${un ? '???' : n}</span></button>`; }).join('')}</div>`;
+    const seg = (items, cur, act, dis) => { const have = items.filter(([k]) => known(act + ':' + k)); return `<div class="seg icons">${have.map(([k, n]) => `<button data-act="${act}" data-k="${k}" class="${cur === k ? 'sel' : ''}" ${busy || dis(k) ? 'disabled' : ''}>${icon(act + ':' + k)}<span>${n}</span></button>`).join('')}${have.length < items.length ? '<button class="empty" disabled><div class="slot"></div><span>empty</span></button>' : ''}</div>`; }; // only what you have ever had; one empty slot stands for whatever you equip later
     const gearRows = (list, owned, cur, kind, sub) => list.filter(x => owned.includes(x.id)).map(x => `<div class="row ${x.id === cur ? 'sel' : ''}">${icon(kind + ':' + x.id)}<div class="name" style="flex:1">${x.name}<small>${sub(x)}</small></div>${x.id === cur ? '<div class="here">in use</div>' : `<button class="buy" data-act="equip" data-k="${kind}:${x.id}">USE</button>`}</div>`).join('');
     el.innerHTML = `<div class="head"><h2>Rig · Line ${S.sel + 1}</h2><button class="x" data-act="close">✕</button></div>
       ${busy ? '<div class="note">This line is in the water. Pull it in to change its rig or bait.</div>' : ''}
@@ -2613,7 +2614,7 @@ function renderSheet() {
   } else if (sheetKind === 'kit') { // everything you hunt with: weapon, shot, call, cloak, boots, bag
     const busy = MODE === 'hunt' && HU && HU.phase !== 'idle';
     const known = key => S.seen[key] || ['shot:stones', 'call:none'].includes(key);
-    const seg = (items, cur, act, dis) => `<div class="seg icons">${items.map(([k, n]) => { const key = act + ':' + k, un = !known(key); return `<button data-act="${act}" data-k="${k}" class="${cur === k ? 'sel' : ''} ${un ? 'unknown' : ''}" ${busy || dis(k) ? 'disabled' : ''}>${icon(key, un)}<span>${un ? '???' : n}</span></button>`; }).join('')}</div>`;
+    const seg = (items, cur, act, dis) => { const have = items.filter(([k]) => known(act + ':' + k)); return `<div class="seg icons">${have.map(([k, n]) => `<button data-act="${act}" data-k="${k}" class="${cur === k ? 'sel' : ''}" ${busy || dis(k) ? 'disabled' : ''}>${icon(act + ':' + k)}<span>${n}</span></button>`).join('')}${have.length < items.length ? '<button class="empty" disabled><div class="slot"></div><span>empty</span></button>' : ''}</div>`; }; // only what you have ever had; one empty slot stands for whatever you equip later
     const gearRows = (list, owned, cur, kind, sub) => list.filter(x => owned.includes(x.id)).map(x => `<div class="row ${x.id === cur ? 'sel' : ''}">${icon(kind + ':' + x.id)}<div class="name" style="flex:1">${x.name}<small>${sub(x)}</small></div>${x.id === cur ? '<div class="here">in use</div>' : `<button class="buy" data-act="equip" data-k="${kind}:${x.id}" ${busy ? 'disabled' : ''}>USE</button>`}</div>`).join('');
     el.innerHTML = `<div class="head"><h2>Hunting kit</h2><button class="x" data-act="close">✕</button></div>
       ${busy ? '<div class="note">Mid-stalk. Finish or give up before changing your kit.</div>' : ''}
