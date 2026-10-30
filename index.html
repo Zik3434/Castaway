@@ -134,6 +134,8 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 .seg button{flex:1 1 0;min-width:0;padding:7px 3px;background:rgba(10,16,32,.6);border:2px solid var(--edge);font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .seg button.sel{border-color:var(--brass);color:var(--brass);background:var(--panel-2)}
 .seg button[disabled]{opacity:.45;cursor:default}
+.seg button.unknown{opacity:.7}
+.seg button.unknown span{color:var(--muted);letter-spacing:2px}
 .seg.icons button{display:grid;justify-items:center;gap:4px;padding:8px 3px 7px}
 .seg.icons button span{font-size:16px}
 canvas.icon{width:40px;height:40px;image-rendering:pixelated;flex:none}
@@ -2122,6 +2124,7 @@ function freshState() {
     spot: 'wreck', // the fishing spot on the current island
     pack: [], weapon: 'sling', gindex: {}, // hunting: the game bag, the weapon, the creature record
     weaponsOwned: ['sling'], cloak: 'none', cloaksOwned: ['none'], boots: 'bare', bootsOwned: ['bare'], pack_: 'satchel', packsOwned: ['satchel'], shot: {}, shotSel: 'stones', calls: {}, callSel: 'none', scattered: 0, // the hunting kit
+    seen: {}, // every bait, shot, call and rig ever owned: the pickers show a silhouette and ??? for the rest
     bounties: {}, // per island: { at, list: [{ id, mult, done }] }, the shop's wanted posters
     bait: { shrimp: 0, squid: 0 },
     lines: [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, null, null, null],
@@ -2169,6 +2172,7 @@ function load(seed) {
   if (d && d.v === 11) { d.order = ['shoal'].concat(LOCS.map(l => l.id).filter(id => id !== 'shoal' && id !== 'sea' && d.visited && d.visited[id])); d.v = 12; } // v11 -> v12: islands are numbered in the order found
   if (d && d.v === 12) { const wi = Math.max(0, WEAPONS.findIndex(w => w.id === d.weapon)); d.weaponsOwned = WEAPONS.slice(0, wi + 1).map(w => w.id); d.cloak = 'none'; d.cloaksOwned = ['none']; d.boots = 'bare'; d.bootsOwned = ['bare']; d.pack_ = 'satchel'; d.packsOwned = ['satchel']; d.shot = {}; d.shotSel = 'stones'; d.calls = {}; d.callSel = 'none'; d.scattered = 0; d.v = 13; } // v12 -> v13: the hunting kit; you own every weapon below the one you carry
   if (d && d.v === 13) S = Object.assign(freshState(), d);
+  S.seen = S.seen || {}; for (const k in S.bait) if (S.bait[k] > 0) S.seen['bait:' + k] = true; for (const k in S.shot) if (S.shot[k] > 0) S.seen['shot:' + k] = true; for (const k in S.calls) if (S.calls[k] > 0) S.seen['call:' + k] = true; if (S.trophyRig) S.seen['rig:trophy'] = true; // things you hold now, you have seen
 }
 
 const loc = () => LOC[S.loc];
@@ -2403,16 +2407,16 @@ function buy(k) {
   S.money -= it.price;
   if (k === 'slot') { S.slots++; S.lines[S.slots - 1] = { rig: 'set', bait: 'scraps', phase: 'idle' }; }
   else if (k === 'rod') { const r = RODS[Math.max(...S.rodsOwned.map(id => RODS.findIndex(x => x.id === id))) + 1]; S.rodsOwned.push(r.id); S.rod = r.id; }
-  else if (k === 'trig') S.trophyRig = true;
+  else if (k === 'trig') { S.trophyRig = true; S.seen['rig:trophy'] = true; }
   else if (k === 'line') { const x = LINE_TEST[Math.max(...S.linesOwned.map(id => LINE_TEST.findIndex(y => y.id === id))) + 1]; S.linesOwned.push(x.id); S.line = x.id; }
   else if (k === 'pail') { const x = BUCKETS[Math.max(...S.pailsOwned.map(id => BUCKETS.findIndex(y => y.id === id))) + 1]; S.pailsOwned.push(x.id); S.pail = x.id; }
   else if (k === 'weapon') { const w = WEAPONS[best(WEAPONS, S.weaponsOwned) + 1]; S.weaponsOwned.push(w.id); S.weapon = w.id; }
   else if (k === 'cloak') { const x = CLOAKS[best(CLOAKS, S.cloaksOwned) + 1]; S.cloaksOwned.push(x.id); S.cloak = x.id; }
   else if (k === 'boots') { const x = BOOTS[best(BOOTS, S.bootsOwned) + 1]; S.bootsOwned.push(x.id); S.boots = x.id; }
   else if (k === 'gamepack') { const x = PACKS[best(PACKS, S.packsOwned) + 1]; S.packsOwned.push(x.id); S.pack_ = x.id; }
-  else if (k.startsWith('shot:')) { const b = k.slice(5); S.shot[b] = (S.shot[b] || 0) + SHOT[b].qty; if (S.shotSel === 'stones') S.shotSel = b; }
-  else if (k.startsWith('call:')) { const b = k.slice(5); S.calls[b] = (S.calls[b] || 0) + CALLS[b].qty; if (S.callSel === 'none') S.callSel = b; }
-  else if (k.startsWith('bait:')) { const b = k.slice(5); S.bait[b] = (S.bait[b] || 0) + BAITS[b].qty; }
+  else if (k.startsWith('shot:')) { const b = k.slice(5); S.shot[b] = (S.shot[b] || 0) + SHOT[b].qty; S.seen[k] = true; if (S.shotSel === 'stones') S.shotSel = b; }
+  else if (k.startsWith('call:')) { const b = k.slice(5); S.calls[b] = (S.calls[b] || 0) + CALLS[b].qty; S.seen[k] = true; if (S.callSel === 'none') S.callSel = b; }
+  else if (k.startsWith('bait:')) { const b = k.slice(5); S.bait[b] = (S.bait[b] || 0) + BAITS[b].qty; S.seen[k] = true; }
   else if (k === 'boat') { const bi = BOATS.findIndex(b => b.id === S.boat); S.boat = BOATS[bi + 1].id; }
   else if (k === 'chart') { S.known.spaceport = true; setTimeout(() => toast('One island on it, at the far edge of the world. It is on your chart now.'), 900); }
   save(); render(); renderSheet(); toast(`Bought ${it.name}.`);
@@ -2594,12 +2598,13 @@ function renderSheet() {
     $('#mapcv').addEventListener('click', mapClick);
   } else if (sheetKind === 'rig') { // everything you fish with: this line's rig and bait, and every rod, line and bucket you own
     const L = S.lines[S.sel], busy = !L || L.phase !== 'idle', rigs = [['hand', 'Rod'], ['set', 'Set line'], ['trophy', 'Trophy line']];
-    const seg = (items, cur, act, dis) => `<div class="seg icons">${items.map(([k, n]) => `<button data-act="${act}" data-k="${k}" class="${cur === k ? 'sel' : ''}" ${busy || dis(k) ? 'disabled' : ''}>${icon(act + ':' + k)}<span>${n}</span></button>`).join('')}</div>`;
+    const known = key => S.seen[key] || ['rig:hand', 'rig:set', 'bait:scraps'].includes(key);
+    const seg = (items, cur, act, dis) => `<div class="seg icons">${items.map(([k, n]) => { const key = act + ':' + k, un = !known(key); return `<button data-act="${act}" data-k="${k}" class="${cur === k ? 'sel' : ''} ${un ? 'unknown' : ''}" ${busy || dis(k) ? 'disabled' : ''}>${icon(key, un)}<span>${un ? '???' : n}</span></button>`; }).join('')}</div>`;
     const gearRows = (list, owned, cur, kind, sub) => list.filter(x => owned.includes(x.id)).map(x => `<div class="row ${x.id === cur ? 'sel' : ''}">${icon(kind + ':' + x.id)}<div class="name" style="flex:1">${x.name}<small>${sub(x)}</small></div>${x.id === cur ? '<div class="here">in use</div>' : `<button class="buy" data-act="equip" data-k="${kind}:${x.id}">USE</button>`}</div>`).join('');
     el.innerHTML = `<div class="head"><h2>Rig · Line ${S.sel + 1}</h2><button class="x" data-act="close">✕</button></div>
       ${busy ? '<div class="note">This line is in the water. Pull it in to change its rig or bait.</div>' : ''}
       <div class="box"><h3>RIG</h3>${seg(rigs, L && L.rig, 'rig', k => (k === 'trophy' && !S.trophyRig) || (k === 'hand' && S.noRod))}<div class="note">${S.noRod ? 'No rod: you let it go in the storm. Whittle one from a plank.' : L && L.rig === 'hand' ? 'Tap Reel on the hit, then keep the fish in the net. Rarer fish take a better rod.' : L && L.rig === 'set' ? 'Soaks until something takes it, a chance every second, even while you are away. A quick hook is a small fish; a long soak grows it. No fight.' : 'Soaks for minutes, a chance every second. Hooks big fish, bigger the longer it waits. Needs shrimp or squid. You still land it.'}${S.trophyRig ? '' : ' The trophy rig is sold at the harbor.'}</div></div>
-      <div class="box"><h3>BAIT</h3>${seg(Object.entries(BAITS).map(([k, b]) => [k, k === 'scraps' ? 'Scraps' : b.name + ' ×' + (S.bait[k] || 0)]), L && L.bait, 'bait', k => k !== 'scraps' && !(S.bait[k] > 0))}<div class="note">Scraps are free. Shrimp and squid gate the bigger and rarer fish and tilt every cast toward them.</div></div>
+      <div class="box"><h3>BAIT</h3>${seg(Object.entries(BAITS).map(([k, b]) => [k, k === 'scraps' ? 'Scraps' : b.name + ' ×' + (S.bait[k] || 0)]), L && L.bait, 'bait', k => k !== 'scraps' && !(S.bait[k] > 0))}<div class="note">Scraps are free. Better bait is sold in the shops: it gates the bigger and rarer fish and tilts every cast toward them.</div></div>
       <div class="box"><h3>RODS</h3><div class="list">${S.noRod ? '<div class="note">Lost in the storm. A plank of driftwood whittles a new one.</div>' : gearRows(RODS, S.rodsOwned, S.rod, 'rod', r => `Net ${Math.round(r.bar * 100)}% of the track${r.luck ? ` · luck ${r.luck}` : ''}.`)}</div></div>
       <div class="box"><h3>LINE</h3><div class="list">${gearRows(LINE_TEST, S.linesOwned, S.line, 'line', x => `Holds fish to ${fmtKg(lbKg(x.lb))}. Heavier ones will not bite.`)}</div></div>
       <div class="box"><h3>BUCKET</h3><div class="list">${gearRows(BUCKETS, S.pailsOwned, S.pail, 'pail', x => `Room for ${x.cap} fish.`)}</div></div>
@@ -2607,12 +2612,13 @@ function renderSheet() {
     drawIcons(el);
   } else if (sheetKind === 'kit') { // everything you hunt with: weapon, shot, call, cloak, boots, bag
     const busy = MODE === 'hunt' && HU && HU.phase !== 'idle';
-    const seg = (items, cur, act, dis) => `<div class="seg icons">${items.map(([k, n]) => `<button data-act="${act}" data-k="${k}" class="${cur === k ? 'sel' : ''}" ${busy || dis(k) ? 'disabled' : ''}>${icon(act + ':' + k)}<span>${n}</span></button>`).join('')}</div>`;
+    const known = key => S.seen[key] || ['shot:stones', 'call:none'].includes(key);
+    const seg = (items, cur, act, dis) => `<div class="seg icons">${items.map(([k, n]) => { const key = act + ':' + k, un = !known(key); return `<button data-act="${act}" data-k="${k}" class="${cur === k ? 'sel' : ''} ${un ? 'unknown' : ''}" ${busy || dis(k) ? 'disabled' : ''}>${icon(key, un)}<span>${un ? '???' : n}</span></button>`; }).join('')}</div>`;
     const gearRows = (list, owned, cur, kind, sub) => list.filter(x => owned.includes(x.id)).map(x => `<div class="row ${x.id === cur ? 'sel' : ''}">${icon(kind + ':' + x.id)}<div class="name" style="flex:1">${x.name}<small>${sub(x)}</small></div>${x.id === cur ? '<div class="here">in use</div>' : `<button class="buy" data-act="equip" data-k="${kind}:${x.id}" ${busy ? 'disabled' : ''}>USE</button>`}</div>`).join('');
     el.innerHTML = `<div class="head"><h2>Hunting kit</h2><button class="x" data-act="close">✕</button></div>
       ${busy ? '<div class="note">Mid-stalk. Finish or give up before changing your kit.</div>' : ''}
-      <div class="box"><h3>SHOT</h3>${seg(Object.entries(SHOT).map(([k, b]) => [k, k === 'stones' ? 'Stones' : b.short + ' ×' + (S.shot[k] || 0)]), shotOf(), 'shot', k => k !== 'stones' && !(S.shot[k] > 0))}<div class="note">Stones are free. Flint and silver bring the rarer game out, barbed heads pay better, poison keeps it calm. One is spent per shot.</div></div>
-      <div class="box"><h3>CALL</h3>${seg(Object.entries(CALLS).map(([k, b]) => [k, k === 'none' ? 'None' : b.short + ' ×' + (S.calls[k] || 0)]), callOf(), 'call', k => k !== 'none' && !(S.calls[k] > 0))}<div class="note">A bird call brings a sign in half the time, a rattle brings the rarer game, musk brings it a step closer. One is spent per stalk.</div></div>
+      <div class="box"><h3>SHOT</h3>${seg(Object.entries(SHOT).map(([k, b]) => [k, k === 'stones' ? 'Stones' : b.short + ' ×' + (S.shot[k] || 0)]), shotOf(), 'shot', k => k !== 'stones' && !(S.shot[k] > 0))}<div class="note">Stones are free. The shops sell better shot: some brings rarer game out, some pays better, some keeps the animal calm. One is spent per shot.</div></div>
+      <div class="box"><h3>CALL</h3>${seg(Object.entries(CALLS).map(([k, b]) => [k, k === 'none' ? 'None' : b.short + ' ×' + (S.calls[k] || 0)]), callOf(), 'call', k => k !== 'none' && !(S.calls[k] > 0))}<div class="note">Calls are sold in the shops: one brings a sign sooner, one brings rarer game, one brings it closer. One is spent per stalk.</div></div>
       <div class="box"><h3>WEAPONS</h3><div class="list">${gearRows(WEAPONS, S.weaponsOwned, S.weapon, 'weapon', w => `Band ${Math.round(w.acc * 200)}% of the bar · takes game to ${fmtKg(w.power)}${w.quiet ? ' · quiet' : w.loud ? ' · loud' : ''}.`)}</div><div class="note">Heavier game than your weapon can bring down never shows itself. The shops sell the next rung.</div></div>
       <div class="box"><h3>CLOAK</h3><div class="list">${gearRows(CLOAKS, S.cloaksOwned, S.cloak, 'cloak', x => x.calm < 1 ? `Game takes alarm ${Math.round((1 - x.calm) * 100)}% slower.` : 'Nothing between you and the wind.')}</div></div>
       <div class="box"><h3>BOOTS</h3><div class="list">${gearRows(BOOTS, S.bootsOwned, S.boots, 'boots', x => `${x.steps} steps of creeping before point blank.`)}</div></div>
@@ -3814,15 +3820,15 @@ const ICON_PAL = {
   'boat:none': ['boat', { a: '#5a3a22', b: '#2a1a0e', c: '#3e2816', d: '#5a3a22' }], 'boat:raft': ['boat', { a: '#8a6a44', b: '#4a3222', c: '#6a4a2c', d: '#8a6a44' }], 'boat:skiff': ['boat', { a: '#6a4a2c', b: '#2a1a0e', c: '#4a3222', d: '#f0ece0' }], 'boat:cutter': ['boat', { a: '#5a3a22', b: '#2a1a0e', c: '#3e2816', d: '#e8e0c8' }],
   'boat:trawler': ['boat', { a: '#3e4a5a', b: '#1a2230', c: '#2a3440', d: '#c0c8d0' }], 'boat:clipper': ['boat', { a: '#2a2a3a', b: '#101018', c: '#4a3a2a', d: '#ffffff' }], 'boat:ironclad': ['boat', { a: '#5a5a66', b: '#2a2a30', c: '#3a3a44', d: '#8a8a96' }], 'boat:starship': ['boat', { a: '#e8e8f0', b: '#4a4a58', c: '#c03030', d: '#a0c0ff' }],
 };
-function iconC(key, sc) {
-  const k = 'icon:' + key + ':' + sc; let c = CACHE.get(k); if (c) return c;
+function iconC(key, sc, sil) { // sil: a dark silhouette, for things you have never had
+  const k = 'icon:' + key + ':' + sc + (sil ? ':s' : ''); let c = CACHE.get(k); if (c) return c;
   const [mask, pal] = ICON_PAL[key] || ICON_PAL['rig:hand'], m = ICON_MASKS[mask];
   c = document.createElement('canvas'); c.width = 20 * sc; c.height = 20 * sc; const x = c.getContext('2d');
-  for (let r = 0; r < m.length; r++) for (let i = 0; i < m[r].length; i++) { const ch = m[r][i]; if (ch === '.') continue; x.fillStyle = pal[ch] || pal.a; x.fillRect(i * sc, r * sc, sc, sc); }
+  for (let r = 0; r < m.length; r++) for (let i = 0; i < m[r].length; i++) { const ch = m[r][i]; if (ch === '.') continue; x.fillStyle = sil ? '#1a2234' : (pal[ch] || pal.a); x.fillRect(i * sc, r * sc, sc, sc); }
   CACHE.set(k, c); return c;
 }
-const icon = key => `<canvas class="icon" width="20" height="20" data-icon="${key}"></canvas>`;
-function drawIcons(el) { el.querySelectorAll('canvas.icon').forEach(c => { const x = c.getContext('2d'); x.clearRect(0, 0, 20, 20); x.drawImage(iconC(c.dataset.icon, 1), 0, 0); }); }
+const icon = (key, sil) => `<canvas class="icon" width="20" height="20" data-icon="${key}"${sil ? ' data-sil="1"' : ''}></canvas>`;
+function drawIcons(el) { el.querySelectorAll('canvas.icon').forEach(c => { const x = c.getContext('2d'); x.clearRect(0, 0, 20, 20); x.drawImage(iconC(c.dataset.icon, 1, !!c.dataset.sil), 0, 0); }); }
 
 // ---------- keeper portraits: a bust built from a face descriptor, 48x48, lit from the upper right ----------
 // Every shopkeeper has a `face`: skin, hair (style, col), eyes, brows, nose, mouth, beard, hat, collar, extras, kind.
