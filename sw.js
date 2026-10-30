@@ -1,7 +1,7 @@
 // Castaway service worker: the game is one HTML file, so this only has to keep that file and the icons
 // available offline. Network first for the page (a new push lands on the next load), cache first for
 // icons and fonts, and the old cache is dropped whenever the version below changes.
-const VERSION = 'castaway-v1';
+const VERSION = 'castaway-v2';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png'];
 
 self.addEventListener('install', e => {
@@ -17,7 +17,8 @@ self.addEventListener('fetch', e => {
   const isPage = req.mode === 'navigate' || url.pathname.endsWith('/index.html') || url.pathname.endsWith('/');
   if (isPage) {
     // network first, then the cached page, so the game opens with no signal
-    e.respondWith(fetch(req).then(res => { const copy = res.clone(); caches.open(VERSION).then(c => c.put('./index.html', copy)); return res; })
+    // no-cache: revalidate with the server, so a fresh push is never hidden behind the browser's ten-minute HTTP cache
+    e.respondWith(fetch(req, { cache: 'no-cache' }).then(res => { const copy = res.clone(); caches.open(VERSION).then(c => c.put('./index.html', copy)); return res; })
       .catch(() => caches.match('./index.html')));
     return;
   }

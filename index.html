@@ -68,7 +68,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 #title .confirm{color:var(--bad);font-size:18px;text-shadow:1px 1px 0 #0a1020;min-height:1.2em;text-align:center}
 #cut{cursor:pointer;gap:10px}
 #cut .cap{font-family:var(--display);font-size:clamp(11px,3.4vw,15px);line-height:1.9;color:var(--text);text-align:center;
-  text-shadow:2px 2px 0 #0a1020;max-width:440px;min-height:3.8em;opacity:0;transition:opacity .5s}
+  text-shadow:2px 2px 0 #0a1020;max-width:440px;min-height:3.8em;opacity:0;transition:opacity .5s;will-change:opacity;transform:translateZ(0)}
 #cut .cap.show{opacity:1}
 #cut .hint{color:var(--muted);font-size:18px;text-shadow:1px 1px 0 #0a1020}
 #cut .choice{display:grid;gap:12px;justify-items:center;padding:14px 16px;background:rgba(10,16,32,.78);border:3px solid var(--brass);max-width:320px;width:calc(100% - 32px)}
@@ -5289,7 +5289,7 @@ const CUT_DROWN = [ // the same storm, then the other answer: he let go, and the
 ];
 const cutBeats = () => S.heldRod === false ? CUT_DROWN : CUT;
 let MODE = 'title', cut = null, capT = 0;
-function setCap() { const c = $('#cap'), i = cut.i; clearTimeout(capT); c.classList.remove('show'); capT = setTimeout(() => { if (!cut || cut.i !== i) return; const cap = cutBeats()[i].cap; $('#cutHint').textContent = cutBeats()[i].hint || 'tap to continue'; c.innerHTML = typeof cap === 'function' ? cap() : cap; c.classList.add('show'); }, 520); }
+function setCap() { const c = $('#cap'), i = cut.i; clearTimeout(capT); c.classList.remove('show'); capT = setTimeout(() => { if (!cut || cut.i !== i) return; const cap = cutBeats()[i].cap; $('#cutHint').textContent = cutBeats()[i].hint || 'tap to continue'; c.style.display = 'none'; void c.offsetHeight; c.innerHTML = typeof cap === 'function' ? cap() : cap; c.style.display = ''; c.classList.add('show'); }, 520); } // the display flip clears the ghost of the old caption iOS Safari can leave behind over the canvas
 function startCut() { MODE = 'cut'; cut = { i: 0, t0: performance.now(), asked: false, answered: false }; $('#choice').hidden = true; $('#cutHint').hidden = false; $('#title').hidden = true; $('#game').hidden = true; $('#isle').hidden = true; $('#hunt').hidden = true; $('#cut').hidden = false; setCap(); }
 function cutAdvance() { if (MODE === 'intro') { endIntro(); return; } if (MODE === 'sail') { sailAdvance(); return; } if (!cut) return; if (cut.i === 0 && cut.asked && !cut.answered) return; /* the storm waits for an answer */ cut.i++; if (cut.i >= cutBeats().length) { endCut(); return; } cut.t0 = performance.now(); setCap(); }
 function endCut() {
@@ -5710,7 +5710,7 @@ window.addEventListener('keydown', e => {
   const b = $('#action .cta:not([disabled])'); if (b) { e.preventDefault(); b.click(); }
 });
 // the site: register the service worker so the game opens offline and installs to a home screen (not on file://)
-if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {}));
 window.addEventListener('keyup', e => { if (e.code === 'Space' && F) F.hold = false; });
 document.addEventListener('visibilitychange', () => { if (document.hidden) saveNow(); });
 window.addEventListener('resize', layout);
