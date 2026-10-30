@@ -5285,7 +5285,7 @@ const CUT_DROWN = [ // the same storm, then the other answer: he let go, and the
   CUT[0],
   { dur: 5500, cap: 'He let go.', draw: drawSink },
   { dur: 6000, cap: 'The sea kept him.', draw: drawKept },
-  { dur: 60000, cap: 'Drowned.<br><small>The voyage starts over.</small>', hint: 'tap to start again', draw: (p, t) => { g.fillStyle = '#04070f'; g.fillRect(0, 0, W, H); } },
+  { dur: 60000, cap: 'Drowned.', hint: 'tap to start again', draw: (p, t) => { g.fillStyle = '#04070f'; g.fillRect(0, 0, W, H); } },
 ];
 const cutBeats = () => S.heldRod === false ? CUT_DROWN : CUT;
 let MODE = 'title', cut = null, capT = 0;
@@ -5297,7 +5297,7 @@ function endCut() {
   const wasPrologue = S.prologue;
   if (wasPrologue && S.heldRod === false) { // let go: drowned. The save is wiped and the title offers a new voyage.
     S = freshState(); saveNow();
-    fadeTo(() => { $('#cut').hidden = true; showTitle(); $('#confirm').textContent = 'He let go of the rod, and the sea kept him. Start a new voyage.'; });
+    fadeTo(() => { $('#cut').hidden = true; showTitle(); $('#confirm').textContent = 'He let go of his rod, and he paid the price.'; });
     return;
   }
   if (wasPrologue) { // washed up: the boat, the bucket and the skiff are gone. The index remembers the two fish.
