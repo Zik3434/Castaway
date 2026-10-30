@@ -322,7 +322,7 @@ canvas.icon{width:40px;height:40px;image-rendering:pixelated;flex:none}
       <div><div class="loc" id="hName"></div><div class="sub" id="hSub"></div></div>
       <div class="right"><div class="money" id="hMoney"></div><div class="sub" id="hBag"></div></div>
     </div>
-    <nav class="tabs"><button data-act="leavehunt">Back to the village</button><button data-act="open" data-k="inv">Bag</button></nav>
+    <nav class="tabs"><button data-act="leavehunt">Back to the village</button><button data-act="open" data-k="kit">Kit</button><button data-act="open" data-k="inv">Bag</button></nav>
   </header>
   <div class="spacer"></div>
   <section id="hpanel">
@@ -365,7 +365,6 @@ const T = {
   soakCap: 5,                    // a passive wait is never longer than this many means
   soakGrow: 3,                   // a fish that took soakGrow means to bite is as big as the water holds; size climbs linearly from one mean to there
   hitWindow: 4000,               // ms to tap Reel after a hit; easy fish hold the hook far longer (see hitWindowFor)
-  packCap: 10,
   raftWood: 6,
 };
 
@@ -1733,10 +1732,59 @@ const SP = Object.fromEntries(SPECIES.map(s => [s.id, s]));
 // ---------- hunting ----------
 // Creatures by island. kg is a weight range, rate prices them like fish (rate × kg^0.75), diff drives the stalk:
 // how fast the aim swings and how soon the animal bolts. mask + col draw it. Real animals on real islands; exotic beyond.
+// Hunting gear is ladders too, and each does one thing. The weapon sets the band (acc: half the bar's width) and the heaviest game it
+// brings down (power, kg: heavier animals never show while you carry less, the way a light line is never bitten); a quiet weapon
+// costs less alertness per creep, a loud one scatters the ground so the next sign takes longer. Shot is spent per shot and tilts the
+// roll toward rarer game (luck), pays better (worth) or calms the animal (calm). Calls are spent per stalk. Cloaks slow alertness,
+// boots add creeping steps, bags hold more. `tier` is the first island tier whose shops stock it.
 const WEAPONS = [
-  { id: 'sling',    name: 'Sling',        acc: 0.07, price: 0 },
-  { id: 'bow',      name: 'Hunting bow',  acc: 0.11, price: 700 },
-  { id: 'crossbow', name: 'Crossbow',     acc: 0.16, price: 3200 },
+  { id: 'sling',      name: 'Sling',           acc: 0.07, power: 12,   price: 0,      tier: 0 },
+  { id: 'throwstick', name: 'Throwing stick',  acc: 0.08, power: 20,   price: 250,    tier: 1 },
+  { id: 'shortbow',   name: 'Short bow',       acc: 0.10, power: 45,   price: 500,    tier: 1 },
+  { id: 'bow',        name: 'Hunting bow',     acc: 0.11, power: 90,   price: 700,    tier: 1 },
+  { id: 'blowgun',    name: 'Blowgun',         acc: 0.10, power: 30,   price: 900,    tier: 2, quiet: 0.55 },
+  { id: 'atlatl',     name: 'Atlatl',          acc: 0.12, power: 160,  price: 1400,   tier: 2 },
+  { id: 'longbow',    name: 'Longbow',         acc: 0.13, power: 220,  price: 2000,   tier: 2 },
+  { id: 'crossbow',   name: 'Crossbow',        acc: 0.16, power: 320,  price: 3200,   tier: 3 },
+  { id: 'recurve',    name: 'Recurve bow',     acc: 0.17, power: 360,  price: 5000,   tier: 3, quiet: 0.8 },
+  { id: 'heavyxbow',  name: 'Heavy crossbow',  acc: 0.19, power: 650,  price: 8000,   tier: 4 },
+  { id: 'harpoongun', name: 'Harpoon gun',     acc: 0.18, power: 1300, price: 14000,  tier: 4 },
+  { id: 'musket',     name: 'Musket',          acc: 0.22, power: 1000, price: 20000,  tier: 5, loud: 1.7 },
+  { id: 'rifle',      name: 'Rifle',           acc: 0.26, power: 1800, price: 45000,  tier: 5, loud: 1.4 },
+  { id: 'stariron',   name: 'Star-iron bow',   acc: 0.30, power: 4000, price: 120000, tier: 6, quiet: 0.7 },
+];
+const SHOT = { // what you load: spent per shot, stones never run out
+  stones: { name: 'Stones',        short: 'Stones', price: 0,   qty: 0,  tier: 0 },
+  flint:  { name: 'Flint heads',   short: 'Flint',  price: 60,  qty: 10, tier: 1, luck: 0.3 },
+  barbed: { name: 'Barbed heads',  short: 'Barbed', price: 120, qty: 10, tier: 2, worth: 1.25 },
+  poison: { name: 'Poison darts',  short: 'Poison', price: 220, qty: 8,  tier: 3, calm: 0.55 },
+  silver: { name: 'Silver shot',   short: 'Silver', price: 600, qty: 6,  tier: 5, luck: 0.8, worth: 1.1 },
+};
+const CALLS = { // spent per stalk
+  none:     { name: 'No call',     short: 'None',   price: 0,   qty: 0, tier: 0 },
+  birdcall: { name: 'Bird call',   short: 'Bird',   price: 80,  qty: 5, tier: 1, wait: 0.45 },
+  rattle:   { name: 'Rattle',      short: 'Rattle', price: 200, qty: 5, tier: 2, luck: 0.6 },
+  musk:     { name: 'Musk lure',   short: 'Musk',   price: 400, qty: 4, tier: 3, near: 1 },
+};
+const CLOAKS = [ // worn: alertness climbs this much slower, by scent and by sight
+  { id: 'none',    name: 'Shirt sleeves', calm: 1,    price: 0,     tier: 0 },
+  { id: 'hide',    name: 'Hide cloak',    calm: 0.85, price: 400,   tier: 1 },
+  { id: 'moss',    name: 'Moss cloak',    calm: 0.7,  price: 1500,  tier: 2 },
+  { id: 'ghillie', name: 'Ghillie suit',  calm: 0.55, price: 5000,  tier: 4 },
+  { id: 'shadow',  name: 'Shadow cloak',  calm: 0.4,  price: 18000, tier: 5 },
+];
+const BOOTS = [ // worn: how many steps you can creep before it is point blank
+  { id: 'bare',     name: 'Sea boots',      steps: 3, price: 0,    tier: 0 },
+  { id: 'soft',     name: 'Soft boots',     steps: 4, price: 600,  tier: 1 },
+  { id: 'moccasin', name: 'Moccasins',      steps: 5, price: 2500, tier: 3 },
+  { id: 'feather',  name: 'Feather boots',  steps: 6, price: 9000, tier: 5 },
+];
+const PACKS = [ // the game bag
+  { id: 'satchel', name: 'Satchel',       cap: 10,  price: 0,     tier: 0 },
+  { id: 'gamebag', name: 'Game bag',      cap: 20,  price: 300,   tier: 1 },
+  { id: 'pack',    name: "Hunter's pack", cap: 35,  price: 1200,  tier: 2 },
+  { id: 'sled',    name: 'Drag sled',     cap: 60,  price: 5000,  tier: 4 },
+  { id: 'wagon',   name: 'Game wagon',    cap: 100, price: 20000, tier: 6 },
 ];
 const GAME = [
   { id: 'ghostcrab',  name: 'Ghost Crab',        loc: { shoal: 40, brine: 20 },           kg: [0.05, 0.15], rate: 40,  diff: 0.30,  sil: 'crab', col: { base: '#d8d0b8', belly: '#ece8dc', acc: '#3a2018', mark: '#8a8375' } },
@@ -1800,7 +1848,7 @@ const GAME = [
   { id: 'oystercatcher', name: 'Oystercatcher', loc: { tidal: 35 }, kg: [.4, .7], rate: 30, diff: 0.45, sil: 'bird', col: { base: '#1a1a20', belly: '#f8f8f8', acc: '#f04020', mark: '#101014' } },
   { id: 'curlew', name: 'Curlew', loc: { tidal: 25 }, kg: [.6, 1.2], rate: 50, diff: 0.55, sil: 'bird', col: { base: '#a89070', belly: '#e0d8c8', acc: '#5a4a30', mark: '#6a5a40' }, time: ['dawn', 'dusk'] },
   { id: 'shorecrab', name: 'Shore Crab', loc: { tidal: 40 }, kg: [.05, .1], rate: 20, diff: 0.30, sil: 'crab', col: { base: '#3a6a40', belly: '#8aa880', acc: '#3a2018', mark: '#1a4020' } },
-  { id: 'blindcrayfish', name: 'Blind Crayfish', loc: { crater: 40 }, kg: [.1, .3], rate: 60, diff: 0.30, sil: 'crab', col: { base: '#f0ece8', belly: '#ffffff', acc: '#3a2018', mark: '#c8c0b8' }, time: ['night', 'dusk'] },
+  { id: 'blindcrayfish', name: 'Blind Crayfish', loc: { crater: 40 }, kg: [.1, .3], rate: 60, diff: 0.30, sil: 'crab', col: { base: '#f0ece8', belly: '#ffffff', acc: '#3a2018', mark: '#c8c0b8' }, time: ['night', 'dusk', 'dawn'] },
   { id: 'marmot', name: 'Marmot', loc: { crater: 30 }, kg: [3, 6], rate: 30, diff: 0.45, sil: 'hare', col: { base: '#9a7a50', belly: '#d8c8a0', acc: '#f0b0a0', mark: '#5a4028' }, time: ['day'] },
   { id: 'mountaingoat', name: 'Mountain Goat', loc: { crater: 10 }, kg: [60, 120], rate: 60, diff: 0.60, sil: 'deer', col: { base: '#f0ece0', belly: '#ffffff', acc: '#2a2a2a', mark: '#b0a898' }, big: true },
   { id: 'arcticfox', name: 'Arctic Fox', loc: { iceship: 25 }, kg: [3, 5], rate: 60, diff: 0.60, sil: 'fox', col: { base: '#f0f0f4', belly: '#ffffff', acc: '#f0b0a0', mark: '#c0c0c8' } },
@@ -1864,7 +1912,7 @@ const GAME = [
   { id: 'chameleon', name: 'Chameleon', loc: { dyers: 18 }, kg: [.1, .2], rate: 55, diff: 0.40, sil: 'lizard', col: { base: '#5a9a40', belly: '#b8d890', acc: '#8ab060', mark: '#2a4a20' }, pat: 'stripes', time: ['day'] },
   { id: 'rockpartridge', name: 'Rock Partridge', loc: { dyers: 26 }, kg: [.5, .8], rate: 25, diff: 0.45, sil: 'bird', col: { base: '#8a8a80', belly: '#e8e0d0', acc: '#c03030', mark: '#3a3a30' }, pat: 'stripes' },
   { id: 'waterbuffalo', name: 'Water Buffalo', loc: { terrace: 14 }, kg: [300, 600], rate: 20, diff: 0.30, sil: 'boar', col: { base: '#3a3a3a', belly: '#6a6a68', acc: '#8a8a80', mark: '#1a1a1a' }, big: true },
-  { id: 'paddyfrog', name: 'Paddy Frog', loc: { terrace: 34 }, kg: [.05, .15], rate: 12, diff: 0.30, sil: 'frog', col: { base: '#6a8a40', belly: '#d8e8a0', acc: '#f0d040', mark: '#2a4a20' }, pat: 'stripes', time: ['dusk', 'night'] },
+  { id: 'paddyfrog', name: 'Paddy Frog', loc: { terrace: 34 }, kg: [.05, .15], rate: 12, diff: 0.30, sil: 'frog', col: { base: '#6a8a40', belly: '#d8e8a0', acc: '#f0d040', mark: '#2a4a20' }, pat: 'stripes', time: ['dusk', 'night', 'dawn'] },
   { id: 'bamboorat', name: 'Bamboo Rat', loc: { terrace: 24 }, kg: [1, 3], rate: 25, diff: 0.40, sil: 'hare', col: { base: '#7a7a70', belly: '#b8b8a8', acc: '#f0b0a0', mark: '#3a3a30' }, time: ['night', 'dusk'] },
   { id: 'egret', name: 'Cattle Egret', loc: { terrace: 22 }, kg: [.3, .5], rate: 30, diff: 0.50, sil: 'stork', col: { base: '#f8f8f0', belly: '#ffffff', acc: '#f0c040', mark: '#9a9a90' }, time: ['day'] },
   { id: 'mongoose', name: 'Mongoose', loc: { terrace: 16 }, kg: [1, 2], rate: 45, diff: 0.55, sil: 'fox', col: { base: '#8a7a60', belly: '#c8b8a0', acc: '#1a1a1a', mark: '#4a4030' }, pat: 'speckle', time: ['day'] },
@@ -1874,7 +1922,7 @@ const GAME = [
   { id: 'wharfcat', name: 'Wharf Cat', loc: { graveyard: 14 }, kg: [3, 6], rate: 35, diff: 0.55, sil: 'fox', col: { base: '#2a2a2a', belly: '#5a5a5a', acc: '#f0e040', mark: '#1a1a1a' }, time: ['dusk', 'night'] },
   { id: 'barnowl', name: 'Barn Owl', loc: { graveyard: 10 }, kg: [.3, .6], rate: 70, diff: 0.70, sil: 'bird', col: { base: '#e8d8b8', belly: '#ffffff', acc: '#1a1a1a', mark: '#c8a870' }, pat: 'speckle', time: ['night'] },
   { id: 'saiga', name: 'Saiga', loc: { steppe: 20 }, kg: [30, 50], rate: 45, diff: 0.60, sil: 'deer', col: { base: '#c8b890', belly: '#f0e8d8', acc: '#6a5a40', mark: '#8a7a60' } },
-  { id: 'corsacfox', name: 'Corsac Fox', loc: { steppe: 16 }, kg: [2, 3.5], rate: 40, diff: 0.55, sil: 'fox', col: { base: '#c8b088', belly: '#f0e8d8', acc: '#2a2a2a', mark: '#8a7a58' }, time: ['dusk', 'night'] },
+  { id: 'corsacfox', name: 'Corsac Fox', loc: { steppe: 16 }, kg: [2, 3.5], rate: 40, diff: 0.55, sil: 'fox', col: { base: '#c8b088', belly: '#f0e8d8', acc: '#2a2a2a', mark: '#8a7a58' }, time: ['dusk', 'night', 'dawn'] },
   { id: 'pika', name: 'Pika', loc: { steppe: 34 }, kg: [.1, .2], rate: 10, diff: 0.30, sil: 'hare', col: { base: '#9a8a70', belly: '#d8c8b0', acc: '#f0b0a0', mark: '#5a4a38' }, time: ['day'] },
   { id: 'bustard', name: 'Great Bustard', loc: { steppe: 12 }, kg: [8, 16], rate: 60, diff: 0.65, sil: 'bird', col: { base: '#b89a60', belly: '#f0e8d8', acc: '#6a5a40', mark: '#3a3028' }, pat: 'stripes', time: ['day'] },
   { id: 'goldeneagle', name: 'Golden Eagle', loc: { steppe: 6 }, kg: [3, 6], rate: 160, diff: 0.85, sil: 'bird', col: { base: '#5a3a20', belly: '#8a6a40', acc: '#f0d040', mark: '#2a1a10' }, time: ['day'], rare: true },
@@ -1883,7 +1931,7 @@ const GAME = [
   { id: 'groundsquirrel', name: 'Ground Squirrel', loc: { cannery: 34 }, kg: [.4, .8], rate: 10, diff: 0.35, sil: 'hare', col: { base: '#9a8a68', belly: '#d8c8a8', acc: '#f0b0a0', mark: '#5a4a30' }, pat: 'speckle', time: ['day'] },
   { id: 'turkeyvulture', name: 'Turkey Vulture', loc: { cannery: 14 }, kg: [1.5, 2.5], rate: 20, diff: 0.50, sil: 'bird', col: { base: '#2a2a28', belly: '#4a4a48', acc: '#c03030', mark: '#1a1a18' }, time: ['day'] },
   { id: 'sikadeer', name: 'Sika Stag', loc: { whirlpool: 20 }, kg: [40, 70], rate: 40, diff: 0.55, sil: 'deer', col: { base: '#8a6a40', belly: '#e8d8b8', acc: '#5a4a30', mark: '#f0f0e0' }, pat: 'spots' },
-  { id: 'tanuki', name: 'Tanuki', loc: { whirlpool: 16 }, kg: [4, 7], rate: 35, diff: 0.50, sil: 'fox', col: { base: '#7a6a58', belly: '#c8b8a0', acc: '#1a1a1a', mark: '#3a3028' }, time: ['dusk', 'night'] },
+  { id: 'tanuki', name: 'Tanuki', loc: { whirlpool: 16 }, kg: [4, 7], rate: 35, diff: 0.50, sil: 'fox', col: { base: '#7a6a58', belly: '#c8b8a0', acc: '#1a1a1a', mark: '#3a3028' }, time: ['dusk', 'night', 'dawn'] },
   { id: 'blackkite', name: 'Black Kite', loc: { whirlpool: 16 }, kg: [.6, 1], rate: 50, diff: 0.65, sil: 'bird', col: { base: '#4a3a28', belly: '#8a7a60', acc: '#f0d040', mark: '#2a1a10' }, time: ['day'] },
   { id: 'serow', name: 'Japanese Serow', loc: { whirlpool: 10 }, kg: [30, 45], rate: 70, diff: 0.65, sil: 'deer', col: { base: '#5a5a58', belly: '#a8a8a0', acc: '#2a2a28', mark: '#8a8a80' } },
   { id: 'hermitcrab', name: 'Giant Hermit Crab', loc: { coral: 28 }, kg: [.5, 1.5], rate: 20, diff: 0.30, sil: 'crab', col: { base: '#d08050', belly: '#f0c0a0', acc: '#6a4020', mark: '#8a5030' } },
@@ -1937,7 +1985,7 @@ const GAME = [
   { id: 'starmoth', name: 'Star Moth', loc: { starfall: 26 }, kg: [.02, .06], rate: 55, diff: 0.40, sil: 'moth', col: { base: '#3a3a70', belly: '#c0c0ff', acc: '#ffffff', mark: '#ffffff' }, pat: 'lights', time: ['night'] },
   { id: 'craterfox', name: 'Crater Fox', loc: { starfall: 16 }, kg: [3, 6], rate: 70, diff: 0.55, sil: 'fox', col: { base: '#8a8aa8', belly: '#e0e0f0', acc: '#ffffff', mark: '#4a4a68' }, time: ['night', 'dusk'] },
   { id: 'palefawn', name: 'Pale Fawn', loc: { starfall: 14 }, kg: [20, 40], rate: 90, diff: 0.60, sil: 'deer', col: { base: '#d8d8e8', belly: '#ffffff', acc: '#a0a0c0', mark: '#c0c0ff' }, pat: 'spots', time: ['night', 'dawn'] },
-  { id: 'cornishchough', name: 'Cornish Chough', loc: { pilchard: 26 }, kg: [.3, .4], rate: 30, diff: 0.50, sil: 'bird', col: { base: '#1a1a20', belly: '#2a2a30', acc: '#e03020', mark: '#0a0a10' }, time: ['day'] },
+  { id: 'cornishchough', name: 'Cornish Chough', loc: { pilchard: 26 }, kg: [.3, .4], rate: 30, diff: 0.50, sil: 'bird', col: { base: '#1a1a20', belly: '#2a2a30', acc: '#e03020', mark: '#0a0a10' }, time: ['day', 'dawn'] },
   { id: 'covegoat', name: 'Cove Goat', loc: { pilchard: 20 }, kg: [30, 60], rate: 25, diff: 0.40, sil: 'deer', col: { base: '#c8b8a0', belly: '#f0e8e0', acc: '#6a5a48', mark: '#3a3028' } },
   { id: 'harvestmouse', name: 'Harvest Mouse', loc: { pilchard: 34 }, kg: [.005, .01], rate: 10, diff: 0.30, sil: 'hare', col: { base: '#c89060', belly: '#f0d8b8', acc: '#f0b0a0', mark: '#6a4a30' }, time: ['dusk', 'night'] },
   { id: 'kestrel', name: 'Kestrel', loc: { pilchard: 14 }, kg: [.15, .25], rate: 60, diff: 0.70, sil: 'bird', col: { base: '#b87040', belly: '#f0e0c8', acc: '#f0d040', mark: '#4a3020' }, pat: 'speckle', time: ['day'] },
@@ -1953,13 +2001,13 @@ const GAME = [
   { id: 'civet', name: 'African Civet', loc: { spice: 16 }, kg: [7, 15], rate: 45, diff: 0.55, sil: 'fox', col: { base: '#9a9a88', belly: '#d8d8c8', acc: '#1a1a1a', mark: '#3a3a30' }, pat: 'spots', time: ['night', 'dusk'] },
   { id: 'crownedcrane', name: 'Crowned Crane', loc: { spice: 14 }, kg: [3, 4], rate: 70, diff: 0.65, sil: 'stork', col: { base: '#5a5a60', belly: '#c8c8c0', acc: '#f0d040', mark: '#c03030' }, time: ['day'] },
   { id: 'hornbill', name: 'Hornbill', loc: { spice: 22 }, kg: [.3, .5], rate: 35, diff: 0.50, sil: 'bird', col: { base: '#2a2a28', belly: '#f0f0e8', acc: '#f0a020', mark: '#1a1a18' } },
-  { id: 'flamingobird', name: 'Greater Flamingo', loc: { flamingo: 26 }, kg: [2.5, 4], rate: 40, diff: 0.55, sil: 'stork', col: { base: '#f0a0b0', belly: '#f8d0d8', acc: '#1a1a1a', mark: '#c06070' }, time: ['day', 'dusk'] },
+  { id: 'flamingobird', name: 'Greater Flamingo', loc: { flamingo: 26 }, kg: [2.5, 4], rate: 40, diff: 0.55, sil: 'stork', col: { base: '#f0a0b0', belly: '#f8d0d8', acc: '#1a1a1a', mark: '#c06070' }, time: ['day', 'dusk', 'dawn'] },
   { id: 'camarguebull', name: 'Camargue Bull', loc: { flamingo: 10 }, kg: [300, 500], rate: 60, diff: 0.45, sil: 'boar', col: { base: '#1a1a1a', belly: '#3a3a3a', acc: '#f0f0e8', mark: '#0a0a0a' }, big: true },
   { id: 'beaver', name: 'Eurasian Beaver', loc: { flamingo: 16 }, kg: [12, 25], rate: 40, diff: 0.50, sil: 'hare', col: { base: '#5a3a20', belly: '#a88a68', acc: '#f0b0a0', mark: '#2a1a10' }, time: ['dusk', 'night'], big: true },
   { id: 'blackwingedstilt', name: 'Black-winged Stilt', loc: { flamingo: 24 }, kg: [.15, .2], rate: 30, diff: 0.50, sil: 'stork', col: { base: '#f8f8f8', belly: '#ffffff', acc: '#f06070', mark: '#1a1a1a' }, time: ['day'] },
   { id: 'gharial', name: 'Gharial', loc: { ghats: 12 }, kg: [150, 250], rate: 110, diff: 0.50, sil: 'croc', col: { base: '#5a6a50', belly: '#c8c8a8', acc: '#8a9a70', mark: '#2a3a28' }, big: true },
   { id: 'sambar', name: 'Sambar', loc: { ghats: 14 }, kg: [150, 300], rate: 60, diff: 0.55, sil: 'deer', col: { base: '#5a4a38', belly: '#a89880', acc: '#3a2a20', mark: '#2a1a10' }, time: ['dawn', 'dusk', 'night'], big: true },
-  { id: 'peafowl', name: 'Peafowl', loc: { ghats: 20 }, kg: [4, 6], rate: 50, diff: 0.50, sil: 'bird', col: { base: '#2050a0', belly: '#60c0a0', acc: '#f0c040', mark: '#1a2a60' }, pat: 'spots', time: ['day'] },
+  { id: 'peafowl', name: 'Peafowl', loc: { ghats: 20 }, kg: [4, 6], rate: 50, diff: 0.50, sil: 'bird', col: { base: '#2050a0', belly: '#60c0a0', acc: '#f0c040', mark: '#1a2a60' }, pat: 'spots', time: ['day', 'dawn'] },
   { id: 'junglecat', name: 'Jungle Cat', loc: { ghats: 16 }, kg: [5, 12], rate: 50, diff: 0.60, sil: 'fox', col: { base: '#a89068', belly: '#e0d0b0', acc: '#1a1a1a', mark: '#5a4a30' }, time: ['dusk', 'night'] },
   { id: 'marineiguana', name: 'Marine Iguana', loc: { iguanas: 30 }, kg: [1, 3], rate: 30, diff: 0.25, sil: 'lizard', col: { base: '#2a2a2a', belly: '#5a5a58', acc: '#c04040', mark: '#1a1a1a' }, pat: 'speckle', time: ['day'] },
   { id: 'saddlebacktortoise', name: 'Saddleback Tortoise', loc: { iguanas: 14 }, kg: [100, 250], rate: 40, diff: 0.15, sil: 'turtle', col: { base: '#6a6a58', belly: '#a8a898', acc: '#8a7a60', mark: '#3a3a28' }, big: true },
@@ -1969,7 +2017,7 @@ const GAME = [
   { id: 'capybara', name: 'Capybara', loc: { forest: 22 }, kg: [35, 65], rate: 30, diff: 0.30, sil: 'hare', col: { base: '#8a6a40', belly: '#c8a878', acc: '#f0b0a0', mark: '#4a3020' }, big: true },
   { id: 'caiman', name: 'Black Caiman', loc: { forest: 12 }, kg: [150, 400], rate: 100, diff: 0.50, sil: 'croc', col: { base: '#1a1a1a', belly: '#6a6a58', acc: '#4a4a40', mark: '#0a0a0a' }, time: ['night', 'dusk'], big: true },
   { id: 'anaconda', name: 'Anaconda', loc: { forest: 10 }, kg: [30, 90], rate: 120, diff: 0.55, sil: 'snake', col: { base: '#4a5a30', belly: '#c8c880', acc: '#1a1a10', mark: '#2a3a18' }, pat: 'spots', big: true },
-  { id: 'hoatzin', name: 'Hoatzin', loc: { forest: 26 }, kg: [.7, .9], rate: 25, diff: 0.35, sil: 'bird', col: { base: '#8a5a30', belly: '#e0c080', acc: '#4080c0', mark: '#3a2a18' }, pat: 'stripes', time: ['day'] },
+  { id: 'hoatzin', name: 'Hoatzin', loc: { forest: 26 }, kg: [.7, .9], rate: 25, diff: 0.35, sil: 'bird', col: { base: '#8a5a30', belly: '#e0c080', acc: '#4080c0', mark: '#3a2a18' }, pat: 'stripes' },
   { id: 'jaguar', name: 'Jaguar', loc: { forest: 6 }, kg: [60, 100], rate: 220, diff: 0.80, sil: 'fox', col: { base: '#e0a040', belly: '#f8e8c8', acc: '#1a1a1a', mark: '#1a1a1a' }, pat: 'spots', time: ['night', 'dusk', 'dawn'], big: true, rare: true },
   { id: 'blackbear', name: 'Black Bear', loc: { totem: 14 }, kg: [80, 250], rate: 90, diff: 0.60, sil: 'bear', col: { base: '#1a1a1a', belly: '#4a4a48', acc: '#8a6a48', mark: '#0a0a0a' }, big: true },
   { id: 'raven', name: 'Raven', loc: { totem: 26 }, kg: [1, 1.6], rate: 35, diff: 0.55, sil: 'bird', col: { base: '#0a0a10', belly: '#2a2a34', acc: '#1a1a1a', mark: '#000000' } },
@@ -2010,13 +2058,19 @@ const GAME = [
 ];
 const GM = Object.fromEntries(GAME.map(c => [c.id, c]));
 const WEAPON = () => WEAPONS.find(w => w.id === S.weapon) || WEAPONS[0];
+const CLOAK = () => CLOAKS.find(x => x.id === S.cloak) || CLOAKS[0], BOOT = () => BOOTS.find(x => x.id === S.boots) || BOOTS[0], PACK = () => PACKS.find(x => x.id === S.pack_) || PACKS[0];
+const packCap = () => PACK().cap, maxSteps = () => BOOT().steps;
+const shotOf = () => SHOT[S.shotSel] && (S.shotSel === 'stones' || S.shot[S.shotSel] > 0) ? S.shotSel : 'stones';
+const callOf = () => CALLS[S.callSel] && (S.callSel === 'none' || S.calls[S.callSel] > 0) ? S.callSel : 'none';
+const gameRank = (c, locId) => { const w = c.loc[locId] || 20; return c.rare ? 3 : w >= 24 ? 0 : w >= 16 ? 1 : w >= 10 ? 2 : 3; }; // common to rare, from island weight
 const gameValue = (c, kg, jit) => Math.round(Math.max(3, c.rate * Math.pow(Math.max(kg, 0.001), 0.75) * (1 + (jit || 0))));
 // The stalk. A sighting starts far off: the band is narrow. You can creep closer up to three times; every step widens the band
 // (×(1 + nearBand × steps)) and raises the animal's alertness by creepCost × skittishness × the wind (in your face, across, at your
 // back) × 2 if it has its head up. Alertness also climbs on its own; at 1 it bolts. A closer shot is worth more (×(1 + nearWorth × steps)).
 const T_HUNT = { wait: [2500, 6000], breath: 2600, alertMs: [9000, 4500], creepCost: [0.16, 0.24], wind: { face: 0.6, cross: 1, back: 1.7 }, lookEvery: [2500, 5000], lookFor: 900, nearBand: 0.45, nearWorth: 0.1, maxSteps: 3 };
 const WIND_NAME = { face: 'in your face', cross: 'across', back: 'at your back' };
-const DIST_NAME = ['far off', 'nearer', 'close', 'point blank'];
+const DIST_NAME = ['far off', 'nearer', 'closer', 'close', 'very close', 'almost on it', 'point blank'];
+const distName = steps => steps >= maxSteps() ? 'point blank' : DIST_NAME[Math.min(steps, DIST_NAME.length - 2)];
 // The fight. Easy fish are slow, lazy, and give a wider net and a fast fill; hard fish are quick and drain the bar fast.
 // netBonus: how much wider the net gets below difficulty 0.45 (a sardine at 0.1 gets ×1.35). Prologue adds a little more.
 const T_FIGHT = { netBonus: 1.6, speedBase: { dart: 0.5, other: 0.2 }, speedPerDiff: 1.5, gainBase: 0.22, gainEasy: 0.3, drainBase: 0.05, drainPerDiff: 0.32, netAccelUp: 2.6, netAccelDown: 2.4, netMaxV: 1.3, prologueNet: 1.25, startEasy: 0.3 };
@@ -2057,7 +2111,7 @@ const PHASE_NAME = { dawn: 'Dawn', day: 'Day', dusk: 'Dusk', night: 'Night' };
 // ---------- state ----------
 function freshState() {
   return {
-    v: 12, started: false, loc: 'shoal', money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 1, trophyRig: false,
+    v: 13, started: false, loc: 'shoal', money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 1, trophyRig: false,
     line: 'l10', pail: 'pail', // the line's test weight and the bucket in use (both bought in the shop)
     rodsOwned: ['stick'], linesOwned: ['l10'], pailsOwned: ['pail'], // everything bought stays in the rig sheet and can be put back on
     heldRod: true, noRod: false, // the storm's one question; let go and you wash up without a rod until you whittle one from a plank
@@ -2067,6 +2121,7 @@ function freshState() {
     known: {}, // islands named by a shopkeeper's rumor (visible on the chart before you have been)
     spot: 'wreck', // the fishing spot on the current island
     pack: [], weapon: 'sling', gindex: {}, // hunting: the game bag, the weapon, the creature record
+    weaponsOwned: ['sling'], cloak: 'none', cloaksOwned: ['none'], boots: 'bare', bootsOwned: ['bare'], pack_: 'satchel', packsOwned: ['satchel'], shot: {}, shotSel: 'stones', calls: {}, callSel: 'none', scattered: 0, // the hunting kit
     bounties: {}, // per island: { at, list: [{ id, mult, done }] }, the shop's wanted posters
     bait: { shrimp: 0, squid: 0 },
     lines: [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, null, null, null],
@@ -2112,7 +2167,8 @@ function load(seed) {
     d.rodsOwned = upto(RODS, d.rod); d.linesOwned = upto(LINE_TEST, d.line); d.pailsOwned = upto(BUCKETS, d.pail); d.v = 11;
   }
   if (d && d.v === 11) { d.order = ['shoal'].concat(LOCS.map(l => l.id).filter(id => id !== 'shoal' && id !== 'sea' && d.visited && d.visited[id])); d.v = 12; } // v11 -> v12: islands are numbered in the order found
-  if (d && d.v === 12) S = Object.assign(freshState(), d);
+  if (d && d.v === 12) { const wi = Math.max(0, WEAPONS.findIndex(w => w.id === d.weapon)); d.weaponsOwned = WEAPONS.slice(0, wi + 1).map(w => w.id); d.cloak = 'none'; d.cloaksOwned = ['none']; d.boots = 'bare'; d.bootsOwned = ['bare']; d.pack_ = 'satchel'; d.packsOwned = ['satchel']; d.shot = {}; d.shotSel = 'stones'; d.calls = {}; d.callSel = 'none'; d.scattered = 0; d.v = 13; } // v12 -> v13: the hunting kit; you own every weapon below the one you carry
+  if (d && d.v === 13) S = Object.assign(freshState(), d);
 }
 
 const loc = () => LOC[S.loc];
@@ -2305,6 +2361,7 @@ function sail(id) {
 // ---------- shop ----------
 // Is the mysterious chart on this shop's shelf today? Fixed per island per real day, so it does not flicker.
 function chartInStock(l) { const day = Math.floor(now() / 864e5), h = (day * 7919 + l.x * 31 + l.y * 17 + l.id.length * 131) % 100; return h < T_WORLD.chartOdds; }
+const best = (list, owned) => Math.max(...owned.map(id => list.findIndex(x => x.id === id)), 0); // the highest rung owned on a ladder
 function shopItems() {
   const items = [], l = loc();
   if (l.spaceport) {
@@ -2313,7 +2370,6 @@ function shopItems() {
   }
   if (l.range >= 5 && !S.known.spaceport && !S.visited.spaceport && chartInStock(l)) items.push({ k: 'chart', name: 'A mysterious chart', sub: 'Oilcloth, salt-stiff, one island on it at the far edge of the world. The keeper will not say where it came from.', price: T_WORLD.chartPrice });
   if (S.slots < 4) items.push({ k: 'slot', name: `Line ${S.slots + 1}`, sub: 'One more line in the water.', price: SLOT_PRICES[S.slots] });
-  const best = (list, owned) => Math.max(...owned.map(id => list.findIndex(x => x.id === id)), 0);
   const ri = best(RODS, S.rodsOwned);
   if (ri < RODS.length - 1) { const r = RODS[ri + 1]; items.push({ k: 'rod', name: r.name, sub: `Wider net in the fight (${Math.round(r.bar * 100)}% of the track), and rarer fish take it more often.`, price: r.price }); }
   const li = best(LINE_TEST, S.linesOwned);
@@ -2321,8 +2377,17 @@ function shopItems() {
   const pi = best(BUCKETS, S.pailsOwned);
   if (pi < BUCKETS.length - 1) { const x = BUCKETS[pi + 1]; items.push({ k: 'pail', name: x.name, sub: `Room for ${x.cap} fish. Your ${bucketOf().name.toLowerCase()} holds ${bucketCap()}.`, price: x.price }); }
   if (!S.trophyRig) items.push({ k: 'trig', name: 'Trophy rig', sub: 'A long passive line. Needs shrimp or squid. Hooks big fish; you still land them yourself.', price: TROPHY_RIG_PRICE });
-  const wi = WEAPONS.findIndex(w => w.id === S.weapon);
-  if (wi < WEAPONS.length - 1) { const w = WEAPONS[wi + 1]; items.push({ k: 'weapon', name: w.name, sub: `Steadier aim in the hunt (${Math.round(w.acc * 200)}% of the bar).`, price: w.price }); }
+  // the hunting kit: the next rung of each ladder this island's shops stock, and shot and calls by the pack
+  const tier = l.range, wi = best(WEAPONS, S.weaponsOwned);
+  if (wi < WEAPONS.length - 1 && WEAPONS[wi + 1].tier <= tier) { const w = WEAPONS[wi + 1]; items.push({ k: 'weapon', name: w.name, sub: `Band ${Math.round(w.acc * 200)}% of the bar, takes game to ${fmtKg(w.power)}${w.quiet ? ', quiet' : w.loud ? ', loud: scatters the ground' : ''}. Your ${WEAPON().name.toLowerCase()} takes ${fmtKg(WEAPON().power)}.`, price: w.price }); }
+  const ci = best(CLOAKS, S.cloaksOwned);
+  if (ci < CLOAKS.length - 1 && CLOAKS[ci + 1].tier <= tier) { const x = CLOAKS[ci + 1]; items.push({ k: 'cloak', name: x.name, sub: `Game takes alarm ${Math.round((1 - x.calm) * 100)}% slower while you creep.`, price: x.price }); }
+  const bo = best(BOOTS, S.bootsOwned);
+  if (bo < BOOTS.length - 1 && BOOTS[bo + 1].tier <= tier) { const x = BOOTS[bo + 1]; items.push({ k: 'boots', name: x.name, sub: `${x.steps} steps of creeping before point blank. You have ${maxSteps()}.`, price: x.price }); }
+  const pk = best(PACKS, S.packsOwned);
+  if (pk < PACKS.length - 1 && PACKS[pk + 1].tier <= tier) { const x = PACKS[pk + 1]; items.push({ k: 'gamepack', name: x.name, sub: `Room for ${x.cap} game. Your ${PACK().name.toLowerCase()} holds ${packCap()}.`, price: x.price }); }
+  for (const [id, sh] of Object.entries(SHOT)) if (sh.qty && sh.tier <= tier) items.push({ k: 'shot:' + id, name: `${sh.name} ×${sh.qty}`, sub: `Have ${S.shot[id] || 0}. ${sh.luck ? 'Rarer game shows more often. ' : ''}${sh.worth ? `A clean kill pays ×${sh.worth}. ` : ''}${sh.calm ? 'The animal takes alarm slower. ' : ''}Spent per shot.`, price: sh.price });
+  for (const [id, ca] of Object.entries(CALLS)) if (ca.qty && ca.tier <= tier) items.push({ k: 'call:' + id, name: `${ca.name} ×${ca.qty}`, sub: `Have ${S.calls[id] || 0}. ${ca.wait ? 'Something shows in half the time. ' : ''}${ca.luck ? 'Rarer game answers it. ' : ''}${ca.near ? 'It comes to you: the stalk starts a step nearer. ' : ''}Spent per stalk.`, price: ca.price });
   items.push({ k: 'bait:shrimp', name: 'Shrimp ×5', sub: `Have ${S.bait.shrimp}. Mid-size fish bite it, and rarer fish a little more often.`, price: BAITS.shrimp.price });
   items.push({ k: 'bait:squid', name: 'Squid ×5', sub: `Have ${S.bait.squid}. Deep and rare fish take only this, and it tilts every cast toward them.`, price: BAITS.squid.price });
   const bi = BOATS.findIndex(b => b.id === S.boat);
@@ -2341,7 +2406,12 @@ function buy(k) {
   else if (k === 'trig') S.trophyRig = true;
   else if (k === 'line') { const x = LINE_TEST[Math.max(...S.linesOwned.map(id => LINE_TEST.findIndex(y => y.id === id))) + 1]; S.linesOwned.push(x.id); S.line = x.id; }
   else if (k === 'pail') { const x = BUCKETS[Math.max(...S.pailsOwned.map(id => BUCKETS.findIndex(y => y.id === id))) + 1]; S.pailsOwned.push(x.id); S.pail = x.id; }
-  else if (k === 'weapon') { const wi = WEAPONS.findIndex(w => w.id === S.weapon); S.weapon = WEAPONS[wi + 1].id; }
+  else if (k === 'weapon') { const w = WEAPONS[best(WEAPONS, S.weaponsOwned) + 1]; S.weaponsOwned.push(w.id); S.weapon = w.id; }
+  else if (k === 'cloak') { const x = CLOAKS[best(CLOAKS, S.cloaksOwned) + 1]; S.cloaksOwned.push(x.id); S.cloak = x.id; }
+  else if (k === 'boots') { const x = BOOTS[best(BOOTS, S.bootsOwned) + 1]; S.bootsOwned.push(x.id); S.boots = x.id; }
+  else if (k === 'gamepack') { const x = PACKS[best(PACKS, S.packsOwned) + 1]; S.packsOwned.push(x.id); S.pack_ = x.id; }
+  else if (k.startsWith('shot:')) { const b = k.slice(5); S.shot[b] = (S.shot[b] || 0) + SHOT[b].qty; if (S.shotSel === 'stones') S.shotSel = b; }
+  else if (k.startsWith('call:')) { const b = k.slice(5); S.calls[b] = (S.calls[b] || 0) + CALLS[b].qty; if (S.callSel === 'none') S.callSel = b; }
   else if (k.startsWith('bait:')) { const b = k.slice(5); S.bait[b] = (S.bait[b] || 0) + BAITS[b].qty; }
   else if (k === 'boat') { const bi = BOATS.findIndex(b => b.id === S.boat); S.boat = BOATS[bi + 1].id; }
   else if (k === 'chart') { S.known.spaceport = true; setTimeout(() => toast('One island on it, at the far edge of the world. It is on your chart now.'), 900); }
@@ -2533,7 +2603,20 @@ function renderSheet() {
       <div class="box"><h3>RODS</h3><div class="list">${S.noRod ? '<div class="note">Lost in the storm. A plank of driftwood whittles a new one.</div>' : gearRows(RODS, S.rodsOwned, S.rod, 'rod', r => `Net ${Math.round(r.bar * 100)}% of the track${r.luck ? ` · luck ${r.luck}` : ''}.`)}</div></div>
       <div class="box"><h3>LINE</h3><div class="list">${gearRows(LINE_TEST, S.linesOwned, S.line, 'line', x => `Holds fish to ${fmtKg(lbKg(x.lb))}. Heavier ones will not bite.`)}</div></div>
       <div class="box"><h3>BUCKET</h3><div class="list">${gearRows(BUCKETS, S.pailsOwned, S.pail, 'pail', x => `Room for ${x.cap} fish.`)}</div></div>
-      <div class="box"><h3>ALSO</h3><div class="list"><div class="row"><div class="name">${S.slots} line${S.slots > 1 ? 's' : ''}${S.trophyRig ? ' · trophy rig' : ''}<small>${S.slots < 4 ? 'More lines are sold in the shops.' : 'Every line you can run.'}</small></div></div><div class="row">${icon('weapon:' + S.weapon)}<div class="name" style="flex:1">${WEAPON().name}<small>For the hunt.</small></div></div><div class="row">${icon('boat:' + S.boat)}<div class="name" style="flex:1">${BOATS.find(b => b.id === S.boat).name}<small>Range ${boatRange()}.</small></div></div></div></div>`;
+      <div class="box"><h3>ALSO</h3><div class="list"><div class="row"><div class="name">${S.slots} line${S.slots > 1 ? 's' : ''}${S.trophyRig ? ' · trophy rig' : ''}<small>${S.slots < 4 ? 'More lines are sold in the shops.' : 'Every line you can run.'}</small></div></div><div class="row">${icon('weapon:' + S.weapon)}<div class="name" style="flex:1">${WEAPON().name}<small>For the hunt. The kit sheet on the hunting ground has the rest.</small></div><button class="buy" data-act="open" data-k="kit">KIT</button></div><div class="row">${icon('boat:' + S.boat)}<div class="name" style="flex:1">${BOATS.find(b => b.id === S.boat).name}<small>Range ${boatRange()}.</small></div></div></div></div>`;
+    drawIcons(el);
+  } else if (sheetKind === 'kit') { // everything you hunt with: weapon, shot, call, cloak, boots, bag
+    const busy = MODE === 'hunt' && HU && HU.phase !== 'idle';
+    const seg = (items, cur, act, dis) => `<div class="seg icons">${items.map(([k, n]) => `<button data-act="${act}" data-k="${k}" class="${cur === k ? 'sel' : ''}" ${busy || dis(k) ? 'disabled' : ''}>${icon(act + ':' + k)}<span>${n}</span></button>`).join('')}</div>`;
+    const gearRows = (list, owned, cur, kind, sub) => list.filter(x => owned.includes(x.id)).map(x => `<div class="row ${x.id === cur ? 'sel' : ''}">${icon(kind + ':' + x.id)}<div class="name" style="flex:1">${x.name}<small>${sub(x)}</small></div>${x.id === cur ? '<div class="here">in use</div>' : `<button class="buy" data-act="equip" data-k="${kind}:${x.id}" ${busy ? 'disabled' : ''}>USE</button>`}</div>`).join('');
+    el.innerHTML = `<div class="head"><h2>Hunting kit</h2><button class="x" data-act="close">✕</button></div>
+      ${busy ? '<div class="note">Mid-stalk. Finish or give up before changing your kit.</div>' : ''}
+      <div class="box"><h3>SHOT</h3>${seg(Object.entries(SHOT).map(([k, b]) => [k, k === 'stones' ? 'Stones' : b.short + ' ×' + (S.shot[k] || 0)]), shotOf(), 'shot', k => k !== 'stones' && !(S.shot[k] > 0))}<div class="note">Stones are free. Flint and silver bring the rarer game out, barbed heads pay better, poison keeps it calm. One is spent per shot.</div></div>
+      <div class="box"><h3>CALL</h3>${seg(Object.entries(CALLS).map(([k, b]) => [k, k === 'none' ? 'None' : b.short + ' ×' + (S.calls[k] || 0)]), callOf(), 'call', k => k !== 'none' && !(S.calls[k] > 0))}<div class="note">A bird call brings a sign in half the time, a rattle brings the rarer game, musk brings it a step closer. One is spent per stalk.</div></div>
+      <div class="box"><h3>WEAPONS</h3><div class="list">${gearRows(WEAPONS, S.weaponsOwned, S.weapon, 'weapon', w => `Band ${Math.round(w.acc * 200)}% of the bar · takes game to ${fmtKg(w.power)}${w.quiet ? ' · quiet' : w.loud ? ' · loud' : ''}.`)}</div><div class="note">Heavier game than your weapon can bring down never shows itself. The shops sell the next rung.</div></div>
+      <div class="box"><h3>CLOAK</h3><div class="list">${gearRows(CLOAKS, S.cloaksOwned, S.cloak, 'cloak', x => x.calm < 1 ? `Game takes alarm ${Math.round((1 - x.calm) * 100)}% slower.` : 'Nothing between you and the wind.')}</div></div>
+      <div class="box"><h3>BOOTS</h3><div class="list">${gearRows(BOOTS, S.bootsOwned, S.boots, 'boots', x => `${x.steps} steps of creeping before point blank.`)}</div></div>
+      <div class="box"><h3>GAME BAG</h3><div class="list">${gearRows(PACKS, S.packsOwned, S.pack_, 'gamepack', x => `Room for ${x.cap} game.`)}</div></div>`;
     drawIcons(el);
   } else if (sheetKind === 'spots') {
     const l = loc();
@@ -2563,7 +2646,7 @@ function renderSheet() {
       : `<div class="note">${S.prologue ? 'Supper, if you can catch it.' : S.raft ? 'No market here. Gull Harbor buys the whole bucket.' : 'No market on the shoal. Build the raft first.'}</div>`;
     el.innerHTML = `<div class="head"><h2>Inventory</h2><button class="x" data-act="close">✕</button></div>
       <div class="box"><h3>BUCKET ${S.bucket.length}/${bucketCap()}</h3>${S.bucket.length ? `<div class="list">${rows}</div>` : '<div class="note">Empty. Fish you keep land here.</div>'}</div>
-      <div class="box"><h3>GAME BAG ${S.pack.length}/${T.packCap}</h3>${S.pack.length ? `<div class="list">${S.pack.map((f, j) => { const c = GM[f.id]; return `<div class="row"><canvas class="mini game" width="80" height="48" data-game="${f.id}"></canvas><div class="name" style="flex:1">${c.name}<small>${fmtKg(f.kg)}</small></div><div class="price">${money(f.value)}</div></div>`; }).join('')}</div>` : `<div class="note">Empty. ${WEAPON().name} in hand. The hunting ground is past the village.</div>`}</div>
+      <div class="box"><h3>GAME BAG ${S.pack.length}/${packCap()}</h3>${S.pack.length ? `<div class="list">${S.pack.map((f, j) => { const c = GM[f.id]; return `<div class="row"><canvas class="mini game" width="80" height="48" data-game="${f.id}"></canvas><div class="name" style="flex:1">${c.name}<small>${fmtKg(f.kg)}</small></div><div class="price">${money(f.value)}</div></div>`; }).join('')}</div>` : `<div class="note">Empty. ${WEAPON().name} in hand. The hunting ground is past the village.</div>`}</div>
       <div class="box"><div class="row"><div>Whole haul</div><div class="price">${money(haulTotal())}</div></div>${market.replace('Sell the haul · ' + money(total), 'Sell the haul · ' + money(haulTotal()))}</div>
       <div class="box"><h3>BAIT</h3><div class="list">
         <div class="row"><div class="name">Shell scraps<small>Free. Picked off the rocks.</small></div><div class="price">∞</div></div>
@@ -2576,13 +2659,16 @@ function renderSheet() {
         <div class="row">${icon('pail:' + S.pail)}<div class="name" style="flex:1">${bucketOf().name}<small>Room for ${bucketCap()} fish.</small></div></div>
         <div class="row">${icon('boat:' + S.boat)}<div class="name" style="flex:1">${boat.name}<small>Range ${boat.range}.</small></div></div>
         <div class="row"><div class="name">${S.slots} line${S.slots > 1 ? 's' : ''}${S.trophyRig ? ' · trophy rig' : ''}<small>${S.trophyRig ? 'Any line can run as a trophy line.' : 'The trophy rig is sold at the harbor.'}</small></div></div>
-        <div class="row">${icon('weapon:' + S.weapon)}<div class="name" style="flex:1">${WEAPON().name}<small>Hunting. Hold to draw, let go on the mark.</small></div></div>
+        <div class="row">${icon('weapon:' + S.weapon)}<div class="name" style="flex:1">${WEAPON().name}<small>Takes game to ${fmtKg(WEAPON().power)}. ${SHOT[shotOf()].name}${shotOf() !== 'stones' ? ' ×' + S.shot[shotOf()] : ''}${callOf() !== 'none' ? ', ' + CALLS[callOf()].name.toLowerCase() + ' ×' + S.calls[callOf()] : ''}.</small></div></div>
+        <div class="row">${icon('cloak:' + S.cloak)}<div class="name" style="flex:1">${CLOAK().name}<small>${CLOAK().calm < 1 ? `Game takes alarm ${Math.round((1 - CLOAK().calm) * 100)}% slower.` : 'No cloak.'}</small></div></div>
+        <div class="row">${icon('boots:' + S.boots)}<div class="name" style="flex:1">${BOOT().name}<small>${maxSteps()} steps of creeping.</small></div></div>
+        <div class="row">${icon('gamepack:' + S.pack_)}<div class="name" style="flex:1">${PACK().name}<small>Room for ${packCap()} game.</small></div></div>
         ${S.raft ? '' : `<div class="row"><div class="name">Driftwood<small>${T.raftWood} pieces build a raft.</small></div><div class="price">${S.wood}/${T.raftWood}</div></div>`}
       </div></div>`;
     drawIcons(el);
     drawMinis(el); drawFaces(el);
   } else if (sheetKind === 'shop') {
-    const shopIcon = it => it.k === 'rod' ? 'rod:' + RODS[Math.max(...S.rodsOwned.map(id => RODS.findIndex(x => x.id === id))) + 1].id : it.k === 'line' ? 'line:' + LINE_TEST[Math.max(...S.linesOwned.map(id => LINE_TEST.findIndex(x => x.id === id))) + 1].id : it.k === 'pail' ? 'pail:' + BUCKETS[Math.max(...S.pailsOwned.map(id => BUCKETS.findIndex(x => x.id === id))) + 1].id : it.k.startsWith('bait:') ? it.k : it.k === 'boat' ? 'boat:' + (loc().spaceport ? 'starship' : BOATS[BOATS.findIndex(b => b.id === S.boat) + 1].id) : it.k === 'weapon' ? 'weapon:' + WEAPONS[WEAPONS.findIndex(w => w.id === S.weapon) + 1].id : it.k === 'slot' ? 'rig:set' : it.k === 'trig' ? 'rig:trophy' : null;
+    const shopIcon = it => it.k === 'rod' ? 'rod:' + RODS[Math.max(...S.rodsOwned.map(id => RODS.findIndex(x => x.id === id))) + 1].id : it.k === 'line' ? 'line:' + LINE_TEST[Math.max(...S.linesOwned.map(id => LINE_TEST.findIndex(x => x.id === id))) + 1].id : it.k === 'pail' ? 'pail:' + BUCKETS[Math.max(...S.pailsOwned.map(id => BUCKETS.findIndex(x => x.id === id))) + 1].id : it.k.startsWith('bait:') ? it.k : it.k.startsWith('shot:') ? it.k : it.k.startsWith('call:') ? it.k : it.k === 'weapon' ? 'weapon:' + WEAPONS[best(WEAPONS, S.weaponsOwned) + 1].id : it.k === 'cloak' ? 'cloak:' + CLOAKS[best(CLOAKS, S.cloaksOwned) + 1].id : it.k === 'boots' ? 'boots:' + BOOTS[best(BOOTS, S.bootsOwned) + 1].id : it.k === 'gamepack' ? 'gamepack:' + PACKS[best(PACKS, S.packsOwned) + 1].id : it.k === 'boat' ? 'boat:' + (loc().spaceport ? 'starship' : BOATS[BOATS.findIndex(b => b.id === S.boat) + 1].id) : it.k === 'weapon' ? 'weapon:' + WEAPONS[WEAPONS.findIndex(w => w.id === S.weapon) + 1].id : it.k === 'slot' ? 'rig:set' : it.k === 'trig' ? 'rig:trophy' : null;
     const rows = shopItems().map(it => `<div class="row">${shopIcon(it) ? icon(shopIcon(it)) : ''}<div class="name" style="flex:1">${it.name}<small>${it.sub}</small></div><div style="display:grid;gap:4px;justify-items:end"><div class="price">${money(it.price)}</div><button class="buy" data-act="buy" data-k="${it.k}" ${it.locked || S.money < it.price ? 'disabled' : ''}>${it.locked ? 'LOCKED' : 'BUY'}</button></div></div>`).join('');
     const kp = loc().keeper, said = talkLine;
     const board = loc().spaceport ? '' : boardOf(loc()).list.map(b => { const sp = SP[b.id], j = bestInBucket(b.id), have = j >= 0;
@@ -3686,6 +3772,24 @@ const ICON_MASKS = {
         '.....ba....c........', '......ba...c........', '......ba...c........', '.......ba..c........', '........ba.c........', '.........bb.........', '....................', '....................', '....................', '....................'],
   crossbow: ['....................', '....................', '....................', '..bb............bb..', '..bab..........bab..', '...bab........bab...', '....bbbbbbbbbbbb....', '....bccccccccccb....', '........bddb........', '........bddb........',
              '........bddb........', '........bddb........', '........bddb........', '........bddb........', '.......bbddbb.......', '........bddb........', '........bbbb........', '....................', '....................', '....................'],
+  spear: ['....................', '..................bb', '................bbab', '..............bbaa.b', '............bbaa..b.', '..........bbaa...b..', '........bbaa....b...', '.......baa.....b....', '......ba......b.....', '.....ba.......b.....',
+          '....ba.......b......', '...ba.......b.......', '..ba......cc........', '.ba......cc.........', 'ba......cc..........', 'b......cc...........', '......cc............', '....................', '....................', '....................'],
+  blowgun: ['....................', '....................', '....................', '....................', '....................', '....................', '....................', '..bbbbbbbbbbbbbbbb..', '.baaaaaaaaaaaaaaaab.', '.baccccccccccccccab.',
+            '.baaaaaaaaaaaaaaaab.', '..bbbbbbbbbbbbbbbb..', '..............dd....', '.............dd.....', '....................', '....................', '....................', '....................', '....................', '....................'],
+  gun: ['....................', '....................', '....................', '....................', '....................', '....bbbbbbbbbbbbbbb.', '...baaaaaaaaaaaaaaab', '..bacccccccccccccccb', '..bbbbbbbbbbbbbbbbb.', '..baab..............',
+        '..baab..............', '..baab..............', '..baab..............', '...bab..............', '...bab..............', '....bb..............', '....................', '....................', '....................', '....................'],
+  throwstick: ['....................', '....................', '....................', '..........bbb.......', '........bbaaab......', '.......baaaaab......', '......baaab.bb......', '.....baaab..........', '.....baab...........', '....baab............',
+               '....baab............', '...baab.............', '...baab.............', '..baab..............', '..baab..............', '..bab...............', '..bb................', '....................', '....................', '....................'],
+  cloak: ['....................', '.........bb.........', '........baab........', '.......baaaab.......', '......baaaaaab......', '.....baaaaaaaab.....', '.....baaccccaab.....', '....baaaccccaaab....', '....baaaccccaaab....', '...baaaaccccaaaab...',
+          '...baaaaccccaaaab...', '..baaaaaccccaaaaab..', '..baaaaaccccaaaaab..', '.baaaaaaccccaaaaaab.', '.baaaaaaccccaaaaaab.', '.bbbbbbbbbbbbbbbbbb.', '....................', '....................', '....................', '....................'],
+  boots: ['....................', '....................', '....................', '....bbbb............', '....baab............', '....baab............', '....baab.....bbbb...', '....baab.....baab...', '....baab.....baab...', '....baaab....baab...',
+          '....baaaab...baaab..', '....baaaaab..baaaab.', '....bccccccb.bcccccb', '....bbbbbbbb.bbbbbbb', '....................', '....................', '....................', '....................', '....................', '....................'],
+  pack: ['....................', '....................', '.......bbbbbb.......', '......bccccccb......', '.....bc......cb.....', '....bbbbbbbbbbbb....', '...baaaaaaaaaaaab...', '...baaaaaaaaaaaab...', '...baadddddddaaab...', '...baadaaaaadaaab...',
+         '...baadaaaaadaaab...', '...baadddddddaaab...', '...baaaaaaaaaaaab...', '...baaaaaaaaaaaab...', '...baaaaaaaaaaaab...', '....bbbbbbbbbbbb....', '....................', '....................', '....................', '....................'],
+  shot: ['....................', '....................', '.........b..........', '........bab.........', '........bab.........', '.......baaab........', '.......baaab........', '......baaaaab.......', '......baaaaab.......', '.....baaaaaaab......',
+         '.....baaaaaaab......', '....baaabbbaaab.....', '....bbbb.c.bbbb.....', '.........c..........', '.........c..........', '.........c..........', '........ddd.........', '........ddd.........', '....................', '....................'],
+  call: ['....................', '....................', '....................', '....................', '......bbbbbbbbbb....', '.....baaaaaaaaaab...', '....baaccccccccaab..', '....baaaaaaaaaaaab..', '.....baaaaaaaaaab...', '......bbbbbbbaab....',
+         '............baab....', '...........baab.....', '...........bab......', '..........bab.......', '..........bb........', '....................', '....................', '....................', '....................', '....................'],
   boat: ['....................', '.........bb.........', '.........bab........', '.........ba.b.......', '.........ba..b......', '.........baddb......', '.........badddb.....', '.........baddddb....', '.........baddddb....', '.........baddb......',
          '.........bab........', '.........bab........', '..bbbbbbbbabbbbbbbb.', '..baaaaaaaaaaaaaaab.', '...baaaaaaaaaaaaab..', '....bccccccccccccb..', '.....bbbbbbbbbbbb...', '....................', '....................', '....................'],
 };
@@ -3698,7 +3802,15 @@ const ICON_PAL = {
   'line:l10': ['spool', { a: '#8a6a44', b: '#3a2a1a', c: '#d8d8d8' }], 'line:l20': ['spool', { a: '#8a6a44', b: '#3a2a1a', c: '#ffffff' }], 'line:l40': ['spool', { a: '#8a6a44', b: '#3a2a1a', c: '#80c060' }], 'line:l80': ['spool', { a: '#8a6a44', b: '#3a2a1a', c: '#4a90e0' }],
   'line:l150': ['spool', { a: '#8a6a44', b: '#3a2a1a', c: '#f0a030' }], 'line:l300': ['spool', { a: '#8a6a44', b: '#3a2a1a', c: '#d7362a' }], 'line:l600': ['spool', { a: '#6a6a78', b: '#2a2a34', c: '#9a9aa8' }], 'line:l2000': ['spool', { a: '#30305a', b: '#101028', c: '#f0c050' }],
   'pail:pail': ['pail', { a: '#8a6a44', b: '#4a3222', c: '#6a4a2c' }], 'pail:basket': ['basket', { a: '#c8a860', b: '#6a4a20', c: '#a08040' }], 'pail:barrel': ['barrel', { a: '#8a5a34', b: '#3a2212', c: '#5a5a60' }], 'pail:chest': ['chest', { a: '#e8f4ff', b: '#4a6a8a', c: '#a0d0f0', d: '#ffffff' }], 'pail:hold': ['hold', { a: '#5a3a22', b: '#2a1a0e', c: '#1a2838', d: '#f0c050' }],
-  'weapon:sling': ['sling', { a: '#8a6a44', b: '#4a3222', c: '#5a4a3a' }], 'weapon:bow': ['bow', { a: '#8a6a44', b: '#4a3222', c: '#e0e0e0', d: '#d8d0c0' }], 'weapon:crossbow': ['crossbow', { a: '#5a3a22', b: '#2a1a0e', c: '#8a8a98', d: '#8a6a44' }],
+  'weapon:sling': ['sling', { a: '#8a6a44', b: '#4a3222', c: '#5a4a3a' }], 'weapon:throwstick': ['throwstick', { a: '#a07a4a', b: '#4a3222' }], 'weapon:shortbow': ['bow', { a: '#a07a4a', b: '#4a3222', c: '#e0e0e0', d: '#c8b890' }], 'weapon:bow': ['bow', { a: '#8a6a44', b: '#4a3222', c: '#e0e0e0', d: '#d8d0c0' }],
+  'weapon:blowgun': ['blowgun', { a: '#8a9a60', b: '#3a4a28', c: '#c8d0a0', d: '#e04040' }], 'weapon:atlatl': ['spear', { a: '#a07a4a', b: '#4a3222', c: '#8a8a98' }], 'weapon:longbow': ['bow', { a: '#6a4a2a', b: '#2a1a0e', c: '#f0f0f0', d: '#d7362a' }], 'weapon:crossbow': ['crossbow', { a: '#5a3a22', b: '#2a1a0e', c: '#8a8a98', d: '#8a6a44' }],
+  'weapon:recurve': ['bow', { a: '#3a2a1a', b: '#1a1008', c: '#f0e0a0', d: '#f0c050' }], 'weapon:heavyxbow': ['crossbow', { a: '#3a3a44', b: '#1a1a20', c: '#b8c0c8', d: '#5a3a22' }], 'weapon:harpoongun': ['spear', { a: '#8a8a98', b: '#3a3a44', c: '#5a3a22' }], 'weapon:musket': ['gun', { a: '#5a3a22', b: '#2a1a0e', c: '#8a8a98' }],
+  'weapon:rifle': ['gun', { a: '#3a2a1a', b: '#1a1008', c: '#c0c8d0' }], 'weapon:stariron': ['bow', { a: '#30305a', b: '#101028', c: '#a0e0ff', d: '#ffffff' }],
+  'shot:stones': ['shot', { a: '#8a8a90', b: '#4a4a50', c: '#6a5a4a', d: '#8a8a90' }], 'shot:flint': ['shot', { a: '#4a4a50', b: '#1a1a20', c: '#8a6a44', d: '#c8c0b0' }], 'shot:barbed': ['shot', { a: '#8a8a98', b: '#3a3a44', c: '#8a6a44', d: '#d7362a' }], 'shot:poison': ['shot', { a: '#6ab040', b: '#2a4a18', c: '#8a6a44', d: '#c0ff60' }], 'shot:silver': ['shot', { a: '#e8e8f0', b: '#6a6a78', c: '#8a6a44', d: '#ffffff' }],
+  'call:none': ['call', { a: '#5a5a60', b: '#2a2a30', c: '#4a4a50' }], 'call:birdcall': ['call', { a: '#a07a4a', b: '#4a3222', c: '#f0e0a0' }], 'call:rattle': ['call', { a: '#c8a860', b: '#6a4a20', c: '#3a2a1a' }], 'call:musk': ['call', { a: '#6a4a3a', b: '#2a1a0e', c: '#c04040' }],
+  'cloak:none': ['cloak', { a: '#4a6a7a', b: '#2a3a44', c: '#e8dcc8' }], 'cloak:hide': ['cloak', { a: '#8a6a44', b: '#4a3222', c: '#c8a870' }], 'cloak:moss': ['cloak', { a: '#5a7a3a', b: '#2a4a1a', c: '#9ab060' }], 'cloak:ghillie': ['cloak', { a: '#6a7a40', b: '#3a4a20', c: '#8a6a44' }], 'cloak:shadow': ['cloak', { a: '#2a2a3a', b: '#101018', c: '#4a4a6a' }],
+  'boots:bare': ['boots', { a: '#3a3a44', b: '#1a1a20', c: '#5a5a66' }], 'boots:soft': ['boots', { a: '#8a6a44', b: '#4a3222', c: '#5a3a22' }], 'boots:moccasin': ['boots', { a: '#c8a060', b: '#6a4a20', c: '#e8d0a0' }], 'boots:feather': ['boots', { a: '#e8e8f0', b: '#6a6a78', c: '#a0e0ff' }],
+  'gamepack:satchel': ['pack', { a: '#8a6a44', b: '#4a3222', c: '#5a3a22', d: '#6a4a2c' }], 'gamepack:gamebag': ['pack', { a: '#6a7a40', b: '#2a3a1a', c: '#5a3a22', d: '#8a9a60' }], 'gamepack:pack': ['pack', { a: '#5a4a3a', b: '#2a1a0e', c: '#3a2a1a', d: '#c8a060' }], 'gamepack:sled': ['pack', { a: '#a07a4a', b: '#4a3222', c: '#8a8a98', d: '#e8e8f0' }], 'gamepack:wagon': ['pack', { a: '#3a3a44', b: '#1a1a20', c: '#8a6a44', d: '#f0c050' }],
   'boat:none': ['boat', { a: '#5a3a22', b: '#2a1a0e', c: '#3e2816', d: '#5a3a22' }], 'boat:raft': ['boat', { a: '#8a6a44', b: '#4a3222', c: '#6a4a2c', d: '#8a6a44' }], 'boat:skiff': ['boat', { a: '#6a4a2c', b: '#2a1a0e', c: '#4a3222', d: '#f0ece0' }], 'boat:cutter': ['boat', { a: '#5a3a22', b: '#2a1a0e', c: '#3e2816', d: '#e8e0c8' }],
   'boat:trawler': ['boat', { a: '#3e4a5a', b: '#1a2230', c: '#2a3440', d: '#c0c8d0' }], 'boat:clipper': ['boat', { a: '#2a2a3a', b: '#101018', c: '#4a3a2a', d: '#ffffff' }], 'boat:ironclad': ['boat', { a: '#5a5a66', b: '#2a2a30', c: '#3a3a44', d: '#8a8a96' }], 'boat:starship': ['boat', { a: '#e8e8f0', b: '#4a4a58', c: '#c03030', d: '#a0c0ff' }],
 };
@@ -4888,7 +5000,10 @@ function enterHunt() {
   $('#hName').textContent = l.hunt.name ? l.hunt.name[0].toUpperCase() + l.hunt.name.slice(1) : 'The wild'; $('#hSub').textContent = `${islandLabel(l)} · ${locTitle(l)}`;
   renderHunt(); window.scrollTo(0, 0);
 }
-function gamePool(locId, t) { const ph = phaseAt(t); return GAME.filter(c => c.loc[locId] && (!c.time || c.time.includes(ph))).map(c => [c, c.loc[locId]]); }
+function gamePool(locId, t) { // what is out there at this hour that your weapon can bring down; shot and calls tilt it toward the rarer
+  const ph = phaseAt(t), power = WEAPON().power, luck = (SHOT[shotOf()].luck || 0) + (CALLS[callOf()].luck || 0);
+  return GAME.filter(c => c.loc[locId] && (!c.time || c.time.includes(ph)) && c.kg[0] <= power).map(c => [c, c.loc[locId] * (1 + gameRank(c, locId) * luck * 0.5)]);
+}
 function rollGame() {
   const p = gamePool(S.loc, now()); if (!p.length) return null;
   const tot = p.reduce((a, x) => a + x[1], 0); let r = Math.random() * tot, c = p[p.length - 1][0];
@@ -4899,8 +5014,11 @@ function rollGame() {
 function startStalk() {
   if (HU && HU.phase !== 'idle') return;
   const roll = rollGame(); if (!roll) { toast('Nothing stirs here at this hour.'); return; }
-  const winds = ['face', 'cross', 'cross', 'back'];
-  HU = { phase: 'wait', at: now() + rnd(T_HUNT.wait[0], T_HUNT.wait[1]), roll, tx: rnd(0.18, 0.82), ph: rnd(0, 6), hold: false, breath: 1, flee: 0, wind: winds[Math.floor(Math.random() * winds.length)], alert: 0, steps: 0, look: false, lookAt: 0 };
+  const winds = ['face', 'cross', 'cross', 'back'], call = CALLS[callOf()], shot = SHOT[shotOf()];
+  if (callOf() !== 'none') S.calls[callOf()]--; // a call is spent on the stalk
+  const wait = rnd(T_HUNT.wait[0], T_HUNT.wait[1]) * (call.wait || 1) * (S.scattered > now() ? (WEAPON().loud || 1.5) : 1); S.scattered = 0;
+  HU = { phase: 'wait', at: now() + wait, roll, tx: rnd(0.18, 0.82), ph: rnd(0, 6), hold: false, breath: 1, flee: 0, wind: winds[Math.floor(Math.random() * winds.length)], alert: 0, steps: call.near || 0, look: false, lookAt: 0, shot: shotOf(), call: callOf(), calm: CLOAK().calm * (shot.calm || 1) };
+  save();
   renderHunt();
 }
 function stepHunt(dt, t) {
@@ -4909,7 +5027,7 @@ function stepHunt(dt, t) {
   if (HU.phase === 'seen') {
     const c = HU.roll.c, period = 1.5 - 0.95 * c.diff; HU.ph += (Math.PI * 2 / period) * dt * (HU.hold ? 0.55 : 1);
     if (HU.hold) { HU.breath -= dt * 1000 / T_HUNT.breath; if (HU.breath <= 0) { HU.hold = false; loose(true); return; } }
-    HU.alert += dt * 1000 / (T_HUNT.alertMs[0] - T_HUNT.alertMs[1] * c.diff); // it gets restless on its own
+    HU.alert += dt * 1000 / (T_HUNT.alertMs[0] - T_HUNT.alertMs[1] * c.diff) * HU.calm; // it gets restless on its own, slower under a cloak or a poisoned dart
     if (!HU.look && t >= HU.lookAt) { HU.look = true; HU.lookEnd = t + T_HUNT.lookFor; renderHunt(); } else if (HU.look && t >= HU.lookEnd) { HU.look = false; HU.lookAt = t + rnd(T_HUNT.lookEvery[0], T_HUNT.lookEvery[1]); renderHunt(); }
     if (HU.alert >= 1) { bolt_('It caught your scent.'); return; }
     const aim = 0.5 + 0.5 * Math.sin(HU.ph), band = bandNow();
@@ -4922,8 +5040,8 @@ function stepHunt(dt, t) {
 const bandNow = () => WEAPON().acc * (1.15 - HU.roll.c.diff) * (1 + T_HUNT.nearBand * HU.steps);
 // creep a step closer: the band widens, the animal's alertness jumps by its skittishness, the wind, and whether it is looking
 function creep() {
-  if (!HU || HU.phase !== 'seen' || HU.steps >= T_HUNT.maxSteps || HU.hold) return;
-  const c = HU.roll.c, cost = (T_HUNT.creepCost[0] + T_HUNT.creepCost[1] * c.diff) * T_HUNT.wind[HU.wind] * (HU.look ? 2 : 1);
+  if (!HU || HU.phase !== 'seen' || HU.steps >= maxSteps() || HU.hold) return;
+  const c = HU.roll.c, cost = (T_HUNT.creepCost[0] + T_HUNT.creepCost[1] * c.diff) * T_HUNT.wind[HU.wind] * (HU.look ? 2 : 1) * HU.calm * (WEAPON().quiet || 1); // a cloak and a quiet weapon make every step cheaper
   HU.steps++; HU.alert += cost;
   if (HU.alert >= 1) { bolt_(HU.look ? 'It saw you move.' : 'It caught your scent.'); return; }
   renderHunt();
@@ -4931,16 +5049,19 @@ function creep() {
 function loose(shaky) {
   if (!HU || HU.phase !== 'seen') return;
   const c = HU.roll.c, aim = 0.5 + 0.5 * Math.sin(HU.ph), band = bandNow() * (shaky ? 0.4 : 1);
+  if (HU.shot !== 'stones') S.shot[HU.shot] = Math.max(0, (S.shot[HU.shot] || 0) - 1); // the shot is spent, hit or miss
+  if (WEAPON().loud) S.scattered = now() + 60000; // a loud shot clears the ground for a while
   if (Math.abs(aim - HU.tx) <= band) take(); else { HU.phase = 'miss'; $('#hbar').classList.add('miss'); toast(shaky ? 'Your arm shook. It bolted.' : 'Wide. It bolted.'); setTimeout(() => { if (HU) { HU.phase = 'idle'; $('#hbar').classList.remove('miss'); renderHunt(); } }, 900); renderHunt(); }
 }
 function bolt_(why) { HU.phase = 'miss'; toast(`${why || 'It caught your scent.'} The ${HU.roll.c.name.toLowerCase()} is gone.`); setTimeout(() => { if (HU) { HU.phase = 'idle'; renderHunt(); } }, 900); renderHunt(); }
 function take() {
-  const { c, kg } = HU.roll, tags = [], value = Math.round(HU.roll.value * (1 + T_HUNT.nearWorth * HU.steps)); // a close shot is a clean one
-  if (HU.steps >= T_HUNT.maxSteps) tags.push('Point blank');
+  const { c, kg } = HU.roll, tags = [], value = Math.round(HU.roll.value * (1 + T_HUNT.nearWorth * HU.steps) * (SHOT[HU.shot].worth || 1)); // a close shot is a clean one; barbed heads pay better
+  if (HU.steps >= maxSteps()) tags.push('Point blank');
+  if (HU.shot !== 'stones') tags.push(SHOT[HU.shot].name);
   const gx = S.gindex[c.id] || (S.gindex[c.id] = { n: 0, best: 0 });
   if (gx.n === 0) tags.push('New species'); if (kg > gx.best) { if (gx.n > 0) tags.push('New record'); gx.best = kg; } gx.n++;
   let line = '';
-  if (S.pack.length < T.packCap) { S.pack.push({ id: c.id, kg, value }); line = `Into the bag. ${S.pack.length}/${T.packCap}.`; } else line = 'The bag is full. You leave it for the gulls.';
+  if (S.pack.length < packCap()) { S.pack.push({ id: c.id, kg, value }); line = `Into the bag. ${S.pack.length}/${packCap()}.`; } else line = 'The bag is full. You leave it for the gulls.';
   HU.phase = 'taken'; $('#hbar').classList.add('hit'); save(); renderHunt();
   showTaken(c, kg, value, tags, line);
   setTimeout(() => { if (HU) { HU.phase = 'idle'; $('#hbar').classList.remove('hit'); renderHunt(); } }, 600);
@@ -4961,12 +5082,13 @@ function showTaken(c, kg, value, tags, line) {
 }
 function renderHunt() {
   if (MODE !== 'hunt') return;
-  $('#hMoney').textContent = money(S.money); $('#hBag').textContent = `Bag ${S.pack.length}/${T.packCap}`;
+  $('#hMoney').textContent = money(S.money); $('#hBag').textContent = `Bag ${S.pack.length}/${packCap()}`;
   const box = $('#hbox'), ph = HU ? HU.phase : 'idle', w = WEAPON();
-  if (ph === 'idle') { $('#hNote').innerHTML = `<b>${w.name}</b> · wait, creep, draw, loose`; box.innerHTML = `<div class="note">${loc().hunt.name ? 'Quiet. Something is out there. The wind will tell you how close you can get.' : ''}</div><button class="cta" data-act="stalk">Wait for a sign</button>`; $('#hband').style.width = '0'; }
+  if (ph === 'idle') { const sh = SHOT[shotOf()], ca = CALLS[callOf()]; $('#hNote').innerHTML = `<b>${w.name}</b> · wait, creep, draw, loose`;
+    box.innerHTML = `<div class="rigrow"><div class="rigsum"><div class="l1">${w.name} · ${sh.short}${shotOf() !== 'stones' ? ' ×' + S.shot[shotOf()] : ''}${callOf() !== 'none' ? ` · ${ca.short} ×${S.calls[callOf()]}` : ''}</div><div class="l2">Takes game to ${fmtKg(w.power)} · ${maxSteps()} steps${CLOAK().id !== 'none' ? ' · ' + CLOAK().name.toLowerCase() : ''} · bag ${S.pack.length}/${packCap()}</div></div><button class="rigbtn" data-act="open" data-k="kit">Change kit</button></div><div class="note">${loc().hunt.name ? 'Quiet. Something is out there. The wind will tell you how close you can get.' : ''}</div><button class="cta" data-act="stalk">Wait for a sign</button>`; $('#hband').style.width = '0'; }
   else if (ph === 'wait') { $('#hNote').innerHTML = `<b>Still.</b> Wind ${WIND_NAME[HU.wind]}.`; box.innerHTML = `<div class="note">Keep low. Something will show.</div><button class="cta alt" data-act="leavehunt">Give up</button>`; }
-  else if (ph === 'seen') { const c = HU.roll.c, far = HU.steps < T_HUNT.maxSteps;
-    $('#hNote').innerHTML = `<b>${c.name}</b> · ${fmtKg(HU.roll.kg)} · <span class="${HU.look ? 'look' : ''}">${HU.look ? 'head up!' : DIST_NAME[HU.steps]}</span> · wind ${WIND_NAME[HU.wind]}`;
+  else if (ph === 'seen') { const c = HU.roll.c, far = HU.steps < maxSteps();
+    $('#hNote').innerHTML = `<b>${c.name}</b> · ${fmtKg(HU.roll.kg)} · <span class="${HU.look ? 'look' : ''}">${HU.look ? 'head up!' : distName(HU.steps)}</span> · wind ${WIND_NAME[HU.wind]}`;
     box.innerHTML = `<div class="note">${HU.look ? 'It is looking. Do not move.' : far ? 'Creep closer for a wider band, or draw now. Every step it may catch your scent.' : 'Point blank. Draw.'}</div>
       <div class="meters"><div class="meter"><span class="lbl">ALERT</span><div class="hbar thin"><div class="hband fill alert" id="halert" style="width:${(Math.min(1, HU.alert) * 100).toFixed(0)}%"></div></div></div><div class="meter"><span class="lbl">BREATH</span><div class="hbar thin"><div class="hband fill breath" id="hbreath" style="width:${(HU.breath * 100).toFixed(0)}%"></div></div></div></div>
       <div class="acts2"><button class="cta alt" data-act="creep" ${far && !HU.hold ? '' : 'disabled'}>Creep closer</button><button class="cta hit" id="hLoose">Draw</button></div>`; }
@@ -5486,7 +5608,7 @@ document.addEventListener('click', e => {
   if (a === 'sel') { S.sel = i; save(); render(); }
   else if (a === 'rig') { const L = S.lines[S.sel]; L.rig = k; if (k === 'trophy' && L.bait === 'scraps') L.bait = S.bait.shrimp > 0 ? 'shrimp' : S.bait.squid > 0 ? 'squid' : 'scraps'; save(); render(); renderSheet(); }
   else if (a === 'bait') { S.lines[S.sel].bait = k; save(); render(); renderSheet(); }
-  else if (a === 'equip') { const [kind, id] = k.split(':'); if (kind === 'rod' && S.rodsOwned.includes(id)) S.rod = id; else if (kind === 'line' && S.linesOwned.includes(id)) S.line = id; else if (kind === 'pail' && S.pailsOwned.includes(id)) { if (S.bucket.length > (BUCKETS.find(b => b.id === id) || {}).cap) { toast('Too many fish in the bucket for that one.'); return; } S.pail = id; } save(); render(); renderSheet(); }
+  else if (a === 'equip') { const [kind, id] = k.split(':'); if (kind === 'rod' && S.rodsOwned.includes(id)) S.rod = id; else if (kind === 'line' && S.linesOwned.includes(id)) S.line = id; else if (kind === 'pail' && S.pailsOwned.includes(id)) { if (S.bucket.length > (BUCKETS.find(b => b.id === id) || {}).cap) { toast('Too many fish in the bucket for that one.'); return; } S.pail = id; } else if (kind === 'weapon' && S.weaponsOwned.includes(id)) S.weapon = id; else if (kind === 'cloak' && S.cloaksOwned.includes(id)) S.cloak = id; else if (kind === 'boots' && S.bootsOwned.includes(id)) S.boots = id; else if (kind === 'gamepack' && S.packsOwned.includes(id)) { if (S.pack.length > (PACKS.find(b => b.id === id) || {}).cap) { toast('Too much in the bag for that one.'); return; } S.pack_ = id; } save(); render(); renderSheet(); if (MODE === 'hunt') renderHunt(); }
   else if (a === 'cyclerig') { const L = S.lines[S.sel]; if (L && L.phase === 'idle') { cycleRig(L); save(); render(); } }
   else if (a === 'cyclebait') { const L = S.lines[S.sel]; if (L && L.phase === 'idle') { cycleBait(L); save(); render(); } }
   else if (a === 'change') { rigOpen = !rigOpen; render(); }
@@ -5513,6 +5635,8 @@ document.addEventListener('click', e => {
   else if (a === 'sail') sail(mapSel);
   else if (a === 'buy') buy(k);
   else if (a === 'bounty') claimBounty(k);
+  else if (a === 'shot') { if (k === 'stones' || S.shot[k] > 0) { S.shotSel = k; save(); renderSheet(); if (MODE === 'hunt') renderHunt(); } }
+  else if (a === 'call') { if (k === 'none' || S.calls[k] > 0) { S.callSel = k; save(); renderSheet(); if (MODE === 'hunt') renderHunt(); } }
   else if (a === 'new') newVoyage();
   else if (a === 'continue') fadeTo(enterGame);
   else if (a === 'skip') { e.stopPropagation(); if (MODE === 'intro') endIntro(); else if (MODE === 'sail') finishSail(); else endCut(); }
