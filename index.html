@@ -2117,7 +2117,7 @@ function freshState() {
     v: 13, started: false, loc: 'shoal', money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 1, trophyRig: false,
     line: 'l10', pail: 'pail', // the line's test weight and the bucket in use (both bought in the shop)
     rodsOwned: ['stick'], linesOwned: ['l10'], pailsOwned: ['pail'], // everything bought stays in the rig sheet and can be put back on
-    heldRod: true, noRod: false, // the storm's one question; let go and you wash up without a rod until you whittle one from a plank
+    heldRod: true, // the storm's one question; let go and the sea takes you, and the voyage starts over
     order: ['shoal'], // islands in the order you first landed on them; the HUD counts them (Island 1, Island 2…)
     pending: null, // a landed catch waiting for Sell / Keep / Release; survives a reload
     prologue: false, proCaught: 0, // the calm-sea opening: rod only, two fish, then the storm
@@ -2140,6 +2140,7 @@ function save() { clearTimeout(saveT); saveT = setTimeout(saveNow, 150); }
 function load(seed) {
   let d = seed && seed.v ? seed : null;
   if (!d) { try { const raw = localStorage.getItem(KEY); if (raw) d = JSON.parse(raw); } catch (e) {} }
+  if (d && d.noRod) { delete d.noRod; const L0 = d.lines && d.lines[0]; if (L0 && L0.phase === 'idle') L0.rig = 'hand'; } // the no-rod start is gone: letting go now drowns you
   if (d && d.v === 2) { d.v = 3; d.pending = null; } // v2 -> v3: the catch screen holds the fish until you decide
   if (d && d.v === 3) { // v3 -> v4: the roster became real species; remap ids, drop anything with no species
     const fix = id => ID_MAP_V3[id] || id, ix = {};
@@ -2267,7 +2268,6 @@ const soakBonus = (rig, waitMs) => rig === 'hand' ? 0 : clamp((waitMs / passiveM
 
 function castLine(i) {
   const L = S.lines[i]; if (!L || L.phase !== 'idle') return;
-  if (L.rig === 'hand' && S.noRod) { toast('You let go of the rod. Whittle one from a plank first.'); return; }
   if (L.rig === 'hand' && S.lines.some((o, j) => o && j !== i && o.rig === 'hand' && o.phase !== 'idle')) { toast('One rod at a time. Pull the other one in.'); return; }
   if (L.rig === 'trophy' && BAITS[L.bait].tier < 1) { toast('The trophy line needs shrimp or squid.'); return; }
   if (L.bait !== 'scraps') {
@@ -2521,8 +2521,7 @@ function renderSlots() {
 let rigOpen = false; // the rig and bait pickers are folded behind CHANGE unless you open them
 const RIG_LABEL = { hand: 'ROD', set: 'SET LINE', trophy: 'TROPHY' };
 function baitLabel(k) { return k === 'scraps' ? 'SCRAPS' : BAITS[k].name.toUpperCase() + ' ×' + (S.bait[k] || 0); }
-function rigsFor() { return S.prologue ? ['hand'] : (S.noRod ? [] : ['hand']).concat(['set'], S.trophyRig ? ['trophy'] : []); }
-function whittle() { if (!S.noRod || S.wood < 1) return; S.wood--; S.noRod = false; const L = S.lines[0]; if (L && L.phase === 'idle') L.rig = 'hand'; S.sel = 0; save(); render(); toast('A plank, a knife, an hour. Line 1 is a rod again.'); }
+function rigsFor() { return S.prologue ? ['hand'] : ['hand', 'set'].concat(S.trophyRig ? ['trophy'] : []); }
 function baitsFor(L) { return Object.keys(BAITS).filter(k => k === 'scraps' ? L.rig !== 'trophy' : S.bait[k] > 0); }
 function cycleRig(L) { const r = rigsFor(), j = r.indexOf(L.rig); L.rig = r[(j + 1) % r.length]; if (L.rig === 'trophy' && L.bait === 'scraps') L.bait = S.bait.shrimp > 0 ? 'shrimp' : S.bait.squid > 0 ? 'squid' : 'scraps'; }
 function cycleBait(L) { const b = baitsFor(L); if (!b.length) return; const j = b.indexOf(L.bait); L.bait = b[(j + 1) % b.length]; }
@@ -2530,7 +2529,7 @@ function renderAction() {
   const i = S.sel, L = S.lines[i], box = $('#action');
   if (!L) { box.innerHTML = '<div class="note">Pick a line.</div>'; return; }
   if (L.phase === 'idle') {
-    box.innerHTML = `<div class="rigrow"><div class="rigsum"><div class="l1">${RIG_LABEL[L.rig]} · ${baitLabel(L.bait)}</div><div class="l2">${S.noRod ? 'No rod' : rodOf().name} · ${lineOf().name}</div></div>${S.prologue ? '' : '<button class="rigbtn" data-act="open" data-k="rig">Change rig</button>'}</div>
+    box.innerHTML = `<div class="rigrow"><div class="rigsum"><div class="l1">${RIG_LABEL[L.rig]} · ${baitLabel(L.bait)}</div><div class="l2">${rodOf().name} · ${lineOf().name}</div></div>${S.prologue ? '' : '<button class="rigbtn" data-act="open" data-k="rig">Change rig</button>'}</div>
       <div class="note">${S.prologue && S.casts === 0 ? 'Cast the rod. When the float dips, tap Reel, then keep the fish inside the net.' : rigNote(L)}</div>
       <button class="cta go ${S.prologue ? 'tut' : ''}" data-act="cast" data-i="${i}">${L.rig === 'hand' ? 'Cast' : 'Set the line'}</button>`;
   } else if (L.phase === 'waiting') {
@@ -2546,7 +2545,7 @@ function bucketTotal() { return S.bucket.reduce((a, b) => a + b.value, 0); }
 function renderExtra() {
   let h = '';
   if (S.loc === 'shoal' && !S.raft) {
-    h += `<div class="box"><div class="row"><div>Driftwood <b>${S.wood}/${T.raftWood}</b> for a raft</div><div class="note">no market here</div></div>${S.noRod ? `<div class="note">No rod. You let it go. One plank whittles a new one.</div><button class="cta ${S.wood >= 1 ? '' : 'alt'}" data-act="whittle" ${S.wood >= 1 ? '' : 'disabled'}>Whittle a rod</button>` : ''}${S.wood >= T.raftWood ? '<button class="cta" data-act="build">Build the raft</button>' : ''}</div>`;
+    h += `<div class="box"><div class="row"><div>Driftwood <b>${S.wood}/${T.raftWood}</b> for a raft</div><div class="note">no market here</div></div>${S.wood >= T.raftWood ? '<button class="cta" data-act="build">Build the raft</button>' : ''}</div>`;
   }
   const total = haulTotal(), cnt = S.bucket.length + S.pack.length;
   h += `<div class="bar"><button class="tool" data-act="open" data-k="inv"><span class="n">INVENTORY</span><span class="v">${S.bucket.length}/${bucketCap()} fish${S.pack.length ? ' · ' + S.pack.length + ' game' : ''}${!S.prologue && (S.raft || S.loc !== 'shoal') ? ' · ' + money(total) : ''}</span></button>`;
@@ -2604,9 +2603,9 @@ function renderSheet() {
     const gearRows = (list, owned, cur, kind, sub) => list.filter(x => owned.includes(x.id)).map(x => `<div class="row ${x.id === cur ? 'sel' : ''}">${icon(kind + ':' + x.id)}<div class="name" style="flex:1">${x.name}<small>${sub(x)}</small></div>${x.id === cur ? '<div class="here">in use</div>' : `<button class="buy" data-act="equip" data-k="${kind}:${x.id}">USE</button>`}</div>`).join('');
     el.innerHTML = `<div class="head"><h2>Rig · Line ${S.sel + 1}</h2><button class="x" data-act="close">✕</button></div>
       ${busy ? '<div class="note">This line is in the water. Pull it in to change its rig or bait.</div>' : ''}
-      <div class="box"><h3>RIG</h3>${seg(rigs, L && L.rig, 'rig', k => (k === 'trophy' && !S.trophyRig) || (k === 'hand' && S.noRod))}<div class="note">${S.noRod ? 'No rod: you let it go in the storm. Whittle one from a plank.' : L && L.rig === 'hand' ? 'Tap Reel on the hit, then keep the fish in the net. Rarer fish take a better rod.' : L && L.rig === 'set' ? 'Soaks until something takes it, a chance every second, even while you are away. A quick hook is a small fish; a long soak grows it. No fight.' : 'Soaks for minutes, a chance every second. Hooks big fish, bigger the longer it waits. Needs shrimp or squid. You still land it.'}${S.trophyRig ? '' : ' The trophy rig is sold at the harbor.'}</div></div>
+      <div class="box"><h3>RIG</h3>${seg(rigs, L && L.rig, 'rig', k => k === 'trophy' && !S.trophyRig)}<div class="note">${L && L.rig === 'hand' ? 'Tap Reel on the hit, then keep the fish in the net. Rarer fish take a better rod.' : L && L.rig === 'set' ? 'Soaks until something takes it, a chance every second, even while you are away. A quick hook is a small fish; a long soak grows it. No fight.' : 'Soaks for minutes, a chance every second. Hooks big fish, bigger the longer it waits. Needs shrimp or squid. You still land it.'}${S.trophyRig ? '' : ' The trophy rig is sold at the harbor.'}</div></div>
       <div class="box"><h3>BAIT</h3>${seg(Object.entries(BAITS).map(([k, b]) => [k, k === 'scraps' ? 'Scraps' : b.name + ' ×' + (S.bait[k] || 0)]), L && L.bait, 'bait', k => k !== 'scraps' && !(S.bait[k] > 0))}<div class="note">Scraps are free. Better bait is sold in the shops: it gates the bigger and rarer fish and tilts every cast toward them.</div></div>
-      <div class="box"><h3>RODS</h3><div class="list">${S.noRod ? '<div class="note">Lost in the storm. A plank of driftwood whittles a new one.</div>' : gearRows(RODS, S.rodsOwned, S.rod, 'rod', r => `Net ${Math.round(r.bar * 100)}% of the track${r.luck ? ` · luck ${r.luck}` : ''}.`)}</div></div>
+      <div class="box"><h3>RODS</h3><div class="list">${gearRows(RODS, S.rodsOwned, S.rod, 'rod', r => `Net ${Math.round(r.bar * 100)}% of the track${r.luck ? ` · luck ${r.luck}` : ''}.`)}</div></div>
       <div class="box"><h3>LINE</h3><div class="list">${gearRows(LINE_TEST, S.linesOwned, S.line, 'line', x => `Holds fish to ${fmtKg(lbKg(x.lb))}. Heavier ones will not bite.`)}</div></div>
       <div class="box"><h3>BUCKET</h3><div class="list">${gearRows(BUCKETS, S.pailsOwned, S.pail, 'pail', x => `Room for ${x.cap} fish.`)}</div></div>
       <div class="box"><h3>ALSO</h3><div class="list"><div class="row"><div class="name">${S.slots} line${S.slots > 1 ? 's' : ''}${S.trophyRig ? ' · trophy rig' : ''}<small>${S.slots < 4 ? 'More lines are sold in the shops.' : 'Every line you can run.'}</small></div></div><div class="row">${icon('weapon:' + S.weapon)}<div class="name" style="flex:1">${WEAPON().name}<small>For the hunt. The kit sheet on the hunting ground has the rest.</small></div><button class="buy" data-act="open" data-k="kit">KIT</button></div><div class="row">${icon('boat:' + S.boat)}<div class="name" style="flex:1">${BOATS.find(b => b.id === S.boat).name}<small>Range ${boatRange()}.</small></div></div></div></div>`;
@@ -2661,7 +2660,7 @@ function renderSheet() {
         <div class="row ${S.bait.squid ? '' : 'dim'}"><div class="name">Squid<small>Deep and rare fish take only this.</small></div><div class="price">×${S.bait.squid}</div></div>
       </div></div>
       <div class="box"><h3>GEAR</h3><div class="list">
-        <div class="row">${S.noRod ? '' : icon('rod:' + S.rod)}<div class="name" style="flex:1">${S.noRod ? 'No rod' : rod.name}<small>${S.noRod ? 'Let go in the storm. A plank of driftwood whittles a new one.' : `Net ${Math.round(rod.bar * 100)}% of the track${rod.luck ? `, luck ${rod.luck}` : ''}.`}</small></div></div>
+        <div class="row">${icon('rod:' + S.rod)}<div class="name" style="flex:1">${rod.name}<small>Net ${Math.round(rod.bar * 100)}% of the track${rod.luck ? `, luck ${rod.luck}` : ''}.</small></div></div>
         <div class="row">${icon('line:' + S.line)}<div class="name" style="flex:1">${lineOf().name}<small>Holds fish to ${fmtKg(lineKg())}. Heavier ones will not bite.</small></div></div>
         <div class="row">${icon('pail:' + S.pail)}<div class="name" style="flex:1">${bucketOf().name}<small>Room for ${bucketCap()} fish.</small></div></div>
         <div class="row">${icon('boat:' + S.boat)}<div class="name" style="flex:1">${boat.name}<small>Range ${boat.range}.</small></div></div>
@@ -4291,6 +4290,7 @@ const SPRITES = {
     '......bbb...ss.ttttttttttPPPPPPPss',
     '..........s.....................SS',
   ],
+  hat: ['.....hhhhhh.....', '....hhhhhhhh....', '..hhhhHHHHhhhh..', '..HHHHHHHHHHHH..'], // what the sea gives back
   float: [
     '.....hhhhhh.....',
     '....hhhhhhhh....',
@@ -5250,25 +5250,61 @@ function beachScene(t, h, mode) {
     blit(g, maskC('gullB', '#f4f4f0', 1), shoreW - 44, (sandTop(shoreW - 40) | 0) - 14); g.fillStyle = '#f0a040'; g.fillRect(shoreW - 40, (sandTop(shoreW - 40) | 0) - 12, 1, 1);
   }
 }
+// Let go of the rod and he goes under: the sea keeps him, the hat comes up alone, and the voyage starts over.
+function drawSink(p, t) {
+  drawSkyBase(23.6, t, { noSun: true, noClouds: true, noBirds: true, noStars: true });
+  g.fillStyle = 'rgba(2,4,12,0.45)'; g.fillRect(0, 0, W, SURF);
+  for (let x = 0; x < W; x++) { const sy = surfStorm(x, t) | 0; g.fillStyle = '#10243c'; g.fillRect(x, sy, 1, H - sy); g.fillStyle = '#2a4b6c'; g.fillRect(x, sy, 1, 1); }
+  for (let y = SURF; y < H; y += 2) { g.fillStyle = `rgba(2,6,16,${Math.min(0.85, (y - SURF) / (H - SURF) * 0.9 + p * 0.3).toFixed(2)})`; g.fillRect(0, y, W, 2); }
+  for (let k = 0; k < 3; k++) { const sx = (W * 0.3 + k * W * 0.18) | 0; g.fillStyle = `rgba(120,160,200,${(0.07 * (1 - p)).toFixed(3)})`; g.fillRect(sx, SURF, 6 + k * 2, H - SURF); }
+  const fx = (W * 0.5 - 17) | 0, fy = (SURF + 6 + p * (H - SURF) * 0.62 + Math.sin(t / 900) * 1.5) | 0;
+  blit(g, sprite('lie'), fx, fy, true);
+  g.fillStyle = `rgba(10,24,44,${(0.35 + p * 0.45).toFixed(2)})`; g.fillRect(fx, fy, 34, 7);
+  const rx = (W * 0.5 + 10 + p * 30) | 0, ry = (SURF + 10 - p * 6 + Math.sin(t / 700) * 2) | 0; bres(g, rx, ry, rx + 18, ry - 4, '#7a5230'); // the rod drifts off alone
+  for (let k = 0; k < 9; k++) { const u = ((t / 1400 + k * 0.17) % 1), bx = fx + 4 + ((k * 7) % 28), by = fy - u * (fy - SURF); if (by > SURF + 1) { g.fillStyle = 'rgba(200,220,240,0.5)'; g.fillRect(bx, by | 0, 1, 1); } }
+  if (p > 0.88) { g.fillStyle = `rgba(0,0,0,${((p - 0.88) / 0.12).toFixed(2)})`; g.fillRect(0, 0, W, H); }
+}
+function drawKept(p, t) {
+  const h = 6.2 + p * 0.6, nt = drawSkyBase(h, t, {});
+  drawSeaBase(h, t, nt, { noShafts: true });
+  farIsland(4, 80, true);
+  const hx = (W * 0.58 + Math.sin(t / 1500) * 3) | 0, hy = (SURF - 2 + Math.sin(t / 420) * 1.5) | 0;
+  blit(g, sprite('hat'), hx, hy);
+  g.fillStyle = rgba(lerpC(curSky.sea, [255, 255, 255], 0.5), 0.9); g.fillRect(hx - 3, hy + 4, 22, 1);
+  blit(g, maskC('gullB', '#f4f4f0', 1), (W * 0.3 + p * 20) | 0, (SURF * 0.45) | 0);
+  if (p < 0.12) { g.fillStyle = `rgba(0,0,0,${(1 - p / 0.12).toFixed(2)})`; g.fillRect(0, 0, W, H); }
+  if (p > 0.8) { g.fillStyle = `rgba(0,0,0,${((p - 0.8) / 0.2 * 0.85).toFixed(2)})`; g.fillRect(0, 0, W, H); }
+}
 const CUT = [
   { dur: 6000, cap: 'No warning.', draw: drawStorm },
-  { dur: 5500, cap: () => S.heldRod === false ? 'He let go.' : 'He did not let go.', draw: drawDrift },
+  { dur: 5500, cap: 'He did not let go.', draw: drawDrift },
   { dur: 5000, cap: 'Morning. Somewhere.', draw: (p, t) => beachScene(t, 6.4 + p * 0.5, 'lie') },
   { dur: 5500, cap: 'Nobody is coming.', draw: (p, t) => beachScene(t, 7.0 + p * 0.5, 'sit') },
 ];
+const CUT_DROWN = [ // the same storm, then the other answer: he let go, and the voyage ends here
+  CUT[0],
+  { dur: 5500, cap: 'He let go.', draw: drawSink },
+  { dur: 6000, cap: 'The sea kept him.', draw: drawKept },
+  { dur: 60000, cap: 'Drowned.<br><small>The voyage starts over.</small>', hint: 'tap to start again', draw: (p, t) => { g.fillStyle = '#04070f'; g.fillRect(0, 0, W, H); } },
+];
+const cutBeats = () => S.heldRod === false ? CUT_DROWN : CUT;
 let MODE = 'title', cut = null, capT = 0;
-function setCap() { const c = $('#cap'), i = cut.i; clearTimeout(capT); c.classList.remove('show'); capT = setTimeout(() => { if (!cut || cut.i !== i) return; const cap = CUT[i].cap; c.innerHTML = typeof cap === 'function' ? cap() : cap; c.classList.add('show'); }, 520); }
+function setCap() { const c = $('#cap'), i = cut.i; clearTimeout(capT); c.classList.remove('show'); capT = setTimeout(() => { if (!cut || cut.i !== i) return; const cap = cutBeats()[i].cap; $('#cutHint').textContent = cutBeats()[i].hint || 'tap to continue'; c.innerHTML = typeof cap === 'function' ? cap() : cap; c.classList.add('show'); }, 520); }
 function startCut() { MODE = 'cut'; cut = { i: 0, t0: performance.now(), asked: false, answered: false }; $('#choice').hidden = true; $('#cutHint').hidden = false; $('#title').hidden = true; $('#game').hidden = true; $('#isle').hidden = true; $('#hunt').hidden = true; $('#cut').hidden = false; setCap(); }
-function cutAdvance() { if (MODE === 'intro') { endIntro(); return; } if (MODE === 'sail') { sailAdvance(); return; } if (!cut) return; if (cut.i === 0 && cut.asked && !cut.answered) return; /* the storm waits for an answer */ cut.i++; if (cut.i >= CUT.length) { endCut(); return; } cut.t0 = performance.now(); setCap(); }
+function cutAdvance() { if (MODE === 'intro') { endIntro(); return; } if (MODE === 'sail') { sailAdvance(); return; } if (!cut) return; if (cut.i === 0 && cut.asked && !cut.answered) return; /* the storm waits for an answer */ cut.i++; if (cut.i >= cutBeats().length) { endCut(); return; } cut.t0 = performance.now(); setCap(); }
 function endCut() {
   cut = null;
   const wasPrologue = S.prologue;
+  if (wasPrologue && S.heldRod === false) { // let go: drowned. The save is wiped and the title offers a new voyage.
+    S = freshState(); saveNow();
+    fadeTo(() => { $('#cut').hidden = true; showTitle(); $('#confirm').textContent = 'He let go of the rod, and the sea kept him. Start a new voyage.'; });
+    return;
+  }
   if (wasPrologue) { // washed up: the boat, the bucket and the skiff are gone. The index remembers the two fish.
     S.prologue = false; S.proCaught = 0; S.loc = 'shoal'; S.spot = 'wreck'; S.boat = 'none'; S.bucket = []; S.money = 0; S.slots = 1; S.sel = 0; S.pending = null;
-    S.noRod = S.heldRod === false; // let go in the storm: set lines only until a plank becomes a rod
-    S.lines = [{ rig: S.noRod ? 'set' : 'hand', bait: 'scraps', phase: 'idle' }, null, null, null]; S.visited = { shoal: true }; saveNow();
+    S.lines = [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, null, null, null]; S.visited = { shoal: true }; saveNow();
   }
-  fadeTo(() => { $('#cut').hidden = true; enterGame(); if (wasPrologue) { toast(S.noRod ? 'The rod is gone. One set line, and whatever it brings up.' : 'One rod, one line. More lines are sold at the first port.'); setTimeout(() => toast(S.noRod ? 'Driftwood comes up on the lines. One plank whittles a rod; six more make a raft.' : 'Driftwood comes up on the lines. Six planks make a raft.'), 3200); } });
+  fadeTo(() => { $('#cut').hidden = true; enterGame(); if (wasPrologue) { toast('One rod, one line. More lines are sold at the first port.'); setTimeout(() => toast('Driftwood comes up on the lines. Six planks make a raft.'), 3200); } });
 }
 function startStorm() { fadeTo(() => { $('#game').hidden = true; $('#isle').hidden = true; startCut(); }); }
 function enterGame() {
@@ -5475,7 +5511,7 @@ function frame(ts) {
     else if (MODE === 'intro') { drawIntro(t); if (ts - introT0 > 3800) endIntro(); }
     else if (MODE === 'sail' && SAIL) { stepFish(dt); drawSail(ts, t); }
     else if (MODE === 'cut' && cut) {
-      const b = CUT[cut.i], p = Math.min(1, (ts - cut.t0) / b.dur);
+      const b = cutBeats()[cut.i], p = Math.min(1, (ts - cut.t0) / b.dur);
       stepFish(dt); b.draw(p, t);
       if (cut.i === 0 && !cut.asked && p >= 0.4) { cut.asked = true; $('#choice').hidden = false; $('#cutHint').hidden = true; } // the one question the storm asks
       if (p >= 1) cutAdvance();
@@ -5634,7 +5670,6 @@ document.addEventListener('click', e => {
   else if (a === 'reel') reelLine(i);
   else if (a === 'haul') haulLine(i);
   else if (a === 'build') buildRaft();
-  else if (a === 'whittle') whittle();
   else if (a === 'sell') sellHaul();
   else if (a === 'open') openSheet(k);
   else if (a === 'close') closeSheet();
