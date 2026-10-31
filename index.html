@@ -432,14 +432,17 @@ const BUCKETS = [
   { id: 'hold',   name: 'Fish hold',    cap: 100, price: 10000 },
 ];
 const BOATS = [
-  { id: 'none',     name: 'No boat',        range: 0, price: 0 },
-  { id: 'raft',     name: 'Driftwood raft', range: 1, price: 0 },
-  { id: 'skiff',    name: 'Skiff',          range: 2, price: 800 },
-  { id: 'cutter',   name: 'Cutter',         range: 3, price: 3500 },
-  { id: 'trawler',  name: 'Trawler',        range: 4, price: 12000 },
-  { id: 'clipper',  name: 'Clipper',        range: 5, price: 40000 },
-  { id: 'ironclad', name: 'Ironclad',       range: 6, price: 120000 },
-  { id: 'starship', name: 'Starship',       range: 7, price: 500000, spaceport: true }, // sold at the spaceport only
+  // range: the island tier the boat can take you to. reach: how far one voyage can go, in chart pixels from where you are
+  // (the world is 240x180, about 30 px to a day's sail), so the farther islands of a tier need the next boat even when the
+  // tier allows them. Every island of tier t is reachable by hopping on boat t (checked headlessly: 42 px is the minimum).
+  { id: 'none',     name: 'No boat',        range: 0, reach: 0,   price: 0 },
+  { id: 'raft',     name: 'Driftwood raft', range: 1, reach: 45,  price: 0 },
+  { id: 'skiff',    name: 'Skiff',          range: 2, reach: 60,  price: 800 },
+  { id: 'cutter',   name: 'Cutter',         range: 3, reach: 80,  price: 3500 },
+  { id: 'trawler',  name: 'Trawler',        range: 4, reach: 105, price: 12000 },
+  { id: 'clipper',  name: 'Clipper',        range: 5, reach: 135, price: 40000 },
+  { id: 'ironclad', name: 'Ironclad',       range: 6, reach: 175, price: 120000 },
+  { id: 'starship', name: 'Starship',       range: 7, reach: 999, price: 500000, spaceport: true }, // sold at the spaceport only
 ];
 const SLOT_PRICES = [0, 60, 150, 450]; // you start with one line; the rest are sold in shops
 // The far end of the world. A keeper on a tier-5+ island mentions the starship at these odds per talk; the chart that finds the
@@ -2419,8 +2422,12 @@ function buildRaft() {
   S.raft = true; S.boat = 'raft'; save(); render();
   showCard(`<h2>Raft built</h2><div class="big">Six planks and some rope.</div><div class="note">Gull Harbor is within reach. Open the map and sail. They buy fish there.</div><div class="note">tap to close</div>`);
 }
+const boatReach = () => (BOATS.find(b => b.id === S.boat) || BOATS[0]).reach;
+const chartDist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const sailDays = l => Math.max(1, Math.min(8, Math.round(chartDist(LOC[S.loc], l) / 30)));
+const withinReach = l => LOC[S.loc] && chartDist(LOC[S.loc], l) <= boatReach();
 function sail(id) {
-  const L = LOC[id]; if (!L || L.locked || L.range > boatRange() || id === S.loc) return;
+  const L = LOC[id]; if (!L || L.locked || L.range > boatRange() || !withinReach(L) || id === S.loc) return;
   let pulled = 0;
   S.lines.forEach(l => { if (l && l.phase !== 'idle') { l.phase = 'idle'; l.c = null; pulled++; } });
   const first = !S.visited[id]; save(); closeSheet();
@@ -2642,22 +2649,23 @@ function closeSheet() { sheetKind = null; $('#sheetWrap').hidden = true; }
 function renderSheet() {
   const el = $('#sheet');
   if (sheetKind === 'map') {
-    const R = boatRange();
+    const R = boatRange(), boat = BOATS.find(b => b.id === S.boat);
     const rows = LOCS.filter(l => mapState(l) !== 'hidden').sort((a, b) => a.range - b.range).map(l => {
       const st = mapState(l), need = BOATS.find(b => b.range === l.range);
       const name = st === 'fog' ? '???' : l.name;
-      const sub = st === 'fog' ? (l.range > R ? 'Land, by the gulls. Needs a ' + (need ? need.name.toLowerCase() : 'bigger boat') + '.' : 'Land, by the gulls. Nobody you know has been.')
-        : st === 'known' ? (l.range > R ? 'Rumored. Needs a ' + (need ? need.name.toLowerCase() : 'bigger boat') + '.' : 'Rumored: ' + l.rumor) : l.blurb;
-      return `<button class="row ${l.id === mapSel ? 'sel' : ''} ${st === 'fog' || l.range > R ? 'dim' : ''}" data-act="node" data-k="${l.id}"><div class="name">${name}<small>${sub}</small></div>${l.id === S.loc ? '<div class="here">you are here</div>' : ''}</button>`;
+      const far = l.id !== S.loc && !withinReach(l), days = l.id === S.loc ? 0 : sailDays(l), dayTxt = days === 1 ? 'a day out' : days + ' days out';
+      const sub = st === 'fog' ? (l.range > R ? 'Land, by the gulls. Needs a ' + (need ? need.name.toLowerCase() : 'bigger boat') + '.' : far ? `Land, by the gulls, ${dayTxt}. Too far for your ${boat.name.toLowerCase()}.` : `Land, by the gulls, ${dayTxt}. Nobody you know has been.`)
+        : st === 'known' ? (l.range > R ? 'Rumored. Needs a ' + (need ? need.name.toLowerCase() : 'bigger boat') + '.' : far ? `Rumored, ${dayTxt}. Too far for your ${boat.name.toLowerCase()}.` : 'Rumored: ' + l.rumor) : (far ? `${dayTxt}: too far for your ${boat.name.toLowerCase()}. ` : '') + l.blurb;
+      return `<button class="row ${l.id === mapSel ? 'sel' : ''} ${st === 'fog' || l.range > R || far ? 'dim' : ''}" data-act="node" data-k="${l.id}"><div class="name">${name}<small>${sub}</small></div>${l.id === S.loc ? '<div class="here">you are here</div>' : ''}</button>`;
     }).join('');
     const sel = LOC[mapSel];
-    const canSail = sel && !sel.locked && sel.range <= R && sel.id !== S.loc && mapState(sel) !== 'hidden';
-    const boat = BOATS.find(b => b.id === S.boat);
+    const tooFar = sel && sel.id !== S.loc && !withinReach(sel);
+    const canSail = sel && !sel.locked && sel.range <= R && !tooFar && sel.id !== S.loc && mapState(sel) !== 'hidden';
     el.innerHTML = `<div class="head"><h2>Chart</h2><button class="x" data-act="close">✕</button></div>
-      <div class="note">Boat: ${boat.name.toLowerCase()} · range ${boat.range}. The world is dark until you sail it. Neighbours of places you have been show as ???; a shopkeeper's rumor lights an island from afar.</div>
+      <div class="note">Boat: ${boat.name.toLowerCase()}${boat.reach ? ` · the ring is how far it can take you in one voyage (about ${Math.max(1, Math.round(boat.reach / 30))} day${Math.round(boat.reach / 30) > 1 ? 's' : ''} of sailing)` : ''}. The world is dark until you sail it. Neighbours of places you have been show as ???; a shopkeeper's rumor lights an island from afar.</div>
       <canvas id="mapcv" width="${MW}" height="${MH}"></canvas>
       <div class="legend">${rows}</div>
-      <button class="cta" data-act="sail" ${canSail ? '' : 'disabled'}>${canSail ? 'Sail to ' + (mapState(sel) === 'fog' ? 'the unknown' : sel.name) : sel && sel.id === S.loc ? 'You are here' : 'Pick a port'}</button>`;
+      <button class="cta" data-act="sail" ${canSail ? '' : 'disabled'}>${canSail ? 'Sail to ' + (mapState(sel) === 'fog' ? 'the unknown' : sel.name) : sel && sel.id === S.loc ? 'You are here' : sel && mapState(sel) !== 'hidden' && sel.range <= R && tooFar ? 'Too far for your ' + boat.name.toLowerCase() : sel && mapState(sel) !== 'hidden' && sel.range > R ? 'Needs a bigger boat' : 'Pick a port'}</button>`;
     drawMap();
     $('#mapcv').addEventListener('click', mapClick);
   } else if (sheetKind === 'rig') { // everything you fish with: this line's rig and bait, and every rod, line and bucket you own
@@ -2672,7 +2680,7 @@ function renderSheet() {
       <div class="box"><h3>RODS</h3><div class="list">${gearRows(RODS, S.rodsOwned, S.rod, 'rod', r => `Net ${Math.round(r.bar * 100)}% of the track${r.luck ? ` · luck ${r.luck}` : ''}.`)}</div></div>
       <div class="box"><h3>LINE</h3><div class="list">${gearRows(LINE_TEST, S.linesOwned, S.line, 'line', x => `Holds fish to ${fmtKg(lbKg(x.lb))}. Heavier ones will not bite.`)}</div></div>
       <div class="box"><h3>BUCKET</h3><div class="list">${gearRows(BUCKETS, S.pailsOwned, S.pail, 'pail', x => `Room for ${x.cap} fish.`)}</div></div>
-      <div class="box"><h3>ALSO</h3><div class="list"><div class="row"><div class="name">${S.slots} line${S.slots > 1 ? 's' : ''}${S.trophyRig ? ' · trophy rig' : ''}<small>${S.slots < 4 ? 'More lines are sold in the shops.' : 'Every line you can run.'}</small></div></div><div class="row">${icon('weapon:' + S.weapon)}<div class="name" style="flex:1">${WEAPON().name}<small>For the hunt. The kit sheet on the hunting ground has the rest.</small></div><button class="buy" data-act="open" data-k="kit">KIT</button></div><div class="row">${icon('boat:' + S.boat)}<div class="name" style="flex:1">${BOATS.find(b => b.id === S.boat).name}<small>Range ${boatRange()}.</small></div></div></div></div>`;
+      <div class="box"><h3>ALSO</h3><div class="list"><div class="row"><div class="name">${S.slots} line${S.slots > 1 ? 's' : ''}${S.trophyRig ? ' · trophy rig' : ''}<small>${S.slots < 4 ? 'More lines are sold in the shops.' : 'Every line you can run.'}</small></div></div><div class="row">${icon('weapon:' + S.weapon)}<div class="name" style="flex:1">${WEAPON().name}<small>For the hunt. The kit sheet on the hunting ground has the rest.</small></div><button class="buy" data-act="open" data-k="kit">KIT</button></div><div class="row">${icon('boat:' + S.boat)}<div class="name" style="flex:1">${BOATS.find(b => b.id === S.boat).name}<small>${boatReach() ? `Reaches tier ${boatRange()} islands within about ${Math.max(1, Math.round(boatReach() / 30))} day${Math.round(boatReach() / 30) > 1 ? 's' : ''} of sailing.` : 'No boat yet.'}</small></div></div></div></div>`;
     drawIcons(el);
   } else if (sheetKind === 'kit') { // everything you hunt with: weapon, shot, call, cloak, boots, bag
     const busy = MODE === 'hunt' && HU && HU.phase !== 'idle';
@@ -5707,6 +5715,8 @@ function drawMap() {
   for (const l of LOCS) for (const k of l.links) { if (!seen[l.id] || !seen[k] || l.id > k) continue; const o = LOC[k]; const strong = seen[l.id] === 'visited' && seen[k] === 'visited';
     m.fillStyle = strong ? '#f4ecd0' : 'rgba(244,236,208,0.45)'; const steps = Math.max(8, Math.hypot(o.x - l.x, o.y - l.y) / 4 | 0); for (let i = 1; i < steps; i += 2) m.fillRect((l.x + (o.x - l.x) * i / steps) | 0, (l.y + (o.y - l.y) * i / steps) | 0, 1, 1); }
   m.drawImage(fogLayer(), 0, 0);
+  const here = LOC[S.loc], reach = boatReach(); // how far this boat goes from here: a dotted ring
+  if (here && reach && reach < 400) { const n = (reach * 6.3) | 0; m.fillStyle = 'rgba(240,192,80,0.75)'; for (let i = 0; i < n; i++) { if (i % 8 >= 5) continue; const a = i / n * Math.PI * 2, x = (here.x + Math.cos(a) * reach) | 0, y = (here.y + Math.sin(a) * reach) | 0; if (x >= 2 && y >= 2 && x < MW - 2 && y < MH - 2) m.fillRect(x, y, 1, 1); } } // dashes of five on, three off, one pixel per step round the circle
   for (const l of LOCS) {
     const st = seen[l.id]; if (!st) continue; const x = l.x, y = l.y;
     if (l.id === 'stars') { m.fillStyle = '#f4ecd0'; m.fillRect(x - 1, y - 4, 2, 9); m.fillRect(x - 4, y - 1, 8, 2); m.fillRect(x - 2, y - 2, 4, 4); }
