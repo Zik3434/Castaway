@@ -2165,29 +2165,29 @@ function freshState() {
 let S = freshState();
 const KEY = 'castaway-proto-v2';
 let saveT = 0;
-const CODE_KEY = 'castaway-code', CODES_KEY = 'castaway-codes', saveKey = code => 'castaway-save-' + code;
+const CODE_KEY = 'castaway-code', saveKey = code => 'castaway-save-' + code;
 const fmtCode = c => c ? String(c).slice(0, 4) + ' ' + String(c).slice(4) : '';
-function usedCodes() { try { return JSON.parse(localStorage.getItem(CODES_KEY) || '[]'); } catch (e) { return []; } }
-function markUsed(code) { try { const u = usedCodes(); if (!u.includes(code)) { u.push(code); localStorage.setItem(CODES_KEY, JSON.stringify(u)); } } catch (e) {} }
 function localSave(code) { try { const raw = localStorage.getItem(saveKey(code)); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } }
 function saveNow() {
   S.saved = Date.now();
-  try { const raw = JSON.stringify(S); localStorage.setItem(KEY, raw); if (S.code) { localStorage.setItem(saveKey(S.code), raw); localStorage.setItem(CODE_KEY, S.code); markUsed(S.code); } } catch (e) {}
+  try { const raw = JSON.stringify(S); localStorage.setItem(KEY, raw); if (S.code) { localStorage.setItem(saveKey(S.code), raw); localStorage.setItem(CODE_KEY, S.code); } } catch (e) {}
   if (S.code) cloudPush();
 }
 // ---- the cloud: one JSON document per code, last write wins ----
 let pushT = 0, cloudState = SYNC.url ? 'idle' : 'off', cloudAt = 0;
 const cloudOn = () => !!SYNC.url, cloudUrl = (code, leaf) => `${SYNC.url.replace(/\/$/, '')}/saves/${code}${leaf ? '/' + leaf : ''}.json`;
 async function cloudGet(code) { const r = await fetch(cloudUrl(code), { cache: 'no-store' }); if (!r.ok) throw new Error('cloud ' + r.status); return r.json(); }
-async function cloudHas(code) { const r = await fetch(cloudUrl(code, 'created'), { cache: 'no-store' }); if (!r.ok) throw new Error('cloud ' + r.status); return (await r.json()) != null; }
+const isLive = d => !!(d && d.started && !d.drowned);
+async function cloudLive(code) { const r = await fetch(cloudUrl(code, 'started'), { cache: 'no-store' }); if (!r.ok) throw new Error('cloud ' + r.status); return (await r.json()) === true; } // a drowned voyage saved started: false
+async function cloudCreated(code) { const r = await fetch(cloudUrl(code, 'created'), { cache: 'no-store' }); if (!r.ok) throw new Error('cloud ' + r.status); return r.json(); }
 async function cloudPut(code, data, keepalive) { const r = await fetch(cloudUrl(code), { method: 'PUT', body: JSON.stringify(data), headers: { 'Content-Type': 'application/json' }, keepalive: !!keepalive }); if (!r.ok) throw new Error('cloud ' + r.status); }
 function cloudPush() { if (!cloudOn()) return; clearTimeout(pushT); pushT = setTimeout(() => cloudFlush(false), SYNC.pushDelay); }
 function cloudFlush(keepalive) {
   if (!cloudOn() || !S.code) return; clearTimeout(pushT); pushT = 0; cloudState = 'saving';
   const code = S.code; return cloudPut(code, S, keepalive).then(() => { cloudState = 'saved'; cloudAt = Date.now(); }).catch(() => { cloudState = 'error'; pushT = setTimeout(() => cloudFlush(false), 15000); }).finally(() => { if (sheetKind === 'menu' && !$('#sheetWrap').hidden) renderSheet(); });
 }
-// Is a code taken anywhere: this device's registry, a save on this device, or the cloud.
-async function codeTaken(code) { if (usedCodes().includes(code) || localSave(code)) return true; if (!cloudOn()) return false; return cloudHas(code); }
+// Is a code taken: a living voyage under it on this device or in the cloud. A drowned voyage frees its code.
+async function codeTaken(code) { if (isLive(localSave(code))) return true; if (!cloudOn()) return false; return cloudLive(code); }
 // The best copy of a code's save: the cloud's when it is newer, else this device's.
 async function fetchSave(code) {
   const mine = localSave(code); let theirs = null;
@@ -5410,8 +5410,8 @@ async function suggestCodes() {
   const found = [], cands = memorableCodes(); let checks = 0;
   for (const c of cands) {
     if (found.length >= 3 || checks >= 14) break;
-    if (usedCodes().includes(c) || localSave(c)) continue;
-    if (cloudOn()) { checks++; try { if (await cloudHas(c)) continue; } catch (e) { break; } }
+    if (isLive(localSave(c))) continue;
+    if (cloudOn()) { checks++; try { if (await cloudLive(c)) continue; } catch (e) { break; } }
     if (run !== suggN) return; found.push(c);
   }
   if (run !== suggN) return;
@@ -5428,15 +5428,17 @@ async function codeGo() {
     if (codeMode === 'enter') {
       const d = await fetchSave(code);
       if (!d) { note.textContent = 'No voyage has that code.'; return; }
-      if (d.drowned || !d.started) { note.textContent = 'That voyage ended: he let go of his rod. Choose a new code for a new one.'; return; }
+      if (d.drowned || !d.started) { note.textContent = 'That voyage ended: he let go of his rod. The code is free again: start a new voyage with it.'; return; }
       if (S.code && S.code !== code && S.started) cloudFlush(false); // the voyage you are leaving goes up first
       adopt(d); return;
     }
     if (await codeTaken(code)) { note.textContent = 'That code is already in use. Pick another.'; return; }
-    if (codeMode === 'claim') { S.code = code; S.created = S.created || Date.now(); saveNow(); fadeTo(enterGame); return; }
+    const old = localSave(code); let created = old && old.created || 0; if (cloudOn()) { try { created = (await cloudCreated(code)) || created; } catch (e) {} } // a drowned voyage's stamp is kept, so the cloud lets the new run overwrite it
+    if (codeMode === 'claim') { S.code = code; S.created = created || S.created || Date.now(); saveNow(); fadeTo(enterGame); return; }
     if (S.code && S.started) cloudFlush(false); // the old voyage keeps its own code; nothing is wiped
-    S = freshState(); S.code = code; S.created = Date.now(); S.started = true; S.prologue = true; S.loc = 'sea'; S.spot = 'open'; S.boat = 'skiff'; S.slots = 1; S.lines = [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, null, null, null]; saveNow();
-    fadeTo(startIntro);
+    const reused = !!created;
+    S = freshState(); S.code = code; S.created = created || Date.now(); S.started = true; S.prologue = true; S.loc = 'sea'; S.spot = 'open'; S.boat = 'skiff'; S.slots = 1; S.lines = [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, null, null, null]; saveNow();
+    fadeTo(startIntro); if (reused) setTimeout(() => toast('The last voyager with this code drowned. It is yours now.'), 1200);
   } catch (e) { note.textContent = 'Could not reach the cloud. Check your signal and try again.'; }
   finally { codeBusy = false; $('#bGo').disabled = false; }
 }
