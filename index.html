@@ -96,7 +96,8 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 #hud .money,.ihud .money{font-family:var(--display);font-size:12px;font-variant-numeric:tabular-nums;text-shadow:2px 2px 0 #0a1020}
 .tabs{display:flex;gap:6px}
 .tabs button{flex:1;font-family:var(--display);font-size:9px;padding:9px 4px;background:rgba(11,17,34,.72);border:2px solid var(--edge);color:var(--text)}
-.tabs button.pulse{border-color:var(--brass);color:var(--brass)}
+.tabs button.pulse{border-color:var(--brass);color:var(--brass);animation:beacon 1.1s ease-in-out infinite alternate}
+@keyframes beacon{from{box-shadow:0 0 0 0 rgba(240,192,80,0);background:rgba(11,17,34,.72)}to{box-shadow:0 0 14px 4px rgba(240,192,80,.85);background:rgba(60,46,14,.9)}}
 .tabs button.exit{flex:0 0 auto;min-width:50px;margin-left:auto;background:#1f7a3a;border-color:#3fc46a;color:#fff}
 .spacer{flex:1;min-height:33vh}
 #panel{background:var(--panel);border:2px solid var(--edge);border-bottom:0;border-top-color:rgba(240,192,80,.55);
@@ -266,7 +267,7 @@ canvas.icon{width:40px;height:40px;image-rendering:pixelated;flex:none}
 .hband.breath{background:var(--good)}
 .acts2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 #hNote .look{color:#e26b5a;font-weight:bold}
-@media (prefers-reduced-motion:reduce){.cta.hit{animation:none}.cta:active{transform:none}}
+@media (prefers-reduced-motion:reduce){.cta.hit{animation:none}.cta:active{transform:none}.tabs button.pulse{animation:none;box-shadow:0 0 10px 3px rgba(240,192,80,.7)}}
 </style>
 
 <canvas id="scene" width="195" height="375"></canvas>
@@ -2523,7 +2524,7 @@ function renderHUD() {
   $('#hBucket').textContent = `Bucket ${S.bucket.length}/${bucketCap()}`;
   $('#tShop').hidden = true; $('#tWalk').hidden = !!S.prologue; $('#tSpots').hidden = !!S.prologue;
   $('#tMap').hidden = S.prologue; $('#hMoney').hidden = S.prologue; // money does not exist yet
-  $('#tMap').classList.toggle('pulse', S.raft && S.loc === 'shoal' && !S.visited.harbor);
+  mapBeacon();
 }
 // The prologue is the tutorial. Each line answers "what does the game want from me right now?"
 function tutorialText() {
@@ -5024,8 +5025,11 @@ function enterIsland(at) {
 }
 function enterFishing() { MODE = 'game'; $('#isle').hidden = true; $('#hunt').hidden = true; $('#game').hidden = false; render(); window.scrollTo(0, 0); }
 function nearSpot() { if (!ISL) return null; const l = loc(); let best = null, bd = 18; for (const sp of isleSpots(l)) { const d = Math.abs(sp.x - ISL.px); if (d < bd) { bd = d; best = sp; } } return best; }
+// The Map buttons glow from the moment the raft is built until the player has sailed somewhere: the first voyage is the one thing to do.
+const wantsBeacon = () => S.raft && !S.prologue && S.order.filter(id => id !== 'shoal').length === 0;
+function mapBeacon() { const on = wantsBeacon(); document.querySelectorAll('.tabs [data-k="map"]').forEach(b => b.classList.toggle('pulse', on)); }
 function renderIsle() {
-  if (MODE !== 'island') return;
+  if (MODE !== 'island') return; mapBeacon();
   $('#iMoney').textContent = money(S.money); $('#iClock').textContent = clockText(now());
   const sp = nearSpot(), b = $('#iAct');
   b.classList.toggle('ghost', !sp); b.textContent = sp ? sp.label : '·'; b.dataset.k = sp ? sp.id : '';

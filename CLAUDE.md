@@ -124,7 +124,7 @@ Catch value: `valueOf` = `rate × kg^0.75 × (1 ± 0.15)`, ×1.5 at trophy size 
 
 ## Roadmap, in order
 
-1. Tune the first 20 minutes: time to raft, first sale amount, time to skiff. (The fight itself was retuned so beginner fish are easy; see `T_FIGHT`.) Target: raft in ~4 minutes, harbor in 5, a reason to come back to the shoal (Ghost Tarpon at night).
+1. Tune the first 20 minutes: time to raft, first sale amount, time to skiff. (The fight itself was retuned so beginner fish are easy; see `T_FIGHT`. From the moment the raft is built until the first landing elsewhere, every Map button breathes a brass glow, `mapBeacon`/`wantsBeacon`, `.tabs button.pulse` + `@keyframes beacon`, so the first voyage is unmissable.) Target: raft in ~4 minutes, harbor in 5, a reason to come back to the shoal (Ghost Tarpon at night).
 2. Fight feel: per-species behaviors are table stakes. Add one twist that makes the mechanic ours (line tension that snaps if you hold too long, or a second axis).
 3. Index as the long-term driver: size records, rare variants, catch log per location.
 4. Weather and seasons as bite gates.
