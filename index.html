@@ -446,7 +446,7 @@ const T_WORLD = { starRumor: 0.07, chartOdds: 12, chartPrice: 150000 };
 // device. SYNC.url is a Firebase Realtime Database URL (https://<project>-default-rtdb.firebaseio.com); the game reads and
 // writes /saves/<code>.json over plain REST. Empty: codes still work, but only on this device. A localStorage key
 // 'castaway-sync-url' overrides it (tests point it at a mock).
-const SYNC = { url: '', pushDelay: 2500 };
+const SYNC = { url: 'https://castaway-976ff-default-rtdb.firebaseio.com', pushDelay: 2500 };
 try { const o = localStorage.getItem('castaway-sync-url'); if (o) SYNC.url = o; } catch (e) {}
 // Bounty boards: every shop nails up 0-4 wanted posters for its own island's fish; turning one in (once) pays worth × mult. New posters after a real day.
 const T_BOUNTY = { max: 4, mult: [3, 6], refreshMs: 24 * 3600e3 };
