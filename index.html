@@ -252,7 +252,8 @@ canvas.icon{width:40px;height:40px;image-rendering:pixelated;flex:none}
 #isle,#hunt{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;width:100%;max-width:520px;margin:0 auto}
 #ipanel,#hpanel{background:var(--panel);border:2px solid var(--edge);border-bottom:0;border-top-color:rgba(240,192,80,.55);padding:9px 10px calc(14px + env(safe-area-inset-bottom,0px));display:grid;gap:8px}
 .walkrow{display:grid;grid-template-columns:64px 1fr 64px;gap:8px;align-items:stretch}
-.walk{font-family:var(--display);font-size:16px;background:var(--panel-2);border:2px solid var(--edge);color:var(--brass);padding:14px 0;user-select:none;-webkit-user-select:none;touch-action:none}
+.walk{font-family:var(--display);font-size:16px;background:var(--panel-2);border:2px solid var(--edge);color:var(--brass);padding:14px 0;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none}
+#isle .spacer{touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:pointer}
 .walk:active{background:var(--edge)}
 .walkrow .cta{padding:12px 6px;font-size:11px}
 .walkrow .ghost{visibility:hidden}
@@ -2107,7 +2108,8 @@ const gameValue = (c, kg, jit) => Math.round(Math.max(3, c.rate * Math.pow(Math.
 // The stalk. A sighting starts far off: the band is narrow. You can creep closer up to three times; every step widens the band
 // (×(1 + nearBand × steps)) and raises the animal's alertness by creepCost × skittishness × the wind (in your face, across, at your
 // back) × 2 if it has its head up. Alertness also climbs on its own; at 1 it bolts. A closer shot is worth more (×(1 + nearWorth × steps)).
-const T_HUNT = { wait: [2500, 6000], breath: 2600, alertMs: [9000, 4500], creepCost: [0.16, 0.24], wind: { face: 0.6, cross: 1, back: 1.7 }, lookEvery: [2500, 5000], lookFor: 900, nearBand: 0.45, nearWorth: 0.1, maxSteps: 3 };
+const T_HUNT = { wait: [2500, 6000], breath: 3200, alertMs: [11000, 5000], creepCost: [0.13, 0.22], wind: { face: 0.6, cross: 1, back: 1.7 }, lookEvery: [2500, 5000], lookFor: 900, nearBand: 0.45, nearWorth: 0.1, maxSteps: 3, bandBase: 1.3, swing: [1.8, 1.0], holdSlow: 0.45 };
+// bandBase: the band is the weapon's acc × (bandBase − the animal's diff) before creeping. swing: the mark's period in seconds is swing[0] − swing[1] × diff; holdSlow is its speed while you hold your breath.
 const WIND_NAME = { face: 'in your face', cross: 'across', back: 'at your back' };
 const DIST_NAME = ['far off', 'nearer', 'closer', 'close', 'very close', 'almost on it', 'point blank'];
 const distName = steps => steps >= maxSteps() ? 'point blank' : DIST_NAME[Math.min(steps, DIST_NAME.length - 2)];
@@ -5162,7 +5164,7 @@ function stepHunt(dt, t) {
   if (!HU) return;
   if (HU.phase === 'wait' && t >= HU.at) { HU.phase = 'seen'; HU.seen = t; HU.lookAt = t + rnd(T_HUNT.lookEvery[0], T_HUNT.lookEvery[1]); renderHunt(); }
   if (HU.phase === 'seen') {
-    const c = HU.roll.c, period = 1.5 - 0.95 * c.diff; HU.ph += (Math.PI * 2 / period) * dt * (HU.hold ? 0.55 : 1);
+    const c = HU.roll.c, period = T_HUNT.swing[0] - T_HUNT.swing[1] * c.diff; HU.ph += (Math.PI * 2 / period) * dt * (HU.hold ? T_HUNT.holdSlow : 1);
     if (HU.hold) { HU.breath -= dt * 1000 / T_HUNT.breath; if (HU.breath <= 0) { HU.hold = false; loose(true); return; } }
     HU.alert += dt * 1000 / (T_HUNT.alertMs[0] - T_HUNT.alertMs[1] * c.diff) * HU.calm; // it gets restless on its own, slower under a cloak or a poisoned dart
     if (!HU.look && t >= HU.lookAt) { HU.look = true; HU.lookEnd = t + T_HUNT.lookFor; renderHunt(); } else if (HU.look && t >= HU.lookEnd) { HU.look = false; HU.lookAt = t + rnd(T_HUNT.lookEvery[0], T_HUNT.lookEvery[1]); renderHunt(); }
@@ -5174,7 +5176,7 @@ function stepHunt(dt, t) {
     const hb = $('#hbreath'); if (hb) hb.style.width = (HU.breath * 100).toFixed(0) + '%';
   }
 }
-const bandNow = () => WEAPON().acc * (1.15 - HU.roll.c.diff) * (1 + T_HUNT.nearBand * HU.steps);
+const bandNow = () => WEAPON().acc * (T_HUNT.bandBase - HU.roll.c.diff) * (1 + T_HUNT.nearBand * HU.steps);
 // creep a step closer: the band widens, the animal's alertness jumps by its skittishness, the wind, and whether it is looking
 function creep() {
   if (!HU || HU.phase !== 'seen' || HU.steps >= maxSteps() || HU.hold) return;
@@ -5892,7 +5894,22 @@ document.addEventListener('click', e => {
 $('#cut').addEventListener('click', e => { if (e.target.closest('[data-act]')) return; cutAdvance(); });
 $('#cardWrap').addEventListener('click', e => { if (e.target.closest('[data-act]')) return; if (S.pending) resolveCatch(S.bucket.length < bucketCap() ? 'keep' : 'release'); else closeCard(); });
 // walking: hold the arrows (or the keyboard arrows); the draw: hold the button, let go to loose
-document.querySelectorAll('.walk').forEach(b => { const on = e => { e.preventDefault(); if (ISL) ISL.walk = +b.dataset.hold; }, off = () => { if (ISL) ISL.walk = 0; }; b.addEventListener('pointerdown', on); ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => b.addEventListener(ev, off)); b.addEventListener('contextmenu', e => e.preventDefault()); });
+// Walking: hold ◀ or ▶, or hold the left or right half of the scene itself. Pointer events with capture, and raw touch events
+// as a fallback, so a finger that drifts or a browser that cancels pointers mid-hold still walks.
+const walkOff = () => { if (ISL) ISL.walk = 0; };
+document.querySelectorAll('.walk').forEach(b => {
+  const on = e => { e.preventDefault(); if (ISL) ISL.walk = +b.dataset.hold; if (e.pointerId != null) { try { b.setPointerCapture(e.pointerId); } catch (x) {} } };
+  b.addEventListener('pointerdown', on); ['pointerup', 'pointercancel'].forEach(ev => b.addEventListener(ev, walkOff));
+  b.addEventListener('touchstart', e => { e.preventDefault(); if (ISL) ISL.walk = +b.dataset.hold; }, { passive: false }); ['touchend', 'touchcancel'].forEach(ev => b.addEventListener(ev, e => { e.preventDefault(); walkOff(); }, { passive: false }));
+  b.addEventListener('contextmenu', e => e.preventDefault());
+});
+const isleScene = document.querySelector('#isle .spacer');
+const sceneWalk = x => { if (ISL && MODE === 'island') ISL.walk = x < window.innerWidth / 2 ? -1 : 1; };
+isleScene.addEventListener('pointerdown', e => { e.preventDefault(); sceneWalk(e.clientX); try { isleScene.setPointerCapture(e.pointerId); } catch (x) {} });
+['pointerup', 'pointercancel'].forEach(ev => isleScene.addEventListener(ev, walkOff));
+isleScene.addEventListener('touchstart', e => { e.preventDefault(); sceneWalk(e.touches[0].clientX); }, { passive: false }); ['touchend', 'touchcancel'].forEach(ev => isleScene.addEventListener(ev, e => { e.preventDefault(); walkOff(); }, { passive: false }));
+isleScene.addEventListener('contextmenu', e => e.preventDefault());
+window.addEventListener('blur', walkOff);
 window.addEventListener('keydown', e => { if (MODE === 'island' && ISL && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { ISL.walk = e.key === 'ArrowLeft' ? -1 : 1; e.preventDefault(); } if (MODE === 'island' && e.key === 'Enter') { const sp = nearSpot(); if (sp) $('#iAct').click(); } if (MODE === 'hunt' && e.code === 'Space' && HU && HU.phase === 'seen' && !HU.hold) { HU.hold = true; e.preventDefault(); } });
 window.addEventListener('keyup', e => { if (ISL && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) ISL.walk = 0; if (MODE === 'hunt' && e.code === 'Space' && HU && HU.hold) { HU.hold = false; loose(false); } });
 $('#hbox').addEventListener('pointerdown', e => { if (e.target.id === 'hLoose' && HU && HU.phase === 'seen') { e.preventDefault(); HU.hold = true; e.target.textContent = 'Loose!'; } });
