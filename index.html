@@ -72,6 +72,10 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 #title .codebox .note{text-align:center;min-height:1.2em}
 #title .codebox .opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 #title .codebox #bRandom[hidden]+#bGo{grid-column:1/-1}
+#title .codebox .sugg{display:grid;gap:6px}
+#title .codebox .sugg .lbl{font-size:15px;color:var(--muted);text-align:center}
+#title .codebox .sugg button{font-family:var(--display);font-size:clamp(12px,3.8vw,16px);letter-spacing:3px;padding:9px 6px;background:rgba(10,16,32,.7);border:2px solid var(--edge);color:var(--brass)}
+#title .codebox .sugg button:active{border-color:var(--brass)}
 #sheet .code{font-family:var(--display);font-size:clamp(18px,6vw,26px);letter-spacing:4px;color:var(--brass);text-align:center;padding:8px 0 4px}
 #cut{cursor:pointer;gap:10px}
 #cut .cap{font-family:var(--display);font-size:clamp(11px,3.4vw,15px);line-height:1.9;color:var(--text);text-align:center;
@@ -277,6 +281,7 @@ canvas.icon{width:40px;height:40px;image-rendering:pixelated;flex:none}
     <div class="q" id="codeQ">Choose a code for this voyage</div>
     <input id="codeIn" inputmode="numeric" autocomplete="off" maxlength="9" placeholder="0000 0000" aria-label="Eight-digit voyage code">
     <div class="note" id="codeNote"></div>
+    <div class="sugg" id="codeSugg" hidden></div>
     <div class="opts"><button class="cta alt" data-act="coderandom" id="bRandom">Random</button><button class="cta" data-act="codego" id="bGo">Begin</button></div>
     <button class="cta alt" data-act="codecancel">Cancel</button>
   </div>
@@ -5384,6 +5389,33 @@ function codeBox(mode) {
   $('#codeNote').textContent = mode === 'enter' ? (cloudOn() ? 'Eight digits. The voyage continues from wherever it was last saved.' : 'Eight digits. Cloud saves are not connected yet, so a code only opens voyages saved on this device.') : 'Eight digits. Write it down: the code is the only way back to this voyage' + (cloudOn() ? ', on any device.' : '.');
   $('#bRandom').hidden = mode === 'enter'; $('#bGo').textContent = mode === 'enter' ? 'Open' : 'Begin'; $('#bGo').disabled = false;
   const inp = $('#codeIn'); inp.value = ''; setTimeout(() => inp.focus(), 50);
+  $('#codeSugg').hidden = mode === 'enter'; if (mode !== 'enter') suggestCodes();
+}
+// Codes that are easy to remember, easiest first: a straight run, a block said twice or mirrored, a year twice, round thousands.
+function memorableCodes() {
+  const tiers = [[], [], [], []], seen = new Set(), push = (t, c) => { if (/^[1-9]\d{7}$/.test(c) && !seen.has(c)) { seen.add(c); tiers[t].push(c); } };
+  ['12345678', '87654321', '11223344', '12121212', '13572468', '24681357', '10203040', '11112222', '12341234', '43214321', '12344321'].forEach(c => push(0, c));
+  const runs = []; for (let a = 1; a <= 6; a++) runs.push(`${a}${a + 1}${a + 2}${a + 3}`); for (let a = 9; a >= 4; a--) runs.push(`${a}${a - 1}${a - 2}${a - 3}`);
+  for (const b of runs) { push(1, b + b); push(1, b + b.split('').reverse().join('')); }
+  for (let d = 1; d <= 9; d++) for (let e = 0; e <= 9; e++) if (d !== e) { push(1, `${d}${e}${d}${e}${d}${e}${d}${e}`); push(2, `${d}${d}${e}${e}${d}${d}${e}${e}`); push(2, `${d}${e}${d}${e}${e}${d}${e}${d}`); }
+  for (let y = 1950; y <= 2030; y++) push(2, `${y}${y}`);
+  for (let y = 1980; y <= 2029; y++) push(3, `${y}${y + 1}`);
+  for (let a = 1; a <= 9; a++) { push(2, `${a}000${a}000`); for (let b = 1; b <= 9; b++) if (b !== a) push(3, `${a}000${b}000`); }
+  const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+  return tiers.flatMap(shuffle);
+}
+let suggN = 0;
+async function suggestCodes() {
+  const el = $('#codeSugg'), run = ++suggN; el.innerHTML = '<div class="lbl">Finding free codes…</div>';
+  const found = [], cands = memorableCodes(); let checks = 0;
+  for (const c of cands) {
+    if (found.length >= 3 || checks >= 14) break;
+    if (usedCodes().includes(c) || localSave(c)) continue;
+    if (cloudOn()) { checks++; try { if (await cloudHas(c)) continue; } catch (e) { break; } }
+    if (run !== suggN) return; found.push(c);
+  }
+  if (run !== suggN) return;
+  el.innerHTML = found.length ? '<div class="lbl">Free and easy to remember: tap one</div>' + found.map(c => `<button data-act="codepick" data-k="${c}">${fmtCode(c)}</button>`).join('') : '';
 }
 const codeDigits = () => $('#codeIn').value.replace(/\D/g, '').slice(0, 8);
 $('#codeIn').addEventListener('input', e => { const d = codeDigits(); e.target.value = d.length > 4 ? d.slice(0, 4) + ' ' + d.slice(4) : d; });
@@ -5780,6 +5812,7 @@ document.addEventListener('click', e => {
   else if (a === 'continue') continueVoyage();
   else if (a === 'entercode') codeBox('enter');
   else if (a === 'coderandom') randomCode();
+  else if (a === 'codepick') { $('#codeIn').value = fmtCode(k); $('#codeNote').textContent = ''; }
   else if (a === 'codego') codeGo();
   else if (a === 'codecancel') codeBox(null);
   else if (a === 'skip') { e.stopPropagation(); if (MODE === 'intro') endIntro(); else if (MODE === 'sail') finishSail(); else endCut(); }
