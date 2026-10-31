@@ -385,7 +385,8 @@ const T = {
   hourMs: 60000,                 // 1 real minute = 1 game hour, a 24-minute day
   walkSpeed: 72,                 // island strip: logical px per second (about eight seconds to cross the strip)
   walkFps: 9,                    // island strip: walk-cycle frames per second (contact, pass, contact, pass)
-  handWait: [2000, 6000],        // rod: seconds to a bite
+  handWait: [6000, 16000],       // rod: ms to a bite (6 to 16 s; the float sits a while)
+  prologueWait: [3000, 7000],    // rod in the tutorial: quicker, so the first two fish teach without a long wait
   setMean: 60000,                // set line: a chance every second, one hook a minute on average (exponential wait), keeps ticking while you're away
   trophyMean: 220000,            // trophy line: the same, about once every 3.5 minutes
   soakCap: 5,                    // a passive wait is never longer than this many means
@@ -2322,7 +2323,7 @@ function rollCatch(locId, rig, baitId, t, waitMs) {
 // The rod bites within a few seconds. A passive line soaks: a small chance every second, so the wait is exponential (memoryless), sampled
 // once at cast time so it survives closing the game. Nothing waits longer than soakCap means.
 const passiveMean = rig => rig === 'set' ? T.setMean : T.trophyMean;
-function waitFor(rig) { if (rig === 'hand') return rnd(T.handWait[0], T.handWait[1]); const m = passiveMean(rig); return Math.min(m * T.soakCap, Math.max(1500, -m * Math.log(1 - Math.random()))); }
+function waitFor(rig) { if (rig === 'hand') { const w = S.prologue ? T.prologueWait : T.handWait; return rnd(w[0], w[1]); } const m = passiveMean(rig); return Math.min(m * T.soakCap, Math.max(1500, -m * Math.log(1 - Math.random()))); }
 // How much a long soak grows the fish: 0 at one mean or under, 1 at soakGrow means.
 const soakBonus = (rig, waitMs) => rig === 'hand' ? 0 : clamp((waitMs / passiveMean(rig) - 1) / (T.soakGrow - 1), 0, 1);
 
