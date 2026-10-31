@@ -99,6 +99,9 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 .tabs button.pulse{border-color:var(--brass);color:var(--brass);animation:beacon 1.1s ease-in-out infinite alternate}
 @keyframes beacon{from{box-shadow:0 0 0 0 rgba(240,192,80,0);background:rgba(11,17,34,.72)}to{box-shadow:0 0 14px 4px rgba(240,192,80,.85);background:rgba(60,46,14,.9)}}
 .tabs button.exit{flex:0 0 auto;min-width:50px;margin-left:auto;background:#1f7a3a;border-color:#3fc46a;color:#fff}
+.tabs button.exit.pulse{border-color:#7fe59a;color:#fff;animation:beaconG 1.1s ease-in-out infinite alternate}
+@keyframes beaconG{from{box-shadow:0 0 0 0 rgba(63,196,106,0);background:#1f7a3a}to{box-shadow:0 0 14px 4px rgba(63,196,106,.85);background:#2a9a4a}}
+#sheet .tide.tut{margin:4px 0 8px;text-align:left}
 .spacer{flex:1;min-height:33vh}
 #panel{background:var(--panel);border:2px solid var(--edge);border-bottom:0;border-top-color:rgba(240,192,80,.55);
   padding:9px 10px calc(14px + env(safe-area-inset-bottom,0px));display:grid;gap:8px}
@@ -453,7 +456,7 @@ const T_WORLD = { starRumor: 0.07, chartOdds: 12, chartPrice: 150000 };
 // writes /saves/<code>.json over plain REST. Empty: codes still work, but only on this device. A localStorage key
 // 'castaway-sync-url' overrides it (tests point it at a mock).
 const SYNC = { url: 'https://castaway-976ff-default-rtdb.firebaseio.com', pushDelay: 2500, testCodes: ['00000000'] }; // testCodes: the designer's test voyages; a new voyage on one always restarts it
-try { const o = localStorage.getItem('castaway-sync-url'); if (o) SYNC.url = o; } catch (e) {}
+try { const o = localStorage.getItem('castaway-sync-url'); if (o !== null) SYNC.url = o; } catch (e) {} // an empty string switches the cloud off (tests)
 // Bounty boards: every shop nails up 0-4 wanted posters for its own island's fish; turning one in (once) pays worth × mult. New posters after a real day.
 const T_BOUNTY = { max: 4, mult: [3, 6], refreshMs: 24 * 3600e3 };
 const TROPHY_RIG_PRICE = 600;
@@ -2153,7 +2156,8 @@ function freshState() {
     line: 'l10', pail: 'pail', // the line's test weight and the bucket in use (both bought in the shop)
     rodsOwned: ['stick'], linesOwned: ['l10'], pailsOwned: ['pail'], // everything bought stays in the rig sheet and can be put back on
     heldRod: true, // the storm's one question; let go and the sea takes you, and the voyage starts over
-    code: null, created: 0, saved: 0, drowned: false, // the voyage code, when it was claimed, when last saved, and whether this voyage ended in the sea
+    code: null, created: 0, saved: 0, drowned: false,
+    tut: null, tutIsland: null, // the first-island tutorial: its stage (exit, village, talk, sell, buy, gate, hunt, done) and the island it runs on // the voyage code, when it was claimed, when last saved, and whether this voyage ended in the sea
     order: ['shoal'], // islands in the order you first landed on them; the HUD counts them (Island 1, Island 2…)
     pending: null, // a landed catch waiting for Sell / Keep / Release; survives a reload
     prologue: false, proCaught: 0, // the calm-sea opening: rod only, two fish, then the storm
@@ -2398,6 +2402,7 @@ function sellHaul() {
   if (!loc().sell || !(S.bucket.length + S.pack.length)) return;
   const total = haulTotal(), n = S.bucket.length, m = S.pack.length;
   S.money += total; S.sold += total; S.bucket = []; S.pack = [];
+  if (tutAt('sell')) tutSet(loc().shop ? 'buy' : 'gate');
   save(); render(); toast(`Sold ${n ? n + ' fish' : ''}${n && m ? ' and ' : ''}${m ? m + ' game' : ''} for ${money(total)}.`);
   if (S.pending && !SP[S.pending.id].kind) { closeSheet(); showCatch(); return; } // a landed fish was waiting on room: back to its card
   renderSheet();
@@ -2476,7 +2481,7 @@ function shopItems() {
 function buy(k) {
   const it = shopItems().find(x => x.k === k); if (!it || it.locked) return;
   if (S.money < it.price) { toast('Not enough money.'); return; }
-  S.money -= it.price;
+  S.money -= it.price; if (tutAt('buy')) tutSet('gate');
   if (k === 'slot') { S.slots++; S.lines[S.slots - 1] = { rig: 'set', bait: 'scraps', phase: 'idle' }; }
   else if (k === 'rod') { const r = RODS[Math.max(...S.rodsOwned.map(id => RODS.findIndex(x => x.id === id))) + 1]; S.rodsOwned.push(r.id); S.rod = r.id; }
   else if (k === 'trig') { S.trophyRig = true; S.seen['rig:trophy'] = true; }
@@ -2531,7 +2536,7 @@ function renderHUD() {
   $('#hBucket').textContent = `Bucket ${S.bucket.length}/${bucketCap()}`;
   $('#tShop').hidden = true; $('#tWalk').hidden = !!S.prologue; $('#tSpots').hidden = !!S.prologue;
   $('#tMap').hidden = S.prologue; $('#hMoney').hidden = S.prologue; // money does not exist yet
-  mapBeacon();
+  mapBeacon(); $('#tWalk').classList.toggle('pulse', tutAt('exit'));
 }
 // The prologue is the tutorial. Each line answers "what does the game want from me right now?"
 function tutorialText() {
@@ -2556,6 +2561,7 @@ function waterText(t) {
 function renderTide() {
   const t = now(); lastPhase = phaseAt(t);
   if (S.prologue) { $('#tide').innerHTML = tutorialText(); $('#tide').classList.add('tut'); return; }
+  if (tutAt('exit')) { $('#tide').innerHTML = '<b>Land.</b> Tap the green <b>EXIT</b> to go ashore. The village and the wild are that way.'; $('#tide').classList.add('tut'); return; }
   $('#tide').classList.remove('tut');
   $('#tide').innerHTML = `<b>${PHASE_NAME[lastPhase]}</b> · ${waterText(t)}`;
 }
@@ -2631,6 +2637,7 @@ function openSheet(k) { sheetKind = k; if (k === 'map') mapSel = S.loc; if (k ==
 // Shopkeepers talk. Every few lines, one who hears rumors names an island you have not seen: it appears on the chart.
 function talk() {
   const kp = loc().keeper; if (!kp) return;
+  if (tutAt('talk')) tutSet(S.bucket.length || S.pack.length ? 'sell' : loc().shop ? 'buy' : 'gate');
   if (kp.exotic && loc().range >= 5 && !loc().spaceport && Math.random() < T_WORLD.starRumor) { // very low odds, every time, beyond tier 5
     const lines = ['"There is a ship that sails up. Not north. Up. The dock for it is at the far edge of everything, and no chart I sell shows it."', '"A sailor paid me in a coin I did not know. Said it came from a port where the boats leave the water. Said the chart to it costs more than the boat."', '"Keep your money. Past the last island there is a gantry and a ship that does not float. People who find it do not come back to fish."'];
     talkN++; S.heardStars = true; save(); talkLine = `${kp.name} lowers their voice. ${lines[Math.floor(Math.random() * lines.length)]}`; renderSheet(); return;
@@ -2645,7 +2652,7 @@ function talk() {
   } else talkLine = kp.lines[(talkN - 1) % kp.lines.length];
   renderSheet();
 }
-function closeSheet() { sheetKind = null; $('#sheetWrap').hidden = true; }
+function closeSheet() { const was = sheetKind; sheetKind = null; $('#sheetWrap').hidden = true; if ((was === 'shop' || was === 'inv') && tutAt('talk', 'sell', 'buy')) tutSet('gate'); if (MODE === 'island') renderIsle(); }
 function renderSheet() {
   const el = $('#sheet');
   if (sheetKind === 'map') {
@@ -2722,7 +2729,7 @@ function renderSheet() {
     const landed = S.pending && !SP[S.pending.id].kind && S.bucket.length >= bucketCap() ? SP[S.pending.id] : null;
     const order = S.bucket.map((f, j) => j); if (landed) order.sort((a, b) => S.bucket[a].value - S.bucket[b].value); // making room: the cheapest fish first, so the one to let go is at the top
     const rows = order.map(j => { const f = S.bucket[j], sp = SP[f.id], V = f.v ? VARIANTS[f.v] : null, r = rarityOf(sp); return `<div class="row"><canvas class="mini" width="64" height="36" data-fish="${f.id}" data-known="1" data-v="${fishMode(f) === 'color' ? '' : fishMode(f)}"></canvas><div class="name" style="flex:1">${V ? `<span style="color:${V.col}">${V.name}</span> ` : ''}${sp.name}<small><span style="color:${RARITY[r].col}">${RARITY[r].name}</span> · ${f.cm} cm · ${fmtKg(fishKg(f))}${f.trophy ? ' · ★ trophy' : ''}</small></div><div class="price">${money(f.value)}</div><button class="buy" data-act="release" data-i="${j}">LET GO</button></div>`; }).join('');
-    const market = loc().sell ? `${!loc().shop ? keeperBox(loc(), talkLine) : ''}<button class="cta" data-act="sell" ${S.bucket.length ? '' : 'disabled'}>Sell the haul · ${money(total)}</button>`
+    const market = loc().sell ? `${!loc().shop && tutHere() && tutShopText() ? `<div class="tide tut">${tutShopText()}</div>` : ''}${!loc().shop ? keeperBox(loc(), talkLine) : ''}<button class="cta" data-act="sell" ${S.bucket.length ? '' : 'disabled'}>Sell the haul · ${money(total)}</button>`
       : `<div class="note">${S.prologue ? 'Supper, if you can catch it.' : S.raft ? 'No market here. Gull Harbor buys the whole bucket.' : 'No market on the shoal. Build the raft first.'}</div>`;
     el.innerHTML = `<div class="head"><h2>Inventory</h2><button class="x" data-act="close">✕</button></div>
       ${landed ? `<div class="warn">The bucket is full and the ${landed.name.toLowerCase()} is waiting. <b>Let go</b> of a fish to make room for it${loc().sell ? ', sell the haul' : ''}, or close this and release it.</div>` : ''}
@@ -2754,8 +2761,11 @@ function renderSheet() {
     const kp = loc().keeper, said = talkLine;
     const board = loc().spaceport ? '' : boardOf(loc()).list.map(b => { const sp = SP[b.id], j = bestInBucket(b.id), have = j >= 0;
       return `<div class="poster ${b.done ? 'done' : ''}"><div class="nail"></div><div class="wanted">WANTED</div><canvas class="mini" width="64" height="36" data-fish="${b.id}" data-known="1"></canvas><div class="pname">${sp.name}</div><div class="pays">Pays ×${b.mult}</div>${b.done ? '<div class="stamp">PAID</div>' : have ? `<button class="buy" data-act="bounty" data-k="${b.id}">TURN IN · ${money(Math.round(S.bucket[j].value * b.mult))}</button>` : '<div class="pays dim">Bring one in</div>'}</div>`; }).join('');
+    const tt = tutHere() ? tutShopText() : '';
     el.innerHTML = `<div class="head"><h2>Shop · ${loc().name}</h2><button class="x" data-act="close">✕</button></div><div class="note">You have ${money(S.money)}.</div>
+      ${tt ? `<div class="tide tut">${tt}</div>` : ''}
       ${keeperBox(loc(), said)}
+      ${loc().sell && !loc().spaceport ? `<button class="cta ${S.bucket.length + S.pack.length ? '' : 'alt'}" data-act="sell" ${S.bucket.length + S.pack.length ? '' : 'disabled'}>Sell the haul · ${money(haulTotal())}</button>` : ''}
       <div class="list">${rows}</div>
       ${loc().spaceport ? '' : `<div class="box"><h3>BOUNTY BOARD</h3>${board.length ? `<div class="board">${board}</div>` : '<div class="note">Nothing nailed up today.</div>'}</div>`}`;
     drawMinis(el); drawIcons(el); drawFaces(el);
@@ -5031,6 +5041,35 @@ function enterIsland(at) {
   const sp = spots.find(s => s.id === at); if (sp) ISL.px = sp.x; ISL.dir = at === 'fish' ? -1 : 1; ISL.walk = 0;
   $('#iName').textContent = locTitle(l); $('#iVibe').textContent = `${islandLabel(l)} · ${l.name}.${l.vibe ? ' ' + l.vibe : ''}`; renderIsle(); window.scrollTo(0, 0);
 }
+// ---------- the first-island tutorial ----------
+// Runs once, on the first island reached after the shoal: EXIT glows, the strip walks you to the village, the shop (or the
+// traders) teaches TALK, selling and buying, then the strip walks you to the gate and the hunt teaches the stalk.
+const tutHere = () => !!S.tut && S.tut !== 'done' && S.tutIsland === S.loc;
+const tutAt = (...stages) => tutHere() && stages.includes(S.tut);
+function tutSet(stage) { if (!S.tut || S.tut === 'done') return; S.tut = stage; save(); }
+function tutStart(islandId) { if (S.tut != null) return; S.tut = 'exit'; S.tutIsland = islandId; }
+function tutStripText() {
+  const l = loc();
+  if (S.tut === 'exit' || S.tut === 'village') return l.shop ? '<b>Walk ◀ to the village</b> and press the door when the button names the shop. The keeper buys your fish and sells gear.' : l.sell ? '<b>Walk ◀ to the traders</b> and press the button when it names them. They buy your whole haul.' : '<b>Walk ◀ to your camp.</b> No one buys fish here; the next island will.';
+  if (S.tut === 'talk' || S.tut === 'sell' || S.tut === 'buy') return l.shop ? '<b>Back into the shop:</b> there is more to do at the counter.' : '<b>Back to the traders.</b>';
+  if (S.tut === 'gate') return `<b>Now the wild.</b> Walk ◀ past the village to the gate${l.hunt.name ? ' of ' + l.hunt.name : ''} and press it. Game sells like fish.`;
+  return '';
+}
+function tutShopText() {
+  const l = loc();
+  if (S.tut === 'talk') return `<b>Tap TALK.</b> ${l.keeper ? l.keeper.name.split(' ')[0] : 'The keeper'} knows these waters, and keepers sometimes name islands you have not seen.`;
+  if (S.tut === 'sell') return S.bucket.length + S.pack.length ? '<b>Sell the haul.</b> Everything in the bucket goes for coin. Money starts here.' : '<b>Nothing to sell yet.</b> Fish go for coin here whenever you have some.';
+  if (S.tut === 'buy') { const can = shopItems().some(it => !it.locked && it.price <= S.money); return can ? '<b>Buy something.</b> A second line fishes two spots at once; better bait brings bigger fish; a bucket holds more.' : '<b>Nothing you can afford yet.</b> Close the shop, fish a while, and come back. Then on to the wild.'; }
+  return '';
+}
+function tutHuntText(ph) {
+  if (S.tut !== 'hunt') return '';
+  if (ph === 'idle') return '<b>Wait for a sign.</b> Game comes to the still hunter. Your sling takes small things: hares, birds.';
+  if (ph === 'wait') return '<b>Keep still.</b> When something shows you can creep closer, or draw at once.';
+  if (ph === 'seen') return '<b>Hold DRAW</b> to aim: the mark slows while you hold your breath. Let go with the mark inside the band. <b>Creep closer</b> first for a wider band, but every step it may catch your scent, and never move while its head is up.';
+  return '';
+}
+function tutFinishHunt() { if (S.tut === 'hunt') { tutSet('done'); setTimeout(() => toast('That is the whole of it: fish, hunt, sell, sail. The sea is yours.'), 900); } }
 function enterFishing() { MODE = 'game'; $('#isle').hidden = true; $('#hunt').hidden = true; $('#game').hidden = false; render(); window.scrollTo(0, 0); }
 function nearSpot() { if (!ISL) return null; const l = loc(); let best = null, bd = 18; for (const sp of isleSpots(l)) { const d = Math.abs(sp.x - ISL.px); if (d < bd) { bd = d; best = sp; } } return best; }
 // The Map buttons glow from the moment the raft is built until the player has sailed somewhere: the first voyage is the one thing to do.
@@ -5041,7 +5080,8 @@ function renderIsle() {
   $('#iMoney').textContent = money(S.money); $('#iClock').textContent = clockText(now());
   const sp = nearSpot(), b = $('#iAct');
   b.classList.toggle('ghost', !sp); b.textContent = sp ? sp.label : '·'; b.dataset.k = sp ? sp.id : '';
-  const l = loc(); $('#iHint').innerHTML = sp ? `<b>${sp.hint}</b>` : ISL.px < W ? `${l.hunt.name ? l.hunt.name[0].toUpperCase() + l.hunt.name.slice(1) : 'The wild'} lies this way.` : ISL.px < 2 * W ? (l.shop ? 'The village. Walk up to the door.' : l.sell ? 'The traders\' camp.' : 'Your camp.') : 'The shore. Your lines are to the right.';
+  const l = loc(), tt = tutHere() ? tutStripText() : ''; $('#iHint').classList.toggle('tut', !!tt); if (tt) { $('#iHint').innerHTML = tt; return; }
+  $('#iHint').innerHTML = sp ? `<b>${sp.hint}</b>` : ISL.px < W ? `${l.hunt.name ? l.hunt.name[0].toUpperCase() + l.hunt.name.slice(1) : 'The wild'} lies this way.` : ISL.px < 2 * W ? (l.shop ? 'The village. Walk up to the door.' : l.sell ? 'The traders\' camp.' : 'Your camp.') : 'The shore. Your lines are to the right.';
 }
 function stepIsle(dt) {
   if (!ISL) return; const l = loc(), maxX = l.noFish ? 2 * W - 8 : 2 * W + shoreW - 6, minX = l.noFish ? W + 8 : 8;
@@ -5148,9 +5188,9 @@ function loose(shaky) {
   const c = HU.roll.c, aim = 0.5 + 0.5 * Math.sin(HU.ph), band = bandNow() * (shaky ? 0.4 : 1);
   if (HU.shot !== 'stones') S.shot[HU.shot] = Math.max(0, (S.shot[HU.shot] || 0) - 1); // the shot is spent, hit or miss
   if (WEAPON().loud) S.scattered = now() + 60000; // a loud shot clears the ground for a while
-  if (Math.abs(aim - HU.tx) <= band) take(); else { HU.phase = 'miss'; $('#hbar').classList.add('miss'); toast(shaky ? 'Your arm shook. It bolted.' : 'Wide. It bolted.'); setTimeout(() => { if (HU) { HU.phase = 'idle'; $('#hbar').classList.remove('miss'); renderHunt(); } }, 900); renderHunt(); }
+  if (Math.abs(aim - HU.tx) <= band) take(); else { HU.phase = 'miss'; tutFinishHunt(); $('#hbar').classList.add('miss'); toast(shaky ? 'Your arm shook. It bolted.' : 'Wide. It bolted.'); setTimeout(() => { if (HU) { HU.phase = 'idle'; $('#hbar').classList.remove('miss'); renderHunt(); } }, 900); renderHunt(); }
 }
-function bolt_(why) { HU.phase = 'miss'; toast(`${why || 'It caught your scent.'} The ${HU.roll.c.name.toLowerCase()} is gone.`); setTimeout(() => { if (HU) { HU.phase = 'idle'; renderHunt(); } }, 900); renderHunt(); }
+function bolt_(why) { HU.phase = 'miss'; tutFinishHunt(); toast(`${why || 'It caught your scent.'} The ${HU.roll.c.name.toLowerCase()} is gone.`); setTimeout(() => { if (HU) { HU.phase = 'idle'; renderHunt(); } }, 900); renderHunt(); }
 function take() {
   const { c, kg } = HU.roll, tags = [], value = Math.round(HU.roll.value * (1 + T_HUNT.nearWorth * HU.steps) * (SHOT[HU.shot].worth || 1)); // a close shot is a clean one; barbed heads pay better
   if (HU.steps >= maxSteps()) tags.push('Point blank');
@@ -5159,7 +5199,7 @@ function take() {
   if (gx.n === 0) tags.push('New species'); if (kg > gx.best) { if (gx.n > 0) tags.push('New record'); gx.best = kg; } gx.n++;
   let line = '';
   if (S.pack.length < packCap()) { S.pack.push({ id: c.id, kg, value }); line = `Into the bag. ${S.pack.length}/${packCap()}.`; } else line = 'The bag is full. You leave it for the gulls.';
-  HU.phase = 'taken'; $('#hbar').classList.add('hit'); save(); renderHunt();
+  HU.phase = 'taken'; $('#hbar').classList.add('hit'); tutFinishHunt(); save(); renderHunt();
   showTaken(c, kg, value, tags, line);
   setTimeout(() => { if (HU) { HU.phase = 'idle'; $('#hbar').classList.remove('hit'); renderHunt(); } }, 600);
 }
@@ -5181,11 +5221,12 @@ function renderHunt() {
   if (MODE !== 'hunt') return;
   $('#hMoney').textContent = money(S.money); $('#hBag').textContent = `Bag ${S.pack.length}/${packCap()}`;
   const box = $('#hbox'), ph = HU ? HU.phase : 'idle', w = WEAPON();
-  if (ph === 'idle') { const sh = SHOT[shotOf()], ca = CALLS[callOf()]; $('#hNote').innerHTML = `<b>${w.name}</b> · wait, creep, draw, loose`;
+  const tt = tutHere() ? tutHuntText(ph) : ''; $('#hNote').classList.toggle('tut', !!tt);
+  if (ph === 'idle') { const sh = SHOT[shotOf()], ca = CALLS[callOf()]; $('#hNote').innerHTML = tt || `<b>${w.name}</b> · wait, creep, draw, loose`;
     box.innerHTML = `<div class="rigrow"><div class="rigsum"><div class="l1">${w.name} · ${sh.short}${shotOf() !== 'stones' ? ' ×' + S.shot[shotOf()] : ''}${callOf() !== 'none' ? ` · ${ca.short} ×${S.calls[callOf()]}` : ''}</div><div class="l2">Takes game to ${fmtKg(w.power)} · ${maxSteps()} steps${CLOAK().id !== 'none' ? ' · ' + CLOAK().name.toLowerCase() : ''} · bag ${S.pack.length}/${packCap()}</div></div><button class="rigbtn" data-act="open" data-k="kit">Change kit</button></div><div class="note">${loc().hunt.name ? 'Quiet. Something is out there. The wind will tell you how close you can get.' : ''}</div><button class="cta" data-act="stalk">Wait for a sign</button>`; $('#hband').style.width = '0'; }
-  else if (ph === 'wait') { $('#hNote').innerHTML = `<b>Still.</b> Wind ${WIND_NAME[HU.wind]}.`; box.innerHTML = `<div class="note">Keep low. Something will show.</div><button class="cta alt" data-act="leavehunt">Give up</button>`; }
+  else if (ph === 'wait') { $('#hNote').innerHTML = tt || `<b>Still.</b> Wind ${WIND_NAME[HU.wind]}.`; box.innerHTML = `<div class="note">Keep low. Something will show.</div><button class="cta alt" data-act="leavehunt">Give up</button>`; }
   else if (ph === 'seen') { const c = HU.roll.c, far = HU.steps < maxSteps();
-    $('#hNote').innerHTML = `<b>${c.name}</b> · ${fmtKg(HU.roll.kg)} · <span class="${HU.look ? 'look' : ''}">${HU.look ? 'head up!' : distName(HU.steps)}</span> · wind ${WIND_NAME[HU.wind]}`;
+    $('#hNote').innerHTML = (tt ? tt + '<br>' : '') + `<b>${c.name}</b> · ${fmtKg(HU.roll.kg)} · <span class="${HU.look ? 'look' : ''}">${HU.look ? 'head up!' : distName(HU.steps)}</span> · wind ${WIND_NAME[HU.wind]}`;
     box.innerHTML = `<div class="note">${HU.look ? 'It is looking. Do not move.' : far ? 'Creep closer for a wider band, or draw now. Every step it may catch your scent.' : 'Point blank. Draw.'}</div>
       <div class="meters"><div class="meter"><span class="lbl">ALERT</span><div class="hbar thin"><div class="hband fill alert" id="halert" style="width:${(Math.min(1, HU.alert) * 100).toFixed(0)}%"></div></div></div><div class="meter"><span class="lbl">BREATH</span><div class="hbar thin"><div class="hband fill breath" id="hbreath" style="width:${(HU.breath * 100).toFixed(0)}%"></div></div></div></div>
       <div class="acts2"><button class="cta alt" data-act="creep" ${far && !HU.hold ? '' : 'disabled'}>Creep closer</button><button class="cta hit" id="hLoose">Draw</button></div>`; }
@@ -5509,7 +5550,10 @@ function startSail(from, to, pulled, first) {
 function sailAdvance() { if (!SAIL) return; SAIL.i++; if (SAIL.i >= 3) { finishSail(); return; } SAIL.t0 = performance.now(); sailCap(); }
 function finishSail() {
   if (!SAIL) return; const { to, pulled, first } = SAIL, L = LOC[to]; SAIL = null;
-  S.loc = to; S.visited[to] = true; if (!S.order.includes(to)) S.order.push(to); S.spot = L.spots[0].id; reseedFish(); save();
+  S.loc = to; S.visited[to] = true; if (!S.order.includes(to)) S.order.push(to); S.spot = L.spots[0].id; reseedFish();
+  if (S.tut && S.tut !== 'done' && S.tutIsland !== to) S.tut = 'done'; // left the tutorial island: the lesson is over
+  if (first && !L.noFish && S.order.filter(id => id !== 'shoal').length === 1) tutStart(to); // the first island after the shoal teaches the village and the wild
+  save();
   fadeTo(() => { $('#cut').hidden = true; if (L.noFish) { ISL = null; enterIsland('shop'); } else enterFishing();
     toast(`${first ? 'Landfall: ' : 'Sailed to '}${L.name}.` + (pulled ? ` Pulled in ${pulled} line${pulled > 1 ? 's' : ''}.` : '') + (first && L.vibe ? ' ' + L.vibe : '')); });
 }
@@ -5812,8 +5856,8 @@ document.addEventListener('click', e => {
   else if (a === 'catch') resolveCatch(k);
   else if (a === 'talk') talk();
   else if (a === 'spot') { const spx = spotOf(S.loc, k); if (spx.boat && S.boat === 'none') { toast('You need a boat to fish out there.'); return; } if (k !== S.spot) { let pulled = 0; S.lines.forEach(L => { if (L && L.phase !== 'idle') { L.phase = 'idle'; L.c = null; pulled++; } }); S.spot = k; reseedFish(); save(); toast(`${spot().name}.` + (pulled ? ` Pulled in ${pulled} line${pulled > 1 ? 's' : ''}.` : '')); } closeSheet(); if (MODE !== 'game') fadeTo(enterFishing); else render(); }
-  else if (a === 'walk') { if (!S.prologue) fadeTo(() => enterIsland('fish')); }
-  else if (a === 'enter') { const sp = nearSpot(); if (!sp) return; if (sp.id === 'fish') openSheet('spots'); else if (sp.id === 'hunt') fadeTo(enterHunt); else openSheet(loc().shop ? 'shop' : 'inv'); }
+  else if (a === 'walk') { if (!S.prologue) { if (tutAt('exit')) tutSet('village'); fadeTo(() => enterIsland('fish')); } }
+  else if (a === 'enter') { const sp = nearSpot(); if (!sp) return; if (sp.id === 'fish') openSheet('spots'); else if (sp.id === 'hunt') { if (tutAt('gate')) tutSet('hunt'); fadeTo(enterHunt); } else { if (tutAt('village')) tutSet(loc().keeper ? 'talk' : S.bucket.length || S.pack.length ? 'sell' : 'gate'); openSheet(loc().shop ? 'shop' : 'inv'); } }
   else if (a === 'leavehunt') { closeSheet(); fadeTo(() => enterIsland('hunt')); }
   else if (a === 'stalk') startStalk();
   else if (a === 'creep') creep();
