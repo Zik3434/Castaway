@@ -6,6 +6,7 @@ A pixel-art fishing and hunting game that runs in the browser, on phone and desk
 
 - On a phone, open the link and add it to the home screen: it installs as an app, runs full screen and works offline.
 - On a computer, Space or Enter casts, reels and hauls the selected line, Space holds the net in the fight, Escape closes any sheet, and the arrow keys walk the island.
+- Every voyage has an eight-digit code you choose before it starts. Write it down: enter it on any device to pick the voyage up where you left it. A used code can never start a new voyage.
 
 Stranded on an island with one rod and one line, you fish your way off it, then fish and hunt your way across a sea of very different islands, buying rods, lines, bait, weapons and boats on the way.
 

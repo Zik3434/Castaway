@@ -65,6 +65,14 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 #title .tagline{font-size:23px;text-shadow:2px 2px 0 #0a1020;color:var(--text)}
 #title .menu{display:grid;gap:10px;width:min(100%,300px);margin-top:14px}
 #title .confirm{color:var(--bad);font-size:18px;text-shadow:1px 1px 0 #0a1020;min-height:1.2em;text-align:center}
+#title .codebox{display:grid;gap:10px;width:min(100%,320px);padding:14px 16px;background:rgba(10,16,32,.86);border:3px solid var(--brass)}
+#title .codebox .q{font-family:var(--display);font-size:clamp(10px,3.2vw,13px);color:var(--brass);text-align:center;line-height:1.6}
+#title .codebox input{font-family:var(--display);font-size:clamp(18px,6vw,26px);letter-spacing:4px;text-align:center;padding:12px 6px;background:#070c18;color:var(--text);border:2px solid var(--edge);width:100%;box-sizing:border-box;outline:none}
+#title .codebox input:focus{border-color:var(--brass)}
+#title .codebox .note{text-align:center;min-height:1.2em}
+#title .codebox .opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#title .codebox #bRandom[hidden]+#bGo{grid-column:1/-1}
+#sheet .code{font-family:var(--display);font-size:clamp(18px,6vw,26px);letter-spacing:4px;color:var(--brass);text-align:center;padding:8px 0 4px}
 #cut{cursor:pointer;gap:10px}
 #cut .cap{font-family:var(--display);font-size:clamp(11px,3.4vw,15px);line-height:1.9;color:var(--text);text-align:center;
   text-shadow:2px 2px 0 #0a1020;max-width:440px;min-height:3.8em;opacity:0;transition:opacity .5s;will-change:opacity;transform:translateZ(0)}
@@ -260,9 +268,17 @@ canvas.icon{width:40px;height:40px;image-rendering:pixelated;flex:none}
 <div id="fade"></div>
 
 <div class="screen" id="title">
-  <div class="menu">
+  <div class="menu" id="tmenu">
     <button class="cta alt" data-act="continue" id="bCont" hidden>Continue</button>
     <button class="cta" data-act="new" id="bNew">New voyage</button>
+    <button class="cta alt" data-act="entercode" id="bCode">Enter a code</button>
+  </div>
+  <div class="codebox" id="codebox" hidden>
+    <div class="q" id="codeQ">Choose a code for this voyage</div>
+    <input id="codeIn" inputmode="numeric" autocomplete="off" maxlength="9" placeholder="0000 0000" aria-label="Eight-digit voyage code">
+    <div class="note" id="codeNote"></div>
+    <div class="opts"><button class="cta alt" data-act="coderandom" id="bRandom">Random</button><button class="cta" data-act="codego" id="bGo">Begin</button></div>
+    <button class="cta alt" data-act="codecancel">Cancel</button>
   </div>
   <div class="confirm" id="confirm"></div>
 </div>
@@ -421,6 +437,12 @@ const SLOT_PRICES = [0, 60, 150, 450]; // you start with one line; the rest are 
 // The far end of the world. A keeper on a tier-5+ island mentions the starship at these odds per talk; the chart that finds the
 // spaceport is in stock at a tier-5+ shop on a given real day at these odds (percent), at this price.
 const T_WORLD = { starRumor: 0.07, chartOdds: 12, chartPrice: 150000 };
+// Voyage codes. Every run lives under an eight-digit code the player chooses before it starts; the code is the save, on any
+// device. SYNC.url is a Firebase Realtime Database URL (https://<project>-default-rtdb.firebaseio.com); the game reads and
+// writes /saves/<code>.json over plain REST. Empty: codes still work, but only on this device. A localStorage key
+// 'castaway-sync-url' overrides it (tests point it at a mock).
+const SYNC = { url: '', pushDelay: 2500 };
+try { const o = localStorage.getItem('castaway-sync-url'); if (o) SYNC.url = o; } catch (e) {}
 // Bounty boards: every shop nails up 0-4 wanted posters for its own island's fish; turning one in (once) pays worth × mult. New posters after a real day.
 const T_BOUNTY = { max: 4, mult: [3, 6], refreshMs: 24 * 3600e3 };
 const TROPHY_RIG_PRICE = 600;
@@ -2120,6 +2142,7 @@ function freshState() {
     line: 'l10', pail: 'pail', // the line's test weight and the bucket in use (both bought in the shop)
     rodsOwned: ['stick'], linesOwned: ['l10'], pailsOwned: ['pail'], // everything bought stays in the rig sheet and can be put back on
     heldRod: true, // the storm's one question; let go and the sea takes you, and the voyage starts over
+    code: null, created: 0, saved: 0, drowned: false, // the voyage code, when it was claimed, when last saved, and whether this voyage ended in the sea
     order: ['shoal'], // islands in the order you first landed on them; the HUD counts them (Island 1, Island 2…)
     pending: null, // a landed catch waiting for Sell / Keep / Release; survives a reload
     prologue: false, proCaught: 0, // the calm-sea opening: rod only, two fish, then the storm
@@ -2137,7 +2160,36 @@ function freshState() {
 let S = freshState();
 const KEY = 'castaway-proto-v2';
 let saveT = 0;
-function saveNow() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+const CODE_KEY = 'castaway-code', CODES_KEY = 'castaway-codes', saveKey = code => 'castaway-save-' + code;
+const fmtCode = c => c ? String(c).slice(0, 4) + ' ' + String(c).slice(4) : '';
+function usedCodes() { try { return JSON.parse(localStorage.getItem(CODES_KEY) || '[]'); } catch (e) { return []; } }
+function markUsed(code) { try { const u = usedCodes(); if (!u.includes(code)) { u.push(code); localStorage.setItem(CODES_KEY, JSON.stringify(u)); } } catch (e) {} }
+function localSave(code) { try { const raw = localStorage.getItem(saveKey(code)); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } }
+function saveNow() {
+  S.saved = Date.now();
+  try { const raw = JSON.stringify(S); localStorage.setItem(KEY, raw); if (S.code) { localStorage.setItem(saveKey(S.code), raw); localStorage.setItem(CODE_KEY, S.code); markUsed(S.code); } } catch (e) {}
+  if (S.code) cloudPush();
+}
+// ---- the cloud: one JSON document per code, last write wins ----
+let pushT = 0, cloudState = SYNC.url ? 'idle' : 'off', cloudAt = 0;
+const cloudOn = () => !!SYNC.url, cloudUrl = (code, leaf) => `${SYNC.url.replace(/\/$/, '')}/saves/${code}${leaf ? '/' + leaf : ''}.json`;
+async function cloudGet(code) { const r = await fetch(cloudUrl(code), { cache: 'no-store' }); if (!r.ok) throw new Error('cloud ' + r.status); return r.json(); }
+async function cloudHas(code) { const r = await fetch(cloudUrl(code, 'created'), { cache: 'no-store' }); if (!r.ok) throw new Error('cloud ' + r.status); return (await r.json()) != null; }
+async function cloudPut(code, data, keepalive) { const r = await fetch(cloudUrl(code), { method: 'PUT', body: JSON.stringify(data), headers: { 'Content-Type': 'application/json' }, keepalive: !!keepalive }); if (!r.ok) throw new Error('cloud ' + r.status); }
+function cloudPush() { if (!cloudOn()) return; clearTimeout(pushT); pushT = setTimeout(() => cloudFlush(false), SYNC.pushDelay); }
+function cloudFlush(keepalive) {
+  if (!cloudOn() || !S.code) return; clearTimeout(pushT); pushT = 0; cloudState = 'saving';
+  const code = S.code; return cloudPut(code, S, keepalive).then(() => { cloudState = 'saved'; cloudAt = Date.now(); }).catch(() => { cloudState = 'error'; pushT = setTimeout(() => cloudFlush(false), 15000); }).finally(() => { if (sheetKind === 'menu' && !$('#sheetWrap').hidden) renderSheet(); });
+}
+// Is a code taken anywhere: this device's registry, a save on this device, or the cloud.
+async function codeTaken(code) { if (usedCodes().includes(code) || localSave(code)) return true; if (!cloudOn()) return false; return cloudHas(code); }
+// The best copy of a code's save: the cloud's when it is newer, else this device's.
+async function fetchSave(code) {
+  const mine = localSave(code); let theirs = null;
+  if (cloudOn()) { try { theirs = await cloudGet(code); } catch (e) { if (!mine) throw e; } }
+  if (mine && theirs) return (theirs.saved || 0) > (mine.saved || 0) ? theirs : mine;
+  return theirs || mine;
+}
 function save() { clearTimeout(saveT); saveT = setTimeout(saveNow, 150); }
 function load(seed) {
   let d = seed && seed.v ? seed : null;
@@ -2688,6 +2740,7 @@ function renderSheet() {
     drawMinis(el); drawIcons(el); drawFaces(el);
   } else if (sheetKind === 'menu') {
     el.innerHTML = `<div class="head"><h2>Menu</h2><button class="x" data-act="close">✕</button></div>
+      <div class="box"><h3>VOYAGE CODE</h3><div class="code">${S.code ? fmtCode(S.code) : '—'}</div><div class="note">${S.code ? (cloudOn() ? 'Enter it on any device to pick this voyage up where you left it.' : 'Opens this voyage on this device. Cloud saves are not connected yet.') : 'This voyage has no code yet; the title screen asks for one.'}${cloudOn() ? ' · ' + (cloudState === 'saved' ? 'Saved to the cloud ' + fmtDur(Date.now() - cloudAt) + ' ago.' : cloudState === 'saving' ? 'Saving to the cloud…' : cloudState === 'error' ? 'The cloud could not be reached; it will retry.' : 'Not saved to the cloud yet.') : ''}</div></div>
       <div class="note">Caught ${Object.values(S.index).reduce((a, b) => a + b.n, 0)} fish · sold ${money(S.sold)} · ${S.casts} casts.</div>
       ${S.prologue ? '' : '<button class="cta" data-act="open" data-k="map">Map</button>'}
       <button class="cta alt" data-act="replay">Watch the opening again</button>
@@ -5305,8 +5358,8 @@ function cutAdvance() { if (MODE === 'intro') { endIntro(); return; } if (MODE =
 function endCut() {
   cut = null;
   const wasPrologue = S.prologue;
-  if (wasPrologue && S.heldRod === false) { // let go: drowned. The save is wiped and the title offers a new voyage.
-    S = freshState(); saveNow();
+  if (wasPrologue && S.heldRod === false) { // let go: drowned. The save is wiped; the code stays taken and marks a voyage that ended.
+    const { code, created } = S; S = freshState(); S.code = code; S.created = created; S.drowned = true; saveNow();
     fadeTo(() => { $('#cut').hidden = true; showTitle(); $('#confirm').textContent = 'He let go of his rod, and he paid the price.'; });
     return;
   }
@@ -5322,14 +5375,44 @@ function enterGame() {
   if (loc().noFish) { $('#title').hidden = true; $('#cut').hidden = true; ISL = null; enterIsland('shop'); if (S.pending) showCatch(); return; } // the spaceport has no shore to land on
   MODE = 'game'; $('#title').hidden = true; $('#cut').hidden = true; $('#isle').hidden = true; $('#hunt').hidden = true; $('#game').hidden = false; ISL = null; reseedFish(); render(); window.scrollTo(0, 0); if (S.pending) showCatch();
 }
-function showTitle() { MODE = 'title'; $('#game').hidden = true; $('#isle').hidden = true; $('#hunt').hidden = true; $('#cut').hidden = true; $('#title').hidden = false; $('#bCont').hidden = !S.started; $('#bNew').textContent = S.started ? 'Start over' : 'New voyage'; $('#confirm').textContent = ''; confirmNew = false; }
-function fadeTo(fn) { const f = $('#fade'); f.classList.add('on'); setTimeout(() => { fn(); setTimeout(() => f.classList.remove('on'), 80); }, 600); }
-let confirmNew = false;
-function newVoyage() {
-  if (S.started && !confirmNew) { confirmNew = true; $('#confirm').textContent = 'This wipes your save. Tap again to start over.'; return; }
-  S = freshState(); S.started = true; S.prologue = true; S.loc = 'sea'; S.spot = 'open'; S.boat = 'skiff'; S.slots = 1; S.lines = [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, null, null, null]; saveNow();
-  fadeTo(startIntro);
+function showTitle() { MODE = 'title'; $('#game').hidden = true; $('#isle').hidden = true; $('#hunt').hidden = true; $('#cut').hidden = true; $('#title').hidden = false; $('#bCont').hidden = !S.started; $('#bCont').textContent = S.code ? 'Continue · ' + fmtCode(S.code) : 'Continue'; $('#confirm').textContent = ''; codeBox(null); }
+// ---- the code box: 'new' picks a code for a fresh voyage, 'enter' opens a code from anywhere, 'claim' gives a save from before codes its code ----
+let codeMode = null, codeBusy = false;
+function codeBox(mode) {
+  codeMode = mode; const box = $('#codebox'); box.hidden = !mode; $('#tmenu').hidden = !!mode; if (!mode) return;
+  $('#codeQ').textContent = mode === 'enter' ? 'Enter your voyage code' : mode === 'claim' ? 'Give this voyage a code' : 'Choose a code for this voyage';
+  $('#codeNote').textContent = mode === 'enter' ? (cloudOn() ? 'Eight digits. The voyage continues from wherever it was last saved.' : 'Eight digits. Cloud saves are not connected yet, so a code only opens voyages saved on this device.') : 'Eight digits. Write it down: the code is the only way back to this voyage' + (cloudOn() ? ', on any device.' : '.');
+  $('#bRandom').hidden = mode === 'enter'; $('#bGo').textContent = mode === 'enter' ? 'Open' : 'Begin'; $('#bGo').disabled = false;
+  const inp = $('#codeIn'); inp.value = ''; setTimeout(() => inp.focus(), 50);
 }
+const codeDigits = () => $('#codeIn').value.replace(/\D/g, '').slice(0, 8);
+$('#codeIn').addEventListener('input', e => { const d = codeDigits(); e.target.value = d.length > 4 ? d.slice(0, 4) + ' ' + d.slice(4) : d; });
+function randomCode() { let c = ''; const a = new Uint32Array(8); crypto.getRandomValues(a); for (let i = 0; i < 8; i++) c += a[i] % 10; if (c[0] === '0') c = '1' + c.slice(1); $('#codeIn').value = fmtCode(c); }
+async function codeGo() {
+  if (codeBusy) return; const code = codeDigits(), note = $('#codeNote');
+  if (code.length !== 8) { note.textContent = 'A code is exactly eight digits.'; return; }
+  codeBusy = true; $('#bGo').disabled = true; note.textContent = cloudOn() ? 'Checking…' : '';
+  try {
+    if (codeMode === 'enter') {
+      const d = await fetchSave(code);
+      if (!d) { note.textContent = 'No voyage has that code.'; return; }
+      if (d.drowned || !d.started) { note.textContent = 'That voyage ended: he let go of his rod. Choose a new code for a new one.'; return; }
+      if (S.code && S.code !== code && S.started) cloudFlush(false); // the voyage you are leaving goes up first
+      adopt(d); return;
+    }
+    if (await codeTaken(code)) { note.textContent = 'That code is already in use. Pick another.'; return; }
+    if (codeMode === 'claim') { S.code = code; S.created = S.created || Date.now(); saveNow(); fadeTo(enterGame); return; }
+    if (S.code && S.started) cloudFlush(false); // the old voyage keeps its own code; nothing is wiped
+    S = freshState(); S.code = code; S.created = Date.now(); S.started = true; S.prologue = true; S.loc = 'sea'; S.spot = 'open'; S.boat = 'skiff'; S.slots = 1; S.lines = [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, null, null, null]; saveNow();
+    fadeTo(startIntro);
+  } catch (e) { note.textContent = 'Could not reach the cloud. Check your signal and try again.'; }
+  finally { codeBusy = false; $('#bGo').disabled = false; }
+}
+// Open a save fetched by code: migrate it, settle its lines, and play.
+function adopt(d) { load(d); settleLines(); saveNow(); fadeTo(() => { enterGame(); toast('Voyage ' + fmtCode(S.code) + '.'); }); }
+function continueVoyage() { if (S.started && !S.code) { codeBox('claim'); return; } fadeTo(enterGame); }
+function fadeTo(fn) { const f = $('#fade'); f.classList.add('on'); setTimeout(() => { fn(); setTimeout(() => f.classList.remove('on'), 80); }, 600); }
+function newVoyage() { codeBox('new'); } // every voyage starts by choosing its code
 // A title card before the prologue: the empty sea at dusk, a skiff a long way off, one line. Tap or wait, then the game.
 let introT0 = 0, introDone = false;
 function startIntro() {
@@ -5694,7 +5777,11 @@ document.addEventListener('click', e => {
   else if (a === 'shot') { if (k === 'stones' || S.shot[k] > 0) { S.shotSel = k; save(); renderSheet(); if (MODE === 'hunt') renderHunt(); } }
   else if (a === 'call') { if (k === 'none' || S.calls[k] > 0) { S.callSel = k; save(); renderSheet(); if (MODE === 'hunt') renderHunt(); } }
   else if (a === 'new') newVoyage();
-  else if (a === 'continue') fadeTo(enterGame);
+  else if (a === 'continue') continueVoyage();
+  else if (a === 'entercode') codeBox('enter');
+  else if (a === 'coderandom') randomCode();
+  else if (a === 'codego') codeGo();
+  else if (a === 'codecancel') codeBox(null);
   else if (a === 'skip') { e.stopPropagation(); if (MODE === 'intro') endIntro(); else if (MODE === 'sail') finishSail(); else endCut(); }
   else if (a === 'hold' || a === 'letgo') { e.stopPropagation(); if (!cut) return; S.heldRod = a === 'hold'; cut.answered = true; $('#choice').hidden = true; $('#cutHint').hidden = false; save(); cutAdvance(); }
   else if (a === 'replay') { closeSheet(); fadeTo(startCut); }
@@ -5717,7 +5804,8 @@ window.addEventListener('keydown', e => { if (e.code === 'Space' && F) { e.preve
 // desktop: Escape closes whatever is open; Space or Enter on the fishing shore presses the selected line's big button
 window.addEventListener('keydown', e => {
   if (e.target.closest && e.target.closest('input,textarea')) return;
-  if (e.key === 'Escape') { if (!$('#sheetWrap').hidden) closeSheet(); else if (!$('#cardWrap').hidden) $('#cardWrap').click(); return; }
+  if (e.key === 'Escape') { if (!$('#sheetWrap').hidden) closeSheet(); else if (!$('#cardWrap').hidden) $('#cardWrap').click(); else if (MODE === 'title' && codeMode) codeBox(null); return; }
+  if (MODE === 'title' && codeMode && e.key === 'Enter' && e.target.id === 'codeIn') { e.preventDefault(); codeGo(); return; }
   if ((MODE === 'cut' || MODE === 'sail' || MODE === 'intro') && (e.code === 'Space' || e.key === 'Enter')) { e.preventDefault(); cutAdvance(); return; }
   if (e.target.closest && e.target.closest('button')) return; // a focused button already takes Space and Enter itself
   if (MODE !== 'game' || F || !$('#sheetWrap').hidden || !$('#cardWrap').hidden || (e.code !== 'Space' && e.key !== 'Enter')) return;
@@ -5726,12 +5814,13 @@ window.addEventListener('keydown', e => {
 // the site: register the service worker so the game opens offline and installs to a home screen (not on file://)
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {}));
 window.addEventListener('keyup', e => { if (e.code === 'Space' && F) F.hold = false; });
-document.addEventListener('visibilitychange', () => { if (document.hidden) saveNow(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { saveNow(); cloudFlush(true); } });
+window.addEventListener('pagehide', () => { saveNow(); cloudFlush(true); });
 window.addEventListener('resize', layout);
 
 // ---------- boot ----------
-function start(data) {
-  load(data);
+// Lines that resolved while the game was closed: a rod bite is gone, a passive hook waits. Returns how many hooked.
+function settleLines() {
   for (let i = 0; i < S.slots; i++) if (!S.lines[i]) S.lines[i] = { rig: 'set', bait: 'scraps', phase: 'idle' };
   S.sel = clamp(S.sel, 0, S.slots - 1);
   const t = now(); let got = 0;
@@ -5742,9 +5831,16 @@ function start(data) {
       else { L.phase = L.c ? 'hooked' : 'idle'; if (L.c) got++; }
     } else if (L.phase === 'bite' && t > L.exp) { L.phase = 'idle'; L.c = null; }
   });
+  return got;
+}
+function start(data) {
+  load(data);
+  const got = settleLines();
   layout();
   showTitle();
   if (got) setTimeout(() => toast(`While you were gone: ${got} line${got > 1 ? 's' : ''} hooked something.`), 900);
+  // a newer copy of this voyage on the cloud (played on another device) replaces this one while the title is still up
+  if (S.code && cloudOn()) cloudGet(S.code).then(d => { if (d && (d.saved || 0) > (S.saved || 0) && MODE === 'title') { load(d); settleLines(); try { localStorage.setItem(KEY, JSON.stringify(S)); localStorage.setItem(saveKey(S.code), JSON.stringify(S)); } catch (e) {} showTitle(); } }).catch(() => {});
   setInterval(tick, 500);
   requestAnimationFrame(frame);
   try { if (window.claude && window.claude.hot && window.claude.hot.snapshot) window.claude.hot.snapshot(() => S); } catch (e) {}
