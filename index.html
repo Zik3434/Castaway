@@ -446,7 +446,7 @@ const T_WORLD = { starRumor: 0.07, chartOdds: 12, chartPrice: 150000 };
 // device. SYNC.url is a Firebase Realtime Database URL (https://<project>-default-rtdb.firebaseio.com); the game reads and
 // writes /saves/<code>.json over plain REST. Empty: codes still work, but only on this device. A localStorage key
 // 'castaway-sync-url' overrides it (tests point it at a mock).
-const SYNC = { url: 'https://castaway-976ff-default-rtdb.firebaseio.com', pushDelay: 2500 };
+const SYNC = { url: 'https://castaway-976ff-default-rtdb.firebaseio.com', pushDelay: 2500, testCodes: ['00000000'] }; // testCodes: the designer's test voyages; a new voyage on one always restarts it
 try { const o = localStorage.getItem('castaway-sync-url'); if (o) SYNC.url = o; } catch (e) {}
 // Bounty boards: every shop nails up 0-4 wanted posters for its own island's fish; turning one in (once) pays worth × mult. New posters after a real day.
 const T_BOUNTY = { max: 4, mult: [3, 6], refreshMs: 24 * 3600e3 };
@@ -2187,7 +2187,7 @@ function cloudFlush(keepalive) {
   const code = S.code; return cloudPut(code, S, keepalive).then(() => { cloudState = 'saved'; cloudAt = Date.now(); }).catch(() => { cloudState = 'error'; pushT = setTimeout(() => cloudFlush(false), 15000); }).finally(() => { if (sheetKind === 'menu' && !$('#sheetWrap').hidden) renderSheet(); });
 }
 // Is a code taken: a living voyage under it on this device or in the cloud. A drowned voyage frees its code.
-async function codeTaken(code) { if (isLive(localSave(code))) return true; if (!cloudOn()) return false; return cloudLive(code); }
+async function codeTaken(code) { if (SYNC.testCodes.includes(code)) return false; if (isLive(localSave(code))) return true; if (!cloudOn()) return false; return cloudLive(code); }
 // The best copy of a code's save: the cloud's when it is newer, else this device's.
 async function fetchSave(code) {
   const mine = localSave(code); let theirs = null;
@@ -5303,20 +5303,17 @@ function beachScene(t, h, mode) {
   const nt = drawSkyBase(h, t, {});
   drawSeaBase(h, t, nt, {});
   drawFish(t);
-  const spot = drawShore('shoal', t, nt, { noSeat: mode === 'lie' });
+  const spot = drawShore('shoal', t, nt, { noSeat: mode !== 'fish' });
   const cx = (shoreW - 62 + Math.sin(t / 1300) * 9) | 0; blit(g, maskC('crab', '#c0392b', 1), cx, (sandTop(cx) | 0) - 7);
-  if (mode === 'lie') {
-    const lx = shoreW - 38, ly = (sandTop(shoreW - 6) | 0) - 7;
-    blit(g, sprite('lie'), lx, ly);
-    bres(g, lx + 2, ly - 2, lx + 30, ly - 5, '#7a5230');
-  }
+  const lx = shoreW - 38, ly = (sandTop(shoreW - 6) | 0) - 7, gy = (sandTop(shoreW - 10) | 0) - 2; // where he lies, and the sand under his feet
+  if (mode === 'lie') { blit(g, sprite('lie'), lx, ly); bres(g, lx + 2, ly - 2, lx + 30, ly - 5, '#7a5230'); }
+  else if (mode === 'up') { const sp = sprite('sit'); blit(g, sp, lx + 2, gy - sp.height + 2); bres(g, lx - 16, ly - 1, lx + 2, ly - 3, '#7a5230'); } // sat up where he lay, the rod still on the sand behind him
+  else if (mode === 'stand') { const sp = sprite('stand'); blit(g, sp, lx + 6, gy - sp.height + 1, true); bres(g, lx - 16, ly - 1, lx + 2, ly - 3, '#7a5230'); } // on his feet, facing the water
   const tide = Math.max(0, Math.sin(t / 1100)), reach = (shoreW - 1 - tide * 22) | 0;
   for (let x = reach; x < shoreW; x++) { const y = sandTop(x) | 0; g.fillStyle = 'rgba(140,200,220,0.42)'; g.fillRect(x, y, 1, 2); }
   g.fillStyle = 'rgba(255,255,255,0.85)'; g.fillRect(reach, sandTop(reach) | 0, 2, 1); g.fillRect(reach + 4, (sandTop(reach + 4) | 0) + 1, 3, 1);
-  if (mode !== 'lie') {
-    drawFisherman(spot[0], spot[1], false);
-    blit(g, maskC('gullB', '#f4f4f0', 1), shoreW - 44, (sandTop(shoreW - 40) | 0) - 14); g.fillStyle = '#f0a040'; g.fillRect(shoreW - 40, (sandTop(shoreW - 40) | 0) - 12, 1, 1);
-  }
+  if (mode === 'fish') drawFisherman(spot[0], spot[1], false); // the plank, the rod, the game's own first frame
+  if (mode === 'stand' || mode === 'fish') { blit(g, maskC('gullB', '#f4f4f0', 1), shoreW - 44, (sandTop(shoreW - 40) | 0) - 14); g.fillStyle = '#f0a040'; g.fillRect(shoreW - 40, (sandTop(shoreW - 40) | 0) - 12, 1, 1); }
 }
 // Let go of the rod and he goes under: the sea keeps him, the hat comes up alone, and the voyage starts over.
 function drawSink(p, t) {
@@ -5347,7 +5344,9 @@ const CUT = [
   { dur: 6000, cap: 'No warning.', draw: drawStorm },
   { dur: 5500, cap: 'He did not let go.', draw: drawDrift },
   { dur: 5000, cap: 'Morning. Somewhere.', draw: (p, t) => beachScene(t, 6.4 + p * 0.5, 'lie') },
-  { dur: 5500, cap: 'Nobody is coming.', draw: (p, t) => beachScene(t, 7.0 + p * 0.5, 'sit') },
+  { dur: 4500, cap: 'Nobody is coming.', draw: (p, t) => beachScene(t, 7.0 + p * 0.4, 'up') },
+  { dur: 4500, cap: 'Sea, every way he looked.', draw: (p, t) => beachScene(t, 7.4 + p * 0.4, 'stand') },
+  { dur: 5000, cap: 'He stuck to what he knew.', draw: (p, t) => beachScene(t, 7.8 + p * 0.4, 'fish') },
 ];
 const CUT_DROWN = [ // the same storm, then the other answer: he let go, and the voyage ends here
   CUT[0],
@@ -5436,7 +5435,7 @@ async function codeGo() {
     const old = localSave(code); let created = old && old.created || 0; if (cloudOn()) { try { created = (await cloudCreated(code)) || created; } catch (e) {} } // a drowned voyage's stamp is kept, so the cloud lets the new run overwrite it
     if (codeMode === 'claim') { S.code = code; S.created = created || S.created || Date.now(); saveNow(); fadeTo(enterGame); return; }
     if (S.code && S.started) cloudFlush(false); // the old voyage keeps its own code; nothing is wiped
-    const reused = !!created;
+    const reused = !!created && !SYNC.testCodes.includes(code);
     S = freshState(); S.code = code; S.created = created || Date.now(); S.started = true; S.prologue = true; S.loc = 'sea'; S.spot = 'open'; S.boat = 'skiff'; S.slots = 1; S.lines = [{ rig: 'hand', bait: 'scraps', phase: 'idle' }, null, null, null]; saveNow();
     fadeTo(startIntro); if (reused) setTimeout(() => toast('The last voyager with this code drowned. It is yours now.'), 1200);
   } catch (e) { note.textContent = 'Could not reach the cloud. Check your signal and try again.'; }
