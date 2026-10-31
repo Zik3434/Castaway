@@ -4826,7 +4826,7 @@ function farIsland(x, w, withPalm) {
 // a thwart: the plank bench across a small boat, drawn under the seated fisherman (sx, sy = sprite top-left)
 // a crate under the seated fisherman (sx, sy = sprite top-left), from under his seat down to the deck
 function crateSeat(sx, sy, deckY) { const h = Math.max(3, deckY - (sy + 24)); g.fillStyle = '#5a3a22'; g.fillRect(sx + 3, sy + 24, 14, h); g.fillStyle = '#8a6a44'; g.fillRect(sx + 4, sy + 25, 12, h - 2); g.fillStyle = '#a88458'; g.fillRect(sx + 4, sy + 25, 12, 1); g.fillStyle = '#5a3a22'; g.fillRect(sx + 9, sy + 25, 1, h - 2); }
-function thwart(sx, sy, deckY) { g.fillStyle = '#5a3a22'; g.fillRect(sx + 5, sy + 28, 2, Math.max(1, deckY - sy - 28)); g.fillRect(sx + 13, sy + 28, 2, Math.max(1, deckY - sy - 28)); g.fillStyle = '#8a6a44'; g.fillRect(sx + 3, sy + 26, 14, 2); g.fillStyle = '#a88458'; g.fillRect(sx + 3, sy + 26, 14, 1); }
+function thwart(sx, sy, deckY) { g.fillStyle = '#5a3a22'; g.fillRect(sx + 5, sy + 26, 2, Math.max(1, deckY - sy - 26)); g.fillRect(sx + 13, sy + 26, 2, Math.max(1, deckY - sy - 26)); g.fillStyle = '#8a6a44'; g.fillRect(sx + 3, sy + 24, 14, 2); g.fillStyle = '#a88458'; g.fillRect(sx + 3, sy + 24, 14, 1); g.fillStyle = '#5a3a22'; g.fillRect(sx + 3, sy + 25, 14, 1); } // the plank meets the bottom of his seat (sprite row 23); the legs reach the deck
 function drawBoat(x, y, w, kind, t, storm) {
   g.fillStyle = '#5a3a22'; g.fillRect(x, y - 2, w, 2);
   g.fillStyle = '#3e2816'; g.fillRect(x + 2, y, w - 4, 3);
