@@ -230,7 +230,8 @@ canvas.icon{width:40px;height:40px;image-rendering:pixelated;flex:none}
 .catch .stat .v{font-size:19px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .catch .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .catch .acts .cta:only-child{grid-column:1/-1}
-.catch .warn{color:var(--bad);font-size:17px}
+.catch .warn,#sheet .warn{color:var(--bad);font-size:17px}
+#sheet .warn{padding:6px 0 2px;line-height:1.3}
 #fightWrap{background:transparent;align-items:flex-start;justify-content:flex-end;padding-top:calc(12vh + env(safe-area-inset-top,0px))}
 .fightbox{width:auto;max-width:none;display:grid;gap:5px;justify-items:center;touch-action:none;user-select:none;-webkit-user-select:none;background:rgba(11,17,34,.6);border:2px solid var(--edge);padding:6px 6px 7px}
 .fightbox canvas{width:176px;height:auto;border:2px solid var(--edge)}
@@ -355,7 +356,7 @@ canvas.icon{width:40px;height:40px;image-rendering:pixelated;flex:none}
   </section>
 </div>
 <div class="toasts" id="toasts"></div>
-<div class="overlay" id="sheetWrap" hidden><div class="sheet" id="sheet"></div></div>
+<div class="overlay" id="sheetWrap" style="z-index:21" hidden><div class="sheet" id="sheet"></div></div>
 <div class="overlay center" id="cardWrap" hidden><div class="card" id="card"></div></div>
 <div class="overlay center" id="fightWrap" hidden>
   <div class="fightbox">
@@ -2385,14 +2386,16 @@ function resolveCatch(how) {
   if (S.prologue && !s.kind) { S.proCaught++; if (S.proCaught >= 2) { save(); render(); toast('The light is going.'); setTimeout(startStorm, 1400); return; } }
   save(); render();
 }
-function releaseFish(j) { if (!S.bucket[j]) return; S.bucket.splice(j, 1); save(); render(); renderSheet(); toast('Released.'); }
+function releaseFish(j) { if (!S.bucket[j]) return; S.bucket.splice(j, 1); save(); render(); if (S.pending && S.bucket.length < bucketCap()) { closeSheet(); showCatch(); toast('Room in the bucket. Keep it?'); return; } renderSheet(); toast('Released.'); } // freeing a slot for a landed fish hands you back to its card with Keep lit
 const sellMultOf = l => l.sellMult || 1; // Gallows Cove pays double
 function haulTotal() { return Math.round((bucketTotal() + S.pack.reduce((a, b) => a + b.value, 0)) * sellMultOf(loc())); }
 function sellHaul() {
   if (!loc().sell || !(S.bucket.length + S.pack.length)) return;
   const total = haulTotal(), n = S.bucket.length, m = S.pack.length;
   S.money += total; S.sold += total; S.bucket = []; S.pack = [];
-  save(); render(); renderSheet(); toast(`Sold ${n ? n + ' fish' : ''}${n && m ? ' and ' : ''}${m ? m + ' game' : ''} for ${money(total)}.`);
+  save(); render(); toast(`Sold ${n ? n + ' fish' : ''}${n && m ? ' and ' : ''}${m ? m + ' game' : ''} for ${money(total)}.`);
+  if (S.pending && !SP[S.pending.id].kind) { closeSheet(); showCatch(); return; } // a landed fish was waiting on room: back to its card
+  renderSheet();
 }
 // The bounty board: 0-4 of the island's own fish, each paying worth × mult once. Rolled when the shop is first opened, re-rolled after a real day.
 function boardOf(l) {
@@ -2709,7 +2712,9 @@ function renderSheet() {
     const rows = S.bucket.map((f, j) => { const sp = SP[f.id], V = f.v ? VARIANTS[f.v] : null, r = rarityOf(sp); return `<div class="row"><canvas class="mini" width="64" height="36" data-fish="${f.id}" data-known="1" data-v="${fishMode(f) === 'color' ? '' : fishMode(f)}"></canvas><div class="name" style="flex:1">${V ? `<span style="color:${V.col}">${V.name}</span> ` : ''}${sp.name}<small><span style="color:${RARITY[r].col}">${RARITY[r].name}</span> · ${f.cm} cm · ${fmtKg(fishKg(f))}${f.trophy ? ' · ★ trophy' : ''}</small></div><div class="price">${money(f.value)}</div><button class="buy" data-act="release" data-i="${j}">LET GO</button></div>`; }).join('');
     const market = loc().sell ? `${!loc().shop ? keeperBox(loc(), talkLine) : ''}<button class="cta" data-act="sell" ${S.bucket.length ? '' : 'disabled'}>Sell the haul · ${money(total)}</button>`
       : `<div class="note">${S.prologue ? 'Supper, if you can catch it.' : S.raft ? 'No market here. Gull Harbor buys the whole bucket.' : 'No market on the shoal. Build the raft first.'}</div>`;
+    const landed = S.pending && !SP[S.pending.id].kind && S.bucket.length >= bucketCap() ? SP[S.pending.id] : null;
     el.innerHTML = `<div class="head"><h2>Inventory</h2><button class="x" data-act="close">✕</button></div>
+      ${landed ? `<div class="warn">The bucket is full and the ${landed.name.toLowerCase()} is waiting. <b>Let go</b> of a fish to make room for it${loc().sell ? ', sell the haul' : ''}, or close this and release it.</div>` : ''}
       <div class="box"><h3>BUCKET ${S.bucket.length}/${bucketCap()}</h3>${S.bucket.length ? `<div class="list">${rows}</div>` : '<div class="note">Empty. Fish you keep land here.</div>'}</div>
       <div class="box"><h3>GAME BAG ${S.pack.length}/${packCap()}</h3>${S.pack.length ? `<div class="list">${S.pack.map((f, j) => { const c = GM[f.id]; return `<div class="row"><canvas class="mini game" width="80" height="48" data-game="${f.id}"></canvas><div class="name" style="flex:1">${c.name}<small>${fmtKg(f.kg)}</small></div><div class="price">${money(f.value)}</div></div>`; }).join('')}</div>` : `<div class="note">Empty. ${WEAPON().name} in hand. The hunting ground is past the village.</div>`}</div>
       <div class="box"><div class="row"><div>Whole haul</div><div class="price">${money(haulTotal())}</div></div>${market.replace('Sell the haul · ' + money(total), 'Sell the haul · ' + money(haulTotal()))}</div>
@@ -2849,6 +2854,7 @@ const LEGEND_LORE = {
 };
 function fmtDur(ms) { const sec = Math.round(ms / 1000); if (sec < 60) return sec + 's'; const m = Math.floor(sec / 60), r = sec % 60; return m < 60 ? `${m}m${r ? ' ' + r + 's' : ''}` : `${Math.floor(m / 60)}h ${m % 60}m`; }
 // The catch screen. The fish is held in S.pending until you Sell (market only), Keep (bucket) or Release it.
+let roomAskedFor = null; // the pending catch the inventory already opened for, so a re-render of the card does not reopen it
 function showCatch() {
   const p = S.pending; if (!p) return;
   const s = SP[p.id], full = S.bucket.length >= bucketCap(), canSell = loc().sell;
@@ -2859,13 +2865,14 @@ function showCatch() {
     head = s.legend ? 'LEGENDARY!' : p.v === 'gigantic' ? 'GIGANTIC!' : p.v === 'albino' ? 'ALBINO!' : p.trophy ? 'TROPHY!' : pills.includes('New record') ? 'NEW RECORD!' : pills.includes('New species') ? 'NEW SPECIES!' : 'LANDED!';
     if (s.legend) pills = pills.filter(t => t !== 'New species');
     pills = pills.filter(t => t.toUpperCase() + '!' !== head); // the headline already says it
-    if (full) warn = 'The bucket is full. Sell or let something go first.';
+    if (full) warn = 'The bucket is full. Let one go to make room, or release this one.';
     const bounty = canSell && loc().shop ? openBounty(loc(), p.id) : null, pay = Math.round(p.value * (bounty ? bounty.mult : sellMultOf(loc())));
     if (bounty) pills.unshift('Wanted');
     acts = (canSell ? `<button class="cta" data-act="catch" data-k="sell">${bounty ? 'Bounty ' : 'Sell '}${money(pay)}</button>` : '')
       + `<button class="cta ${canSell || full ? 'alt' : ''}" data-act="catch" data-k="keep" ${full ? 'disabled' : ''}>${full ? 'Bucket full' : 'Keep'}</button>` // no room: Keep is greyed out and says why
       + (canSell ? '' : `<button class="cta ${full ? '' : 'alt'}" data-act="catch" data-k="release">Release</button>`); // ...and Release takes the lead
     if (canSell && full) acts += '<button class="cta alt" data-act="catch" data-k="release">Release</button>';
+    if (full) acts += '<button class="cta alt" data-act="open" data-k="inv">Make room</button>'; // the inventory opens over the card; Let go on a fish frees the slot
   }
   const sub = s.kind ? (s.kind === 'wood' ? (S.raft ? 'You already have a raft.' : `Driftwood ${S.wood}/${T.raftWood} for the raft.`) : 'Not a fish.')
     : `${RIG_LABEL[p.rig].toLowerCase()}${p.wait ? ' · after ' + fmtDur(p.wait) : ''}`;
@@ -2888,6 +2895,7 @@ function showCatch() {
     ${canSell && !s.kind ? '<div class="note">Keep it to sell the whole haul later, or take the money now.</div>' : !s.kind && S.prologue ? '<div class="note">One for the pan.</div>' : !s.kind && !S.raft ? '<div class="note">No market on the shoal. Keep it for the first port.</div>' : ''}
     <div class="acts">${acts}</div>`;
   $('#cardWrap').hidden = false;
+  if (full && !s.kind && roomAskedFor !== p) { roomAskedFor = p; openSheet('inv'); } // no room: the inventory opens over the card so you can let something go
   const cv2 = $('#ccv'), x = cv2.getContext('2d');
   x.imageSmoothingEnabled = false;
   const g = x.createLinearGradient(0, 0, 0, 96); g.addColorStop(0, p.trophy ? '#2c4d6b' : '#1f4a6a'); g.addColorStop(1, '#0a1a2c');
