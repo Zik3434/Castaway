@@ -4559,6 +4559,11 @@ const SPRITES = {
     '..........s.....................SS',
   ],
   hat: ['.....hhhhhh.....', '....hhhhhhhh....', '..hhhhHHHHhhhh..', '..HHHHHHHHHHHH..'], // what the sea gives back
+  kneel: [ // one knee down, the other up, both hands forward on the weapon
+    '.......hhhhhhhh.........', '......hhhhhhhhhh........', '......hhHHHHHHhh........', '...hhhhhhhhhhhhhhhh.....', '...HHHHHHHHHHHHHHHH.....',
+    '.......ssssssss.........', '......sesssssss.........', '.......ssssssss.........', '.......bbbbbbbb.........', '........bbbbbb..........', '.........bbbb...........',
+    '.....tttttttttttt.......', '....ttttttttttttttt.....', '..ssttttttttttttttttt...', '.ssstttTTTttttttttttt...', '..ssttttttttttttttttt...', '.....ttttttttttttttt....', '.....TTTTTTTTTTTTTTT....',
+    '.....pppppppppppppp.....', '...pppppp....ppppppp....', '..ppppp........pppppp...', '..pppp..........ppppppp.', '..PPPP..........PPPPPPPP', '.ssssS..........SSSSSSss'],
   float: [
     '.....hhhhhh.....',
     '....hhhhhhhh....',
@@ -5412,6 +5417,31 @@ function renderHunt() {
   else if (ph === 'miss') { $('#hNote').innerHTML = '<b>Gone.</b>'; box.innerHTML = '<div class="note">The brush closes behind it.</div>'; }
   else if (ph === 'taken') { $('#hNote').innerHTML = '<b>Taken.</b>'; box.innerHTML = ''; }
 }
+// The hunter in the foreground of the hunting ground: kneeling, the weapon in hand, facing the ground. Built once per weapon
+// and hold state on a small canvas (the kneel sprite plus the weapon drawn from the hands), then blitted flipped at 2x.
+const HUNTER_C = new Map();
+function hunterC(weaponId, hold) {
+  const key = weaponId + '|' + (hold ? 1 : 0); let c = HUNTER_C.get(key); if (c) return c;
+  const [cls, pal] = ICON_PAL['weapon:' + weaponId] || ['sling', { a: '#8a6a44', b: '#4a3222', c: '#9fabc4' }], wood = pal.a, dark = pal.b, metal = pal.c || '#9fabc4', string = '#e8e0d0';
+  c = document.createElement('canvas'); c.width = 46; c.height = 26; const x = c.getContext('2d'), px = (X, Y, col, w, h) => { x.fillStyle = col; x.fillRect(X, Y, w || 1, h || 1); };
+  const line = (x0, y0, x1, y1, col) => { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) || 1; for (let i = 0; i <= n; i++) px(Math.round(x0 + (x1 - x0) * i / n), Math.round(y0 + (y1 - y0) * i / n), col); };
+  x.drawImage(sprite('kneel'), 20, 2);
+  const hx = 21, hy = 16; // the forward hand
+  if (cls === 'sling') { line(hx, hy, hx - 2, hy - 4, wood); line(hx - 2, hy - 4, hx - 4, hy - 7, wood); line(hx - 2, hy - 4, hx, hy - 7, wood); if (hold) { line(hx - 4, hy - 7, hx - 1, hy - 13, string); line(hx, hy - 7, hx - 1, hy - 13, string); px(hx - 2, hy - 15, dark, 3, 2); } else { line(hx - 4, hy - 7, hx - 3, hy - 3, string); line(hx, hy - 7, hx - 1, hy - 3, string); px(hx - 3, hy - 2, dark, 2, 2); } }
+  else if (cls === 'throwstick') { line(hx, hy, hx - 5, hy - 6, wood); line(hx - 5, hy - 6, hx - 10, hy - 4, wood); px(hx - 5, hy - 7, dark); if (hold) { line(hx, hy, hx + 2, hy - 8, wood); } }
+  else if (cls === 'bow') { const bx = hx - 6; line(bx + 1, hy - 10, bx - 1, hy - 3, wood); line(bx - 1, hy - 3, bx - 1, hy + 3, wood); line(bx - 1, hy + 3, bx + 1, hy + 10, wood); px(bx - 1, hy - 1, dark, 1, 3); if (hold) { line(bx + 1, hy - 10, hx + 2, hy, string); line(bx + 1, hy + 10, hx + 2, hy, string); line(hx + 3, hy, bx - 5, hy, metal); px(bx - 6, hy, '#f4f4f0'); px(hx + 2, hy - 1, '#c04040', 2, 1); px(hx + 2, hy + 1, '#c04040', 2, 1); } else { line(bx + 1, hy - 10, bx + 1, hy + 10, string); } }
+  else if (cls === 'crossbow') { line(hx + 4, hy + 1, hx - 9, hy, wood); px(hx + 3, hy + 1, dark, 3, 2); line(hx - 8, hy - 5, hx - 8, hy + 5, metal); line(hx - 8, hy - 5, hx - 2, hy, string); line(hx - 8, hy + 5, hx - 2, hy, string); line(hx - 1, hy - 1, hx - 11, hy - 1, metal); if (hold) px(hx - 12, hy - 1, '#f4f4f0'); }
+  else if (cls === 'spear') { line(hx + 4, hy + 4, hx - 10, hy - 9, wood); px(hx - 11, hy - 10, metal, 2, 2); px(hx - 12, hy - 11, '#f4f4f0'); if (hold) line(hx + 2, hy, hx - 2, hy - 8, dark); }
+  else if (cls === 'blowgun') { const by = hold ? hy - 6 : hy - 1; line(hx + 2, by, hx - 13, by, wood); px(hx - 13, by, dark); px(hx + 1, by - 1, dark, 2, 3); }
+  else if (cls === 'gun') { line(hx + 5, hy + 3, hx + 1, hy, dark); px(hx + 3, hy + 2, dark, 3, 2); line(hx + 1, hy - 1, hx - 14, hy - 1, metal); line(hx + 1, hy, hx - 6, hy, wood); px(hx - 14, hy - 2, metal); if (hold) px(hx - 15, hy - 1, '#f4f4f0'); }
+  HUNTER_C.set(key, c); return c;
+}
+function drawHunter(gy, t) {
+  const c = hunterC(S.weapon, !!(HU && HU.hold)), sc = 2, bob = HU && HU.hold ? 0 : Math.sin(t / 900) > 0.5 ? 1 : 0;
+  const X = 4, Y = gy + 46 + bob; // the foreground band, bottom left, facing the ground to the right
+  g.save(); g.translate(X + c.width * sc, Y); g.scale(-sc, sc); g.imageSmoothingEnabled = false; g.drawImage(c, 0, 0); g.restore();
+  g.fillStyle = 'rgba(0,0,0,0.22)'; g.fillRect(X + 8, Y + c.height * sc - 2, c.width * sc - 16, 2); // a shadow under him
+}
 function drawHunt(t) {
   const l = loc(), h = hourAt(t), nt = drawSkyBase(h, t, {}); sceneWeather(l, t, nt);
   const gy = SURF + 10, st = LAND_STYLE[GROUND_LAND[l.hunt.kind]] || LAND_STYLE.grass;
@@ -5429,6 +5459,7 @@ function drawHunt(t) {
     const dir = HU.wind === 'face' ? -1 : HU.wind === 'back' ? 1 : 0.15; g.fillStyle = 'rgba(236,230,214,0.55)';
     for (let k = 0; k < 14; k++) { const sp = 18 + (k % 4) * 7, x = ((((k * 37) + dir * t / 1000 * sp) % W) + W) % W | 0, y = (gy - 30 + ((k * 13) % 26) + Math.sin(t / 500 + k) * 2) | 0; g.fillRect(x, y, dir === 0.15 ? 1 : 2, 1); }
   }
+  drawHunter(gy, t);
   sceneFx(l, t, nt);
   g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, 0, W, 1);
 }
