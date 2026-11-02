@@ -219,7 +219,8 @@ canvas.icon{width:40px;height:40px;image-rendering:pixelated;flex:none}
 .poster .buy{font-size:8px;padding:6px 6px}
 .poster.done{opacity:.55}
 .poster .stamp{font-family:var(--display);font-size:10px;color:#a02020;border:2px solid #a02020;padding:2px 6px;transform:rotate(-8deg)}
-.catch .rar{display:flex;justify-content:center;gap:8px;font-family:var(--display);font-size:9px;letter-spacing:.5px;text-shadow:2px 2px 0 #0a1424}
+.catch .rar{display:flex;justify-content:center;gap:8px;font-family:var(--display);font-size:9px;letter-spacing:.5px;text-shadow:2px 2px 0 #0a1424;flex-wrap:wrap}
+.catch .rar .badge{display:inline-block;padding:5px 10px;border:2px solid currentColor;background:rgba(10,20,36,.7);background:color-mix(in srgb,currentColor 18%,#0a1424);box-shadow:0 0 10px color-mix(in srgb,currentColor 35%,transparent)}
 .catch .rar .sep{color:var(--muted)}
 .catch .pills{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
 .catch canvas.art{width:100%;max-width:300px;justify-self:center;border:2px solid var(--edge)}
@@ -2203,7 +2204,7 @@ const valueOf = (sp, kg, trophy, jit) => sp.kind ? 0 : Math.round(Math.max(3, sp
 // Rarity tiers, shown in colour on the catch screen and in the index. Derived from the data: a legend is legendary, the `rare`
 // flag is rare (epic when it also needs squid, fights at 0.75+, or sits at weight 3 or under), otherwise the island weight decides.
 // A species can pin its own with `tier`.
-const RARITY = { common: { name: 'Common', col: '#aab6c4' }, uncommon: { name: 'Uncommon', col: '#6fdc8c' }, rare: { name: 'Rare', col: '#5ab0ff' }, epic: { name: 'Epic', col: '#c68bff' }, legendary: { name: 'Legendary', col: '#ffcf4a' }, fabled: { name: 'Fabled', col: '#ff7f50' } }; // fabled: the creatures' own once-ever tier, ember against the fish legends' gold
+const RARITY = { common: { name: 'Common', col: '#c9d6e4' }, uncommon: { name: 'Uncommon', col: '#6fdc8c' }, rare: { name: 'Rare', col: '#5ab0ff' }, epic: { name: 'Epic', col: '#c68bff' }, legendary: { name: 'Legendary', col: '#ffcf4a' }, fabled: { name: 'Fabled', col: '#ff7f50' } }; // fabled: the creatures' own once-ever tier, ember against the fish legends' gold
 // A creature's rarity, derived like a fish's: fabled for the once-ever ones; the rare flag is epic when it also fights at 0.75+ or sits at ground weight 3 or under; the rest by ground weight.
 function gameRarityOf(c) { if (c.legend) return 'fabled'; const w = Math.max(...Object.values(c.loc)); if (c.rare) return c.diff >= 0.75 || w <= 3 ? 'epic' : 'rare'; return w >= 24 ? 'common' : w >= 14 ? 'uncommon' : w >= 8 ? 'rare' : 'epic'; }
 function rarityOf(s) {
@@ -3051,7 +3052,7 @@ function showCatch() {
       <div class="stat"><div class="n">BAIT</div><div class="v">${p.bait === 'scraps' ? 'Scraps' : BAITS[p.bait].name}</div></div>
       <div class="stat"><div class="n">TIME</div><div class="v">${PHASE_NAME[p.phase]}</div></div></div>`;
   const rar = rarityOf(s), V = p.v ? VARIANTS[p.v] : null, headCol = V && (p.v === 'gigantic' || p.v === 'albino') ? `style="color:${V.col}"` : '';
-  const rarLine = rar ? `<div class="rar"><span style="color:${RARITY[rar].col}">${RARITY[rar].name.toUpperCase()}</span>${V ? `<span class="sep">·</span><span style="color:${V.col}">${V.name.toUpperCase()}${s.mutant ? '' : V.mult < 1 ? ' · HALF WORTH' : ' · ×' + V.mult + ' WORTH'}</span>` : ''}</div>` : '';
+  const rarLine = rar ? `<div class="rar"><span class="badge" style="color:${RARITY[rar].col}">${RARITY[rar].name.toUpperCase()}</span>${V ? `<span class="badge" style="color:${V.col}">${V.name.toUpperCase()}${s.mutant ? '' : V.mult < 1 ? ' · HALF WORTH' : ' · ×' + V.mult + ' WORTH'}</span>` : ''}</div>` : '';
   $('#card').className = 'card catch';
   $('#card').innerHTML = `<div class="head" ${headCol}>${head}</div>
     ${pills.length ? `<div class="pills">${pills.map(t => `<div class="pill ${t === 'Trophy size' || t === 'Legend' || t === 'Wanted' ? 'gold' : t === 'Far from home' ? 'far' : ''}">${t.toUpperCase()}</div>`).join('')}</div>` : ''}
@@ -5358,7 +5359,7 @@ function showTaken(c, kg, value, tags, line) {
   $('#card').className = 'card catch';
   $('#card').innerHTML = `<div class="head">${head}</div>${pills.length ? `<div class="pills">${pills.map(t => `<div class="pill">${t.toUpperCase()}</div>`).join('')}</div>` : ''}
     <canvas class="art" id="ccv" width="192" height="112"></canvas><div class="fish">${c.name}</div>
-    <div class="rar"><span style="color:${RARITY[gr].col}">${RARITY[gr].name.toUpperCase()}</span>${c.legend ? '<span class="sep">·</span><span style="color:' + RARITY.fabled.col + '">ONCE EVER</span>' : ''}</div>
+    <div class="rar"><span class="badge" style="color:${RARITY[gr].col}">${RARITY[gr].name.toUpperCase()}</span>${c.legend ? '<span class="badge" style="color:' + RARITY.fabled.col + '">ONCE EVER</span>' : ''}</div>
     <div class="size"><span>${fmtKg(kg)}</span></div><div class="sub">${WEAPON().name.toLowerCase()} · from ${DIST_NAME[HU ? HU.steps : 0]} · wind ${WIND_NAME[HU ? HU.wind : 'cross']} · ${PHASE_NAME[phaseAt(now())].toLowerCase()}</div>
     <div class="stats"><div class="stat"><div class="n">WORTH</div><div class="v">${money(value)}</div></div><div class="stat"><div class="n">WEAPON</div><div class="v">${WEAPON().name}</div></div><div class="stat"><div class="n">GROUND</div><div class="v">${loc().hunt.name.replace(/^the /, '')}</div></div></div>
     ${c.legend ? `<div class="note">${BEAST_LORE[c.id]} There is only one. The ground will not show it again.</div>` : ''}<div class="note">${line}</div><div class="acts"><button class="cta" data-act="closecard">Bag it</button></div>`;
