@@ -2096,6 +2096,78 @@ const GAME = [
   { id: 'hourglassbeetle', name: 'Hourglass Beetle', loc: { hourglass: 26 }, kg: [.1, .3], rate: 60, diff: 0.30, sil: 'crab', col: { base: '#4a3a28', belly: '#c8a870', acc: '#f0e0b8', mark: '#2a1a10' } },
   { id: 'agedfox', name: 'Aged Fox', loc: { hourglass: 16 }, kg: [3, 6], rate: 90, diff: 0.55, sil: 'fox', col: { base: '#c8c8c0', belly: '#f8f8f0', acc: '#1a1a1a', mark: '#8a8a80' }, time: ['dusk', 'night'] },
   { id: 'tickbird', name: 'Tick Bird', loc: { hourglass: 22 }, kg: [.2, .4], rate: 60, diff: 0.55, sil: 'bird', col: { base: '#c8a870', belly: '#f8f0e0', acc: '#1a1a1a', mark: '#6a5a38' }, time: ['day'] },
+  // --- the fabled: one creature per island, a sliver of its ground's weight, one narrow hour, and taken once ever. Their
+  // smallest adult sits just above the weapon the island's tier hands you, the way a legend fish needs the next line.
+  { id: 'fab_shoal', name: 'The Pale King', loc: { shoal: 0.4 }, kg: [9, 14], rate: 150, diff: 0.88, sil: 'crab', col: { base: '#e8e2d0', belly: '#f6f2e8', acc: '#3a2018', mark: '#b8b0a0' }, pat: 'speckle', time: ['night'], rare: true, legend: true },
+  { id: 'fab_harbor', name: 'Old Tallow', loc: { harbor: 0.4 }, kg: [14, 22], rate: 200, diff: 0.9, sil: 'boar', col: { base: '#5a4a3c', belly: '#a08a74', acc: '#f0ece0', mark: '#3a2e22' }, pat: 'blotch', time: ['dusk'], rare: true, legend: true },
+  { id: 'fab_brine', name: 'The Salt Hare', loc: { brine: 0.4 }, kg: [14, 22], rate: 200, diff: 0.9, sil: 'hare', col: { base: '#f4f2ec', belly: '#ffffff', acc: '#d8a0a0', mark: '#cfcac0' }, pat: 'speckle', time: ['dawn'], rare: true, legend: true },
+  { id: 'fab_reach', name: 'The Grey Vixen', loc: { reach: 0.4 }, kg: [32, 48], rate: 250, diff: 0.9, sil: 'fox', col: { base: '#8a8c90', belly: '#c8cacc', acc: '#2a2a30', mark: '#5e6066' }, pat: 'stripes', time: ['night'], rare: true, legend: true },
+  { id: 'fab_lantern', name: 'The Lantern Stag', loc: { lantern: 0.4 }, kg: [32, 48], rate: 250, diff: 0.9, sil: 'deer', col: { base: '#6a4a30', belly: '#c4a888', acc: '#f0c050', mark: '#4a3220' }, pat: 'spots', time: ['night'], rare: true, legend: true },
+  { id: 'fab_trench', name: 'The Blackback', loc: { trench: 0.4 }, kg: [72, 110], rate: 300, diff: 0.92, sil: 'seal', col: { base: '#2a2c30', belly: '#6a6c70', acc: '#1a1a1e', mark: '#3e4046' }, pat: 'blotch', time: ['dawn'], rare: true, legend: true },
+  { id: 'fab_delta', name: 'Monsoon\'s Dog', loc: { delta: 0.4 }, kg: [72, 110], rate: 300, diff: 0.92, sil: 'croc', col: { base: '#4a5a3a', belly: '#a8a888', acc: '#2a3020', mark: '#2e3a24' }, pat: 'bands', time: ['night'], rare: true, legend: true },
+  { id: 'fab_fjord', name: 'Rime Mother', loc: { fjord: 0.4 }, kg: [165, 240], rate: 350, diff: 0.92, sil: 'bear', col: { base: '#e8ecf0', belly: '#f8f8f8', acc: '#1a1a1e', mark: '#c4ccd4' }, pat: 'speckle', time: ['dawn'], rare: true, legend: true },
+  { id: 'fab_bell', name: 'The Verger', loc: { bell: 0.4 }, kg: [165, 240], rate: 350, diff: 0.92, sil: 'stork', col: { base: '#5a5e68', belly: '#b8bcc4', acc: '#f0a040', mark: '#3a3e48' }, pat: 'bands', time: ['dusk'], rare: true, legend: true },
+  { id: 'fab_cinder', name: 'Emberhide', loc: { cinder: 0.4 }, kg: [300, 420], rate: 450, diff: 0.94, sil: 'lizard', col: { base: '#8a2a1a', belly: '#f0a060', acc: '#ffd040', mark: '#3a1008' }, pat: 'scales', time: ['day'], rare: true, legend: true },
+  { id: 'fab_glass', name: 'The Glass Hare', loc: { glass: 0.4 }, kg: [300, 420], rate: 450, diff: 0.94, sil: 'hare', col: { base: '#cfe8f0', belly: '#ffffff', acc: '#ffb0c0', mark: '#a8c8d8' }, pat: 'speckle', time: ['day'], rare: true, legend: true },
+  { id: 'fab_hollow', name: 'The Old Dark', loc: { hollow: 0.4 }, kg: [680, 1100], rate: 500, diff: 0.95, sil: 'bear', col: { base: '#2a2424', belly: '#5a5050', acc: '#1a1414', mark: '#3e3434' }, pat: 'blotch', time: ['night'], rare: true, legend: true },
+  { id: 'fab_thunder', name: 'Stormcrow', loc: { thunder: 0.4 }, kg: [680, 1100], rate: 500, diff: 0.95, sil: 'bird', col: { base: '#1e1a2a', belly: '#4a4460', acc: '#f0f0ff', mark: '#2e2a40' }, pat: 'speckle', time: ['dusk'], rare: true, legend: true },
+  { id: 'fab_tortoise', name: 'Grandfather Shell', loc: { tortoise: 0.4 }, kg: [14, 22], rate: 200, diff: 0.9, sil: 'turtle', col: { base: '#6a6a4a', belly: '#c8c8a8', acc: '#8a7a50', mark: '#4a4a30' }, pat: 'scales', time: ['day'], rare: true, legend: true },
+  { id: 'fab_gannet', name: 'The White Admiral', loc: { gannet: 0.4 }, kg: [14, 22], rate: 200, diff: 0.9, sil: 'bird', col: { base: '#f8f8f4', belly: '#ffffff', acc: '#f0c050', mark: '#2a2a30' }, pat: 'speckle', time: ['day'], rare: true, legend: true },
+  { id: 'fab_market', name: 'The Reed Sow', loc: { market: 0.4 }, kg: [32, 48], rate: 250, diff: 0.9, sil: 'boar', col: { base: '#7a6a50', belly: '#c0b090', acc: '#e8e0c8', mark: '#4e4230' }, pat: 'stripes', time: ['dawn'], rare: true, legend: true },
+  { id: 'fab_monastery', name: 'The Abbot', loc: { monastery: 0.4 }, kg: [32, 48], rate: 250, diff: 0.9, sil: 'deer', col: { base: '#8a8a80', belly: '#d0d0c8', acc: '#3a3a30', mark: '#5e5e56' }, pat: 'spots', time: ['dawn'], rare: true, legend: true },
+  { id: 'fab_sargasso', name: 'Weedback', loc: { sargasso: 0.4 }, kg: [32, 48], rate: 250, diff: 0.9, sil: 'turtle', col: { base: '#4a6a3a', belly: '#a8b890', acc: '#7a9a5a', mark: '#2e4a24' }, pat: 'blotch', time: ['dusk'], rare: true, legend: true },
+  { id: 'fab_pirate', name: 'The Hanged Man\'s Fox', loc: { pirate: 0.4 }, kg: [72, 110], rate: 300, diff: 0.92, sil: 'fox', col: { base: '#4a3028', belly: '#a08070', acc: '#f0c050', mark: '#2e1c18' }, pat: 'stripes', time: ['night'], rare: true, legend: true },
+  { id: 'fab_whaling', name: 'Flensing Bear', loc: { whaling: 0.4 }, kg: [72, 110], rate: 300, diff: 0.92, sil: 'bear', col: { base: '#6a5a48', belly: '#b8a890', acc: '#2a2018', mark: '#4a3c30' }, pat: 'blotch', time: ['night'], rare: true, legend: true },
+  { id: 'fab_tidal', name: 'The Tide Hare', loc: { tidal: 0.4 }, kg: [72, 110], rate: 300, diff: 0.92, sil: 'hare', col: { base: '#b8a888', belly: '#e8e0d0', acc: '#5a4a38', mark: '#8a7a60' }, pat: 'speckle', time: ['dawn'], rare: true, legend: true },
+  { id: 'fab_crater', name: 'Sulphur Jack', loc: { crater: 0.4 }, kg: [165, 240], rate: 350, diff: 0.92, sil: 'lizard', col: { base: '#d8c040', belly: '#f8f0a0', acc: '#f08030', mark: '#8a7a20' }, pat: 'spots', time: ['day'], rare: true, legend: true },
+  { id: 'fab_iceship', name: 'Hoarfrost', loc: { iceship: 0.4 }, kg: [165, 240], rate: 350, diff: 0.92, sil: 'fox', col: { base: '#f0f4f8', belly: '#ffffff', acc: '#6a8aa0', mark: '#c8d4e0' }, pat: 'speckle', time: ['night'], rare: true, legend: true },
+  { id: 'fab_witch', name: 'The Witch\'s Snake', loc: { witch: 0.4 }, kg: [165, 240], rate: 350, diff: 0.92, sil: 'snake', col: { base: '#2a3a2a', belly: '#6a7a5a', acc: '#c0ff40', mark: '#1a2a1a' }, pat: 'bands', time: ['night'], rare: true, legend: true },
+  { id: 'fab_biolum', name: 'Lamplight', loc: { biolum: 0.4 }, kg: [300, 420], rate: 450, diff: 0.94, sil: 'moth', col: { base: '#e8f8ff', belly: '#ffffff', acc: '#40ffd0', mark: '#a0c8d8' }, pat: 'spots', time: ['night'], rare: true, legend: true },
+  { id: 'fab_deadsea', name: 'Brinecoil', loc: { deadsea: 0.4 }, kg: [300, 420], rate: 450, diff: 0.94, sil: 'snake', col: { base: '#e8e4d8', belly: '#ffffff', acc: '#c0a060', mark: '#b8b0a0' }, pat: 'bands', time: ['dusk'], rare: true, legend: true },
+  { id: 'fab_frogs', name: 'King\'s Toad', loc: { frogs: 0.4 }, kg: [300, 420], rate: 450, diff: 0.94, sil: 'frog', col: { base: '#3a5a2a', belly: '#a8c870', acc: '#f0c050', mark: '#2a3e1a' }, pat: 'blotch', time: ['night'], rare: true, legend: true },
+  { id: 'fab_clockwork', name: 'The Wound Crab', loc: { clockwork: 0.4 }, kg: [680, 1100], rate: 500, diff: 0.95, sil: 'crab', col: { base: '#b8862c', belly: '#e8c068', acc: '#6a4a10', mark: '#7a5a1c' }, pat: 'scales', time: ['day'], rare: true, legend: true },
+  { id: 'fab_ribcage', name: 'The Marrow Boar', loc: { ribcage: 0.4 }, kg: [680, 1100], rate: 500, diff: 0.95, sil: 'boar', col: { base: '#d8d0c0', belly: '#f0ece0', acc: '#8a2a2a', mark: '#9a9080' }, pat: 'blotch', time: ['night'], rare: true, legend: true },
+  { id: 'fab_stormeye', name: 'The Still Hare', loc: { stormeye: 0.4 }, kg: [680, 1100], rate: 500, diff: 0.95, sil: 'hare', col: { base: '#c8c0a8', belly: '#f0ece0', acc: '#4a4038', mark: '#8a8070' }, pat: 'speckle', time: ['day'], rare: true, legend: true },
+  { id: 'fab_sleeper', name: 'The Dream Bat', loc: { sleeper: 0.4 }, kg: [680, 1100], rate: 500, diff: 0.95, sil: 'bat', col: { base: '#4a3a6a', belly: '#9a8ac0', acc: '#ffd0ff', mark: '#2e2444' }, pat: 'speckle', time: ['night'], rare: true, legend: true },
+  { id: 'fab_oyster', name: 'The Marsh Heron', loc: { oyster: 0.4 }, kg: [14, 22], rate: 200, diff: 0.9, sil: 'stork', col: { base: '#8a8a98', belly: '#d8d8e0', acc: '#f0a040', mark: '#5a5a68' }, pat: 'bands', time: ['dawn'], rare: true, legend: true },
+  { id: 'fab_wreckers', name: 'The Moor Stag', loc: { wreckers: 0.4 }, kg: [14, 22], rate: 200, diff: 0.9, sil: 'deer', col: { base: '#3a3a44', belly: '#8a8a98', acc: '#f0c050', mark: '#1e1e28' }, pat: 'spots', time: ['night'], rare: true, legend: true },
+  { id: 'fab_fen', name: 'Bog Sow', loc: { fen: 0.4 }, kg: [32, 48], rate: 250, diff: 0.9, sil: 'boar', col: { base: '#4a4a3a', belly: '#9a9a80', acc: '#d8d0b8', mark: '#2e2e22' }, pat: 'blotch', time: ['dusk'], rare: true, legend: true },
+  { id: 'fab_lazaret', name: 'The Ward Bat', loc: { lazaret: 0.4 }, kg: [32, 48], rate: 250, diff: 0.9, sil: 'bat', col: { base: '#8a8a80', belly: '#c8c8c0', acc: '#e8e8e0', mark: '#5a5a52' }, pat: 'speckle', time: ['night'], rare: true, legend: true },
+  { id: 'fab_dyers', name: 'Purple Buck', loc: { dyers: 0.4 }, kg: [32, 48], rate: 250, diff: 0.9, sil: 'deer', col: { base: '#5a3a7a', belly: '#a888c0', acc: '#f0e0ff', mark: '#3a2450' }, pat: 'spots', time: ['day'], rare: true, legend: true },
+  { id: 'fab_terrace', name: 'The Rice Snake', loc: { terrace: 0.4 }, kg: [32, 48], rate: 250, diff: 0.9, sil: 'snake', col: { base: '#6a8a3a', belly: '#c8e088', acc: '#f0d040', mark: '#3e5a20' }, pat: 'bands', time: ['dawn'], rare: true, legend: true },
+  { id: 'fab_graveyard', name: 'The Ironback', loc: { graveyard: 0.4 }, kg: [72, 110], rate: 300, diff: 0.92, sil: 'crab', col: { base: '#4a3a30', belly: '#8a7a6a', acc: '#c08040', mark: '#2e2420' }, pat: 'scales', time: ['night'], rare: true, legend: true },
+  { id: 'fab_steppe', name: 'The Khan\'s Eagle', loc: { steppe: 0.4 }, kg: [72, 110], rate: 300, diff: 0.92, sil: 'bird', col: { base: '#4a3828', belly: '#a08868', acc: '#f0c050', mark: '#2e2218' }, pat: 'speckle', time: ['day'], rare: true, legend: true },
+  { id: 'fab_cannery', name: 'The Cannery Bull', loc: { cannery: 0.4 }, kg: [72, 110], rate: 300, diff: 0.92, sil: 'seal', col: { base: '#4a4a50', belly: '#9a9aa0', acc: '#2a2a30', mark: '#303036' }, pat: 'blotch', time: ['dusk'], rare: true, legend: true },
+  { id: 'fab_whirlpool', name: 'The Bridge Bear', loc: { whirlpool: 0.4 }, kg: [72, 110], rate: 300, diff: 0.92, sil: 'bear', col: { base: '#3a2e24', belly: '#8a7a68', acc: '#1e1810', mark: '#2a2018' }, pat: 'blotch', time: ['night'], rare: true, legend: true },
+  { id: 'fab_coral', name: 'The Motu Crab', loc: { coral: 0.4 }, kg: [165, 240], rate: 350, diff: 0.92, sil: 'crab', col: { base: '#3a5aa0', belly: '#a0b8e0', acc: '#f0c050', mark: '#24386a' }, pat: 'scales', time: ['night'], rare: true, legend: true },
+  { id: 'fab_rookery', name: 'The Emperor', loc: { rookery: 0.4 }, kg: [165, 240], rate: 350, diff: 0.92, sil: 'bird', col: { base: '#1a1a28', belly: '#f8f8f0', acc: '#f0c050', mark: '#2e2e40' }, pat: 'speckle', time: ['day'], rare: true, legend: true },
+  { id: 'fab_geyser', name: 'Steamhide', loc: { geyser: 0.4 }, kg: [165, 240], rate: 350, diff: 0.92, sil: 'lizard', col: { base: '#6a7a7a', belly: '#c0d0d0', acc: '#f0f0ff', mark: '#3e4a4a' }, pat: 'scales', time: ['day'], rare: true, legend: true },
+  { id: 'fab_salmonrun', name: 'Grandmother\'s Bear', loc: { salmonrun: 0.4 }, kg: [165, 240], rate: 350, diff: 0.92, sil: 'bear', col: { base: '#5a3a28', belly: '#b08870', acc: '#2a1810', mark: '#3e2818' }, pat: 'blotch', time: ['dawn'], rare: true, legend: true },
+  { id: 'fab_throat', name: 'The Throat\'s Bat', loc: { throat: 0.4 }, kg: [300, 420], rate: 450, diff: 0.94, sil: 'bat', col: { base: '#2a1a30', belly: '#6a4a70', acc: '#ff6040', mark: '#1a0e20' }, pat: 'speckle', time: ['night'], rare: true, legend: true },
+  { id: 'fab_mirage', name: 'The Mirage Hare', loc: { mirage: 0.4 }, kg: [300, 420], rate: 450, diff: 0.94, sil: 'hare', col: { base: '#e8d8b8', belly: '#fff8e8', acc: '#c0a070', mark: '#c8b890' }, pat: 'speckle', time: ['day'], rare: true, legend: true },
+  { id: 'fab_ink', name: 'The Ink Toad', loc: { ink: 0.4 }, kg: [300, 420], rate: 450, diff: 0.94, sil: 'frog', col: { base: '#1a1a24', belly: '#4a4a5a', acc: '#f0f0ff', mark: '#0e0e14' }, pat: 'blotch', time: ['night'], rare: true, legend: true },
+  { id: 'fab_amber', name: 'The Amber Moth', loc: { amber: 0.4 }, kg: [300, 420], rate: 450, diff: 0.94, sil: 'moth', col: { base: '#e8a030', belly: '#ffd880', acc: '#ffffff', mark: '#a86a18' }, pat: 'spots', time: ['dusk'], rare: true, legend: true },
+  { id: 'fab_runoff', name: 'The Blight Boar', loc: { runoff: 0.4 }, kg: [680, 1100], rate: 500, diff: 0.95, sil: 'boar', col: { base: '#6a8a4a', belly: '#c0e080', acc: '#ff60c0', mark: '#3e5a28' }, pat: 'blotch', time: ['night'], rare: true, legend: true },
+  { id: 'fab_hanging', name: 'The Rootbat', loc: { hanging: 0.4 }, kg: [680, 1100], rate: 500, diff: 0.95, sil: 'bat', col: { base: '#8a7a5a', belly: '#c8b890', acc: '#f0e0c0', mark: '#5a4e38' }, pat: 'speckle', time: ['day'], rare: true, legend: true },
+  { id: 'fab_folio', name: 'The Margin Snake', loc: { folio: 0.4 }, kg: [680, 1100], rate: 500, diff: 0.95, sil: 'snake', col: { base: '#f0ecd8', belly: '#ffffff', acc: '#2a2a30', mark: '#c8c4b0' }, pat: 'bands', time: ['dusk'], rare: true, legend: true },
+  { id: 'fab_starfall', name: 'The Fallen', loc: { starfall: 0.4 }, kg: [680, 1100], rate: 500, diff: 0.95, sil: 'lizard', col: { base: '#3a3a48', belly: '#8a8aa0', acc: '#80e0ff', mark: '#22222e' }, pat: 'scales', time: ['night'], rare: true, legend: true },
+  { id: 'fab_pilchard', name: 'The Headland Fox', loc: { pilchard: 0.4 }, kg: [14, 22], rate: 200, diff: 0.9, sil: 'fox', col: { base: '#b86a3a', belly: '#e8c8a0', acc: '#f8f8f0', mark: '#7a4420' }, pat: 'stripes', time: ['dusk'], rare: true, legend: true },
+  { id: 'fab_hermit', name: 'The Hermit\'s Gull', loc: { hermit: 0.4 }, kg: [14, 22], rate: 200, diff: 0.9, sil: 'bird', col: { base: '#e8e8e0', belly: '#ffffff', acc: '#f0a040', mark: '#a8a8a0' }, pat: 'speckle', time: ['day'], rare: true, legend: true },
+  { id: 'fab_bayou', name: 'Old Bayou', loc: { bayou: 0.4 }, kg: [32, 48], rate: 250, diff: 0.9, sil: 'croc', col: { base: '#3a4a2a', belly: '#9a9a70', acc: '#2a3018', mark: '#242e18' }, pat: 'bands', time: ['night'], rare: true, legend: true },
+  { id: 'fab_spice', name: 'The Spice Fox', loc: { spice: 0.4 }, kg: [32, 48], rate: 250, diff: 0.9, sil: 'fox', col: { base: '#c05a2a', belly: '#f0b888', acc: '#f8f0e0', mark: '#8a3a18' }, pat: 'stripes', time: ['dawn'], rare: true, legend: true },
+  { id: 'fab_flamingo', name: 'The Pink Stork', loc: { flamingo: 0.4 }, kg: [32, 48], rate: 250, diff: 0.9, sil: 'stork', col: { base: '#f090a0', belly: '#ffd0d8', acc: '#f0c050', mark: '#c05a6a' }, pat: 'bands', time: ['day'], rare: true, legend: true },
+  { id: 'fab_ghats', name: 'The Ghat Cobra', loc: { ghats: 0.4 }, kg: [72, 110], rate: 300, diff: 0.92, sil: 'snake', col: { base: '#5a4a2a', belly: '#c8b070', acc: '#f0c050', mark: '#3a2e18' }, pat: 'bands', time: ['dusk'], rare: true, legend: true },
+  { id: 'fab_iguanas', name: 'The Iguana King', loc: { iguanas: 0.4 }, kg: [72, 110], rate: 300, diff: 0.92, sil: 'lizard', col: { base: '#2a3a2a', belly: '#8aa070', acc: '#f06040', mark: '#1a2a1a' }, pat: 'scales', time: ['day'], rare: true, legend: true },
+  { id: 'fab_forest', name: 'The Flood Croc', loc: { forest: 0.4 }, kg: [72, 110], rate: 300, diff: 0.92, sil: 'croc', col: { base: '#4a4a3a', belly: '#a0a088', acc: '#2a2a1c', mark: '#303024' }, pat: 'bands', time: ['night'], rare: true, legend: true },
+  { id: 'fab_totem', name: 'The Totem Bear', loc: { totem: 0.4 }, kg: [165, 240], rate: 350, diff: 0.92, sil: 'bear', col: { base: '#2a2a30', belly: '#6a6a78', acc: '#f0c050', mark: '#1a1a20' }, pat: 'blotch', time: ['dawn'], rare: true, legend: true },
+  { id: 'fab_caviar', name: 'The Grey Fisher', loc: { caviar: 0.4 }, kg: [165, 240], rate: 350, diff: 0.92, sil: 'stork', col: { base: '#7a7a7a', belly: '#c8c8c8', acc: '#f0a040', mark: '#4e4e4e' }, pat: 'bands', time: ['dawn'], rare: true, legend: true },
+  { id: 'fab_city', name: 'The Park Stag', loc: { city: 0.4 }, kg: [165, 240], rate: 350, diff: 0.92, sil: 'deer', col: { base: '#8a7a58', belly: '#d0c0a0', acc: '#f0ece0', mark: '#5a4e38' }, pat: 'spots', time: ['dusk'], rare: true, legend: true },
+  { id: 'fab_furnace', name: 'The Glass Lizard', loc: { furnace: 0.4 }, kg: [300, 420], rate: 450, diff: 0.94, sil: 'lizard', col: { base: '#c8e8f0', belly: '#ffffff', acc: '#f0a040', mark: '#88b0c0' }, pat: 'scales', time: ['day'], rare: true, legend: true },
+  { id: 'fab_lookingglass', name: 'The Other Hare', loc: { lookingglass: 0.4 }, kg: [300, 420], rate: 450, diff: 0.94, sil: 'hare', col: { base: '#d0d0d8', belly: '#f8f8ff', acc: '#6a6a80', mark: '#a0a0b0' }, pat: 'speckle', time: ['day'], rare: true, legend: true },
+  { id: 'fab_sporewood', name: 'The Cap Toad', loc: { sporewood: 0.4 }, kg: [300, 420], rate: 450, diff: 0.94, sil: 'frog', col: { base: '#8a5a8a', belly: '#d0a0c8', acc: '#f0f0a0', mark: '#5a3858' }, pat: 'spots', time: ['night'], rare: true, legend: true },
+  { id: 'fab_belly', name: 'The Gut Crab', loc: { belly: 0.4 }, kg: [680, 1100], rate: 500, diff: 0.95, sil: 'crab', col: { base: '#c06a6a', belly: '#f0b0a8', acc: '#f8e8d8', mark: '#8a3e3e' }, pat: 'scales', time: ['night'], rare: true, legend: true },
+  { id: 'fab_ferry', name: 'The Waiting Fox', loc: { ferry: 0.4 }, kg: [680, 1100], rate: 500, diff: 0.95, sil: 'fox', col: { base: '#6a6a78', belly: '#b8b8c8', acc: '#f0f0ff', mark: '#44444e' }, pat: 'stripes', time: ['night'], rare: true, legend: true },
+  { id: 'fab_hourglass', name: 'The Sand Turtle', loc: { hourglass: 0.4 }, kg: [680, 1100], rate: 500, diff: 0.95, sil: 'turtle', col: { base: '#d8b870', belly: '#f0e0b0', acc: '#a07a30', mark: '#9a7a40' }, pat: 'scales', time: ['day'], rare: true, legend: true },
 ];
 const GM = Object.fromEntries(GAME.map(c => [c.id, c]));
 const WEAPON = () => WEAPONS.find(w => w.id === S.weapon) || WEAPONS[0];
@@ -2131,7 +2203,9 @@ const valueOf = (sp, kg, trophy, jit) => sp.kind ? 0 : Math.round(Math.max(3, sp
 // Rarity tiers, shown in colour on the catch screen and in the index. Derived from the data: a legend is legendary, the `rare`
 // flag is rare (epic when it also needs squid, fights at 0.75+, or sits at weight 3 or under), otherwise the island weight decides.
 // A species can pin its own with `tier`.
-const RARITY = { common: { name: 'Common', col: '#aab6c4' }, uncommon: { name: 'Uncommon', col: '#6fdc8c' }, rare: { name: 'Rare', col: '#5ab0ff' }, epic: { name: 'Epic', col: '#c68bff' }, legendary: { name: 'Legendary', col: '#ffcf4a' } };
+const RARITY = { common: { name: 'Common', col: '#aab6c4' }, uncommon: { name: 'Uncommon', col: '#6fdc8c' }, rare: { name: 'Rare', col: '#5ab0ff' }, epic: { name: 'Epic', col: '#c68bff' }, legendary: { name: 'Legendary', col: '#ffcf4a' }, fabled: { name: 'Fabled', col: '#ff7f50' } }; // fabled: the creatures' own once-ever tier, ember against the fish legends' gold
+// A creature's rarity, derived like a fish's: fabled for the once-ever ones; the rare flag is epic when it also fights at 0.75+ or sits at ground weight 3 or under; the rest by ground weight.
+function gameRarityOf(c) { if (c.legend) return 'fabled'; const w = Math.max(...Object.values(c.loc)); if (c.rare) return c.diff >= 0.75 || w <= 3 ? 'epic' : 'rare'; return w >= 24 ? 'common' : w >= 14 ? 'uncommon' : w >= 8 ? 'rare' : 'epic'; }
 function rarityOf(s) {
   if (s.kind) return null; if (s.legend) return 'legendary'; if (s.tier) return s.tier;
   const w = Math.max(...Object.values(s.loc));
@@ -2721,8 +2795,9 @@ function renderSheet() {
     }).join('');
     const grows = GAME.map(c => { const gx = S.gindex[c.id], home = LOCS.find(l => c.loc[l.id]);
       const mini = `<canvas class="mini game" width="80" height="48" data-game="${c.id}" data-known="${gx ? 1 : 0}"></canvas>`;
-      if (gx) return `<div class="row">${mini}<div class="name" style="flex:1">${c.name}<small>${home.name}${c.rare ? ' · rare' : ''}${c.time ? ' · ' + c.time.join('/') : ''}</small></div><div class="price">×${gx.n} · ${fmtKg(gx.best)}</div></div>`;
-      return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${S.visited[home.id] ? home.name : 'somewhere out there'}${c.rare ? ' · rare' : ''}</small></div><div class="price">—</div></div>`; }).join('');
+      const gr = gameRarityOf(c), grT = `<span style="color:${RARITY[gr].col}">${RARITY[gr].name}</span>`;
+      if (gx) return `<div class="row">${mini}<div class="name" style="flex:1">${c.name}<small>${grT} · ${home.name}${c.legend ? ' · taken, once ever' : ''}${c.time ? ' · ' + c.time.join('/') : ''}</small></div><div class="price">×${gx.n} · ${fmtKg(gx.best)}</div></div>`;
+      return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${grT} · ${S.visited[home.id] ? home.name : 'somewhere out there'}${c.legend ? ' · once ever, ' + c.time.join('/') : ''}</small></div><div class="price">—</div></div>`; }).join('');
     el.innerHTML = `<div class="head"><h2>Index ${Object.keys(S.index).length}/${fish.length}</h2><button class="x" data-act="close">✕</button></div><div class="list">${rows}</div>
       <div class="box"><h3>GAME ${Object.keys(S.gindex).length}/${GAME.length}</h3><div class="list">${grows}</div></div>`;
     drawMinis(el);
@@ -2736,7 +2811,7 @@ function renderSheet() {
     el.innerHTML = `<div class="head"><h2>Inventory</h2><button class="x" data-act="close">✕</button></div>
       ${landed ? `<div class="warn">The bucket is full and the ${landed.name.toLowerCase()} is waiting. <b>Let go</b> of a fish to make room for it${loc().sell ? ', sell the haul' : ''}, or close this and release it.</div>` : ''}
       <div class="box"><h3>BUCKET ${S.bucket.length}/${bucketCap()}</h3>${S.bucket.length ? `<div class="list">${rows}</div>` : '<div class="note">Empty. Fish you keep land here.</div>'}</div>
-      <div class="box"><h3>GAME BAG ${S.pack.length}/${packCap()}</h3>${S.pack.length ? `<div class="list">${S.pack.map((f, j) => { const c = GM[f.id]; return `<div class="row"><canvas class="mini game" width="80" height="48" data-game="${f.id}"></canvas><div class="name" style="flex:1">${c.name}<small>${fmtKg(f.kg)}</small></div><div class="price">${money(f.value)}</div></div>`; }).join('')}</div>` : `<div class="note">Empty. ${WEAPON().name} in hand. The hunting ground is past the village.</div>`}</div>
+      <div class="box"><h3>GAME BAG ${S.pack.length}/${packCap()}</h3>${S.pack.length ? `<div class="list">${S.pack.map((f, j) => { const c = GM[f.id], gr = gameRarityOf(c); return `<div class="row"><canvas class="mini game" width="80" height="48" data-game="${f.id}"></canvas><div class="name" style="flex:1">${c.name}<small><span style="color:${RARITY[gr].col}">${RARITY[gr].name}</span> · ${fmtKg(f.kg)}</small></div><div class="price">${money(f.value)}</div></div>`; }).join('')}</div>` : `<div class="note">Empty. ${WEAPON().name} in hand. The hunting ground is past the village.</div>`}</div>
       <div class="box"><div class="row"><div>Whole haul</div><div class="price">${money(haulTotal())}</div></div>${market.replace('Sell the haul · ' + money(total), 'Sell the haul · ' + money(haulTotal()))}</div>
       <div class="box"><h3>BAIT</h3><div class="list">
         <div class="row"><div class="name">Shell scraps<small>Free. Picked off the rocks.</small></div><div class="price">∞</div></div>
@@ -2803,6 +2878,78 @@ function mapClick(e) {
 // ---------- cards & toasts ----------
 function showCard(html) { $('#card').className = 'card'; $('#card').innerHTML = html; $('#cardWrap').hidden = false; }
 function closeCard() { $('#cardWrap').hidden = true; }
+const BEAST_LORE = {
+  fab_shoal: "A ghost crab the size of a sea chest. It has watched every wreck come ashore, yours among them.",
+  fab_harbor: "Forty years the harbour has hunted this boar. The tusks are white as candles and twice as long.",
+  fab_brine: "White as the pans. It runs on the crust without breaking it, and no one has seen where it sleeps.",
+  fab_reach: "A fox the colour of pine smoke. The kelp cutters leave fish heads out for her and lock the hens anyway.",
+  fab_lantern: "The villagers say they once hung lamps on his antlers for a festival. He has not forgiven them.",
+  fab_trench: "A grey seal older than the buyer boat. It surfaces once at dawn to look at the cliffs, then goes back down.",
+  fab_delta: "The delta names its crocodiles like dogs. This one has eaten three of the names.",
+  fab_fjord: "A white bear with ice in her coat. The fjord goes quiet when she walks the shore, and the fish do too.",
+  fab_bell: "A heron that stands in the drowned nave every evening, as if waiting for a service that will not start.",
+  fab_cinder: "A lizard that sleeps in the lava and comes out to cool. Its back still glows when it is dead.",
+  fab_glass: "You see the shoal through it before you see it. The atoll divers say it drinks light.",
+  fab_hollow: "A cave bear from before the lake. It has never seen the sun and does not care for the lamp.",
+  fab_thunder: "A crow the lightning has struck a hundred times. It rides the storm the way gulls ride a boat.",
+  fab_tortoise: "The oldest tortoise on the key, older than the lighthouse. The keepers carve their names on him and he lets them.",
+  fab_gannet: "A gannet with a wingspan like a sail. It dives from higher than the rock and comes up with two fish.",
+  fab_market: "She raids the floating pens at first light and swims away with the reeds in her mouth.",
+  fab_monastery: "A grey goat the monks will not shoot. It stands on the ledge no one can climb and looks down at the bells.",
+  fab_sargasso: "A turtle so draped in weed that the banks move with it. Sailors have moored to it and not known.",
+  fab_pirate: "It sits under the gallows tree every night. The cove will not say whose fox it was.",
+  fab_whaling: "A bear that learned to wait for the flensing. It is scarred from nose to tail and still comes down.",
+  fab_tidal: "It crosses the causeway with the tide and is never caught on the wrong side. Nobody else can say that.",
+  fab_crater: "A yellow lizard that basks on the fumaroles. Touching it burns; it does not seem to mind.",
+  fab_iceship: "An arctic fox that lives in the frozen ship. The crew swore it was already aboard when they froze.",
+  fab_witch: "The witch kept it, or it kept her. It has not left the drowned wood since she did.",
+  fab_biolum: "A moth the size of a gull, lit from inside. Follow it and you will not find your way back.",
+  fab_deadsea: "A serpent crusted in salt that sheds its skin in sheets. The pans are white with what it leaves.",
+  fab_frogs: "The frog king's own warden, broad as a cart wheel. It has a crown of warts and a voice like a drum.",
+  fab_clockwork: "A crab of brass and rivets, ticking. No one on the island will admit to having wound it.",
+  fab_ribcage: "A boar that gnaws the great bones. Its tusks are worn flat and it is still the biggest thing on the field.",
+  fab_stormeye: "In the eye of the storm nothing runs. This hare has never run in its life, and does not start for you.",
+  fab_sleeper: "A bat that flies out of the sleeping fish's dream every night and goes back before it wakes.",
+  fab_oyster: "A heron that opens oysters by dropping them on the rack. The tongers have stopped chasing it.",
+  fab_wreckers: "A stag with lamp-coloured eyes. The wreckers say it led ships onto the rocks before they learned to.",
+  fab_fen: "A sow the colour of peat. She sinks into the fen when you look and rises somewhere else.",
+  fab_lazaret: "It hangs in the old ward where the beds still stand. The doctor leaves the window open for it.",
+  fab_dyers: "A buck that drank from the dye vats as a fawn. It is purple to the bone and proud of it.",
+  fab_terrace: "A snake as long as a terrace is wide. It swims the paddies at dawn and the buffalo stand aside.",
+  fab_graveyard: "A crab armoured in ship nails and copper sheathing. It picks the wrecks clean and grows.",
+  fab_steppe: "An eagle no falconer has hooded. It takes foxes, and once, they say, a rider.",
+  fab_cannery: "A bull seal that raids the cannery slip at dusk. It has learned the whistle and comes to it.",
+  fab_whirlpool: "A bear that crosses the bridge over the whirlpool at night, slowly, looking down the whole way.",
+  fab_coral: "A coconut crab the colour of the lagoon. It climbs the palms at night and the divers hear it.",
+  fab_rookery: "A penguin taller than a man, standing a little apart. The others face away from it.",
+  fab_geyser: "A lizard that sleeps in the geyser mouth and goes up with it. It comes down somewhere else, unhurt.",
+  fab_salmonrun: "The biggest bear on the river. It does not fish any more; the salmon jump into its mouth.",
+  fab_throat: "It flies up out of the hole to the deep each night and goes back down before dawn. It is warm.",
+  fab_mirage: "You can see the flats through it. Twice it has been shot and twice the shot found only heat.",
+  fab_ink: "A black frog that bleeds ink when startled. The scriveners follow it with jars.",
+  fab_amber: "A moth with resin for wings. It is slow, and heavy, and the resin wood keeps it like a jewel.",
+  fab_runoff: "Whatever the runoff did to the fish, it did worse to this. It has too many tusks.",
+  fab_hanging: "A bat that hangs the right way up, because the island does not. It sleeps in daylight and hunts in it too.",
+  fab_folio: "A snake of folded paper, written on both sides. The librarian says it is a footnote that got loose.",
+  fab_starfall: "A lizard with star-iron for skin. It came down with the meteor, or was already in it.",
+  fab_pilchard: "A fox that steals pilchards from the drying racks and leaves one on the chapel step every time.",
+  fab_hermit: "The only company the hermit keeps. It is older than seems right for a gull, and knows your name.",
+  fab_bayou: "The crocodile the bayou is named for, or the other way round. Either way, it was here first.",
+  fab_spice: "A fox that sleeps in the clove sacks and smells of them. The traders can find it in the dark.",
+  fab_flamingo: "A stork that stood among the flamingos until it turned pink. It will not stand anywhere else now.",
+  fab_ghats: "It lives under the temple steps and comes up at dusk to be fed. Nobody feeds it. It is fed.",
+  fab_iguanas: "An iguana as long as a boat on the lava shore. The others climb on it to warm up.",
+  fab_forest: "A crocodile that swims between the treetops when the forest floods. It takes birds from the branches.",
+  fab_totem: "The bear on the tallest pole is carved from life. The life is still out there in the cedars.",
+  fab_caviar: "A heron that has eaten more sturgeon eggs than the whole coast has sold. It is not hurried about it.",
+  fab_city: "A stag that grazes the overgrown park at dusk, among the statues, looking like one of them.",
+  fab_furnace: "A lizard blown from glass, or so it looks. It drinks from the cullet field and chimes when it runs.",
+  fab_lookingglass: "Your own hare, from the other side of the flats. It runs toward you, and the sling will not aim at it.",
+  fab_sporewood: "A toad that sleeps under the great cap and breathes spores. Its back has grown a small forest.",
+  fab_belly: "A crab that lives in the whale's gut and eats what it eats. It has never seen the sea from outside.",
+  fab_ferry: "A fox that waits on the jetty with the dead. It has not been called yet, and does not look at the boat.",
+  fab_hourglass: "A tortoise whose shell is an hourglass, the sand still running. Turn it over and the island will know.",
+};
 const LEGEND_LORE = {
   saintpilchard: 'The saint in the chapel holds a fish, and on the feast day a fish comes to the point that looks like the carving. The village argues about what it is. The fish does not join in.',
   theanchorite: 'The first hermit walked into the sea to pray and the sea kept him. Something kneels at the bottom of the drop with its back to the rock. Old Nan says it has not finished. Old Nan says nobody ever does.',
@@ -5141,7 +5288,7 @@ function enterHunt() {
 }
 function gamePool(locId, t) { // what is out there at this hour that your weapon can bring down; shot and calls tilt it toward the rarer
   const ph = phaseAt(t), power = WEAPON().power, luck = (SHOT[shotOf()].luck || 0) + (CALLS[callOf()].luck || 0);
-  return GAME.filter(c => c.loc[locId] && (!c.time || c.time.includes(ph)) && c.kg[0] <= power).map(c => [c, c.loc[locId] * (1 + gameRank(c, locId) * luck * 0.5)]);
+  return GAME.filter(c => c.loc[locId] && (!c.time || c.time.includes(ph)) && c.kg[0] <= power && !(c.legend && S.gindex[c.id])).map(c => [c, c.loc[locId] * (1 + gameRank(c, locId) * luck * 0.5)]);
 }
 function rollGame() {
   const p = gamePool(S.loc, now()); if (!p.length) return null;
@@ -5206,14 +5353,15 @@ function take() {
   setTimeout(() => { if (HU) { HU.phase = 'idle'; $('#hbar').classList.remove('hit'); renderHunt(); } }, 600);
 }
 function showTaken(c, kg, value, tags, line) {
-  const head = tags.includes('New record') ? 'NEW RECORD!' : tags.includes('New species') ? 'NEW SPECIES!' : 'TAKEN!';
-  const pills = tags.filter(t => t.toUpperCase() + '!' !== head);
+  const head = c.legend ? 'FABLED!' : tags.includes('New record') ? 'NEW RECORD!' : tags.includes('New species') ? 'NEW SPECIES!' : 'TAKEN!';
+  const pills = tags.filter(t => t.toUpperCase() + '!' !== head && !(c.legend && t === 'New species')), gr = gameRarityOf(c);
   $('#card').className = 'card catch';
   $('#card').innerHTML = `<div class="head">${head}</div>${pills.length ? `<div class="pills">${pills.map(t => `<div class="pill">${t.toUpperCase()}</div>`).join('')}</div>` : ''}
     <canvas class="art" id="ccv" width="192" height="112"></canvas><div class="fish">${c.name}</div>
+    <div class="rar"><span style="color:${RARITY[gr].col}">${RARITY[gr].name.toUpperCase()}</span>${c.legend ? '<span class="sep">·</span><span style="color:' + RARITY.fabled.col + '">ONCE EVER</span>' : ''}</div>
     <div class="size"><span>${fmtKg(kg)}</span></div><div class="sub">${WEAPON().name.toLowerCase()} · from ${DIST_NAME[HU ? HU.steps : 0]} · wind ${WIND_NAME[HU ? HU.wind : 'cross']} · ${PHASE_NAME[phaseAt(now())].toLowerCase()}</div>
     <div class="stats"><div class="stat"><div class="n">WORTH</div><div class="v">${money(value)}</div></div><div class="stat"><div class="n">WEAPON</div><div class="v">${WEAPON().name}</div></div><div class="stat"><div class="n">GROUND</div><div class="v">${loc().hunt.name.replace(/^the /, '')}</div></div></div>
-    <div class="note">${line}</div><div class="acts"><button class="cta" data-act="closecard">Bag it</button></div>`;
+    ${c.legend ? `<div class="note">${BEAST_LORE[c.id]} There is only one. The ground will not show it again.</div>` : ''}<div class="note">${line}</div><div class="acts"><button class="cta" data-act="closecard">Bag it</button></div>`;
   $('#cardWrap').hidden = false;
   const x = $('#ccv').getContext('2d'); x.imageSmoothingEnabled = false;
   const st = LAND_STYLE[GROUND_LAND[loc().hunt.kind]] || LAND_STYLE.grass; x.fillStyle = '#1a2838'; x.fillRect(0, 0, 192, 112); x.fillStyle = st[0]; x.fillRect(0, 98, 192, 14); x.fillStyle = st[1]; x.fillRect(0, 106, 192, 6); x.fillStyle = st[3]; x.fillRect(0, 98, 192, 1);
