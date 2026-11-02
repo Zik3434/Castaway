@@ -8,7 +8,7 @@ A pixel-art fishing and hunting game that runs in the browser, on phone and desk
 - On a computer, Space or Enter casts, reels and hauls the selected line, Space holds the net in the fight, Escape closes any sheet, and the arrow keys walk the island.
 - Every voyage has an eight-digit code you choose before it starts. Write it down: enter it on any device to pick the voyage up where you left it. A code in use by a living voyage can't start a new one; if the voyager drowns, the code is free again.
 
-Stranded on an island with one rod and one line, you fish your way off it, then fish and hunt your way across a sea of very different islands, buying rods, lines, bait, weapons and boats on the way.
+Stranded on an island with one rod and one line, you fish your way off it, then fish, hunt and dig your way across a sea of very different islands, buying rods, lines, bait, weapons, picks, lamps and boats on the way. Every island has a mine behind its shaft head: strike the face, read the glints for what lies beside each tile, pry the stone out with a well-judged swing, and climb out before the lamp dies.
 
 ## Running it yourself
 
