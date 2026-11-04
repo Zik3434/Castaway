@@ -13756,6 +13756,22 @@ function drawFisherman(fx, fy, rodOut, fight, t) {
   return tip;
 }
 const floatX = i => shoreW + 20 + i * Math.floor((W - shoreW - 40) / 3);
+// A rod on a forked stand: the butt on the ground behind the fork, the rod resting in the fork and reaching up and out over the
+// water. A trophy rod is darker and heavier with a reel at the butt. With a fish on, the tip is hauled down in jerks and the
+// stand rattles. Returns the tip, where the line leaves the rod.
+function drawRodStand(sx, gy, L, on, t) {
+  const tug = on ? Math.max(0, Math.sin(t / 95)) * Math.max(0, Math.sin(t / 530 + 1)) : 0, jolt = on && tug > 0.6 ? ((t / 50 | 0) % 2) : 0;
+  const fx = sx + jolt, trophy = L.rig === 'trophy';
+  g.fillStyle = '#3b2a1c'; g.fillRect(fx, gy - 8, 1, 8); g.fillRect(fx - 1, gy - 10, 1, 2); g.fillRect(fx + 1, gy - 10, 1, 2); // the fork
+  g.fillStyle = '#5a4030'; g.fillRect(fx - 1, gy - 1, 3, 1);
+  const butt = [fx - 6 + jolt, gy - 2], rest = [fx, gy - 9], tip = [fx + (trophy ? 14 : 13) + (tug * 2 | 0), gy - (trophy ? 19 : 20) + (tug * 6 | 0)];
+  const col = trophy ? '#5a3a22' : '#7a5230';
+  bres(g, butt[0], butt[1], rest[0], rest[1], col, 1); bres(g, rest[0], rest[1], tip[0], tip[1], col, 1);
+  if (trophy) { g.fillStyle = '#d7362a'; g.fillRect(butt[0] + 1, butt[1] - 1, 2, 2); } // the reel
+  g.fillStyle = '#a07a4a'; g.fillRect(tip[0], tip[1], 1, 1);
+  if (L.phase === 'idle') { g.fillStyle = 'rgba(207,214,221,0.5)'; g.fillRect(tip[0], tip[1] + 1, 1, 2); } // no line out: the hook hangs from the tip
+  return tip;
+}
 
 function drawGame(t) {
   const h = hourAt(t), nt = drawSkyBase(h, t, {}); sceneWeather(loc(), t, nt);
@@ -13767,8 +13783,13 @@ function drawGame(t) {
   const rodOut = S.lines.some(L => L && L.rig === 'hand' && L.phase !== 'idle');
   const fight = F && !F.over ? { i: F.i, big: !!(F.trophy || F.s.big || (F.kg || 0) >= 4) } : null;
   const tip = drawFisherman(spot_[0], spot_[1], rodOut, fight, t);
-  const st = [shoreW - 4, (S.loc === 'shoal' ? sandTop(shoreW - 4) | 0 : SURF - 7) - 6];
-  if (S.loc !== 'sea' && !onWater) { g.fillStyle = '#3b2a1c'; g.fillRect(st[0], st[1], 2, 7); g.fillStyle = '#f0c050'; g.fillRect(st[0], st[1] - 1, 2, 1); }
+  // every set and trophy line is its own rod on a stand beside him, on the ground (or the boat's deck); a stand with a fish on it tugs
+  const rodTip = {}; let nStand = 0;
+  S.lines.forEach((L, i) => {
+    if (!L || i >= S.slots || L.rig === 'hand' || S.loc === 'sea') return;
+    const sx = spot_[0] - 15 - nStand * 12, gy = onWater ? spot_[1] + 29 : shoreTop(loc(), clamp(sx, 0, shoreW - 1)) | 0; nStand++;
+    rodTip[i] = drawRodStand(sx, gy, L, fight && i === fight.i ? false : (L.phase === 'bite' || L.phase === 'hooked'), t);
+  });
   S.lines.forEach((L, i) => {
     if (!L || i >= S.slots || L.phase === 'idle') return;
     const bx = floatX(i); let by = SURF - 1 + Math.sin(t / 400 + i) * 0.8;
@@ -13777,13 +13798,13 @@ function drawGame(t) {
     by |= 0;
     if (fight && i === fight.i) { // the line runs taut to a shadow in the water; splash at the surface
       const fyy = (SURF + 3 + F.fy * 28) | 0, sh = maskC(F.s.shape, 'rgba(6,16,30,0.8)', F.s.big ? 2 : 1), fxx = bx + (Math.sin(t / 170) * 2 | 0);
-      bres(g, tip[0], tip[1], fxx, fyy, 'rgba(225,232,240,0.95)'); blit(g, sh, fxx - (sh.width >> 1), fyy - (sh.height >> 1), Math.sin(t / 900) > 0);
+      const ft = L.rig === 'hand' ? tip : (rodTip[i] || tip); bres(g, ft[0], ft[1], fxx, fyy, 'rgba(225,232,240,0.95)'); blit(g, sh, fxx - (sh.width >> 1), fyy - (sh.height >> 1), Math.sin(t / 900) > 0);
       g.fillStyle = 'rgba(240,246,255,0.85)'; for (let k = 0; k < 4; k++) { const px = bx - 4 + k * 3 + ((t / 90 + k * 7) % 3 | 0), py = SURF - 1 - ((t / 110 + k * 5) % 4 | 0); g.fillRect(px, py, 1, 1); }
       return;
     }
     if (L.rig === 'hand') { bres(g, tip[0], tip[1], bx, by, 'rgba(225,232,240,0.9)'); g.fillStyle = '#d7362a'; g.fillRect(bx - 1, by - 1, 3, 1); g.fillStyle = '#f4f4f0'; g.fillRect(bx - 1, by, 3, 1); }
     else {
-      bres(g, st[0] + 1, st[1], bx, by, 'rgba(207,214,221,0.85)');
+      const rt = rodTip[i] || [shoreW - 4, SURF - 12]; bres(g, rt[0], rt[1], bx, by, 'rgba(207,214,221,0.85)');
       if (L.rig === 'trophy') { g.fillStyle = '#f4f4f0'; g.fillRect(bx - 2, by - 1, 4, 3); g.fillStyle = '#2d6fb0'; g.fillRect(bx - 2, by, 4, 1); g.fillStyle = '#d7362a'; g.fillRect(bx, by - 4, 2, 2); g.fillStyle = '#e6e1d3'; g.fillRect(bx - 1, by - 4, 1, 3); }
       else { g.fillStyle = '#f0a040'; g.fillRect(bx - 1, by - 1, 3, 2); g.fillStyle = '#ffd27a'; g.fillRect(bx - 1, by - 1, 3, 1); }
     }
