@@ -435,10 +435,11 @@ const T = {
 // Bigger bait, bigger fish, and a better price: `size` skews the size roll toward the top of the species' range (f → f^(1/(1+size)): on squid a
 // middling fish lands three quarters of the way up the range and about one rod cast in three is trophy size, against one in seven on scraps),
 // and `worth` multiplies what a fish taken on that bait sells for (the card's BAIT tile shows it), on top of the weight it already adds.
+// `shun` is what a scrap-bait fish's weight drops to on better bait, so shrimp and squid pull the pool toward the fish that need them.
 const BAITS = {
   scraps: { name: 'Shell scraps', tier: 0, luck: 0,   size: 0,   price: 0 },
-  shrimp: { name: 'Shrimp', tier: 1, luck: 0.3, size: 0.6, worth: 1.25, price: 20, qty: 5 },
-  squid:  { name: 'Squid',  tier: 2, luck: 0.8, size: 1.4, worth: 1.6,  price: 60, qty: 5 },
+  shrimp: { name: 'Shrimp', tier: 1, luck: 0.5, size: 0.6, worth: 1.25, shun: 0.35, price: 20, qty: 5 },
+  squid:  { name: 'Squid',  tier: 2, luck: 1.2, size: 1.4, worth: 1.6,  shun: 0.2,  price: 60, qty: 5 },
 };
 const RODS = [
   { id: 'stick',    name: 'Stick rod',     bar: 0.24, luck: 0,   price: 0 },
@@ -9630,7 +9631,7 @@ function pool(locId, rig, baitId, t, spotId) {
     let w = w0;
     if (s.kind === 'wood' && S.raft) w = 6;
     if (s.rare && !s.legend && rig === 'trophy') w *= 4;
-    if (!s.kind && bt > 0 && (s.minBait || 0) === bt) w *= 1.5;
+    if (!s.kind && bt > 0) { const mb = s.minBait || 0; w *= mb === bt ? 1.5 : mb === 0 ? (BAITS[baitId].shun || 1) : 1; } // the fish that need this bait come to it; the scrap-takers shun it
     if (rig === 'set' && s.shape === 'big') w *= 0.5;
     if (s.likes && s.likes[wx]) w *= s.likes[wx]; // ...and some bite harder under one
     if (!s.kind && kgOf(s, s.size[0], 0) > lineKg() * 1.05) continue; // too heavy for the line at its smallest: it never bites
