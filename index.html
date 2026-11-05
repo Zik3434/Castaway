@@ -432,12 +432,13 @@ const T = {
 // `tier` and adds luck of its own. Line: the test weight; a species whose smallest adult outweighs the line never bites, and
 // anything else is held to the line's weight (legends excepted: they need the line that can take their smallest, then run free).
 // Bucket: how many fish you can carry. Luck multiplies a fish's weight by 1 + rank × luck × 0.5, rank 0 common … 3 epic (1 for legends).
-// Bigger bait, bigger fish: `size` skews the size roll toward the top of the species' range (f → f^(1/(1+size)): on squid a middling
-// fish lands two thirds of the way up the range and about one rod cast in four is trophy size, against one in seven on scraps).
+// Bigger bait, bigger fish, and a better price: `size` skews the size roll toward the top of the species' range (f → f^(1/(1+size)): on squid a
+// middling fish lands three quarters of the way up the range and about one rod cast in three is trophy size, against one in seven on scraps),
+// and `worth` multiplies what a fish taken on that bait sells for (the card's BAIT tile shows it), on top of the weight it already adds.
 const BAITS = {
   scraps: { name: 'Shell scraps', tier: 0, luck: 0,   size: 0,   price: 0 },
-  shrimp: { name: 'Shrimp', tier: 1, luck: 0.3, size: 0.3, price: 20, qty: 5 },
-  squid:  { name: 'Squid',  tier: 2, luck: 0.8, size: 0.7, price: 60, qty: 5 },
+  shrimp: { name: 'Shrimp', tier: 1, luck: 0.3, size: 0.6, worth: 1.25, price: 20, qty: 5 },
+  squid:  { name: 'Squid',  tier: 2, luck: 0.8, size: 1.4, worth: 1.6,  price: 60, qty: 5 },
 };
 const RODS = [
   { id: 'stick',    name: 'Stick rod',     bar: 0.24, luck: 0,   price: 0 },
@@ -9664,7 +9665,8 @@ function rollCatch(locId, rig, baitId, t, waitMs) {
   const trophy = !s.kind && f >= 0.85;
   const kg = s.kind ? 0 : kgOf(s, cm, rnd(-0.08, 0.08));
   const mult = v && !s.mutant ? VARIANTS[v].mult : 1;
-  return { id: s.id, cm, kg, value: Math.round(valueOf(s, kg, trophy, rnd(-0.15, 0.15)) * mult), trophy, v, stray, capped, wx: weatherAt(t, locId) };
+  const bw = s.kind ? 1 : (BAITS[baitId].worth || 1); // a fish taken on better bait sells for more
+  return { id: s.id, cm, kg, value: Math.round(valueOf(s, kg, trophy, rnd(-0.15, 0.15)) * mult * bw), trophy, v, stray, capped, wx: weatherAt(t, locId) };
 }
 // The rod bites within a few seconds. A passive line soaks: a small chance every second, so the wait is exponential (memoryless), sampled
 // once at cast time so it survives closing the game. Nothing waits longer than soakCap means.
@@ -9819,8 +9821,8 @@ function shopItems() {
   for (const [id, ad] of Object.entries(AIDS)) if (ad.qty && ad.tier <= tier) items.push({ k: 'aid:' + id, name: `${ad.name} ×${ad.qty}`, sub: `Have ${S.aids[id] || 0}. ${ad.gas ? 'Shows every pocket of gas in the face. ' : ''}${ad.tells ? 'Every glint plain and two tiles out. ' : ''}${ad.roof ? 'The roof takes half the strain. ' : ''}Spent per descent.`, price: ad.price });
   for (const [id, sh] of Object.entries(SHOT)) if (sh.qty && sh.tier <= tier) items.push({ k: 'shot:' + id, name: `${sh.name} ×${sh.qty}`, sub: `Have ${S.shot[id] || 0}. ${sh.luck ? 'Rarer game shows more often. ' : ''}${sh.worth ? `A clean kill pays ×${sh.worth}. ` : ''}${sh.calm ? 'The animal takes alarm slower. ' : ''}Spent per shot.`, price: sh.price });
   for (const [id, ca] of Object.entries(CALLS)) if (ca.qty && ca.tier <= tier) items.push({ k: 'call:' + id, name: `${ca.name} ×${ca.qty}`, sub: `Have ${S.calls[id] || 0}. ${ca.wait ? 'Something shows in half the time. ' : ''}${ca.luck ? 'Rarer game answers it. ' : ''}${ca.near ? 'It comes to you: the stalk starts a step nearer. ' : ''}Spent per stalk.`, price: ca.price });
-  items.push({ k: 'bait:shrimp', name: 'Shrimp ×5', sub: `Have ${S.bait.shrimp}. Mid-size fish bite it, and rarer fish a little more often.`, price: BAITS.shrimp.price });
-  items.push({ k: 'bait:squid', name: 'Squid ×5', sub: `Have ${S.bait.squid}. Deep and rare fish take only this, and it tilts every cast toward them.`, price: BAITS.squid.price });
+  items.push({ k: 'bait:shrimp', name: 'Shrimp ×5', sub: `Have ${S.bait.shrimp}. Mid-size fish bite it, rarer fish a little more often, and what takes it runs bigger and sells for a quarter more.`, price: BAITS.shrimp.price });
+  items.push({ k: 'bait:squid', name: 'Squid ×5', sub: `Have ${S.bait.squid}. Deep and rare fish take only this, it tilts every cast toward them, and what takes it runs big and sells for half as much again.`, price: BAITS.squid.price });
   const bi = BOATS.findIndex(b => b.id === S.boat);
   if (bi >= 1 && bi < BOATS.length - 1) {
     const b = BOATS[bi + 1];
@@ -10041,7 +10043,7 @@ function renderSheet() {
     el.innerHTML = `<div class="head"><h2>Rig · Line ${S.sel + 1}</h2><button class="x" data-act="close">✕</button></div>
       ${busy ? '<div class="note">This line is in the water. Pull it in to change its rig or bait.</div>' : ''}
       <div class="box"><h3>RIG</h3>${seg(rigs, L && L.rig, 'rig', k => k === 'trophy' && !S.trophyRig)}<div class="note">${L && L.rig === 'hand' ? 'Tap Reel on the hit, then keep the fish in the net. Rarer fish take a better rod.' : L && L.rig === 'set' ? 'Soaks until something takes it, a chance every second, even while you are away. A quick hook is a small fish; a long soak grows it. No fight.' : 'Soaks for minutes, a chance every second. Hooks big fish, bigger the longer it waits. Needs shrimp or squid. You still land it.'}${S.trophyRig ? '' : ' The trophy rig is sold at the harbor.'}</div></div>
-      <div class="box"><h3>BAIT</h3>${seg(Object.entries(BAITS).map(([k, b]) => [k, k === 'scraps' ? 'Scraps' : b.name + ' ×' + (S.bait[k] || 0)]), L && L.bait, 'bait', k => k !== 'scraps' && !(S.bait[k] > 0))}<div class="note">Scraps are free. Better bait is sold in the shops: it gates the bigger and rarer fish, tilts every cast toward them, and the bigger the bait the bigger the fish that takes it.</div></div>
+      <div class="box"><h3>BAIT</h3>${seg(Object.entries(BAITS).map(([k, b]) => [k, k === 'scraps' ? 'Scraps' : b.name + ' ×' + (S.bait[k] || 0)]), L && L.bait, 'bait', k => k !== 'scraps' && !(S.bait[k] > 0))}<div class="note">Scraps are free. Better bait is sold in the shops: it gates the bigger and rarer fish, tilts every cast toward them, and the bigger the bait the bigger the fish that takes it and the more it sells for.</div></div>
       <div class="box"><h3>RODS</h3><div class="list">${gearRows(RODS, S.rodsOwned, S.rod, 'rod', r => `Net ${Math.round(r.bar * 100)}% of the track${r.luck ? ` · luck ${r.luck}` : ''}.`)}</div></div>
       <div class="box"><h3>LINE</h3><div class="list">${gearRows(LINE_TEST, S.linesOwned, S.line, 'line', x => `Holds fish to ${fmtKg(lbKg(x.lb))}. Heavier ones will not bite.`)}</div></div>
       <div class="box"><h3>BUCKET</h3><div class="list">${gearRows(BUCKETS, S.pailsOwned, S.pail, 'pail', x => `Room for ${x.cap} fish.`)}</div></div>
@@ -10792,7 +10794,7 @@ function showCatch() {
     : `${RIG_LABEL[p.rig].toLowerCase()}${p.wait ? ' · after ' + fmtDur(p.wait) : ''}`;
   const stats = s.kind ? '' : `<div class="stats">
       <div class="stat"><div class="n">WORTH</div><div class="v">${money(p.value)}</div></div>
-      <div class="stat"><div class="n">BAIT</div><div class="v">${p.bait === 'scraps' ? 'Scraps' : BAITS[p.bait].name}</div></div>
+      <div class="stat"><div class="n">BAIT</div><div class="v">${p.bait === 'scraps' ? 'Scraps' : BAITS[p.bait].name + ((BAITS[p.bait].worth || 1) > 1 && !SP[p.id].kind ? ' · ×' + BAITS[p.bait].worth : '')}</div></div>
       <div class="stat"><div class="n">SKY</div><div class="v">${PHASE_NAME[p.phase]}${p.wx && p.wx !== 'clear' ? ', ' + WEATHER[p.wx].name.toLowerCase() : ''}</div></div></div>`;
   const rar = rarityOf(s), V = p.v ? VARIANTS[p.v] : null, headCol = V && (p.v === 'gigantic' || p.v === 'albino') ? `style="color:${V.col}"` : '';
   const rarLine = rar ? `<div class="rar"><span class="badge" style="color:${RARITY[rar].col}">${RARITY[rar].name.toUpperCase()}</span>${V ? `<span class="badge" style="color:${V.col}">${V.name.toUpperCase()}${s.mutant ? '' : V.mult < 1 ? ' · HALF WORTH' : ' · ×' + V.mult + ' WORTH'}</span>` : ''}</div>` : '';
