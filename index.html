@@ -252,6 +252,22 @@ canvas.icon{width:40px;height:40px;image-rendering:pixelated;flex:none}
 .legend .here{color:var(--good);font-size:17px;white-space:nowrap}
 #isle,#hunt,#mine{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;width:100%;max-width:520px;margin:0 auto}
 #ipanel,#hpanel,#mpanel{background:var(--panel);border:2px solid var(--edge);border-bottom:0;border-top-color:rgba(240,192,80,.55);padding:9px 10px calc(14px + env(safe-area-inset-bottom,0px));display:grid;gap:8px}
+/* A phone held sideways (html.land, set by layout()): the HUD pins over the scene's top left, the panel is a 360px column on the
+   right that scrolls, and the scene plays in the space beside it (SW in the script). Sheets and cards get the whole height. */
+html.land #game,html.land #isle,html.land #hunt,html.land #mine{max-width:none;flex-direction:row;align-items:stretch;min-height:100dvh}
+html.land #hud,html.land .ihud{position:fixed;left:0;top:0;right:360px;padding:6px max(10px,env(safe-area-inset-left,0px)) 10px;gap:6px;
+  background:linear-gradient(rgba(10,16,32,.82),rgba(10,16,32,.45) 70%,rgba(10,16,32,0))}
+html.land #hud .sub,html.land .ihud .sub{font-size:16px;margin-top:3px}
+html.land .tabs button{padding:7px 4px}
+html.land .spacer{flex:1 1 auto}
+html.land #panel,html.land #ipanel,html.land #hpanel,html.land #mpanel{flex:0 0 360px;width:360px;box-sizing:border-box;margin-left:auto;max-height:100dvh;overflow-y:auto;
+  border-top:0;border-bottom:0;border-left:2px solid rgba(240,192,80,.55);padding:10px max(10px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) 10px;align-content:start}
+html.land #ipanel{align-content:center}
+html.land .sheet{max-height:100%;max-width:600px}
+html.land .overlay.center{align-items:flex-start;overflow:auto;padding-top:calc(8px + env(safe-area-inset-top,0px));padding-bottom:8px}
+html.land .card{max-width:440px}
+html.land #fightWrap{padding-top:calc(8px + env(safe-area-inset-top,0px))}
+html.land .toasts{right:360px}
 .walkrow{display:grid;grid-template-columns:64px 1fr 64px;gap:8px;align-items:stretch}
 .walk{font-family:var(--display);font-size:16px;background:var(--panel-2);border:2px solid var(--edge);color:var(--brass);padding:14px 0;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none}
 #isle .spacer{touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:pointer}
@@ -14422,15 +14438,17 @@ const SNOW = Array.from({ length: 50 }, () => ({ x: prand(), y: prand(), s: 0.5 
 
 // ---------- canvas & layout ----------
 const cv = $('#scene'), g = cv.getContext('2d');
-let W = 195, H = 375, SURF = 150, scale = 2, shoreW = 66;
+let W = 195, H = 375, SURF = 150, scale = 2, shoreW = 66, SW = 195, PANEL_W = 0; // SW: the scene width beside the panel column on a phone held sideways (W otherwise)
 let skyKey = '', skyC = null, seaKey = '', seaC = null, curSky = null, lightX = -1, lightY = -1;
 function layout() {
   const cw = Math.max(200, window.innerWidth), ch = Math.max(300, window.innerHeight);
   scale = Math.max(2, Math.round(Math.min(cw / 180, ch / 320)));
   W = Math.ceil(cw / scale); H = Math.ceil(ch / scale);
   cv.width = W; cv.height = H; cv.style.width = (W * scale) + 'px'; cv.style.height = (H * scale) + 'px';
+  const land = cw > ch && ch <= 540; // a phone held sideways: the panel becomes a column on the right and the scene plays beside it
+  PANEL_W = land ? 360 : 0; SW = W - Math.ceil(PANEL_W / scale); document.documentElement.classList.toggle('land', land);
   SURF = Math.round(H * (ch > cw ? 0.40 : 0.52));
-  shoreW = Math.round(W * 0.34);
+  shoreW = Math.round(SW * 0.34);
   skyKey = ''; seaKey = ''; g.imageSmoothingEnabled = false;
   reseedFish();
 }
@@ -14962,7 +14980,7 @@ function drawFisherman(fx, fy, rodOut, fight, t) {
   g.fillStyle = '#a07a4a'; g.fillRect(tip[0], tip[1], 1, 1);
   return tip;
 }
-const floatX = i => shoreW + 20 + i * Math.floor((W - shoreW - 40) / 3);
+const floatX = i => shoreW + 20 + i * Math.floor((SW - shoreW - 40) / 3);
 // A rod on a forked stand: the butt on the ground behind the fork, the rod resting in the fork and reaching up and out over the
 // water. A trophy rod is darker and heavier with a reel at the butt. With a fish on, the tip is hauled down in jerks and the
 // stand rattles. Returns the tip, where the line leaves the rod.
@@ -15102,7 +15120,7 @@ function isleFrame() { const k = Math.floor(ISL.anim) & 3; return ISL.walk ? { s
 }
 function drawIsland(t) {
   const l = loc(), h = hourAt(t), nt = drawSkyBase(h, t, {}); sceneWeather(l, t, nt);
-  const nL = isleScreens(l), SX = nL * W, cam = clamp(ISL.px - W / 2, 0, SX) | 0, gy = landY(l), sc = l.scene;
+  const nL = isleScreens(l), SX = nL * W, cam = clamp(ISL.px - SW / 2, 0, SX) | 0, gy = landY(l), sc = l.scene;
   g.save(); g.translate(-cam, 0);
   if (l.noFish) { // the spaceport: one long apron of concrete, the gantry, no shore and no gate
     drawLand(l, 0, 3 * W + shoreW, t);
@@ -15280,10 +15298,10 @@ function drawHunt(t) {
   g.fillStyle = st[0]; g.fillRect(0, gy, W, 12); g.fillStyle = st[1]; g.fillRect(0, gy + 12, W, 30); g.fillStyle = st[2]; g.fillRect(0, gy + 42, W, H - gy - 42); g.fillStyle = st[3]; g.fillRect(0, gy, W, 1);
   drawGroundDecor(l.hunt.kind, 0, gy, t, nt);
   if (HU && HU.phase === 'seen' || (HU && HU.phase === 'taken')) {
-    const c = HU.roll.c, cx = (HU.tx * W) | 0, bob = HU.look ? 0 : Math.sin(t / 260) > 0.6 ? 1 : 0, sc = HU.steps >= 2 ? 2 : 1;
+    const c = HU.roll.c, cx = (HU.tx * SW) | 0, bob = HU.look ? 0 : Math.sin(t / 260) > 0.6 ? 1 : 0, sc = HU.steps >= 2 ? 2 : 1;
     const mc = beastC(c.id, sc, 'color'); blit(g, mc, cx - (mc.width >> 1), gy - mc.height + bob, HU.tx > 0.5);
     if (HU.look) { g.fillStyle = '#f0c050'; g.fillRect(cx, gy - mc.height - 9, 2, 5); g.fillRect(cx, gy - mc.height - 3, 2, 2); } // head up
-    const aim = 0.5 + 0.5 * Math.sin(HU.ph), ax = (aim * W) | 0; g.fillStyle = HU.hold ? 'rgba(240,192,80,0.9)' : 'rgba(236,230,214,0.55)'; for (let y = gy - 40; y < gy + 6; y += 3) g.fillRect(ax, y, 1, 1); g.fillRect(ax - 3, gy - 18, 7, 1); g.fillRect(ax, gy - 21, 1, 7);
+    const aim = 0.5 + 0.5 * Math.sin(HU.ph), ax = (aim * SW) | 0; g.fillStyle = HU.hold ? 'rgba(240,192,80,0.9)' : 'rgba(236,230,214,0.55)'; for (let y = gy - 40; y < gy + 6; y += 3) g.fillRect(ax, y, 1, 1); g.fillRect(ax - 3, gy - 18, 7, 1); g.fillRect(ax, gy - 21, 1, 7);
   } else if (HU && HU.phase === 'wait') { const sway = Math.sin(t / 400) * 2 | 0; g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect((HU.tx * W | 0) - 8 + sway, gy - 6, 16, 2); }
   if (HU && HU.phase !== 'idle') { // the wind: seeds drifting toward you (in your face), sideways (across), or away from you (at your back)
     const dir = HU.wind === 'face' ? -1 : HU.wind === 'back' ? 1 : 0.15; g.fillStyle = 'rgba(236,230,214,0.55)';
@@ -15535,21 +15553,21 @@ function mineDeco(kind, top, gy, t, level) {
   else if (kind === 'shrooms') { for (let k = 0; k < 4; k++) PROP_FN.glowshroom((r(k) * (W - 40)) | 0 + 10, gy, 0, t, 1); for (let k = 0; k < 10; k++) { g.fillStyle = 'rgba(200,160,255,0.35)'; g.fillRect((r(k + 7) * W) | 0, top + ((r(k + 9) * hgt) | 0), 2, 1); } }
 }
 function drawMine(t) {
-  const l = loc(), kind = MINE_KIND[l.mine.kind] || MINE_KIND.rock, [deep, wall, light] = kind.wall, top = SURF - 56, gy = SURF + 8, lx = (W * 0.36) | 0, ly = top + 22;
+  const l = loc(), kind = MINE_KIND[l.mine.kind] || MINE_KIND.rock, [deep, wall, light] = kind.wall, top = SURF - 56, gy = SURF + 8, lx = (SW * 0.36) | 0, ly = top + 22;
   g.fillStyle = deep; g.fillRect(0, 0, W, H); g.fillStyle = 'rgba(255,255,255,0.03)'; for (let y = 0; y < H; y += 3) for (let x0 = 0; x0 < W; x0 += 3) if (hash(y, x0, 80) < 0.12) g.fillRect(x0, y, 2, 1); // the rock above and below the gallery
   g.fillStyle = wall; g.fillRect(0, top, W, gy - top);
   for (let y = top; y < gy; y += 2) for (let x0 = 0; x0 < W; x0 += 2) { const h = hash(y, x0, 81); if (h < 0.04) { g.fillStyle = deep; g.fillRect(x0, y, 2, 2); } else if (h > 0.975 && Math.hypot(x0 - lx, y - ly) < W * 0.5) { g.fillStyle = light; g.fillRect(x0, y, 2, 2); } }
   mineDeco(kind.deco, top, gy, t, MI ? MI.level : 1);
   g.fillStyle = light; g.fillRect(0, top, W, 1);
-  for (let x0 = 14; x0 < W - 30; x0 += 44) { g.fillStyle = '#5a4630'; g.fillRect(x0, top, 3, gy - top); g.fillRect(x0 - 3, top, 9, 3); g.fillStyle = '#3a2a1a'; g.fillRect(x0 + 2, top + 3, 1, gy - top - 3); } // timber props
+  for (let x0 = 14; x0 < SW - 30; x0 += 44) { g.fillStyle = '#5a4630'; g.fillRect(x0, top, 3, gy - top); g.fillRect(x0 - 3, top, 9, 3); g.fillStyle = '#3a2a1a'; g.fillRect(x0 + 2, top + 3, 1, gy - top - 3); } // timber props
   g.fillStyle = '#2a2420'; g.fillRect(0, gy, W, H - gy); g.fillStyle = '#4a4036'; g.fillRect(0, gy, W, 2);
   g.fillStyle = '#5a4630'; for (let x0 = 2; x0 < W; x0 += 10) g.fillRect(x0, gy + 5, 6, 2); g.fillStyle = '#8a8a98'; g.fillRect(0, gy + 4, W, 1); g.fillRect(0, gy + 8, W, 1); // sleepers and rails
   g.fillStyle = '#3a3a44'; g.fillRect(6, gy - 10, 22, 10); g.fillStyle = '#5a5a66'; g.fillRect(6, gy - 10, 22, 1); g.fillStyle = '#1a1a20'; g.fillRect(9, gy, 4, 3); g.fillRect(21, gy, 4, 3); // the ore cart
   if (S.sack.length) for (let k = 0; k < Math.min(8, S.sack.length); k++) { g.fillStyle = mineralPal(MM[S.sack[k].id]).b; g.fillRect(8 + (k % 4) * 5, gy - 13 + ((k / 4) | 0) * 2, 4, 3); }
   // the face you work, at the right, with the glints of whatever stands open in it
-  g.fillStyle = wall; g.fillRect(W - 30, top, 30, gy - top); for (let y = top; y < gy; y += 2) for (let x0 = W - 30; x0 < W; x0 += 2) if (hash(y, x0, 83) < 0.08) { g.fillStyle = deep; g.fillRect(x0, y, 2, 2); }
-  g.fillStyle = deep; g.fillRect(W - 30, top, 1, gy - top);
-  if (MI) MI.tiles.forEach((tl, i) => { if (tl.s !== 'exposed' || !tl.m) return; const mp = mineralPal(MM[tl.m]), fx = W - 26 + (i % T_MINE.cols) * 4, fy = top + 10 + ((i / T_MINE.cols) | 0) * 18; g.fillStyle = Math.sin(t / 250 + i) > 0.3 ? mp.h : mp.b; g.fillRect(fx, fy, 2, 2); });
+  g.fillStyle = wall; g.fillRect(SW - 30, top, 30, gy - top); for (let y = top; y < gy; y += 2) for (let x0 = SW - 30; x0 < SW; x0 += 2) if (hash(y, x0, 83) < 0.08) { g.fillStyle = deep; g.fillRect(x0, y, 2, 2); }
+  g.fillStyle = deep; g.fillRect(SW - 30, top, 1, gy - top);
+  if (MI) MI.tiles.forEach((tl, i) => { if (tl.s !== 'exposed' || !tl.m) return; const mp = mineralPal(MM[tl.m]), fx = SW - 26 + (i % T_MINE.cols) * 4, fy = top + 10 + ((i / T_MINE.cols) | 0) * 18; g.fillStyle = Math.sin(t / 250 + i) > 0.3 ? mp.h : mp.b; g.fillRect(fx, fy, 2, 2); });
   drawMiner(lx - 30, gy, t);
   const glow = MI ? clamp(MI.oil / MI.oilMax, 0.15, 1) : 1; // the lamp's halo
   for (let k = 4; k >= 1; k--) { g.fillStyle = `rgba(255,200,110,${(0.05 * glow).toFixed(3)})`; const rr = 13 * k; for (let y = -rr; y <= rr; y += 2) { const hw = Math.sqrt(rr * rr - y * y) | 0; g.fillRect(lx - hw, ly + y, hw * 2, 2); } }
