@@ -280,6 +280,9 @@ html.land .toasts{right:360px}
 .hbar.hold .hmark{background:var(--brass)}
 .hbar.hit .hband{background:rgba(138,212,138,.6)}
 .hbar.miss .hband{background:rgba(226,123,95,.6)}
+.hbar.flock{border-color:var(--brass);box-shadow:0 0 12px 3px rgba(240,192,80,.55);animation:beacon 1.1s ease-in-out infinite alternate}
+.hbar.flock .hband{background:rgba(240,192,80,.55)}
+#hNote .gold{color:var(--brass)}
 .meters{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .meter .lbl{display:block;font-family:var(--display);font-size:7px;color:var(--muted);margin-bottom:3px;letter-spacing:.5px}
 .hbar.thin{height:8px}
@@ -433,6 +436,8 @@ const T = {
   walkSpeed: 72,                 // island strip: logical px per second (about eight seconds to cross the strip)
   walkFps: 9,                    // island strip: walk-cycle frames per second (contact, pass, contact, pass)
   handWait: [6000, 16000],       // rod: ms to a bite (6 to 16 s; the float sits a while)
+  trophyMinKg: 0.3,              // the trophy line never hooks a species whose largest adult is under this
+  weatherFadeMs: 60000,          // a new sky fades in over the first game hour of its slot, the old one fading out under it
   prologueWait: [3000, 7000],    // rod in the tutorial: quicker, so the first two fish teach without a long wait
   setMean: 60000,                // set line: a chance every second, one hook a minute on average (exponential wait), keeps ticking while you're away
   trophyMean: 220000,            // trophy line: the same, about once every 3.5 minutes
@@ -451,11 +456,15 @@ const T = {
 // Bigger bait, bigger fish, and a better price: `size` skews the size roll toward the top of the species' range (f → f^(1/(1+size)): on squid a
 // middling fish lands three quarters of the way up the range and about one rod cast in three is trophy size, against one in seven on scraps),
 // and `worth` multiplies what a fish taken on that bait sells for (the card's BAIT tile shows it), on top of the weight it already adds.
-// `shun` is what a scrap-bait fish's weight drops to on better bait, so shrimp and squid pull the pool toward the fish that need them.
+// `mouth` is the smallest a species' largest adult can be (kg) and still get the bait in its mouth: sticklebacks and gobies never take a squid.
+// `share` is the most the scrap-takers together can weigh against the fish that need the bait, so on squid the pool is mostly squid fish
+// (where a spot has nothing that needs the bait, the scrap-takers that can take it keep their weights, and where nothing there could
+// get it in its mouth the biggest fish present still take it, so no cast is ever refused for the bait).
+// The trophy line is for big fish: a species whose largest adult is under T.trophyMinKg never takes it.
 const BAITS = {
   scraps: { name: 'Shell scraps', tier: 0, luck: 0,   size: 0,   price: 0 },
-  shrimp: { name: 'Shrimp', tier: 1, luck: 0.5, size: 0.6, worth: 1.25, shun: 0.35, price: 20, qty: 5 },
-  squid:  { name: 'Squid',  tier: 2, luck: 1.2, size: 1.4, worth: 1.6,  shun: 0.2,  price: 60, qty: 5 },
+  shrimp: { name: 'Shrimp', tier: 1, luck: 0.5, size: 0.6, worth: 1.25, share: 0.5,  mouth: 0.03, price: 20, qty: 5 },
+  squid:  { name: 'Squid',  tier: 2, luck: 1.2, size: 1.4, worth: 1.6,  share: 0.25, mouth: 0.25, price: 60, qty: 5 },
 };
 const RODS = [
   { id: 'stick',    name: 'Stick rod',     bar: 0.24, luck: 0,   price: 0 },
@@ -5730,15 +5739,19 @@ const WEAPONS = [
 ];
 const SHOT = { // what you load: spent per shot, stones never run out
   stones: { name: 'Stones',        short: 'Stones', price: 0,   qty: 0,  tier: 0 },
-  flint:  { name: 'Flint heads',   short: 'Flint',  price: 60,  qty: 10, tier: 1, luck: 0.3 },
-  barbed: { name: 'Barbed heads',  short: 'Barbed', price: 120, qty: 10, tier: 2, worth: 1.25 },
-  poison: { name: 'Poison darts',  short: 'Poison', price: 220, qty: 8,  tier: 3, calm: 0.55 },
-  silver: { name: 'Silver shot',   short: 'Silver', price: 600, qty: 6,  tier: 5, luck: 0.8, worth: 1.1 },
+  flint:  { name: 'Flint heads',   short: 'Flint',  price: 60,  qty: 10, tier: 1, luck: 0.9, shun: 0.5 },
+  barbed: { name: 'Barbed heads',  short: 'Barbed', price: 120, qty: 10, tier: 2, worth: 1.5 },
+  poison: { name: 'Poison darts',  short: 'Poison', price: 220, qty: 8,  tier: 3, calm: 0.4, slow: 0.7 },
+  silver: { name: 'Silver shot',   short: 'Silver', price: 600, qty: 6,  tier: 5, luck: 1.8, shun: 0.25, worth: 1.25 },
 };
+// luck tilts the roll toward rarer game (weight × (1 + rank × luck × 0.5)); shun is what the common game's weight drops to, so the
+// flint and the silver change what shows itself, not just the odds at the edges; worth multiplies the price; calm slows the alertness;
+// slow slows the mark's swing while a dart is loaded. These were raised (flint 0.3 luck, barbed ×1.25, silver 0.8) when the first
+// values were not felt from one stalk to the next.
 const CALLS = { // spent per stalk
   none:     { name: 'No call',     short: 'None',   price: 0,   qty: 0, tier: 0 },
   birdcall: { name: 'Bird call',   short: 'Bird',   price: 80,  qty: 5, tier: 1, wait: 0.45 },
-  rattle:   { name: 'Rattle',      short: 'Rattle', price: 200, qty: 5, tier: 2, luck: 0.6 },
+  rattle:   { name: 'Rattle',      short: 'Rattle', price: 200, qty: 5, tier: 2, luck: 1.2, shun: 0.5 },
   musk:     { name: 'Musk lure',   short: 'Musk',   price: 400, qty: 4, tier: 3, near: 1 },
 };
 const CLOAKS = [ // worn: alertness climbs this much slower, by scent and by sight
@@ -8495,7 +8508,12 @@ const gameValue = (c, kg, jit) => Math.round(Math.max(3, c.rate * Math.pow(Math.
 // The stalk. A sighting starts far off: the band is narrow. You can creep closer up to three times; every step widens the band
 // (×(1 + nearBand × steps)) and raises the animal's alertness by creepCost × skittishness × the wind (in your face, across, at your
 // back) × 2 if it has its head up. Alertness also climbs on its own; at 1 it bolts. A closer shot is worth more (×(1 + nearWorth × steps)).
-const T_HUNT = { wait: [2500, 6000], breath: 3200, alertMs: [11000, 5000], creepCost: [0.13, 0.22], wind: { face: 0.6, cross: 1, back: 1.7 }, lookEvery: [2500, 5000], lookFor: 900, nearBand: 0.45, nearWorth: 0.1, maxSteps: 3, bandBase: 1.3, swing: [1.8, 1.0], holdSlow: 0.45 };
+const T_HUNT = { wait: [2500, 6000], breath: 3200, alertMs: [11000, 5000], creepCost: [0.13, 0.22], wind: { face: 0.6, cross: 1, back: 1.7 }, lookEvery: [2500, 5000], lookFor: 900, nearBand: 0.45, nearWorth: 0.1, maxSteps: 3, bandBase: 1.3, swing: [1.8, 1.0], holdSlow: 0.45,
+  sizeBand: [0.65, 0.7], sizeSlow: [0.8, 0.5], valueQuick: [1.15, 0.45], flockOdds: 0.05, flockN: [3, 6], flockBand: 1.4, flockMaxKg: 60, flockAlert: 0.15 };
+// sizeBand: the band is × (0.65 + 0.7 × size), size 0 for a 10 g animal and 1 for a tonne (log scale), so a big animal is a big target.
+// sizeSlow: the swing's period × (0.8 + 0.5 × size): big animals are slow. valueQuick: × (1.15 − 0.45 × value), value 0 at $20 and 1 at
+// $5,000: the dear ones are quick. Flocks: one stalk in twenty (flockOdds) on game up to flockMaxKg is a flock of flockN; the band is
+// × flockBand and every animal taken leaves another standing, each adding flockAlert, until a miss or a bolt scatters them.
 // bandBase: the band is the weapon's acc × (bandBase − the animal's diff) before creeping. swing: the mark's period in seconds is swing[0] − swing[1] × diff; holdSlow is its speed while you hold your breath.
 const WIND_NAME = { face: 'in your face', cross: 'across', back: 'at your back' };
 const DIST_NAME = ['far off', 'nearer', 'closer', 'close', 'very close', 'almost on it', 'point blank'];
@@ -10347,12 +10365,21 @@ function pool(locId, rig, baitId, t, spotId) {
     let w = w0;
     if (s.kind === 'wood' && S.raft) w = 6;
     if (s.rare && !s.legend && rig === 'trophy') w *= 4;
-    if (!s.kind && bt > 0) { const mb = s.minBait || 0; w *= mb === bt ? 1.5 : mb === 0 ? (BAITS[baitId].shun || 1) : 1; } // the fish that need this bait come to it; the scrap-takers shun it
+    if (!s.kind && bt > 0 && (s.minBait || 0) === bt) w *= 1.5; // the fish that need this bait come to it
     if (rig === 'set' && s.shape === 'big') w *= 0.5;
     if (s.likes && s.likes[wx]) w *= s.likes[wx]; // ...and some bite harder under one
     if (!s.kind && kgOf(s, s.size[0], 0) > lineKg() * 1.05) continue; // too heavy for the line at its smallest: it never bites
     if (!s.kind) { const luck = (rig === 'hand' ? rodOf().luck : 0) + (BAITS[baitId].luck || 0); w *= 1 + (RARITY_RANK[rarityOf(s)] || 0) * luck * 0.5; } // better rod, better bait: rarer fish more often
     (stray ? far : out).push([s, w, stray]);
+  }
+  if (bt > 0 || rig === 'trophy') { // better bait and the trophy line are for the bigger fish
+    const floor = Math.max(BAITS[baitId].mouth || 0, rig === 'trophy' ? T.trophyMinKg : 0), big = x => x[0].kind || kgOf(x[0], x[0].size[1], 0) >= floor;
+    const kept = out.filter(big); if (kept.some(x => !x[0].kind)) { out.length = 0; out.push(...kept); } // too small to get the bait in its mouth (unless nothing here is bigger)
+    if (bt > 0) { // the scrap-takers together weigh at most `share` of the fish that need this bait
+      const need = out.filter(x => !x[0].kind && (x[0].minBait || 0) > 0), rest = out.filter(x => !x[0].kind && !(x[0].minBait || 0));
+      const N = need.reduce((a, x) => a + x[1], 0), R0 = rest.reduce((a, x) => a + x[1], 0), share = BAITS[baitId].share || 1;
+      if (N > 0 && R0 > N * share) { const k = N * share / R0; for (const x of rest) x[1] *= k; }
+    }
   }
   if (far.length) { // far-from-home fish share a fixed sliver of the pool between them, however many islands feed it
     const R = out.reduce((a, x) => a + x[1], 0), SW = far.reduce((a, x) => a + x[1], 0), k = STRAY.share * R / SW;
@@ -10536,8 +10563,8 @@ function shopItems() {
   if (ski < SACKS.length - 1 && SACKS[ski + 1].tier <= tier) { const x = SACKS[ski + 1]; items.push({ k: 'sack', name: x.name, sub: `Room for ${x.cap} finds. Your ${SACK().name.toLowerCase()} holds ${sackCap()}.`, price: x.price }); }
   for (const [id, ch] of Object.entries(CHARGES)) if (ch.qty && ch.tier <= tier) items.push({ k: 'charge:' + id, name: `${ch.name} ×${ch.qty}`, sub: `Have ${S.charges[id] || 0}. Opens a block ${ch.radius * 2 + 1} tiles across in one strike. Spent per blast.`, price: ch.price });
   for (const [id, ad] of Object.entries(AIDS)) if (ad.qty && ad.tier <= tier) items.push({ k: 'aid:' + id, name: `${ad.name} ×${ad.qty}`, sub: `Have ${S.aids[id] || 0}. ${ad.gas ? 'Shows every pocket of gas in the face. ' : ''}${ad.tells ? 'Every glint plain and two tiles out. ' : ''}${ad.roof ? 'The roof takes half the strain. ' : ''}Spent per descent.`, price: ad.price });
-  for (const [id, sh] of Object.entries(SHOT)) if (sh.qty && sh.tier <= tier) items.push({ k: 'shot:' + id, name: `${sh.name} ×${sh.qty}`, sub: `Have ${S.shot[id] || 0}. ${sh.luck ? 'Rarer game shows more often. ' : ''}${sh.worth ? `A clean kill pays ×${sh.worth}. ` : ''}${sh.calm ? 'The animal takes alarm slower. ' : ''}Spent per shot.`, price: sh.price });
-  for (const [id, ca] of Object.entries(CALLS)) if (ca.qty && ca.tier <= tier) items.push({ k: 'call:' + id, name: `${ca.name} ×${ca.qty}`, sub: `Have ${S.calls[id] || 0}. ${ca.wait ? 'Something shows in half the time. ' : ''}${ca.luck ? 'Rarer game answers it. ' : ''}${ca.near ? 'It comes to you: the stalk starts a step nearer. ' : ''}Spent per stalk.`, price: ca.price });
+  for (const [id, sh] of Object.entries(SHOT)) if (sh.qty && sh.tier <= tier) items.push({ k: 'shot:' + id, name: `${sh.name} ×${sh.qty}`, sub: `Have ${S.shot[id] || 0}. ${sh.shun ? 'The common game keeps back and the rarer game shows far more often. ' : sh.luck ? 'Rarer game shows more often. ' : ''}${sh.worth ? `A clean kill pays ×${sh.worth}. ` : ''}${sh.calm ? 'The animal takes alarm slower and the mark swings slower. ' : ''}Spent per shot.`, price: sh.price });
+  for (const [id, ca] of Object.entries(CALLS)) if (ca.qty && ca.tier <= tier) items.push({ k: 'call:' + id, name: `${ca.name} ×${ca.qty}`, sub: `Have ${S.calls[id] || 0}. ${ca.wait ? 'Something shows in half the time. ' : ''}${ca.luck ? 'The common game stays away and the rarer game answers it. ' : ''}${ca.near ? 'It comes to you: the stalk starts a step nearer. ' : ''}Spent per stalk.`, price: ca.price });
   items.push({ k: 'bait:shrimp', name: 'Shrimp ×5', sub: `Have ${S.bait.shrimp}. Mid-size fish bite it, rarer fish a little more often, and what takes it runs bigger and sells for a quarter more.`, price: BAITS.shrimp.price });
   items.push({ k: 'bait:squid', name: 'Squid ×5', sub: `Have ${S.bait.squid}. Deep and rare fish take only this, it tilts every cast toward them, and what takes it runs big and sells for half as much again.`, price: BAITS.squid.price });
   const bi = BOATS.findIndex(b => b.id === S.boat);
@@ -10582,6 +10609,7 @@ function tick() {
     if (!L) return;
     if (L.phase === 'waiting' && t >= L.at) {
       if (!L.c) { L.phase = 'idle'; toast(`Line ${i + 1}: nothing's biting on that.`); changed = true; return; }
+      if (L.rig === 'hand' && MODE !== 'game') { L.at = t + rnd(T.handWait[0], T.handWait[1]) * 1000 * 0.5; return; } // the rod stays out while you are ashore: the bite waits until you are back at the water
       if (L.rig === 'hand') { L.phase = 'bite'; L.exp = L.at + hitWindowFor(SP[L.c.id]); S.sel = i; toast(`HIT on line ${i + 1}!`); }
       else { L.phase = 'hooked'; toast(`Line ${i + 1}: something's on.`); }
       changed = true;
@@ -15415,8 +15443,15 @@ function sceneFx(l, t, nt) {
 }
 // The weather of the hour over an island with no fixed sky: grey or black cloud, rain or snow (unless the island's own particles already
 // fall), fog banks, and the storm's lightning. Drawn after the scene so it sits over the water too.
-function drawWeatherFx(l, t, nt) {
-  const sc = l.scene; if (sc && sc.weather) return; const wx = weatherAt(t, l.id); if (wx === 'clear') return;
+function drawWeatherFx(l, t, nt) { // the sky of the hour, and for the first part of a new slot the last sky fading out under it
+  const sc = l.scene; if (sc && sc.weather) return; const wx = weatherAt(t, l.id), into = t % T.weatherMs, fade = T.weatherFadeMs;
+  const prev = into < fade ? weatherAt(t - T.weatherMs, l.id) : wx;
+  if (prev === wx) { drawWx(l, wx, t, nt, 1); return; }
+  const a = into / fade; drawWx(l, prev, t, nt, 1 - a); drawWx(l, wx, t, nt, a);
+}
+function drawWx(l, wx, t, nt, alpha) {
+  if (wx === 'clear' || alpha <= 0) return; const sc = l.scene;
+  g.save(); g.globalAlpha = alpha;
   const own = sc ? sc.particles : (l.id === 'fjord' ? 'snow' : null);
   if (wx === 'overcast' || wx === 'rain' || wx === 'storm') {
     g.fillStyle = wx === 'storm' ? 'rgba(6,10,22,0.42)' : wx === 'rain' ? 'rgba(30,40,60,0.3)' : 'rgba(80,90,110,0.24)'; g.fillRect(0, 0, W, SURF);
@@ -15433,6 +15468,7 @@ function drawWeatherFx(l, t, nt) {
     for (let k = 0; k < 9; k++) { const x = ((k * 71 + t / (160 + k * 30)) % (W + 120)) - 80 | 0, y = SURF - 52 + ((k * 37) % 58), w = 60 + (k % 4) * 18; g.fillStyle = `rgba(222,230,240,${(0.22 + (k % 3) * 0.06).toFixed(2)})`; g.fillRect(x, y, w, 5); g.fillRect(x + 10, y - 2, w - 24, 2); g.fillRect(x + 6, y + 5, w - 12, 2); }
     g.fillStyle = 'rgba(210,218,230,0.16)'; g.fillRect(0, SURF, W, 16);
   }
+  g.restore();
 }
 function drawShoreGeneric(l, t, nt) {
   const sc = l.scene, st = SHORE_STYLE[sc.shore] || SHORE_STYLE.sand;
@@ -15472,13 +15508,47 @@ function drawOpenWater(l, t, nt) {
 function drawShoreAny(id, t, nt) { const l = LOC[id]; return l.scene ? drawShoreGeneric(l, t, nt) : drawShore(id, t, nt, {}); }
 // hunting grounds: the backdrop behind the gate on the island strip, and the whole screen in the hunt
 const GROUND_LAND = { dunes: 'sand', woods: 'grass', saltflat: 'salt', bamboo: 'grass', cliffs: 'rock', mangrove: 'mud', tundra: 'ice', ruins: 'coral', lavafield: 'lava', glass: 'glass', cave: 'cave', storm: 'rock', steppe: 'grass', wrecks: 'sand', reeds: 'mud', cloud: 'cloud' };
+// The ground underfoot, by kind: what the flat bands are made of. Drawn over the three bands and under the props, in tones of the
+// band it sits on, so the hunting ground reads as sand, turf, crust, mud, ash or glass and not as three stripes.
+function drawGroundTex(kind, gy, st, t) {
+  const r = k => { let h = Math.imul(k + 1, 2654435761) >>> 0; h ^= h >>> 13; h = Math.imul(h, 0x5bd1e995) >>> 0; h ^= h >>> 15; return (h >>> 0) / 4294967296; }, light = 'rgba(255,255,255,0.16)', dark = 'rgba(0,0,0,0.18)', deep = 'rgba(0,0,0,0.3)', y1 = gy + 12, y2 = gy + 42, hb = H - gy;
+  const px = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x | 0, y | 0, w, h); };
+  if (kind === 'dunes') { for (let k = 0; k < 40; k++) { const y = gy + 4 + (r(k * 2 + 1) * (hb - 6)) | 0, x = (r(k * 2 + 50) * W) | 0, w = 5 + (k % 4) * 3; px(x, y, w, 1, light); px(x + 2, y + 1, w - 2, 1, dark); } for (let k = 0; k < 10; k++) px(r(k * 2 + 90) * W, gy + 6 + r(k * 2 + 1 + 7) * (hb - 8), 2, 1, deep); } // wind ripples, a few shells
+  else if (kind === 'woods' || kind === 'bamboo') { for (let k = 0; k < 44; k++) { const x = (r(k * 2 + 3) * W) | 0, y = gy + 2 + (r(k * 2 + 1 + 40) * (hb - 4)) | 0; px(x, y - 2, 1, 3, dark); px(x - 1, y - 1, 1, 2, dark); px(x + 1, y - 1, 1, 2, dark); } // tufts
+    for (let k = 0; k < 30; k++) px(r(k * 2 + 60) * W, gy + 3 + r(k * 2 + 1 + 20) * (hb - 4), 2, 1, kind === 'bamboo' ? 'rgba(200,220,120,0.35)' : 'rgba(120,80,40,0.35)'); // litter
+    if (kind === 'woods') { const lx = (W * 0.62) | 0, ly = y1 + 14; px(lx, ly, 26, 4, '#4a3a22'); px(lx, ly, 26, 1, '#6a5232'); px(lx + 26, ly - 1, 3, 6, '#5a4228'); px(lx + 4, ly + 1, 2, 1, '#2a1a10'); px(lx + 14, ly + 2, 3, 1, '#2a1a10'); } } // a fallen log
+  else if (kind === 'saltflat') { for (let k = 0; k < 26; k++) { const x = (r(k * 2 + 5) * W) | 0, y = gy + 3 + (r(k * 2 + 1 + 33) * (hb - 4)) | 0, w = 8 + (k % 5) * 4; px(x, y, w, 1, dark); px(x + w, y - 3 - (k % 3), 1, 4 + (k % 3), dark); px(x + (w >> 1), y + 1, 1, 3 + (k % 2), dark); } } // a cracked crust in plates
+  else if (kind === 'cliffs') { for (let k = 0; k < 30; k++) { const x = (r(k * 2 + 9) * W) | 0, y = gy + 3 + (r(k * 2 + 1 + 44) * (hb - 4)) | 0, w = 2 + (k % 3); px(x, y, w, 2, '#7a7a86'); px(x, y, w, 1, '#9a9aa6'); px(x + w, y + 1, 1, 1, deep); } for (let k = 0; k < 18; k++) px(r(k * 2 + 70) * W, gy + 2 + r(k * 2 + 1 + 12) * (hb - 3), 1, 2, '#5a7a38'); } // scree and thrift
+  else if (kind === 'mangrove') { for (let k = 0; k < 8; k++) { const x = (r(k * 2 + 2) * W) | 0, y = gy + 6 + (r(k * 2 + 1 + 31) * (hb - 10)) | 0, w = 14 + (k % 3) * 8; px(x, y, w, 3, 'rgba(40,70,70,0.75)'); px(x + 2, y, w - 4, 1, 'rgba(180,210,200,0.35)'); } for (let k = 0; k < 24; k++) px(r(k * 2 + 55) * W, gy + 2 + r(k * 2 + 1 + 17) * (hb - 3), 1, 1, light); } // pools in the mud, a glint of wet
+  else if (kind === 'tundra') { for (let k = 0; k < 14; k++) { const x = (r(k * 2 + 4) * W) | 0, y = gy + 4 + (r(k * 2 + 1 + 28) * (hb - 6)) | 0, w = 8 + (k % 4) * 5; px(x, y, w, 2, 'rgba(255,255,255,0.7)'); px(x + 1, y + 2, w - 2, 1, 'rgba(255,255,255,0.35)'); } for (let k = 0; k < 20; k++) px(r(k * 2 + 66) * W, gy + 2 + r(k * 2 + 1 + 13) * (hb - 3), 2, 1, k % 2 ? 'rgba(200,160,60,0.5)' : 'rgba(120,160,100,0.5)'); for (let k = 0; k < 8; k++) px(r(k * 2 + 80) * W, gy + 3 + r(k * 2 + 1 + 23) * (hb - 4), 3, 2, '#6a6a76'); } // snow patches, lichen, stones
+  else if (kind === 'ruins') { for (let k = 0; k < 16; k++) { const x = (r(k * 2 + 44) * W) | 0, y = gy + 3 + (r(k * 2 + 1 + 19) * (hb - 8)) | 0, w = 10 + (k % 4) * 6, h = 4 + (k % 3) * 2; px(x, y, w, h, light); px(x, y + h, w, 1, dark); px(x + w, y + 1, 1, h, dark); px(x + 2 + (k % 5), y + 1, 1, 2, '#5a7a38'); } for (let k = 0; k < 20; k++) px(r(k * 2 + 70) * W, gy + 2 + r(k * 2 + 1 + 31) * (hb - 3), 1, 2, '#5a7a38'); for (let k = 0; k < 5; k++) px(r(k * 2 + 90) * W, gy + 4 + r(k * 2 + 1 + 25) * (hb - 6), 4, 2, '#9a9684'); } // flagstones showing through the grass, a fallen stone or two
+  else if (kind === 'lavafield') { for (let k = 0; k < 22; k++) { const x = (r(k * 2 + 6) * W) | 0, y = gy + 3 + (r(k * 2 + 1 + 36) * (hb - 4)) | 0, w = 6 + (k % 5) * 4, gl = 0.35 + 0.35 * Math.sin(t / 400 + k); px(x, y, w, 1, `rgba(255,120,40,${gl.toFixed(2)})`); px(x + w, y - 2, 1, 3, `rgba(255,120,40,${(gl * 0.7).toFixed(2)})`); } for (let k = 0; k < 14; k++) px(r(k * 2 + 70) * W, gy + 2 + r(k * 2 + 1 + 15) * (hb - 3), 3, 2, '#0a0608'); } // cracks that still glow, black clinker
+  else if (kind === 'glass') { for (let k = 0; k < 30; k++) { const x = (r(k * 2 + 7) * W) | 0, y = gy + 2 + (r(k * 2 + 1 + 38) * (hb - 3)) | 0; px(x, y, 2 + (k % 3), 1, Math.sin(t / 500 + k * 1.7) > 0.6 ? '#ffffff' : 'rgba(255,255,255,0.4)'); px(x + 1, y + 1, 1, 1, 'rgba(90,138,144,0.5)'); } } // shards catching the light
+  else if (kind === 'cave') { for (let k = 0; k < 20; k++) px(r(k * 2 + 8) * W, gy + 3 + r(k * 2 + 1 + 41) * (hb - 4), 2 + (k % 3), 2, '#2a2430'); for (let k = 0; k < 6; k++) { const x = (r(k * 2 + 3) * W) | 0, y = gy + 8 + (r(k * 2 + 1 + 27) * (hb - 12)) | 0; px(x, y, 10 + (k % 3) * 4, 2, 'rgba(20,40,60,0.8)'); px(x + 2, y, 4, 1, 'rgba(120,180,200,0.35)'); } } // fallen stone, drip pools
+  else if (kind === 'storm') { for (let k = 0; k < 7; k++) { const x = (r(k * 2 + 9) * W) | 0, y = gy + 5 + (r(k * 2 + 1 + 29) * (hb - 8)) | 0, w = 12 + (k % 3) * 8; px(x, y, w, 2, 'rgba(60,80,110,0.7)'); px(x + 2, y, w - 6, 1, 'rgba(200,220,255,0.45)'); } for (let k = 0; k < 30; k++) { const x = (r(k * 2 + 52) * W) | 0, y = gy + 2 + (r(k * 2 + 1 + 14) * (hb - 3)) | 0; px(x, y, 3, 1, dark); } } // puddles, grass flattened one way
+  else if (kind === 'steppe') { for (let k = 0; k < 60; k++) { const x = (r(k * 2 + 11) * W) | 0, y = gy + 2 + (r(k * 2 + 1 + 47) * (hb - 3)) | 0; px(x, y, 1, 2, k % 3 ? 'rgba(200,190,90,0.45)' : dark); } for (let k = 0; k < 6; k++) px(r(k * 2 + 81) * W, gy + 4 + r(k * 2 + 1 + 25) * (hb - 6), 3, 2, '#7a7a76'); } // dry grass in the wind, a few stones
+  else if (kind === 'wrecks') { for (let k = 0; k < 9; k++) { const x = (r(k * 2 + 13) * W) | 0, y = gy + 4 + (r(k * 2 + 1 + 35) * (hb - 6)) | 0, w = 10 + (k % 4) * 6; px(x, y, w, 2, '#5a4a3a'); px(x, y, w, 1, '#7a6a52'); px(x + 2, y + 1, 1, 1, '#2a2218'); px(x + w - 3, y + 1, 1, 1, '#2a2218'); } for (let k = 0; k < 14; k++) px(r(k * 2 + 61) * W, gy + 2 + r(k * 2 + 1 + 16) * (hb - 3), 2, 1, light); } // planks half under the sand, nail heads
+  else if (kind === 'reeds') { for (let k = 0; k < 7; k++) { const x = (r(k * 2 + 4) * W) | 0, y = gy + 6 + (r(k * 2 + 1 + 39) * (hb - 10)) | 0, w = 16 + (k % 3) * 10; px(x, y, w, 3, 'rgba(30,50,60,0.7)'); px(x + 2, y, w - 4, 1, 'rgba(160,200,210,0.3)'); px(x + 4 + (k % 5), y + 1, 2, 1, '#6a9a40'); } for (let k = 0; k < 30; k++) px(r(k * 2 + 58) * W, gy + 2 + r(k * 2 + 1 + 18) * (hb - 3), 1, 2, 'rgba(60,90,50,0.6)'); } // standing water between tussocks, a lily pad
+  else if (kind === 'cloud') { for (let k = 0; k < 18; k++) { const x = (r(k * 2 + 5) * W) | 0, y = gy + 3 + (r(k * 2 + 1 + 43) * (hb - 6)) | 0, w = 8 + (k % 4) * 5; px(x, y, w, 2, 'rgba(255,255,255,0.55)'); px(x + 2, y - 1, w - 4, 1, 'rgba(255,255,255,0.75)'); px(x + 1, y + 2, w - 2, 1, 'rgba(120,140,170,0.25)'); } } // puffs underfoot
+}
 function drawGroundDecor(kind, x0, gy, t, nt) {
   const r = (k) => ((k * 7919) % 97) / 97;
   if (kind === 'dunes') { g.fillStyle = '#d8c080'; for (let k = 0; k < 5; k++) { const dx = x0 + (k * W / 5 + r(k) * 20) | 0; for (let j = 0; j < 6; j++) g.fillRect(dx - 14 + j * 2, gy - 6 + j, 28 - j * 4, 1); } g.fillStyle = '#9a9a50'; for (let k = 0; k < 9; k++) { const tx = x0 + (r(k + 7) * W) | 0; g.fillRect(tx, gy - 4, 1, 4); g.fillRect(tx + 2, gy - 3, 1, 3); } }
   else if (kind === 'woods') { for (let k = 0; k < 7; k++) pine(x0 + (k * W / 7 + r(k) * 14) | 0, gy + 2, 24 + (r(k + 3) * 14) | 0); g.fillStyle = '#2a4a2a'; for (let k = 0; k < 12; k++) { const fx = x0 + (r(k + 11) * W) | 0; g.fillRect(fx, gy - 3, 1, 3); g.fillRect(fx - 2, gy - 2, 5, 1); } }
   else if (kind === 'saltflat') { for (let k = 0; k < 5; k++) PROP_FN.cairn(x0 + (k * W / 5 + 12 + r(k) * 20) | 0, gy); g.fillStyle = 'rgba(255,255,255,0.5)'; for (let k = 0; k < 20; k++) g.fillRect(x0 + (r(k + 5) * W) | 0, gy + 4 + (r(k) * 20) | 0, 3 + (k % 4), 1); }
   else if (kind === 'bamboo') { for (let k = 0; k < 9; k++) PROP_FN.bamboo(x0 + (k * W / 9 + r(k) * 10) | 0, gy, 26 + (r(k + 2) * 16) | 0); }
-  else if (kind === 'cliffs') { g.fillStyle = '#5a5a66'; g.fillRect(x0, gy - 60, W, 60); g.fillStyle = '#4a4a56'; for (let y = gy - 58; y < gy; y += 6) g.fillRect(x0 + ((y * 7) % 13), y, W, 1); g.fillStyle = '#8a8a96'; for (let k = 0; k < 14; k++) g.fillRect(x0 + (r(k) * W) | 0, gy - 58 + (r(k + 9) * 50) | 0, 2 + (k % 3), 1); for (let k = 0; k < 8; k++) { const px = x0 + (r(k + 21) * W) | 0, py = gy - 30 - (r(k + 4) * 26) | 0; g.fillStyle = '#202028'; g.fillRect(px, py, 2, 3); g.fillStyle = '#f4f4f0'; g.fillRect(px, py + 1, 1, 2); g.fillStyle = '#f0a040'; g.fillRect(px + 2, py + 1, 1, 1); } }
+  else if (kind === 'cliffs') { // a headland across the bay: a rock mass with its own profile, sloping strata, ledges full of birds, turf on top, foam at the foot
+    const prof = x => { const u = x / W; return 0.55 + 0.25 * Math.sin(u * 6.1 + 1.2) + 0.12 * Math.sin(u * 15.7 + 0.4) + 0.08 * Math.sin(u * 33 + 2) - (u > 0.86 ? (u - 0.86) * 4.2 : 0); }; // it drops to the sea at the right
+    for (let x = 0; x < W; x++) { const hgt = Math.max(0, (14 + 44 * prof(x)) | 0), top = gy - hgt; if (!hgt) continue;
+      for (let y = top; y < gy; y++) { const band = ((y + (x >> 2)) % 9), c = band === 0 ? '#3e3e4a' : band < 3 ? '#565662' : band < 6 ? '#62626e' : '#5a5a66'; g.fillStyle = c; g.fillRect(x0 + x, y, 1, 1); } // strata that slope with the land
+      g.fillStyle = '#8a8a96'; g.fillRect(x0 + x, top, 1, 1); if (hgt > 6) { g.fillStyle = '#5a7a38'; g.fillRect(x0 + x, top - 1, 1, 2); if ((x * 7) % 11 < 3) { g.fillStyle = '#7a9a48'; g.fillRect(x0 + x, top - 2, 1, 1); } } // turf
+    }
+    for (let k = 0; k < 16; k++) { const px = (r(k + 21) * W) | 0, hgt = (14 + 44 * prof(px)) | 0; if (hgt < 12) continue; const py = gy - 4 - (r(k + 4) * (hgt - 10)) | 0; g.fillStyle = '#8a8a96'; g.fillRect(x0 + px - 2, py + 2, 7, 1); g.fillStyle = '#3a3a46'; g.fillRect(x0 + px - 2, py + 3, 7, 1); // a ledge
+      if (k % 2 === 0) { g.fillStyle = '#f4f4f0'; g.fillRect(x0 + px, py, 2, 2); g.fillStyle = '#202028'; g.fillRect(x0 + px + 1, py - 1, 1, 1); g.fillStyle = '#f0a040'; g.fillRect(x0 + px + 2, py, 1, 1); } // a bird on it
+      if (k % 3 === 0) { g.fillStyle = 'rgba(244,244,240,0.55)'; g.fillRect(x0 + px - 1, py + 4, 1, 3 + (k % 2)); } } // the white streaks under a colony
+    g.fillStyle = 'rgba(244,246,250,0.85)'; for (let x = 0; x < W; x += 5) { const hgt = (14 + 44 * prof(x)) | 0; if (hgt > 4 && ((x + (t / 260 | 0)) % 10) < 5) g.fillRect(x0 + x, gy - 1, 3, 1); } // foam at the foot
+    for (let k = 0; k < 5; k++) { const bx = (W * 0.88 + r(k + 30) * W * 0.12) | 0, by = gy - 44 - (r(k + 8) * 20) | 0; g.fillStyle = '#f4f4f0'; g.fillRect(x0 + bx, by, 2, 1); g.fillRect(x0 + bx - 1, by - 1, 1, 1); g.fillRect(x0 + bx + 2, by - 1, 1, 1); } // gulls off the point
+  }
   else if (kind === 'mangrove') { for (let k = 0; k < 6; k++) PROP_FN.mangrove(x0 + (k * W / 6 + 8 + r(k) * 14) | 0, gy); g.fillStyle = 'rgba(60,90,80,0.7)'; for (let k = 0; k < 6; k++) g.fillRect(x0 + (r(k + 3) * W) | 0, gy + 6 + (r(k) * 18) | 0, 12 + (k % 3) * 6, 2); }
   else if (kind === 'tundra') { for (let k = 0; k < 4; k++) pine(x0 + (k * W / 4 + 20 + r(k) * 18) | 0, gy + 2, 18 + (r(k + 3) * 10) | 0); PROP_FN.cairn(x0 + (W * 0.3) | 0, gy); g.fillStyle = 'rgba(255,255,255,0.7)'; for (let k = 0; k < 16; k++) g.fillRect(x0 + (r(k + 5) * W) | 0, gy + 3 + (r(k) * 24) | 0, 4 + (k % 5), 1); }
   else if (kind === 'ruins') { for (let k = 0; k < 6; k++) PROP_FN.column(x0 + (k * W / 6 + 10 + r(k) * 14) | 0, gy, k % 2); g.fillStyle = '#9a9684'; for (let k = 0; k < 8; k++) g.fillRect(x0 + (r(k + 7) * W) | 0, gy - 2, 5 + (k % 4), 2); }
@@ -15869,31 +15939,32 @@ function enterHunt() {
   renderHunt(); window.scrollTo(0, 0);
 }
 function gamePool(locId, t) { // what is out there at this hour that your weapon can bring down; shot and calls tilt it toward the rarer
-  const ph = phaseAt(t), power = WEAPON().power, luck = (SHOT[shotOf()].luck || 0) + (CALLS[callOf()].luck || 0);
-  return GAME.filter(c => c.loc[locId] && (!c.time || c.time.includes(ph)) && c.kg[0] <= power && !(c.legend && S.gindex[c.id])).map(c => [c, c.loc[locId] * (1 + gameRank(c, locId) * luck * 0.5)]);
+  const ph = phaseAt(t), power = WEAPON().power, luck = (SHOT[shotOf()].luck || 0) + (CALLS[callOf()].luck || 0), shun = (SHOT[shotOf()].shun || 1) * (CALLS[callOf()].shun || 1);
+  return GAME.filter(c => c.loc[locId] && (!c.time || c.time.includes(ph)) && c.kg[0] <= power && !(c.legend && S.gindex[c.id])).map(c => { const rk = gameRank(c, locId); return [c, c.loc[locId] * (1 + rk * luck * 0.5) * (rk === 0 ? shun : 1)]; });
 }
 function rollGame() {
   const p = gamePool(S.loc, now()); if (!p.length) return null;
   const tot = p.reduce((a, x) => a + x[1], 0); let r = Math.random() * tot, c = p[p.length - 1][0];
   for (const [cc, w] of p) { r -= w; if (r <= 0) { c = cc; break; } }
-  const f = Math.pow(Math.random(), 1.3), kg = Math.round((c.kg[0] + (c.kg[1] - c.kg[0]) * f) * 1000) / 1000;
-  return { c, kg, value: gameValue(c, kg, rnd(-0.15, 0.15)) };
+  return rollSize(c);
 }
+function rollSize(c) { const f = Math.pow(Math.random(), 1.3), kg = Math.round((c.kg[0] + (c.kg[1] - c.kg[0]) * f) * 1000) / 1000; return { c, kg, value: gameValue(c, kg, rnd(-0.15, 0.15)) }; }
 function startStalk() {
   if (HU && HU.phase !== 'idle') return;
   const roll = rollGame(); if (!roll) { toast('Nothing stirs here at this hour.'); return; }
   const winds = ['face', 'cross', 'cross', 'back'], call = CALLS[callOf()], shot = SHOT[shotOf()];
   if (callOf() !== 'none') S.calls[callOf()]--; // a call is spent on the stalk
   const wait = rnd(T_HUNT.wait[0], T_HUNT.wait[1]) * (call.wait || 1) * (S.scattered > now() ? (WEAPON().loud || 1.5) : 1); S.scattered = 0;
-  HU = { phase: 'wait', at: now() + wait, roll, tx: rnd(0.18, 0.82), ph: rnd(0, 6), hold: false, breath: 1, flee: 0, wind: winds[Math.floor(Math.random() * winds.length)], alert: 0, steps: call.near || 0, look: false, lookAt: 0, shot: shotOf(), call: callOf(), calm: CLOAK().calm * (shot.calm || 1) };
+  const flock = !roll.c.legend && roll.c.kg[1] <= T_HUNT.flockMaxKg && Math.random() < T_HUNT.flockOdds ? Math.floor(rnd(T_HUNT.flockN[0], T_HUNT.flockN[1] + 1)) : 0; // once in a while the whole flock comes down
+  HU = { phase: 'wait', at: now() + wait, roll, tx: rnd(0.18, 0.82), ph: rnd(0, 6), hold: false, breath: 1, flee: 0, wind: winds[Math.floor(Math.random() * winds.length)], alert: 0, steps: call.near || 0, look: false, lookAt: 0, shot: shotOf(), call: callOf(), calm: CLOAK().calm * (shot.calm || 1), flock, flockN: flock };
   save();
   renderHunt();
 }
 function stepHunt(dt, t) {
   if (!HU) return;
-  if (HU.phase === 'wait' && t >= HU.at) { HU.phase = 'seen'; HU.seen = t; HU.lookAt = t + rnd(T_HUNT.lookEvery[0], T_HUNT.lookEvery[1]); renderHunt(); }
+  if (HU.phase === 'wait' && t >= HU.at) { HU.phase = 'seen'; HU.seen = t; HU.lookAt = t + rnd(T_HUNT.lookEvery[0], T_HUNT.lookEvery[1]); if (HU.flock) toast(`A flock! ${HU.flock} of them. Quick.`); renderHunt(); }
   if (HU.phase === 'seen') {
-    const c = HU.roll.c, period = T_HUNT.swing[0] - T_HUNT.swing[1] * c.diff; HU.ph += (Math.PI * 2 / period) * dt * (HU.hold ? T_HUNT.holdSlow : 1);
+    const c = HU.roll.c, period = swingPeriod(); HU.ph += (Math.PI * 2 / period) * dt * (HU.hold ? T_HUNT.holdSlow : 1);
     if (HU.hold) { HU.breath -= dt * 1000 / T_HUNT.breath; if (HU.breath <= 0) { HU.hold = false; loose(true); return; } }
     HU.alert += dt * 1000 / (T_HUNT.alertMs[0] - T_HUNT.alertMs[1] * c.diff) * HU.calm; // it gets restless on its own, slower under a cloak or a poisoned dart
     if (!HU.look && t >= HU.lookAt) { HU.look = true; HU.lookEnd = t + T_HUNT.lookFor; renderHunt(); } else if (HU.look && t >= HU.lookEnd) { HU.look = false; HU.lookAt = t + rnd(T_HUNT.lookEvery[0], T_HUNT.lookEvery[1]); renderHunt(); }
@@ -15905,7 +15976,11 @@ function stepHunt(dt, t) {
     const hb = $('#hbreath'); if (hb) hb.style.width = (HU.breath * 100).toFixed(0) + '%';
   }
 }
-const bandNow = () => WEAPON().acc * (T_HUNT.bandBase - HU.roll.c.diff) * (1 + T_HUNT.nearBand * HU.steps);
+const sizeF = c => clamp((Math.log10((c.kg[0] + c.kg[1]) / 2) + 2) / 5, 0, 1); // 10 g → 0, a tonne → 1
+const valueF = v => clamp(Math.log10(Math.max(1, v) / 20) / 2.4, 0, 1); // $20 → 0, $5,000 → 1
+const swingPeriod = () => { const c = HU.roll.c; return (T_HUNT.swing[0] - T_HUNT.swing[1] * c.diff) * (T_HUNT.sizeSlow[0] + T_HUNT.sizeSlow[1] * sizeF(c)) * (T_HUNT.valueQuick[0] - T_HUNT.valueQuick[1] * valueF(HU.roll.value)) * (SHOT[HU.shot].slow || 1); };
+const tempoWord = () => { const c = HU.roll.c, v = valueF(HU.roll.value), z = sizeF(c); return v > 0.6 ? 'quick' : z > 0.7 ? 'slow' : z < 0.3 ? 'nimble' : 'steady'; };
+const bandNow = () => WEAPON().acc * (T_HUNT.bandBase - HU.roll.c.diff) * (T_HUNT.sizeBand[0] + T_HUNT.sizeBand[1] * sizeF(HU.roll.c)) * (1 + T_HUNT.nearBand * HU.steps) * (HU.flock ? T_HUNT.flockBand : 1);
 // creep a step closer: the band widens, the animal's alertness jumps by its skittishness, the wind, and whether it is looking
 function creep() {
   if (!HU || HU.phase !== 'seen' || HU.steps >= maxSteps() || HU.hold) return;
@@ -15919,12 +15994,13 @@ function loose(shaky) {
   const c = HU.roll.c, aim = 0.5 + 0.5 * Math.sin(HU.ph), band = bandNow() * (shaky ? 0.4 : 1);
   if (HU.shot !== 'stones') S.shot[HU.shot] = Math.max(0, (S.shot[HU.shot] || 0) - 1); // the shot is spent, hit or miss
   if (WEAPON().loud) S.scattered = now() + 60000; // a loud shot clears the ground for a while
-  if (Math.abs(aim - HU.tx) <= band) take(); else { HU.phase = 'miss'; tutFinishHunt(); $('#hbar').classList.add('miss'); toast(shaky ? 'Your arm shook. It bolted.' : 'Wide. It bolted.'); setTimeout(() => { if (HU) { HU.phase = 'idle'; $('#hbar').classList.remove('miss'); renderHunt(); } }, 900); renderHunt(); }
+  if (Math.abs(aim - HU.tx) <= band) take(); else { const fl = HU.flock; HU.flock = 0; HU.phase = 'miss'; tutFinishHunt(); $('#hbar').classList.add('miss'); toast(fl ? 'Wide. The whole flock is up and gone.' : shaky ? 'Your arm shook. It bolted.' : 'Wide. It bolted.'); setTimeout(() => { if (HU) { HU.phase = 'idle'; $('#hbar').classList.remove('miss'); renderHunt(); } }, 900); renderHunt(); }
 }
-function bolt_(why) { HU.phase = 'miss'; tutFinishHunt(); toast(`${why || 'It caught your scent.'} The ${HU.roll.c.name.toLowerCase()} is gone.`); setTimeout(() => { if (HU) { HU.phase = 'idle'; renderHunt(); } }, 900); renderHunt(); }
+function bolt_(why) { const fl = HU.flock; HU.flock = 0; HU.phase = 'miss'; tutFinishHunt(); toast(`${why || 'It caught your scent.'} ${fl ? 'The whole flock is gone.' : 'The ' + HU.roll.c.name.toLowerCase() + ' is gone.'}`); setTimeout(() => { if (HU) { HU.phase = 'idle'; renderHunt(); } }, 900); renderHunt(); }
 function take() {
   const { c, kg } = HU.roll, tags = [], value = Math.round(HU.roll.value * (1 + T_HUNT.nearWorth * HU.steps) * (SHOT[HU.shot].worth || 1)); // a close shot is a clean one; barbed heads pay better
   if (HU.steps >= maxSteps()) tags.push('Point blank');
+  if (HU.flockN) tags.push(`Flock · ${HU.flockN - HU.flock + 1} of ${HU.flockN}`);
   if (HU.shot !== 'stones') tags.push(SHOT[HU.shot].name);
   const gx = S.gindex[c.id] || (S.gindex[c.id] = { n: 0, best: 0 });
   if (gx.n === 0) tags.push('New species'); if (kg > gx.best) { if (gx.n > 0) tags.push('New record'); gx.best = kg; } gx.n++;
@@ -15932,7 +16008,10 @@ function take() {
   if (S.pack.length < packCap()) { S.pack.push({ id: c.id, kg, value }); line = `Into the bag. ${S.pack.length}/${packCap()}.`; } else line = 'The bag is full. You leave it for the gulls.';
   HU.phase = 'taken'; $('#hbar').classList.add('hit'); tutFinishHunt(); save(); renderHunt();
   showTaken(c, kg, value, tags, line);
-  setTimeout(() => { if (HU) { HU.phase = 'idle'; $('#hbar').classList.remove('hit'); renderHunt(); } }, 600);
+  setTimeout(() => { if (!HU) return; $('#hbar').classList.remove('hit');
+    if (HU.flock > 1) { HU.flock--; HU.roll = rollSize(c); HU.tx = rnd(0.18, 0.82); HU.ph = rnd(0, 6); HU.hold = false; HU.breath = 1; HU.look = false; HU.lookAt = now() + rnd(T_HUNT.lookEvery[0], T_HUNT.lookEvery[1]); HU.alert = Math.min(0.6, HU.alert + T_HUNT.flockAlert); HU.phase = 'seen'; } // another of the flock stands where that one fell
+    else { HU.phase = 'idle'; HU.flock = 0; }
+    renderHunt(); }, 600);
 }
 function showTaken(c, kg, value, tags, line) {
   const head = c.legend ? 'FABLED!' : tags.includes('New record') ? 'NEW RECORD!' : tags.includes('New species') ? 'NEW SPECIES!' : 'TAKEN!';
@@ -15954,12 +16033,14 @@ function renderHunt() {
   $('#hMoney').textContent = money(S.money); $('#hBag').textContent = `Bag ${S.pack.length}/${packCap()}`;
   const box = $('#hbox'), ph = HU ? HU.phase : 'idle', w = WEAPON();
   const tt = tutHere() ? tutHuntText(ph) : ''; $('#hNote').classList.toggle('tut', !!tt);
+  $('#hbar').classList.toggle('flock', !!(HU && HU.flock && ph === 'seen'));
   if (ph === 'idle') { const sh = SHOT[shotOf()], ca = CALLS[callOf()]; $('#hNote').innerHTML = tt || `<b>${w.name}</b> · wait, creep, draw, loose`;
     box.innerHTML = `<div class="rigrow"><div class="rigsum"><div class="l1">${w.name} · ${sh.short}${shotOf() !== 'stones' ? ' ×' + S.shot[shotOf()] : ''}${callOf() !== 'none' ? ` · ${ca.short} ×${S.calls[callOf()]}` : ''}</div><div class="l2">Takes game to ${fmtKg(w.power)} · ${maxSteps()} steps${CLOAK().id !== 'none' ? ' · ' + CLOAK().name.toLowerCase() : ''} · bag ${S.pack.length}/${packCap()}</div></div><button class="rigbtn" data-act="open" data-k="kit">Change kit</button></div><div class="note">${loc().hunt.name ? 'Quiet. Something is out there. The wind will tell you how close you can get.' : ''}</div><button class="cta" data-act="stalk">Wait for a sign</button>`; $('#hband').style.width = '0'; }
   else if (ph === 'wait') { $('#hNote').innerHTML = tt || `<b>Still.</b> Wind ${WIND_NAME[HU.wind]}.`; box.innerHTML = `<div class="note">Keep low. Something will show.</div><button class="cta alt" data-act="leavehunt">Give up</button>`; }
   else if (ph === 'seen') { const c = HU.roll.c, far = HU.steps < maxSteps();
-    $('#hNote').innerHTML = (tt ? tt + '<br>' : '') + `<b>${c.name}</b> · ${fmtKg(HU.roll.kg)} · <span class="${HU.look ? 'look' : ''}">${HU.look ? 'head up!' : distName(HU.steps)}</span> · wind ${WIND_NAME[HU.wind]}`;
-    box.innerHTML = `<div class="note">${HU.look ? 'It is looking. Do not move.' : far ? 'Creep closer for a wider band, or draw now. Every step it may catch your scent.' : 'Point blank. Draw.'}</div>
+    $('#hNote').innerHTML = (tt ? tt + '<br>' : '') + (HU.flock ? `<b class="gold">A FLOCK · ${HU.flock} left</b> · ` : '') + `<b>${c.name}</b> · ${fmtKg(HU.roll.kg)} · ${tempoWord()} · <span class="${HU.look ? 'look' : ''}">${HU.look ? 'head up!' : distName(HU.steps)}</span> · wind ${WIND_NAME[HU.wind]}`;
+    $('#hbar').classList.toggle('flock', !!HU.flock);
+    box.innerHTML = `<div class="note">${HU.flock ? `A flock of ${HU.flockN}, and the band is wide. Every one you take, another stands. A miss scatters them all.` : HU.look ? 'It is looking. Do not move.' : far ? 'Creep closer for a wider band, or draw now. Every step it may catch your scent.' : 'Point blank. Draw.'}</div>
       <div class="meters"><div class="meter"><span class="lbl">ALERT</span><div class="hbar thin"><div class="hband fill alert" id="halert" style="width:${(Math.min(1, HU.alert) * 100).toFixed(0)}%"></div></div></div><div class="meter"><span class="lbl">BREATH</span><div class="hbar thin"><div class="hband fill breath" id="hbreath" style="width:${(HU.breath * 100).toFixed(0)}%"></div></div></div></div>
       <div class="acts2"><button class="cta alt" data-act="creep" ${far && !HU.hold ? '' : 'disabled'}>Creep closer</button><button class="cta hit" id="hLoose">Draw</button></div>`; }
   else if (ph === 'miss') { $('#hNote').innerHTML = '<b>Gone.</b>'; box.innerHTML = '<div class="note">The brush closes behind it.</div>'; }
@@ -15996,10 +16077,13 @@ function drawHunt(t) {
   // a far ridge closes the gap between the sky and the ground, so nothing from the last screen shows through
   const haze = css(lerpC(curSky.bot, [20, 30, 50], 0.5)); g.fillStyle = haze; g.fillRect(0, SURF - 8, W, gy - SURF + 8); for (let k = 0; k < W; k += 9) g.fillRect(k, SURF - 10 - ((k * 7) % 5), 6, 3);
   g.fillStyle = st[0]; g.fillRect(0, gy, W, 12); g.fillStyle = st[1]; g.fillRect(0, gy + 12, W, 30); g.fillStyle = st[2]; g.fillRect(0, gy + 42, W, H - gy - 42); g.fillStyle = st[3]; g.fillRect(0, gy, W, 1);
+  drawGroundTex(l.hunt.kind, gy, st, t);
   drawGroundDecor(l.hunt.kind, 0, gy, t, nt);
   if (HU && HU.phase === 'seen' || (HU && HU.phase === 'taken')) {
     const c = HU.roll.c, cx = (HU.tx * SW) | 0, bob = HU.look ? 0 : Math.sin(t / 260) > 0.6 ? 1 : 0, sc = HU.steps >= 2 ? 2 : 1;
-    const mc = beastC(c.id, sc, 'color'); blit(g, mc, cx - (mc.width >> 1), gy - mc.height + bob, HU.tx > 0.5);
+    const mc = beastC(c.id, sc, 'color');
+    if (HU.flock > 1) { const m1 = beastC(c.id, 1, 'color'); for (let k = 1; k < HU.flock; k++) { const ox = cx + (k % 2 ? 1 : -1) * (12 + k * 9) * (sc === 2 ? 1.6 : 1), oy = gy - m1.height - ((k * 5) % 7) - 2 + (Math.sin(t / 300 + k) > 0.6 ? 1 : 0); blit(g, m1, (ox - (m1.width >> 1)) | 0, oy | 0, (HU.tx > 0.5) !== (k % 3 === 0)); } } // the rest of the flock, further off
+    blit(g, mc, cx - (mc.width >> 1), gy - mc.height + bob, HU.tx > 0.5);
     if (HU.look) { g.fillStyle = '#f0c050'; g.fillRect(cx, gy - mc.height - 9, 2, 5); g.fillRect(cx, gy - mc.height - 3, 2, 2); } // head up
     const aim = 0.5 + 0.5 * Math.sin(HU.ph), ax = (aim * SW) | 0; g.fillStyle = HU.hold ? 'rgba(240,192,80,0.9)' : 'rgba(236,230,214,0.55)'; for (let y = gy - 40; y < gy + 6; y += 3) g.fillRect(ax, y, 1, 1); g.fillRect(ax - 3, gy - 18, 7, 1); g.fillRect(ax, gy - 21, 1, 7);
   } else if (HU && HU.phase === 'wait') { const sway = Math.sin(t / 400) * 2 | 0; g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect((HU.tx * W | 0) - 8 + sway, gy - 6, 16, 2); }
@@ -16997,7 +17081,7 @@ function settleLines() {
   S.lines.forEach(L => {
     if (!L) return;
     if (L.phase === 'waiting' && t >= L.at) {
-      if (L.rig === 'hand') { L.phase = 'idle'; L.c = null; }
+      if (L.rig === 'hand') { if (L.c) L.at = t + rnd(T.handWait[0], T.handWait[1]) * 1000 * 0.5; else { L.phase = 'idle'; L.c = null; } } // the rod was out when the game closed: it is still out, and bites once you are back
       else { L.phase = L.c ? 'hooked' : 'idle'; if (L.c) got++; }
     } else if (L.phase === 'bite' && t > L.exp) { L.phase = 'idle'; L.c = null; }
   });
