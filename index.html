@@ -107,6 +107,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
   padding:9px 10px calc(14px + env(safe-area-inset-bottom,0px));display:grid;gap:8px}
 .tide{font-size:17px;color:var(--muted);text-align:center;text-wrap:balance;padding:0 2px}
 .tide b{color:var(--text);font-weight:normal}
+.note.broke{color:var(--bad);border-left:3px solid var(--bad);padding-left:6px}
 .tide.tut{background:rgba(240,192,80,.1);border:2px solid var(--brass-2);padding:7px 8px;color:var(--text);font-size:18px}
 .tide.tut b{color:var(--brass)}
 .cta.tut{box-shadow:0 0 0 3px var(--brass),0 4px 0 var(--brass-3);animation:thump .5s infinite alternate}
@@ -249,7 +250,13 @@ canvas.icon{width:40px;height:40px;image-rendering:pixelated;flex:none}
 .legend button{width:100%;text-align:left;background:none;border:2px solid transparent;padding:6px 6px;color:inherit}
 .legend button.sel{border-color:var(--brass);background:var(--panel-2)}
 .legend button.dim{opacity:.55}
+.stock{font-family:var(--display);font-size:7px;color:var(--good);white-space:nowrap}
+.stock.out{color:var(--bad)}
 .legend .tierhead{font-family:var(--display);font-size:8px;color:var(--brass);letter-spacing:1px;padding:10px 6px 2px;border-top:1px solid var(--edge);margin-top:4px}
+.legend .mtag{font-family:var(--display);font-size:7px;margin-left:6px;padding:2px 4px;border:1px solid currentColor;vertical-align:middle;white-space:nowrap}
+.legend .mtag.shop{color:var(--good)}
+.legend .mtag.sell{color:var(--brass)}
+.legend .mtag.none{color:var(--muted)}
 .legend .ttag{font-family:var(--display);font-size:7px;color:var(--brass);opacity:.8;vertical-align:middle;margin-left:4px}
 .legend .here{color:var(--good);font-size:17px;white-space:nowrap}
 #isle,#hunt,#mine{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;width:100%;max-width:520px;margin:0 auto}
@@ -438,8 +445,11 @@ const T = {
   walkSpeed: 72,                 // island strip: logical px per second (about eight seconds to cross the strip)
   walkFps: 9,                    // island strip: walk-cycle frames per second (contact, pass, contact, pass)
   handWait: [6000, 16000],       // rod: ms to a bite (6 to 16 s; the float sits a while)
+  snapShare: 1, snapMax: 0.3,    // a cast breaks off with odds snapShare × the share of the water held by fish too heavy for the line at their smallest, at most snapMax
+  snapHeld: [0.35, 0.2, 0.8],    // a fish rolled heavier than the line breaks off with odds 0.35, + 0.2 for every line-weight it is over, at most 0.8; otherwise it is held to the line (LINE HELD)
   trophyMinKg: 0.3,              // the trophy line never hooks a species whose largest adult is under this
   weatherFadeMs: 60000,          // a new sky fades in over the first game hour of its slot, the old one fading out under it
+  islePanel: 190, sceneZoom: 2,  // the strip: the panel's height in CSS px (the ground line sits just above it), and how many walker pixels one scenery pixel is
   entryMs: 900,                  // the walk into a door, a gate or an adit before the cut: ms
   prologueWait: [3000, 7000],    // rod in the tutorial: quicker, so the first two fish teach without a long wait
   setMean: 60000,                // set line: a chance every second, one hook a minute on average (exponential wait), keeps ticking while you're away
@@ -510,7 +520,7 @@ const BOATS = [
 const SLOT_PRICES = [0, 60, 150, 450]; // you start with one line; the rest are sold in shops
 // The far end of the world. A keeper on a tier-5+ island mentions the starship at these odds per talk; the chart that finds the
 // spaceport is in stock at a tier-5+ shop on a given real day at these odds (percent), at this price.
-const T_WORLD = { shopShelves: 5, starRumor: 0.07, chartOdds: 12, chartPrice: 150000 };
+const T_WORLD = { shopShelves: 5, stock: { bait: [4, 9], shot: [3, 6], call: [2, 4], charge: [2, 4], aid: [2, 4] }, starRumor: 0.07, chartOdds: 12, chartPrice: 150000 };
 // The sky is a bite gate. Every island rolls its own weather every T.weatherMs from a fixed hash of the slot and the island (so it never
 // flickers, every island differs, and a reload keeps it with nothing saved), at the odds its climate gives (CLIMATE, picked by climateOf
 // from the island's scene: a fixed sky like the thunderhead's storm or a cave is always that). A species with `weather: ['storm']` bites
@@ -10210,7 +10220,7 @@ const HARD_NAME = ['', 'soft as talc', 'soft', 'soft', 'firm', 'firm', 'hard', '
 // ---------- state ----------
 function freshState() {
   return {
-    v: 15, started: false, loc: 'shoal', hunted: {}, money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 1, trophyRig: false,
+    v: 16, started: false, loc: 'shoal', hunted: {}, stock: {}, broke: null, money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 1, trophyRig: false,
     line: 'l10', pail: 'pail', // the line's test weight and the bucket in use (both bought in the shop)
     rodsOwned: ['stick'], linesOwned: ['l10'], pailsOwned: ['pail'], // everything bought stays in the rig sheet and can be put back on
     heldRod: true, // the storm's one question; let go and the sea takes you, and the voyage starts over
@@ -10303,7 +10313,8 @@ function load(seed) {
   if (d && d.v === 12) { const wi = Math.max(0, WEAPONS.findIndex(w => w.id === d.weapon)); d.weaponsOwned = WEAPONS.slice(0, wi + 1).map(w => w.id); d.cloak = 'none'; d.cloaksOwned = ['none']; d.boots = 'bare'; d.bootsOwned = ['bare']; d.pack_ = 'satchel'; d.packsOwned = ['satchel']; d.shot = {}; d.shotSel = 'stones'; d.calls = {}; d.callSel = 'none'; d.scattered = 0; d.v = 13; } // v12 -> v13: the hunting kit; you own every weapon below the one you carry
   if (d && d.v === 13) { d.sack = []; d.pick = 'maul'; d.picksOwned = ['maul']; d.lamp = 'candle'; d.lampsOwned = ['candle']; d.sack_ = 'oresack'; d.sacksOwned = ['oresack']; d.charges = {}; d.chargeSel = 'none'; d.aids = {}; d.aidSel = 'none'; d.mindex = {}; d.mine = null; d.mpending = null; d.v = 14; } // v13 -> v14: the mines
   if (d && d.v === 14) { d.hunted = {}; d.v = 15; } // v14 -> v15: overhunting pressure per island
-  if (d && d.v === 15) S = Object.assign(freshState(), d);
+  if (d && d.v === 15) { d.stock = {}; d.broke = null; d.v = 16; } // v15 -> v16: shop stock by the day, and the count of fish that broke the line
+  if (d && d.v === 16) S = Object.assign(freshState(), d);
   S.seen = S.seen || {}; for (const k in S.bait) if (S.bait[k] > 0) S.seen['bait:' + k] = true; for (const k in S.shot) if (S.shot[k] > 0) S.seen['shot:' + k] = true; for (const k in S.calls) if (S.calls[k] > 0) S.seen['call:' + k] = true; for (const k in S.charges || {}) if (S.charges[k] > 0) S.seen['charge:' + k] = true; for (const k in S.aids || {}) if (S.aids[k] > 0) S.seen['aid:' + k] = true; if (S.trophyRig) S.seen['rig:trophy'] = true; // things you hold now, you have seen
 }
 
@@ -10356,7 +10367,9 @@ function straysTo(locId) {
 }
 // Each entry is [species, weight, stray].
 const KIND_NAME = { shore: 'Shore', wreck: 'Wreck', rocks: 'Rocks', lagoon: 'Lagoon', reef: 'Reef', pier: 'Pier', river: 'River', harbour: 'Harbour', saltflat: 'Salt flat', channel: 'Channel', flats: 'Flats', kelp: 'Kelp', deep: 'Deep water', ruins: 'Ruins', lava: 'Lava', hotspring: 'Hot spring', lake: 'Lake', cave: 'Cave', weed: 'Weed', ice: 'Ice', mangrove: 'Mangrove', open: 'Open sea', marsh: 'Marsh', strait: 'Strait', crater: 'Crater', pond: 'Pond', sky: 'Sky' };
+let POOL_LOST = []; // what the last pool() left out for being too heavy for the line: [species, weight]
 function pool(locId, rig, baitId, t, spotId) {
+  const lost = POOL_LOST = [];
   if (LOC[locId].noFish) return [];
   const ph = phaseAt(t), wx = weatherAt(t, locId), bt = BAITS[baitId].tier, out = [], sp = spotOf(locId, spotId === undefined ? S.spot : spotId);
   if (sp.boat && S.boat === 'none') return []; // open water: you need something that floats
@@ -10376,7 +10389,7 @@ function pool(locId, rig, baitId, t, spotId) {
     if (!s.kind && bt > 0 && (s.minBait || 0) === bt) w *= 1.5; // the fish that need this bait come to it
     if (rig === 'set' && s.shape === 'big') w *= 0.5;
     if (s.likes && s.likes[wx]) w *= s.likes[wx]; // ...and some bite harder under one
-    if (!s.kind && kgOf(s, s.size[0], 0) > lineKg() * 1.05) continue; // too heavy for the line at its smallest: it never bites
+    if (!s.kind && kgOf(s, s.size[0], 0) > lineKg() * 1.05) { if (!stray && !s.legend) lost.push([s, w]); continue; } // too heavy for the line at its smallest: it is never landed (it can take the bait and break off: rollCatch)
     if (!s.kind) { const luck = (rig === 'hand' ? rodOf().luck : 0) + (BAITS[baitId].luck || 0); w *= 1 + (RARITY_RANK[rarityOf(s)] || 0) * luck * 0.5; } // better rod, better bait: rarer fish more often
     (stray ? far : out).push([s, w, stray]);
   }
@@ -10399,6 +10412,10 @@ function rollCatch(locId, rig, baitId, t, waitMs) {
   let p = pool(locId, rig, baitId, t); if (!p.length) return null;
   if (S.prologue) { const easy = p.filter(x => !x[0].kind && x[0].diff <= (S.proCaught === 0 ? 0.2 : 0.32)); if (easy.length) p = easy; } // the tutorial's fights are gentle ones
   const tot = p.reduce((a, x) => a + x[1], 0);
+  if (!S.prologue && POOL_LOST.length) { // something here is too heavy for this line: now and then it takes the bait and breaks off, so the player learns the line is the limit
+    const lost = POOL_LOST, LW = lost.reduce((a, x) => a + x[1], 0);
+    if (Math.random() < Math.min(T.snapMax, T.snapShare * LW / (LW + tot))) { let q = Math.random() * LW, big = lost[0][0]; for (const [sp, w] of lost) { q -= w; if (q <= 0) { big = sp; break; } } return { snap: true, id: big.id, kg: kgOf(big, big.size[0], 0) }; }
+  }
   let r = Math.random() * tot, s = p[p.length - 1][0], stray = false;
   for (const [sp, w, st] of p) { r -= w; if (r <= 0) { s = sp; stray = !!st; break; } }
   const skew = rig === 'trophy' ? 0.45 : rig === 'set' ? 1.7 : 1;
@@ -10413,7 +10430,8 @@ function rollCatch(locId, rig, baitId, t, waitMs) {
   if (v === 'large') f = Math.max(f, 0.7 + 0.3 * Math.random());
   let cm = s.kind ? 0 : Math.round(s.size[0] + (s.size[1] - s.size[0]) * f), capped = false;
   if (v === 'gigantic') { cm = Math.round(s.size[1] * rnd(1.3, 1.8)); f = 1; } // past anything the species should grow to
-  if (!s.kind && !s.legend) { const cap = cmFor(s, lineKg()); if (cm > cap) { cm = Math.max(s.size[0], cap); f = (cm - s.size[0]) / Math.max(1, s.size[1] - s.size[0]); capped = true; if (v === 'gigantic' || v === 'large') v = null; } } // the line holds it to its weight
+  if (!s.kind && !s.legend) { const cap = cmFor(s, lineKg()); if (cm > cap) { const over = kgOf(s, cm, 0) / lineKg(); if (!S.prologue && Math.random() < clamp(T.snapHeld[0] + T.snapHeld[1] * (over - 1), 0, T.snapHeld[2])) return { snap: true, id: s.id, kg: kgOf(s, cm, 0) }; // heavier than the line: it may break off instead of being held, likelier the more it outweighs it
+    cm = Math.max(s.size[0], cap); f = (cm - s.size[0]) / Math.max(1, s.size[1] - s.size[0]); capped = true; if (v === 'gigantic' || v === 'large') v = null; } } // the line holds it to its weight
   const trophy = !s.kind && f >= 0.85;
   const kg = s.kind ? 0 : kgOf(s, cm, rnd(-0.08, 0.08));
   const mult = v && !s.mutant ? VARIANTS[v].mult : 1;
@@ -10543,7 +10561,18 @@ function shopStock(l) { // what this shop keeps beside the basics: a fixed hash 
   let seed = 7; for (let i = 0; i < l.id.length; i++) seed = (seed * 31 + l.id.charCodeAt(i)) | 0;
   return new Set(Object.keys(SHOP_SHELVES).map((k, i) => [hash32(seed + i * 977), k]).sort((a, b) => a[0] - b[0]).map(x => x[1]).slice(0, T_WORLD.shopShelves));
 }
-function shopItems() {
+// How much is on the shelf: bait, shot, calls, charges and aids come by the pack, so many a game day per shop (T_WORLD.stock, a fixed
+// hash of the shop, the item and the day), and what you buy is gone until the morning boat; gear is one piece on the shelf.
+const stockDay = () => Math.floor(now() / (24 * T.hourMs));
+function shopSold(l) { const day = stockDay(); S.stock = S.stock || {}; let st = S.stock[l.id]; if (!st || st.day !== day) st = S.stock[l.id] = { day, sold: {} }; return st.sold; }
+function shopLeft(l, k) { const r = T_WORLD.stock[k.split(':')[0]]; if (!r) return null; let seed = 13; const key = l.id + '|' + k; for (let i = 0; i < key.length; i++) seed = (seed * 31 + key.charCodeAt(i)) | 0;
+  return Math.max(0, r[0] + hash32(seed + stockDay() * 7919) % (r[1] - r[0] + 1) - (shopSold(l)[k] || 0)); }
+function shopItems() { const l = loc(), items = shopItemsRaw();
+  for (const it of items) { const left = shopLeft(l, it.k); if (left == null) { if (!it.locked) it.stock = '1 on the shelf'; continue; }
+    it.left = left; it.stock = left > 0 ? `${left} pack${left === 1 ? '' : 's'} left` : 'sold out'; if (left <= 0) it.soldOut = true;
+    it.sub = (left > 0 ? `${left} pack${left === 1 ? '' : 's'} left on the shelf today. ` : 'Sold out today: more comes with the morning boat. ') + it.sub; }
+  return items; }
+function shopItemsRaw() {
   const items = [], l = loc(), stock = shopStock(l);
   if (l.spaceport) {
     const b = BOATS.find(b => b.id === 'starship'); if (S.boat === 'starship') return [];
@@ -10589,8 +10618,9 @@ function shopItems() {
 }
 function buy(k) {
   const it = shopItems().find(x => x.k === k); if (!it || it.locked) return;
+  if (it.soldOut) { toast('Sold out today. More comes with the morning boat.'); return; }
   if (S.money < it.price) { toast('Not enough money.'); return; }
-  S.money -= it.price; if (tutAt('buy')) tutSet('gate');
+  S.money -= it.price; if (it.left != null) { const sold = shopSold(loc()); sold[k] = (sold[k] || 0) + 1; } if (tutAt('buy')) tutSet('gate');
   if (k === 'slot') { S.slots++; S.lines[S.slots - 1] = { rig: 'set', bait: 'scraps', phase: 'idle' }; }
   else if (k === 'rod') { const r = RODS[Math.max(...S.rodsOwned.map(id => RODS.findIndex(x => x.id === id))) + 1]; S.rodsOwned.push(r.id); S.rod = r.id; }
   else if (k === 'trig') { S.trophyRig = true; S.seen['rig:trophy'] = true; }
@@ -10613,6 +10643,13 @@ function buy(k) {
   save(); render(); renderSheet(); toast(`Bought ${it.name}.`);
 }
 
+// Something too heavy for the line took the bait: the line comes back cut. Counted per line in use (S.broke), said in a toast every
+// time and kept on the panel in red, so when it keeps happening it is plain that a heavier line is what is missing.
+function snapLine(L, i, quiet) {
+  L.phase = 'idle'; L.c = null; const b = S.broke && S.broke.line === S.line ? S.broke : (S.broke = { line: S.line, n: 0 }); b.n++;
+  if (!quiet) toast(`Line ${i + 1}: SNAP. Something too heavy for your ${lineOf().lb} lb line took it and broke off.` + (b.n >= 3 ? ` That is ${b.n} now. You need a heavier line.` : ''));
+}
+const brokeNote = () => S.broke && S.broke.line === S.line && S.broke.n ? `<div class="note broke">Broke off ×${S.broke.n} on this ${lineOf().lb} lb line. Something here is too heavy for it: the shops sell heavier line.</div>` : '';
 // ---------- ticking ----------
 let lastPhase = null, lastWx = null;
 function tick() {
@@ -10622,7 +10659,8 @@ function tick() {
     if (!L) return;
     if (L.phase === 'waiting' && t >= L.at) {
       if (!L.c) { L.phase = 'idle'; toast(`Line ${i + 1}: nothing's biting on that.`); changed = true; return; }
-      if (L.rig === 'hand' && MODE !== 'game') { L.at = t + rnd(T.handWait[0], T.handWait[1]) * 1000 * 0.5; return; } // the rod stays out while you are ashore: the bite waits until you are back at the water
+      if (L.rig === 'hand' && MODE !== 'game') { L.at = t + 2500 + Math.random() * 2000; return; } // the rod stays out while you are ashore: the bite waits until a few seconds after you are back at the water
+      if (L.c.snap) { snapLine(L, i); changed = true; return; }
       if (L.rig === 'hand') { L.phase = 'bite'; L.exp = L.at + hitWindowFor(SP[L.c.id]); S.sel = i; toast(`HIT on line ${i + 1}!`); }
       else { L.phase = 'hooked'; toast(`Line ${i + 1}: something's on.`); }
       changed = true;
@@ -10725,7 +10763,7 @@ function renderAction() {
   if (!L) { box.innerHTML = '<div class="note">Pick a line.</div>'; return; }
   if (L.phase === 'idle') {
     box.innerHTML = `<div class="rigrow"><div class="rigsum"><div class="l1">${RIG_LABEL[L.rig]} · ${baitLabel(L.bait)}</div><div class="l2">${rodOf().name} · ${lineOf().name}</div></div>${S.prologue ? '' : '<button class="rigbtn" data-act="open" data-k="rig">Change rig</button>'}</div>
-      <div class="note">${S.prologue && S.casts === 0 ? 'Cast the rod. When the float dips, tap Reel, then keep the fish inside the net.' : rigNote(L)}</div>
+      <div class="note">${S.prologue && S.casts === 0 ? 'Cast the rod. When the float dips, tap Reel, then keep the fish inside the net.' : rigNote(L)}</div>${brokeNote()}
       <button class="cta go ${S.prologue ? 'tut' : ''}" data-act="cast" data-i="${i}">${L.rig === 'hand' ? 'Cast' : 'Set the line'}</button>`;
   } else if (L.phase === 'waiting') {
     box.innerHTML = `<div class="rigrow"><span class="chip">${RIG_LABEL[L.rig]}</span><span class="dot">·</span><span class="chip">${baitLabel(L.bait)}</span></div><div class="note" data-line="${i}">${waitNote(L)}</div><button class="cta alt" data-act="pull" data-i="${i}">Pull in</button>`;
@@ -10781,7 +10819,7 @@ function renderSheet() {
       const far = l.id !== S.loc && !withinReach(l), days = l.id === S.loc ? 0 : sailDays(l), dayTxt = days === 1 ? 'a day out' : days + ' days out';
       const sub = st === 'fog' ? (l.range > R ? 'Land, by the gulls. Needs a ' + (need ? need.name.toLowerCase() : 'bigger boat') + '.' : far ? `Land, by the gulls, ${dayTxt}. Too far for your ${boat.name.toLowerCase()}.` : `Land, by the gulls, ${dayTxt}. Nobody you know has been.`)
         : st === 'known' ? (l.range > R ? 'Rumored. Needs a ' + (need ? need.name.toLowerCase() : 'bigger boat') + '.' : far ? `Rumored, ${dayTxt}. Too far for your ${boat.name.toLowerCase()}.` : 'Rumored: ' + l.rumor) : (far ? `${dayTxt}: too far for your ${boat.name.toLowerCase()}. ` : '') + l.blurb;
-      return { range: l.range, html: `<button class="row ${l.id === mapSel ? 'sel' : ''} ${st === 'fog' || l.range > R || far ? 'dim' : ''}" data-act="node" data-k="${l.id}"><div class="name">${name} <span class="ttag">tier ${l.range}</span><small>${sub}</small></div>${l.id === S.loc ? '<div class="here">you are here</div>' : ''}</button>` };
+      return { range: l.range, html: `<button class="row ${l.id === mapSel ? 'sel' : ''} ${st === 'fog' || l.range > R || far ? 'dim' : ''}" data-act="node" data-k="${l.id}"><div class="name">${name} <span class="ttag">tier ${l.range}</span>${st === 'visited' ? (l.shop ? '<span class="mtag shop">shop</span>' : l.sell ? '<span class="mtag sell">traders only · no shop</span>' : '<span class="mtag none">no market</span>') : ''}<small>${sub}</small></div>${l.id === S.loc ? '<div class="here">you are here</div>' : ''}</button>` };
     }).reduce((acc, row) => { // the legend is grouped by tier, each group headed by the boat that reaches it
       if (row.range !== acc.last) { const b = BOATS.find(x => x.range === row.range); acc.out.push(`<div class="tierhead">Tier ${row.range}${row.range === 0 ? ' · where you washed up' : b ? ' · ' + (row.range <= R ? 'your boat reaches it' : 'needs a ' + b.name.toLowerCase()) : ''}</div>`); acc.last = row.range; }
       acc.out.push(row.html); return acc; }, { out: [], last: -1 }).out.join('');
@@ -10901,7 +10939,7 @@ function renderSheet() {
     drawMinis(el); drawFaces(el);
   } else if (sheetKind === 'shop') {
     const shopIcon = it => it.k === 'rod' ? 'rod:' + RODS[Math.max(...S.rodsOwned.map(id => RODS.findIndex(x => x.id === id))) + 1].id : it.k === 'line' ? 'line:' + LINE_TEST[Math.max(...S.linesOwned.map(id => LINE_TEST.findIndex(x => x.id === id))) + 1].id : it.k === 'pail' ? 'pail:' + BUCKETS[Math.max(...S.pailsOwned.map(id => BUCKETS.findIndex(x => x.id === id))) + 1].id : it.k.startsWith('bait:') ? it.k : it.k.startsWith('shot:') ? it.k : it.k.startsWith('call:') ? it.k : it.k === 'weapon' ? 'weapon:' + WEAPONS[best(WEAPONS, S.weaponsOwned) + 1].id : it.k === 'cloak' ? 'cloak:' + CLOAKS[best(CLOAKS, S.cloaksOwned) + 1].id : it.k === 'boots' ? 'boots:' + BOOTS[best(BOOTS, S.bootsOwned) + 1].id : it.k === 'gamepack' ? 'gamepack:' + PACKS[best(PACKS, S.packsOwned) + 1].id : it.k === 'pick' ? 'pick:' + PICKS[best(PICKS, S.picksOwned) + 1].id : it.k === 'lamp' ? 'lamp:' + LAMPS[best(LAMPS, S.lampsOwned) + 1].id : it.k === 'sack' ? 'sack:' + SACKS[best(SACKS, S.sacksOwned) + 1].id : it.k.startsWith('charge:') || it.k.startsWith('aid:') ? it.k : it.k === 'boat' ? 'boat:' + (loc().spaceport ? 'starship' : BOATS[BOATS.findIndex(b => b.id === S.boat) + 1].id) : it.k === 'weapon' ? 'weapon:' + WEAPONS[WEAPONS.findIndex(w => w.id === S.weapon) + 1].id : it.k === 'slot' ? 'rig:set' : it.k === 'trig' ? 'rig:trophy' : null;
-    const rows = shopItems().map(it => `<div class="row">${shopIcon(it) ? icon(shopIcon(it)) : ''}<div class="name" style="flex:1">${it.name}<small>${it.sub}</small></div><div style="display:grid;gap:4px;justify-items:end"><div class="price">${money(it.price)}</div><button class="buy" data-act="buy" data-k="${it.k}" ${it.locked || S.money < it.price ? 'disabled' : ''}>${it.locked ? 'LOCKED' : 'BUY'}</button></div></div>`).join('');
+    const rows = shopItems().map(it => `<div class="row">${shopIcon(it) ? icon(shopIcon(it)) : ''}<div class="name" style="flex:1">${it.name}<small>${it.sub}</small></div><div style="display:grid;gap:4px;justify-items:end"><div class="price">${money(it.price)}</div>${it.stock ? `<div class="stock ${it.soldOut ? 'out' : ''}">${it.stock}</div>` : ''}<button class="buy" data-act="buy" data-k="${it.k}" ${it.locked || it.soldOut || S.money < it.price ? 'disabled' : ''}>${it.locked ? 'LOCKED' : it.soldOut ? 'SOLD OUT' : 'BUY'}</button></div></div>`).join('');
     const kp = loc().keeper, said = talkLine;
     const board = loc().spaceport ? '' : boardOf(loc()).list.map(b => { const sp = SP[b.id], j = bestInBucket(b.id), have = j >= 0;
       return `<div class="poster ${b.done ? 'done' : ''}"><div class="nail"></div><div class="wanted">WANTED</div><canvas class="mini" width="64" height="36" data-fish="${b.id}" data-known="1"></canvas><div class="pname">${sp.name}</div><div class="pays">Pays ×${b.mult}</div>${b.done ? '<div class="stamp">PAID</div>' : have ? `<button class="buy" data-act="bounty" data-k="${b.id}">TURN IN · ${money(Math.round(S.bucket[j].value * b.mult))}</button>` : '<div class="pays dim">Bring one in</div>'}</div>`; }).join('');
@@ -15182,6 +15220,7 @@ const SNOW = Array.from({ length: 50 }, () => ({ x: prand(), y: prand(), s: 0.5 
 
 // ---------- canvas & layout ----------
 const cv = $('#scene'), g = cv.getContext('2d');
+let ISLE_LAYOUT = false;
 let W = 195, H = 375, SURF = 150, scale = 2, shoreW = 66, SW = 195, PANEL_W = 0; // SW: the scene width beside the panel column on a phone held sideways (W otherwise)
 let skyKey = '', skyC = null, seaKey = '', seaC = null, curSky = null, lightX = -1, lightY = -1;
 function layout() {
@@ -15191,7 +15230,8 @@ function layout() {
   cv.width = W; cv.height = H; cv.style.width = (W * scale) + 'px'; cv.style.height = (H * scale) + 'px';
   const land = cw > ch && ch <= 540; // a phone held sideways: the panel becomes a column on the right and the scene plays beside it
   PANEL_W = land ? 360 : 0; SW = W - Math.ceil(PANEL_W / scale); document.documentElement.classList.toggle('land', land);
-  SURF = Math.round(H * (ch > cw ? 0.40 : 0.52));
+  ISLE_LAYOUT = MODE === 'island';
+  SURF = ISLE_LAYOUT ? (ch > cw ? H - Math.ceil(T.islePanel / scale) - 14 : Math.round(H * 0.78)) : Math.round(H * (ch > cw ? 0.40 : 0.52)); // the strip stands on a low ground line: sky and scenery above, the panel right under the walker's feet
   shoreW = Math.round(SW * 0.34);
   skyKey = ''; seaKey = ''; g.imageSmoothingEnabled = false;
   reseedFish();
@@ -15341,11 +15381,16 @@ function drawLand(l, x0, w, t) { // a flat band of land from the island's ground
   g.fillStyle = st[3]; g.fillRect(x0, y, w, 1);
   for (let x = x0 + 3; x < x0 + w; x += 9) { g.fillStyle = st[2]; g.fillRect(x + ((x * 7) % 5), y + 14 + ((x * 3) % 17), 2, 1); }
 }
+function halo(x, y, r, rgb, a) { // light around a lamp: three stacked bars, widest through the middle, so it reads round at any scale
+  g.fillStyle = `rgba(${rgb},${(a * 0.5).toFixed(2)})`; g.fillRect(x - r, y - (r >> 1), r * 2 + 1, r + 1); g.fillRect(x - (r >> 1), y - r, r + 1, r * 2 + 1);
+  g.fillStyle = `rgba(${rgb},${(a * 0.6).toFixed(2)})`; g.fillRect(x - (r * 0.7 | 0), y - (r * 0.7 | 0), (r * 0.7 | 0) * 2 + 1, (r * 0.7 | 0) * 2 + 1);
+  g.fillStyle = `rgba(${rgb},${a.toFixed(2)})`; g.fillRect(x - (r >> 1), y - (r >> 1), (r >> 1) * 2 + 1, (r >> 1) * 2 + 1);
+}
 const PROP_FN = {
   palm: (x, yb, h, t) => palmTree(x, yb, h || 36, t),
   pine: (x, yb, h) => pine(x, yb, h || 30),
   torii: (x, yb) => { g.fillStyle = '#c03a2a'; g.fillRect(x - 9, yb - 22, 2, 22); g.fillRect(x + 7, yb - 22, 2, 22); g.fillRect(x - 12, yb - 24, 24, 2); g.fillRect(x - 9, yb - 18, 18, 2); g.fillStyle = '#2a1a14'; g.fillRect(x - 13, yb - 26, 26, 2); },
-  lantern: (x, yb, h, t, nt) => { g.fillStyle = '#4a3222'; g.fillRect(x, yb - 16, 1, 16); g.fillRect(x - 3, yb - 16, 7, 1); g.fillStyle = nt > 0.25 ? '#ff8a40' : '#d05030'; g.fillRect(x - 2, yb - 15, 5, 7); g.fillStyle = nt > 0.25 ? '#ffe090' : '#e87050'; g.fillRect(x - 1, yb - 14, 3, 5); if (nt > 0.25) { g.fillStyle = `rgba(255,170,80,${(0.22 * nt).toFixed(2)})`; g.fillRect(x - 6, yb - 19, 13, 14); } },
+  lantern: (x, yb, h, t, nt) => { g.fillStyle = '#4a3222'; g.fillRect(x, yb - 16, 1, 16); g.fillRect(x - 3, yb - 16, 7, 1); g.fillStyle = nt > 0.25 ? '#ff8a40' : '#d05030'; g.fillRect(x - 2, yb - 15, 5, 7); g.fillStyle = nt > 0.25 ? '#ffe090' : '#e87050'; g.fillRect(x - 1, yb - 14, 3, 5); if (nt > 0.25) halo(x, yb - 12, 7, '255,170,80', 0.18 * nt); },
   bamboo: (x, yb, h) => { h = h || 30; for (let k = 0; k < 3; k++) { const bx = x + k * 3, bh = h - k * 4; g.fillStyle = '#6a9a3a'; g.fillRect(bx, yb - bh, 2, bh); g.fillStyle = '#3a6a20'; for (let y = yb - bh + 5; y < yb; y += 7) g.fillRect(bx, y, 2, 1); g.fillStyle = '#88b848'; g.fillRect(bx - 3, yb - bh + 2, 3, 1); g.fillRect(bx + 2, yb - bh + 8, 4, 1); } },
   mangrove: (x, yb) => { g.fillStyle = '#4a3a24'; g.fillRect(x, yb - 20, 3, 14); for (let k = -1; k <= 1; k++) { bres(g, x + 1, yb - 6, x + 1 + k * 7, yb + 2, '#5a4a30'); bres(g, x + 1, yb - 8, x + 1 + k * 4, yb + 1, '#3a2a18'); } g.fillStyle = '#3a7a3a'; g.fillRect(x - 8, yb - 26, 19, 7); g.fillRect(x - 5, yb - 29, 13, 3); g.fillStyle = '#5a9a4a'; g.fillRect(x - 6, yb - 27, 8, 2); },
   bell: (x, yb) => { g.fillStyle = '#4a3a24'; g.fillRect(x - 7, yb - 20, 2, 20); g.fillRect(x + 5, yb - 20, 2, 20); g.fillRect(x - 8, yb - 21, 16, 2); g.fillStyle = '#8a7a30'; g.fillRect(x - 3, yb - 18, 6, 2); g.fillRect(x - 4, yb - 16, 8, 6); g.fillRect(x - 5, yb - 10, 10, 2); g.fillStyle = '#c8b050'; g.fillRect(x - 3, yb - 16, 2, 5); g.fillStyle = '#4a7a60'; g.fillRect(x + 1, yb - 14, 2, 3); },
@@ -15354,8 +15399,8 @@ const PROP_FN = {
   cairn: (x, yb) => { g.fillStyle = '#d8d4c8'; g.fillRect(x - 4, yb - 3, 9, 3); g.fillRect(x - 3, yb - 6, 7, 3); g.fillRect(x - 2, yb - 9, 5, 3); g.fillRect(x - 1, yb - 11, 3, 2); g.fillStyle = '#a8a498'; g.fillRect(x - 4, yb - 1, 9, 1); g.fillRect(x - 3, yb - 4, 7, 1); g.fillRect(x - 2, yb - 7, 5, 1); },
   saltpan: (x, yb) => { g.fillStyle = '#ffffff'; g.fillRect(x - 10, yb - 2, 22, 2); g.fillStyle = '#d8d0c0'; for (let k = 0; k < 4; k++) g.fillRect(x - 10 + k * 6, yb - 3, 1, 1); },
   sign: (x, yb) => { g.fillStyle = '#5a3a22'; g.fillRect(x, yb - 14, 2, 14); g.fillStyle = '#8a6a44'; g.fillRect(x - 5, yb - 14, 12, 5); g.fillStyle = '#3a2a1a'; g.fillRect(x - 3, yb - 12, 2, 1); g.fillRect(x, yb - 12, 4, 1); },
-  fire: (x, yb, h, t, nt) => { g.fillStyle = '#4a3222'; g.fillRect(x - 5, yb - 2, 11, 2); g.fillRect(x - 3, yb - 3, 7, 1); const f = Math.sin(t / 90) * 1.5; g.fillStyle = '#ff7a30'; g.fillRect(x - 2, yb - 7 - (f | 0), 5, 5 + (f | 0)); g.fillStyle = '#ffd040'; g.fillRect(x - 1, yb - 5, 3, 3); g.fillStyle = `rgba(255,150,60,${(0.12 + 0.18 * nt).toFixed(2)})`; g.fillRect(x - 10, yb - 14, 21, 14); },
-  lamp: (x, yb, h, t, nt) => { g.fillStyle = '#3a2816'; g.fillRect(x, yb - 20, 2, 20); g.fillStyle = nt > 0.25 ? '#ffd27a' : '#f0c050'; g.fillRect(x - 1, yb - 23, 4, 3); if (nt > 0.2) { g.fillStyle = `rgba(240,192,80,${(0.25 * nt).toFixed(2)})`; g.fillRect(x - 7, yb - 28, 16, 13); } },
+  fire: (x, yb, h, t, nt) => { g.fillStyle = '#4a3222'; g.fillRect(x - 5, yb - 2, 11, 2); g.fillRect(x - 3, yb - 3, 7, 1); const f = Math.sin(t / 90) * 1.5; g.fillStyle = '#ff7a30'; g.fillRect(x - 2, yb - 7 - (f | 0), 5, 5 + (f | 0)); g.fillStyle = '#ffd040'; g.fillRect(x - 1, yb - 5, 3, 3); halo(x, yb - 6, 10, '255,150,60', 0.1 + 0.16 * nt); },
+  lamp: (x, yb, h, t, nt) => { g.fillStyle = '#3a2816'; g.fillRect(x, yb - 20, 2, 20); g.fillStyle = nt > 0.25 ? '#ffd27a' : '#f0c050'; g.fillRect(x - 1, yb - 23, 4, 3); if (nt > 0.2) halo(x + 1, yb - 22, 8, '240,192,80', 0.2 * nt); },
   barrel: (x, yb) => { g.fillStyle = '#7a5a34'; g.fillRect(x - 3, yb - 8, 7, 8); g.fillStyle = '#4a3222'; g.fillRect(x - 3, yb - 6, 7, 1); g.fillRect(x - 3, yb - 3, 7, 1); },
   crate: (x, yb) => { g.fillStyle = '#9a7a4e'; g.fillRect(x - 4, yb - 7, 8, 7); g.fillStyle = '#6b4a2e'; g.fillRect(x - 4, yb - 4, 8, 1); g.fillRect(x, yb - 7, 1, 7); },
   sacks: (x, yb) => { g.fillStyle = '#c8b890'; g.fillRect(x - 5, yb - 5, 6, 5); g.fillRect(x + 1, yb - 4, 5, 4); g.fillRect(x - 2, yb - 9, 5, 4); g.fillStyle = '#9a8a60'; g.fillRect(x - 5, yb - 1, 11, 1); },
@@ -15424,7 +15469,7 @@ function drawBuilding(kind, x, yb, t, nt) {
   const lit = nt > 0.3; g.fillStyle = lit ? '#ffd27a' : '#a9c9e2'; g.fillRect(x + 6, top + 8, 7, 6); if (w > 34) g.fillRect(x + 17, top + 8, 7, 6); g.fillStyle = '#3a2816'; g.fillRect(x + 9, top + 8, 1, 6);
   if (lit) { g.fillStyle = `rgba(255,210,122,${(0.18 * nt).toFixed(2)})`; g.fillRect(x + 2, top + 4, 16, 14); }
   if (b.glow) { g.fillStyle = b.glow; g.fillRect(dx + 1, dy - 11, 5, 4); g.fillStyle = `rgba(255,106,32,${(0.2 + 0.1 * Math.sin(t / 200)).toFixed(2)})`; g.fillRect(dx - 6, dy - 16, 19, 16); }
-  if (b.beacon) { const on = Math.sin(t / 700) > 0; g.fillStyle = on ? '#ffffb0' : '#8a8a60'; g.fillRect(x + 4, top - 4, w - 8, 3); if (on) { g.fillStyle = 'rgba(255,255,180,0.12)'; g.fillRect(x - 40, top - 10, w + 80, 14); } }
+  if (b.beacon) { const on = Math.sin(t / 700) > 0; g.fillStyle = on ? '#ffffb0' : '#8a8a60'; g.fillRect(x + 4, top - 4, w - 8, 3); if (on) { for (let k = 0; k < 5; k++) { g.fillStyle = `rgba(255,255,180,${(0.16 - k * 0.028).toFixed(3)})`; g.fillRect(x + w - 4 + k * 9, top - 3 - k, 10, 2 + k * 2); g.fillRect(x - 6 - k * 9, top - 3 - k, 10, 2 + k * 2); } } }
   if (b.lanterns) { PROP_FN.lantern(x - 4, yb - legs, 0, t, nt); PROP_FN.lantern(x + w + 3, yb - legs, 0, t, nt); }
   if (b.gantry) { // the launch gantry right of the hangar, and the ship on the pad
     const gx = x + w + 16, gh = 74;
@@ -15530,13 +15575,13 @@ let GSEED = 0; // the island's seed for its hunting ground: set from the island 
 const groundSeed = l => { let h = 11; for (let i = 0; i < l.id.length; i++) h = (Math.imul(h, 31) + l.id.charCodeAt(i)) | 0; return hash32(h); };
 const hexC = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 const tintStyle = (st, seed) => { const T = [[210, 170, 90], [80, 120, 170], [90, 150, 80], [170, 110, 120]][seed % 4], f = 0.08 + (seed % 7) * 0.012; return st.map(c => css(lerpC(hexC(c), T, f))); }; // a little warmer, cooler, greener or ruddier per island
-function drawGroundTex(kind, gy, st, t) {
+function drawGroundTex(kind, gy, st, t, strip) {
   const r = k => { let h = Math.imul(k + 1 + GSEED, 2654435761) >>> 0; h ^= h >>> 13; h = Math.imul(h, 0x5bd1e995) >>> 0; h ^= h >>> 15; return (h >>> 0) / 4294967296; }, light = 'rgba(255,255,255,0.16)', dark = 'rgba(0,0,0,0.18)', deep = 'rgba(0,0,0,0.3)', y1 = gy + 12, y2 = gy + 42, hb = H - gy;
   const px = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x | 0, y | 0, w, h); };
   if (kind === 'dunes') { for (let k = 0; k < 40; k++) { const y = gy + 4 + (r(k * 2 + 1) * (hb - 6)) | 0, x = (r(k * 2 + 50) * W) | 0, w = 5 + (k % 4) * 3; px(x, y, w, 1, light); px(x + 2, y + 1, w - 2, 1, dark); } for (let k = 0; k < 10; k++) px(r(k * 2 + 90) * W, gy + 6 + r(k * 2 + 1 + 7) * (hb - 8), 2, 1, deep); } // wind ripples, a few shells
   else if (kind === 'woods' || kind === 'bamboo') { for (let k = 0; k < 44; k++) { const x = (r(k * 2 + 3) * W) | 0, y = gy + 2 + (r(k * 2 + 1 + 40) * (hb - 4)) | 0; px(x, y - 2, 1, 3, dark); px(x - 1, y - 1, 1, 2, dark); px(x + 1, y - 1, 1, 2, dark); } // tufts
     for (let k = 0; k < 30; k++) px(r(k * 2 + 60) * W, gy + 3 + r(k * 2 + 1 + 20) * (hb - 4), 2, 1, kind === 'bamboo' ? 'rgba(200,220,120,0.35)' : 'rgba(120,80,40,0.35)'); // litter
-    if (kind === 'woods') { const lx = (W * 0.62) | 0, ly = y1 + 14; px(lx, ly, 26, 4, '#4a3a22'); px(lx, ly, 26, 1, '#6a5232'); px(lx + 26, ly - 1, 3, 6, '#5a4228'); px(lx + 4, ly + 1, 2, 1, '#2a1a10'); px(lx + 14, ly + 2, 3, 1, '#2a1a10'); } } // a fallen log
+    if (kind === 'woods' && !strip) { const lx = (W * 0.62) | 0, ly = y1 + 14; px(lx, ly, 26, 4, '#4a3a22'); px(lx, ly, 26, 1, '#6a5232'); px(lx + 26, ly - 1, 3, 6, '#5a4228'); px(lx + 4, ly + 1, 2, 1, '#2a1a10'); px(lx + 14, ly + 2, 3, 1, '#2a1a10'); } } // a fallen log
   else if (kind === 'saltflat') { for (let k = 0; k < 26; k++) { const x = (r(k * 2 + 5) * W) | 0, y = gy + 3 + (r(k * 2 + 1 + 33) * (hb - 4)) | 0, w = 8 + (k % 5) * 4; px(x, y, w, 1, dark); px(x + w, y - 3 - (k % 3), 1, 4 + (k % 3), dark); px(x + (w >> 1), y + 1, 1, 3 + (k % 2), dark); } } // a cracked crust in plates
   else if (kind === 'cliffs') { for (let k = 0; k < 30; k++) { const x = (r(k * 2 + 9) * W) | 0, y = gy + 3 + (r(k * 2 + 1 + 44) * (hb - 4)) | 0, w = 2 + (k % 3); px(x, y, w, 2, '#7a7a86'); px(x, y, w, 1, '#9a9aa6'); px(x + w, y + 1, 1, 1, deep); } for (let k = 0; k < 18; k++) px(r(k * 2 + 70) * W, gy + 2 + r(k * 2 + 1 + 12) * (hb - 3), 1, 2, '#5a7a38'); } // scree and thrift
   else if (kind === 'mangrove') { for (let k = 0; k < 8; k++) { const x = (r(k * 2 + 2) * W) | 0, y = gy + 6 + (r(k * 2 + 1 + 31) * (hb - 10)) | 0, w = 14 + (k % 3) * 8; px(x, y, w, 3, 'rgba(40,70,70,0.75)'); px(x + 2, y, w - 4, 1, 'rgba(180,210,200,0.35)'); } for (let k = 0; k < 24; k++) px(r(k * 2 + 55) * W, gy + 2 + r(k * 2 + 1 + 17) * (hb - 3), 1, 1, light); } // pools in the mud, a glint of wet
@@ -15551,7 +15596,7 @@ function drawGroundTex(kind, gy, st, t) {
   else if (kind === 'reeds') { for (let k = 0; k < 7; k++) { const x = (r(k * 2 + 4) * W) | 0, y = gy + 6 + (r(k * 2 + 1 + 39) * (hb - 10)) | 0, w = 16 + (k % 3) * 10; px(x, y, w, 3, 'rgba(30,50,60,0.7)'); px(x + 2, y, w - 4, 1, 'rgba(160,200,210,0.3)'); px(x + 4 + (k % 5), y + 1, 2, 1, '#6a9a40'); } for (let k = 0; k < 30; k++) px(r(k * 2 + 58) * W, gy + 2 + r(k * 2 + 1 + 18) * (hb - 3), 1, 2, 'rgba(60,90,50,0.6)'); } // standing water between tussocks, a lily pad
   else if (kind === 'cloud') { for (let k = 0; k < 18; k++) { const x = (r(k * 2 + 5) * W) | 0, y = gy + 3 + (r(k * 2 + 1 + 43) * (hb - 6)) | 0, w = 8 + (k % 4) * 5; px(x, y, w, 2, 'rgba(255,255,255,0.55)'); px(x + 2, y - 1, w - 4, 1, 'rgba(255,255,255,0.75)'); px(x + 1, y + 2, w - 2, 1, 'rgba(120,140,170,0.25)'); } } // puffs underfoot
 }
-function drawGroundDecor(kind, x0, gy, t, nt) {
+function drawGroundDecor(kind, x0, gy, t, nt, strip) {
   const r = (k) => (hash32(k * 7919 + GSEED) % 1000) / 1000;
   if (kind === 'dunes') { g.fillStyle = '#d8c080'; for (let k = 0; k < 5; k++) { const dx = x0 + (k * W / 5 + r(k) * 20) | 0; for (let j = 0; j < 6; j++) g.fillRect(dx - 14 + j * 2, gy - 6 + j, 28 - j * 4, 1); } g.fillStyle = '#9a9a50'; for (let k = 0; k < 9; k++) { const tx = x0 + (r(k + 7) * W) | 0; g.fillRect(tx, gy - 4, 1, 4); g.fillRect(tx + 2, gy - 3, 1, 3); } }
   else if (kind === 'woods') { for (let k = 0; k < 7; k++) pine(x0 + (k * W / 7 + r(k) * 14) | 0, gy + 2, 24 + (r(k + 3) * 14) | 0); g.fillStyle = '#2a4a2a'; for (let k = 0; k < 12; k++) { const fx = x0 + (r(k + 11) * W) | 0; g.fillRect(fx, gy - 3, 1, 3); g.fillRect(fx - 2, gy - 2, 5, 1); } }
@@ -15559,7 +15604,7 @@ function drawGroundDecor(kind, x0, gy, t, nt) {
   else if (kind === 'bamboo') { for (let k = 0; k < 9; k++) PROP_FN.bamboo(x0 + (k * W / 9 + r(k) * 10) | 0, gy, 26 + (r(k + 2) * 16) | 0); }
   else if (kind === 'cliffs') { // a headland across the bay: a rock mass with its own profile, sloping strata, ledges full of birds, turf on top, foam at the foot
     const s1 = (GSEED % 7) * 0.9, s2 = ((GSEED >> 3) % 5) * 1.3, sh = 0.55 + ((GSEED >> 6) % 4) * 0.06; // this island's own profile, and where its shoulder begins
-    const prof = x => { const u = x / W; return 0.55 + 0.25 * Math.sin(u * 6.1 + 1.2 + s1) + 0.12 * Math.sin(u * 15.7 + 0.4 + s2) + 0.08 * Math.sin(u * 33 + 2) - (u > sh ? Math.pow((u - sh) / (1 - sh), 1.5) * 1.15 : 0); }; // it comes down to the shore at the right in a long shoulder, the way a hill does
+    const prof = x => { const u = x / W; return 0.55 + 0.25 * Math.sin(u * 6.1 + 1.2 + s1) + 0.12 * Math.sin(u * 15.7 + 0.4 + s2) + 0.08 * Math.sin(u * 33 + 2) - (u > sh ? Math.pow((u - sh) / (1 - sh), 1.5) * 1.15 : 0) - (strip && u < 0.2 ? Math.pow((0.2 - u) / 0.2, 1.5) * 1.15 : 0); }; // it comes down to the shore at the right in a long shoulder, the way a hill does
     for (let x = 0; x < W; x++) { const hgt = Math.max(0, (14 + 44 * prof(x)) | 0), top = gy - hgt; if (!hgt) continue;
       for (let y = top; y < gy; y++) { const band = ((y + (x >> 2)) % 9), c = band === 0 ? '#3e3e4a' : band < 3 ? '#565662' : band < 6 ? '#62626e' : '#5a5a66'; g.fillStyle = c; g.fillRect(x0 + x, y, 1, 1); } // strata that slope with the land
       g.fillStyle = '#8a8a96'; g.fillRect(x0 + x, top, 1, 1); if (hgt > 6) { g.fillStyle = '#5a7a38'; g.fillRect(x0 + x, top - 1, 1, 2); if ((x * 7) % 11 < 3) { g.fillStyle = '#7a9a48'; g.fillRect(x0 + x, top - 2, 1, 1); } } // turf
@@ -15567,8 +15612,9 @@ function drawGroundDecor(kind, x0, gy, t, nt) {
     for (let k = 0; k < 16; k++) { const px = (r(k + 21) * W) | 0, hgt = (14 + 44 * prof(px)) | 0; if (hgt < 12) continue; const py = gy - 4 - (r(k + 4) * (hgt - 10)) | 0; g.fillStyle = '#8a8a96'; g.fillRect(x0 + px - 2, py + 2, 7, 1); g.fillStyle = '#3a3a46'; g.fillRect(x0 + px - 2, py + 3, 7, 1); // a ledge
       if (k % 2 === 0) { g.fillStyle = '#f4f4f0'; g.fillRect(x0 + px, py, 2, 2); g.fillStyle = '#202028'; g.fillRect(x0 + px + 1, py - 1, 1, 1); g.fillStyle = '#f0a040'; g.fillRect(x0 + px + 2, py, 1, 1); } // a bird on it
       if (k % 3 === 0) { g.fillStyle = 'rgba(244,244,240,0.55)'; g.fillRect(x0 + px - 1, py + 4, 1, 3 + (k % 2)); } } // the white streaks under a colony
-    g.fillStyle = 'rgba(244,246,250,0.85)'; for (let x = 0; x < W; x += 5) { const hgt = (14 + 44 * prof(x)) | 0; if (hgt > 4 && ((x + (t / 260 | 0)) % 10) < 5) g.fillRect(x0 + x, gy - 1, 3, 1); } // foam at the foot
-    for (let k = 0; k < 5; k++) { const bx = (W * 0.88 + r(k + 30) * W * 0.12) | 0, by = gy - 44 - (r(k + 8) * 20) | 0; g.fillStyle = '#f4f4f0'; g.fillRect(x0 + bx, by, 2, 1); g.fillRect(x0 + bx - 1, by - 1, 1, 1); g.fillRect(x0 + bx + 2, by - 1, 1, 1); } // gulls off the point
+    if (strip) { for (let k = 0; k < 12; k++) { const px = (r(k + 60) * W) | 0; if ((14 + 44 * prof(px)) < 6) continue; const w = 2 + (k % 3); g.fillStyle = '#6a6a76'; g.fillRect(x0 + px, gy - 2 - (k % 2), w, 2 + (k % 2)); g.fillStyle = '#8a8a96'; g.fillRect(x0 + px, gy - 2 - (k % 2), w, 1); } } // scree at its foot where you walk under it
+    else { g.fillStyle = 'rgba(244,246,250,0.85)'; for (let x = 0; x < W; x += 5) { const hgt = (14 + 44 * prof(x)) | 0; if (hgt > 4 && ((x + (t / 260 | 0)) % 10) < 5) g.fillRect(x0 + x, gy - 1, 3, 1); } } // foam at the foot, across the bay
+    if (!strip) for (let k = 0; k < 5; k++) { const bx = (W * 0.88 + r(k + 30) * W * 0.12) | 0, by = gy - 44 - (r(k + 8) * 20) | 0; g.fillStyle = '#f4f4f0'; g.fillRect(x0 + bx, by, 2, 1); g.fillRect(x0 + bx - 1, by - 1, 1, 1); g.fillRect(x0 + bx + 2, by - 1, 1, 1); } // gulls off the point
   }
   else if (kind === 'mangrove') { for (let k = 0; k < 6; k++) PROP_FN.mangrove(x0 + (k * W / 6 + 8 + r(k) * 14) | 0, gy); g.fillStyle = 'rgba(60,90,80,0.7)'; for (let k = 0; k < 6; k++) g.fillRect(x0 + (r(k + 3) * W) | 0, gy + 6 + (r(k) * 18) | 0, 12 + (k % 3) * 6, 2); }
   else if (kind === 'tundra') { for (let k = 0; k < 4; k++) pine(x0 + (k * W / 4 + 20 + r(k) * 18) | 0, gy + 2, 18 + (r(k + 3) * 10) | 0); PROP_FN.cairn(x0 + (W * 0.3) | 0, gy); g.fillStyle = 'rgba(255,255,255,0.7)'; for (let k = 0; k < 16; k++) g.fillRect(x0 + (r(k + 5) * W) | 0, gy + 3 + (r(k) * 24) | 0, 4 + (k % 5), 1); }
@@ -15586,7 +15632,8 @@ function drawGate(kind, x, gy, t, nt) { // the thing you press to enter the hunt
   if (kind === 'dunes') { g.fillStyle = '#8a6a44'; g.fillRect(x - 10, gy - 16, 3, 16); g.fillRect(x + 8, gy - 20, 3, 20); g.fillStyle = '#5a4630'; g.fillRect(x - 9, gy - 15, 1, 15); g.fillRect(x + 9, gy - 19, 1, 19); }
   else if (kind === 'woods' || kind === 'bamboo') { if (kind === 'bamboo') { PROP_FN.torii(x, gy); return; } g.fillStyle = '#5a3a22'; g.fillRect(x - 12, gy - 20, 3, 20); g.fillRect(x + 10, gy - 20, 3, 20); g.fillRect(x - 13, gy - 22, 27, 3); g.fillStyle = '#3a2816'; g.fillRect(x - 12, gy - 8, 25, 1); }
   else if (kind === 'saltflat') { PROP_FN.cairn(x - 12, gy); PROP_FN.cairn(x + 12, gy); }
-  else if (kind === 'cliffs') { g.fillStyle = '#7a7a86'; for (let k = 0; k < 6; k++) g.fillRect(x - 10 + k * 4, gy - 4 - k * 4, 8, 4); g.fillStyle = '#a0a0ac'; for (let k = 0; k < 6; k++) g.fillRect(x - 10 + k * 4, gy - 4 - k * 4, 8, 1); }
+  else if (kind === 'cliffs') { for (let k = 0; k < 6; k++) { const sx = x - 10 + k * 4, sh = 4 + k * 4; g.fillStyle = '#6a6a76'; g.fillRect(sx, gy - sh, 4, sh); g.fillStyle = '#a0a0ac'; g.fillRect(sx, gy - sh, 4, 1); g.fillStyle = '#4a4a56'; g.fillRect(sx, gy - sh + 1, 1, sh - 1); } g.fillStyle = '#6a6a76'; g.fillRect(x + 14, gy - 24, 8, 24); g.fillStyle = '#a0a0ac'; g.fillRect(x + 14, gy - 24, 8, 1); g.fillStyle = '#4a4a56'; for (let y = gy - 20; y < gy; y += 5) g.fillRect(x + 14, y, 8, 1); // a stair cut in stone, a step up for every step along, and a landing
+    g.fillStyle = '#5a4630'; g.fillRect(x - 11, gy - 13, 1, 9); g.fillRect(x + 21, gy - 34, 1, 10); bres(g, x - 11, gy - 13, x + 21, gy - 34, '#8a7a5a'); } // a rope rail on two posts
   else if (kind === 'mangrove') { g.fillStyle = '#9a7a4a'; for (let k = 0; k < 6; k++) g.fillRect(x - 15 + k * 5, gy - 3 + (k % 2), 4, 2); g.fillStyle = '#5a4a30'; g.fillRect(x - 16, gy - 10, 2, 10); g.fillRect(x + 14, gy - 10, 2, 10); g.fillRect(x - 16, gy - 10, 32, 1); }
   else if (kind === 'tundra') { PROP_FN.cairn(x, gy); g.fillStyle = '#9ab0c0'; for (let k = 0; k < 5; k++) g.fillRect(x - 10 + k * 5, gy + 2 + k, 3, 1); }
   else if (kind === 'ruins') { PROP_FN.column(x - 12, gy, 0); PROP_FN.column(x + 12, gy, 0); g.fillStyle = '#c8c4b0'; g.fillRect(x - 14, gy - 30, 28, 3); g.fillStyle = '#9a9684'; g.fillRect(x - 14, gy - 27, 28, 1); }
@@ -15844,7 +15891,7 @@ function isleSpots(l) { if (l.noFish) return [{ id: 'shop', x: W + 0.5 * W + 14,
     { id: 'fish', x: o + 2 * W + shoreW - 16, label: 'Fishing spots', hint: l.spots.length + ' places to fish. Pick one.' });
   return sp; }
 function enterIsland(at) {
-  const l = loc(); MODE = 'island'; $('#game').hidden = true; $('#hunt').hidden = true; $('#mine').hidden = true; $('#isle').hidden = false;
+  const l = loc(); MODE = 'island'; $('#game').hidden = true; $('#hunt').hidden = true; $('#mine').hidden = true; $('#isle').hidden = false; layout();
   const spots = isleSpots(l);
   if (!ISL || ISL.loc !== l.id) ISL = { loc: l.id, px: spots[spots.length - 1].x, dir: -1, walk: 0, anim: 0 }; // the spaceport has only the one place to press
   const sp = spots.find(s => s.id === at); if (sp) ISL.px = sp.x; ISL.dir = at === 'fish' ? -1 : 1; ISL.walk = 0;
@@ -15897,7 +15944,8 @@ function startEntry(sp) {
   if (sp.id === 'hunt') fn = () => { if (tutAt('gate')) tutSet('hunt'); enterHunt(); };
   else if (sp.id === 'mine') fn = enterMine;
   else fn = () => { if (tutAt('village')) tutSet(l.keeper ? 'talk' : haulCount() ? 'sell' : 'gate'); openSheet(l.shop ? 'shop' : 'inv'); };
-  ISL.walk = 0; ISL.auto = { kind: sp.id, x: sp.x + (sp.id === 'hunt' ? 10 : sp.id === 'mine' ? 6 : 0), t0: now(), dur: T.entryMs, fn, done: false }; renderIsle();
+  const stair = sp.id === 'hunt' && l.hunt.kind === 'cliffs', Z = T.sceneZoom;
+  ISL.walk = 0; ISL.auto = { kind: sp.id, stair, x0: sp.x - 10 * Z, x: sp.x + (stair ? 14 * Z : sp.id === 'hunt' ? 6 * Z : 0), t0: now(), dur: T.entryMs * (stair ? 1.5 : 1), fn, done: false }; renderIsle();
 }
 function nearSpot() { if (!ISL) return null; const l = loc(); let best = null, bd = 18; for (const sp of isleSpots(l)) { const d = Math.abs(sp.x - ISL.px); if (d < bd) { bd = d; best = sp; } } return best; }
 // The Map buttons glow from the moment the raft is built until the player has sailed somewhere: the first voyage is the one thing to do.
@@ -15920,16 +15968,47 @@ function stepIsle(dt) {
 }
 function isleFrame() { const k = Math.floor(ISL.anim) & 3; return ISL.walk ? { spr: sprite(['walkA', 'stand', 'walkC', 'stand'][k]), bob: k & 1 ? -1 : 0 } : { spr: sprite('stand'), bob: 0 };
 }
+// The strip's scenery stands at T.sceneZoom walker pixels to the scenery pixel, so a shack is taller than the man walking past it, a
+// pine is a tree and a gate is something you walk through: everything on the land (the ground's texture, the hunting ground's decor
+// and gate, the village building and its props, the shaft head) is drawn in a space scaled about the ground line, with W and H set
+// to that space's own size for the duration so every drawing function lays itself out across its screen as it always has.
+const LAND_GROUND = { sand: 'dunes', salt: 'saltflat', grass: 'woods', rock: 'cliffs', quay: 'ruins', coral: 'ruins', lava: 'lavafield', glass: 'glass', cave: 'cave', ice: 'tundra', mud: 'mangrove', paper: 'saltflat', cloud: 'cloud' };
+function isleScenery(l, gy, t, nt, nL) {
+  const WF = W, HF = H, Z = T.sceneZoom, seed = groundSeed(l), st = LAND_STYLE[landKind(l)] || LAND_STYLE.sand;
+  g.save(); g.translate(0, gy); g.scale(Z, Z); W = WF / Z; H = (HF - gy) / Z;
+  try {
+    for (let k = 0; k < nL; k++) { g.save(); g.translate((k * W) | 0, 0); GSEED = (seed + k * 7717) >>> 0; drawGroundTex(LAND_GROUND[landKind(l)] || 'dunes', 0, st, t, true); g.restore(); } // the ground underfoot, screen by screen
+    GSEED = seed;
+    if (l.noFish) { const vb = BUILD[l.village.kind] || BUILD.shack; drawBuilding(l.village.kind, ((W + 0.5 * W) | 0) - (vb.w >> 1), 0, t, nt); for (const pr of l.village.props) drawProp(pr, 0, t, nt, W, W); return; }
+    const o = l.mine ? W : 0;
+    if (l.mine) { drawMineDecor(l, 0, 0); drawShaftHead(l, (0.5 * W) | 0, 0, t, nt); }
+    drawGroundDecor(l.hunt.kind, o, 0, t, nt, true);
+    drawGate(l.hunt.kind, (o + 0.5 * W) | 0, 0, t, nt);
+    const vb = BUILD[l.village.kind] || BUILD.shack, bc = (o + W + 0.5 * W) | 0; drawBuilding(l.village.kind, bc - (vb.w >> 1), 0, t, nt);
+    for (const pr of l.village.props) { let px = o + W + pr[1] * W; const clear = (vb.w >> 1) + 9; if (Math.abs(px - bc) < clear) px = bc + (px < bc ? -clear : clear); const fn = PROP_FN[pr[0]]; if (fn) fn(px | 0, 0, pr[2], t, nt); } // props keep clear of the building
+    if (l.id === 'shoal') { for (let k = 0; k < 6; k++) { g.fillStyle = '#5a3a22'; g.fillRect(o + W + 12 + k * 3, -8 - (k % 3) * 2, 2, 8 + (k % 3) * 2); } }
+  } finally { W = WF; H = HF; g.restore(); }
+}
+// Far country behind the strip: two ranges of hills in the sky's own haze and the land's colour, each sliding slower than the ground
+// as you walk (parallax), each shaped by the island's seed, both sinking to the horizon before the shore so the sea keeps its sky.
+function drawIsleBackdrop(l, cam, gy, SX) {
+  const st = LAND_STYLE[landKind(l)] || LAND_STYLE.sand, seed = groundSeed(l), a = (seed % 9) * 0.7, b = ((seed >> 4) % 7) * 0.9, tall = 0.75 + ((seed >> 8) % 5) * 0.12;
+  for (const [f, hgt, mix, k1, k2] of [[0.25, 70, 0.22, 0.021, 0.057], [0.55, 42, 0.45, 0.034, 0.083]]) {
+    g.fillStyle = css(lerpC(curSky.bot, hexC(st[2]), mix)); const rim = css(lerpC(curSky.bot, hexC(st[0]), mix * 0.8));
+    for (let sx = 0; sx < W; sx++) { const wx = sx + cam * f, edge = clamp((SX - cam - sx) / (W * 0.7), 0, 1); if (edge <= 0) break;
+      const h = (hgt * tall * edge * (0.5 + 0.3 * Math.sin(wx * k1 + a) + 0.2 * Math.sin(wx * k2 + b))) | 0; if (h > 0) g.fillRect(sx + cam, gy - h, 1, h); }
+    g.fillStyle = rim; for (let sx = 0; sx < W; sx += 1) { const wx = sx + cam * f, edge = clamp((SX - cam - sx) / (W * 0.7), 0, 1); if (edge <= 0) break; const h = (hgt * tall * edge * (0.5 + 0.3 * Math.sin(wx * k1 + a) + 0.2 * Math.sin(wx * k2 + b))) | 0; if (h > 2 && Math.cos(wx * k1 + a) < 0) g.fillRect(sx + cam, gy - h, 1, 1); } // light along the slopes that face the sun
+  }
+}
 function drawIsland(t) {
   const l = loc(), h = hourAt(t), nt = drawSkyBase(h, t, {}); sceneWeather(l, t, nt);
   const nL = isleScreens(l), SX = nL * W, cam = clamp(ISL.px - SW / 2, 0, SX) | 0, gy = landY(l), sc = l.scene;
   g.save(); g.translate(-cam, 0);
   if (l.noFish) { // the spaceport: one long apron of concrete, the gantry, no shore and no gate
     drawLand(l, 0, 3 * W + shoreW, t);
-    const vb = BUILD[l.village.kind] || BUILD.shack; drawBuilding(l.village.kind, ((W + 0.5 * W) | 0) - (vb.w >> 1), gy, t, nt);
-    for (const pr of l.village.props) drawProp(pr, gy, t, nt, W, W);
-    for (let k = 0; k < 7; k++) { g.fillStyle = (Math.floor(t / 400) + k) % 7 === 0 ? '#ffffff' : '#c03030'; g.fillRect(W - 30 + k * 18, gy - 2, 2, 2); } // runway lights
-    for (const sp of isleSpots(l)) { const yy = (gy - 36 + Math.sin(t / 300 + sp.x) * 1.5) | 0; g.fillStyle = '#f0c050'; g.fillRect(sp.x - 2 | 0, yy, 5, 1); g.fillRect(sp.x - 1 | 0, yy + 1, 3, 1); g.fillRect(sp.x | 0, yy + 2, 1, 1); }
+    isleScenery(l, gy, t, nt, 3);
+    for (let k = 0; k < 9; k++) { g.fillStyle = (Math.floor(t / 400) + k) % 9 === 0 ? '#ffffff' : '#c03030'; g.fillRect(W - 60 + k * 26, gy - 3, 3, 3); } // runway lights
+    for (const sp of isleSpots(l)) { const vbm = BUILD[l.village.kind] || BUILD.shack, yy = (gy - (vbm.h + (vbm.legs || 0)) * T.sceneZoom - 12 + Math.sin(t / 300 + sp.x) * 1.5) | 0; g.fillStyle = '#f0c050'; g.fillRect(sp.x - 3 | 0, yy, 7, 2); g.fillRect(sp.x - 2 | 0, yy + 2, 5, 1); g.fillRect(sp.x - 1 | 0, yy + 3, 3, 1); g.fillRect(sp.x | 0, yy + 4, 1, 1); }
     const { spr, bob } = isleFrame();
     blit(g, spr, (ISL.px - spr.width / 2) | 0, (gy - spr.height + 1 + bob) | 0, ISL.dir > 0);
     g.restore(); g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, 0, W, 1); return;
@@ -15942,23 +16021,19 @@ function drawIsland(t) {
   g.restore();
   // village, hunting gate and shaft head: land from the island's ground line down
   const o = l.mine ? W : 0;
+  if (!(sc && sc.weather === 'cave')) drawIsleBackdrop(l, cam, gy, SX);
   drawLand(l, 0, SX + 1, t);
-  if (l.mine) { drawMineDecor(l, 0, gy); drawShaftHead(l, (0.5 * W) | 0, gy, t, nt); }
-  GSEED = groundSeed(l); drawGroundDecor(l.hunt.kind, o, gy, t, nt);
-  drawGate(l.hunt.kind, (o + 0.5 * W) | 0, gy, t, nt);
-  const vb = BUILD[l.village.kind] || BUILD.shack; drawBuilding(l.village.kind, ((o + W + 0.5 * W) | 0) - (vb.w >> 1), gy, t, nt);
-  for (const pr of l.village.props) drawProp(pr, gy, t, nt, o + W, W);
-  if (l.id === 'shoal') { for (let k = 0; k < 6; k++) { g.fillStyle = '#5a3a22'; g.fillRect(o + W + 20 + k * 3, gy - 8 - (k % 3) * 2, 2, 8 + (k % 3) * 2); } }
+  isleScenery(l, gy, t, nt, nL);
   sceneFx(l, t, nt);
   // the things you can press: a bobbing brass mark above each
-  for (const sp of isleSpots(l)) { const yy = (gy - 36 + Math.sin(t / 300 + sp.x) * 1.5) | 0; g.fillStyle = '#f0c050'; g.fillRect(sp.x - 2 | 0, yy, 5, 1); g.fillRect(sp.x - 1 | 0, yy + 1, 3, 1); g.fillRect(sp.x | 0, yy + 2, 1, 1); }
+  { const vbm = BUILD[l.village.kind] || BUILD.shack, Z = T.sceneZoom; for (const sp of isleSpots(l)) { const up = sp.id === 'fish' ? 38 : sp.id === 'shop' ? (vbm.h + (vbm.legs || 0)) * Z + 12 : sp.id === 'mine' ? 34 * Z + 10 : 30 * Z + 10, yy = (gy - up + Math.sin(t / 300 + sp.x) * 1.5) | 0; g.fillStyle = '#f0c050'; g.fillRect(sp.x - 3 | 0, yy, 7, 2); g.fillRect(sp.x - 2 | 0, yy + 2, 5, 1); g.fillRect(sp.x - 1 | 0, yy + 3, 3, 1); g.fillRect(sp.x | 0, yy + 4, 1, 1); } }
   // the fisherman
   const { spr, bob } = isleFrame();
   let fy = (ISL.px >= SX ? shoreTop(l, Math.min(shoreW - 1, Math.max(0, ISL.px - SX | 0))) : gy) - spr.height + 1 + bob, alpha = 1;
-  if (ISL.auto) { const A = ISL.auto, p = clamp((t - A.t0) / A.dur, 0, 1), near = Math.abs(A.x - ISL.px) < 3 ? 1 : 0; // the walk in: up the stair, down the adit, in at the door
-    if (A.kind === 'hunt') { for (let k = 0; k < 5; k++) { g.fillStyle = '#8a8a86'; g.fillRect((A.x - 10 + k * 4) | 0, gy - 2 - k * 3, 5, 1); g.fillStyle = '#5a5a56'; g.fillRect((A.x - 10 + k * 4) | 0, gy - 1 - k * 3, 5, 2); } fy -= Math.min(14, Math.max(0, (ISL.px - (A.x - 12))) * 1.1) | 0; } // a stair up to the gate
-    else if (A.kind === 'mine') { if (near) { fy += (p * 16) | 0; alpha = 1 - p; } }
-    else if (near) alpha = 1 - p;
+  if (ISL.auto) { const A = ISL.auto, p = clamp((t - A.t0) / A.dur, 0, 1), near = Math.abs(A.x - ISL.px) < 3 ? 1 : 0; // the walk in: up the cliff stair, through the gate, down the adit, in at the door
+    if (A.stair) { fy -= clamp(ISL.px - A.x0, 0, 24 * T.sceneZoom) | 0; if (near) alpha = 1 - clamp((p - 0.75) / 0.25, 0, 1); } // one step up for every step along
+    else if (A.kind === 'mine') { if (near) { fy += (p * 8) | 0; alpha = 1 - clamp((p - 0.4) / 0.6, 0, 1); } }
+    else if (near) alpha = 1 - clamp((p - 0.4) / 0.6, 0, 1);
   }
   if (alpha > 0) { g.save(); g.globalAlpha = alpha; blit(g, spr, (ISL.px - spr.width / 2) | 0, fy | 0, ISL.dir > 0); g.restore(); }
   g.restore(); drawWeatherFx(l, t, nt);
@@ -16424,16 +16499,25 @@ function drawMine(t) {
   g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, 0, W, 1);
 }
 // The shaft head on the island strip: a mound of the mine's rock with a timbered adit in it, a lamp on the frame, rails out of the mouth, a spoil heap.
-function drawShaftHead(l, x, gy, t, nt) {
-  const kind = MINE_KIND[l.mine.kind] || MINE_KIND.rock, [deep, wall, light] = kind.wall;
-  for (let y = 0; y < 30; y++) { const hw = Math.sqrt(1 - (y / 30) * (y / 30)) * 44 | 0; g.fillStyle = wall; g.fillRect(x - hw, gy - 30 + y, hw * 2, 1); } // the mound
-  for (let y = gy - 30; y < gy; y += 2) for (let xx = x - 44; xx < x + 44; xx += 2) { if (Math.hypot(xx - x, (y - gy) * 44 / 30) > 43) continue; const h = hash(y, xx, 85); if (h < 0.05) { g.fillStyle = deep; g.fillRect(xx, y, 2, 2); } else if (h > 0.98) { g.fillStyle = light; g.fillRect(xx, y, 2, 2); } }
-  g.fillStyle = light; for (let y = 0; y < 30; y += 2) { const hw = Math.sqrt(1 - (y / 30) * (y / 30)) * 44 | 0; g.fillRect(x + hw - 1, gy - 30 + y, 1, 1); }
-  g.fillStyle = '#07070b'; g.fillRect(x - 8, gy - 20, 17, 20); g.fillRect(x - 6, gy - 22, 13, 2); // the adit
-  g.fillStyle = '#5a4630'; g.fillRect(x - 11, gy - 23, 3, 23); g.fillRect(x + 9, gy - 23, 3, 23); g.fillRect(x - 12, gy - 26, 25, 3); g.fillStyle = '#3a2a1a'; g.fillRect(x - 9, gy - 23, 1, 23); g.fillRect(x + 11, gy - 23, 1, 23); // the frame
-  g.fillStyle = nt > 0.25 ? '#ffd27a' : '#f0c050'; g.fillRect(x + 12, gy - 20, 3, 4); g.fillStyle = '#3a2816'; g.fillRect(x + 13, gy - 22, 1, 2); if (nt > 0.2) { g.fillStyle = `rgba(240,192,80,${(0.25 * nt).toFixed(2)})`; g.fillRect(x + 9, gy - 23, 9, 9); } // the lamp
-  g.fillStyle = '#8a8a98'; g.fillRect(x - 6, gy - 2, 40, 1); g.fillRect(x - 6, gy + 1, 40, 1); g.fillStyle = '#5a4630'; for (let k = x - 4; k < x + 34; k += 6) g.fillRect(k, gy - 3, 3, 1); // rails out of the mouth
-  g.fillStyle = '#3a3a44'; g.fillRect(x + 22, gy - 9, 14, 7); g.fillStyle = '#5a5a66'; g.fillRect(x + 22, gy - 9, 14, 1); g.fillStyle = '#1a1a20'; g.fillRect(x + 24, gy - 2, 3, 2); g.fillRect(x + 31, gy - 2, 3, 2); g.fillStyle = wall; g.fillRect(x + 24, gy - 11, 10, 2); // a cart with a load
+function drawShaftHead(l, x, gy, t, nt) { // an outcrop of the mine's own rock that rises out of the ground and eases back into it, a timbered adit a man can walk into
+  const kind = MINE_KIND[l.mine.kind] || MINE_KIND.rock, [deep, wall, light] = kind.wall, HW = 42, HH = 34;
+  const prof = dx => { const u = Math.abs(dx) / HW; return u >= 1 ? 0 : HH * Math.pow(Math.cos(u * Math.PI / 2), 1.25) * (1 + 0.07 * Math.sin(dx * 0.42 + 1) + 0.05 * Math.sin(dx * 1.1 + 2.3)); }; // a hump with a foot on either side
+  for (let dx = -HW; dx <= HW; dx++) { const h = prof(dx) | 0; if (h <= 0) continue; const top = gy - h;
+    g.fillStyle = wall; g.fillRect(x + dx, top, 1, h);
+    g.fillStyle = deep; for (let y = top + 3 + (((dx >> 1) + 70) % 6); y < gy; y += 6) g.fillRect(x + dx, y, 1, 1); // strata, dipping a little
+    if (dx < -HW * 0.25) { g.fillStyle = 'rgba(0,0,0,0.16)'; g.fillRect(x + dx, top, 1, h); } // the side away from the light
+    g.fillStyle = dx > -4 ? light : wall; g.fillRect(x + dx, top, 1, 1); if (dx > 8 && h > 6) { g.fillStyle = 'rgba(255,255,255,0.10)'; g.fillRect(x + dx, top + 1, 1, 2); } // a lit rim on the right shoulder
+    const hs = hash(dx, 7, 85); if (h > 8 && hs < 0.22) { g.fillStyle = hs < 0.11 ? deep : light; g.fillRect(x + dx, top + 4 + ((hs * 97) % (h - 6)) | 0, 2, 1); } // chips and seams
+  }
+  for (let k = 0; k < 7; k++) { const bx = x + [-46, -40, -33, 30, 37, 44, -26][k], bw = 3 + (k % 3), bh = 2 + (k % 2); g.fillStyle = wall; g.fillRect(bx, gy - bh, bw, bh); g.fillStyle = light; g.fillRect(bx, gy - bh, bw, 1); g.fillStyle = deep; g.fillRect(bx + bw - 1, gy - 1, 1, 1); } // fallen rock where it meets the ground
+  g.fillStyle = '#07070b'; g.fillRect(x - 7, gy - 19, 14, 19); g.fillStyle = '#12121a'; g.fillRect(x - 7, gy - 19, 2, 19); g.fillStyle = '#1c1c26'; g.fillRect(x - 5, gy - 19, 1, 19); // the adit, a paler wall just inside it
+  g.fillStyle = '#3a2a1a'; g.fillRect(x - 3, gy - 14, 1, 14); g.fillRect(x + 3, gy - 14, 1, 14); g.fillRect(x - 3, gy - 15, 7, 1); // the next set of props, deeper in
+  g.fillStyle = '#6a5236'; g.fillRect(x - 10, gy - 21, 3, 21); g.fillRect(x + 7, gy - 21, 3, 21); g.fillRect(x - 12, gy - 24, 24, 3); // the frame: two posts and a cap
+  g.fillStyle = '#8a6a44'; g.fillRect(x - 10, gy - 21, 1, 21); g.fillRect(x + 7, gy - 21, 1, 21); g.fillRect(x - 12, gy - 24, 24, 1); g.fillStyle = '#3a2a1a'; g.fillRect(x - 8, gy - 21, 1, 21); g.fillRect(x + 9, gy - 21, 1, 21); g.fillRect(x - 12, gy - 22, 24, 1); g.fillRect(x - 11, gy - 23, 1, 1); g.fillRect(x + 10, gy - 23, 1, 1);
+  g.fillStyle = '#3a2816'; g.fillRect(x + 12, gy - 20, 1, 3); g.fillStyle = nt > 0.25 ? '#ffd27a' : '#f0c050'; g.fillRect(x + 11, gy - 17, 3, 4); g.fillStyle = '#3a2816'; g.fillRect(x + 11, gy - 13, 3, 1); if (nt > 0.2) halo(x + 12, gy - 15, 6, '240,192,80', 0.2 * nt); // a lamp hung on the post
+  g.fillStyle = '#5a4630'; for (let k = x - 4; k < x + 40; k += 5) g.fillRect(k, gy - 1, 3, 1); g.fillStyle = '#8a8a98'; g.fillRect(x - 6, gy - 2, 48, 1); g.fillStyle = '#5a5a66'; g.fillRect(x - 6, gy, 48, 1); // rails out of the mouth, on sleepers
+  const cx = x + 24; g.fillStyle = '#3a3a44'; g.fillRect(cx, gy - 10, 14, 7); g.fillRect(cx + 1, gy - 3, 12, 1); g.fillStyle = '#5a5a66'; g.fillRect(cx, gy - 10, 14, 1); g.fillStyle = '#2a2a32'; g.fillRect(cx, gy - 6, 14, 1); g.fillStyle = '#1a1a20'; g.fillRect(cx + 2, gy - 3, 3, 3); g.fillRect(cx + 9, gy - 3, 3, 3); g.fillStyle = '#6a6a76'; g.fillRect(cx + 3, gy - 2, 1, 1); g.fillRect(cx + 10, gy - 2, 1, 1);
+  g.fillStyle = wall; g.fillRect(cx + 2, gy - 12, 10, 2); g.fillRect(cx + 4, gy - 13, 6, 1); g.fillStyle = light; g.fillRect(cx + 5, gy - 13, 2, 1); g.fillRect(cx + 9, gy - 12, 1, 1); // a cart with a load of the rock
 }
 function drawMineDecor(l, x0, gy) {
   const kind = MINE_KIND[l.mine.kind] || MINE_KIND.rock, [deep, wall, light] = kind.wall, r = k => ((k * 7919 + l.id.length * 31) % 97) / 97;
@@ -16882,6 +16966,7 @@ function arriveFx(l, p, t, nt) {
 let lastFrame = performance.now();
 function frame(ts) {
   const dt = Math.min(0.05, (ts - lastFrame) / 1000); lastFrame = ts;
+  if ((MODE === 'island') !== ISLE_LAYOUT) layout(); // the strip has its own ground line
   if (!document.hidden) {
     const t = now();
     if (MODE === 'game') { stepFish(dt); drawGame(t); }
@@ -17145,7 +17230,8 @@ function settleLines() {
   S.lines.forEach(L => {
     if (!L) return;
     if (L.phase === 'waiting' && t >= L.at) {
-      if (L.rig === 'hand') { if (L.c) L.at = t + rnd(T.handWait[0], T.handWait[1]) * 1000 * 0.5; else { L.phase = 'idle'; L.c = null; } } // the rod was out when the game closed: it is still out, and bites once you are back
+      if (L.rig === 'hand') { if (L.c) L.at = t + rnd(3000, 8000); else { L.phase = 'idle'; L.c = null; } } // the rod was out when the game closed: it is still out, and bites once you are back
+      else if (L.c && L.c.snap) snapLine(L, 0, true); // it broke off while you were away: the panel's count says so
       else { L.phase = L.c ? 'hooked' : 'idle'; if (L.c) got++; }
     } else if (L.phase === 'bite' && t > L.exp) { L.phase = 'idle'; L.c = null; }
   });
