@@ -140,6 +140,12 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 .bar{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .bar .tool{display:grid;gap:3px;text-align:left;padding:8px 10px;background:rgba(10,16,32,.6);border:2px solid var(--edge);min-width:0}
 .bar .tool .n{font-family:var(--display);font-size:8px;color:var(--muted)}
+.tool.sea{display:grid;gap:3px;text-align:left;padding:7px 10px;background:rgba(10,30,52,.7);border:2px solid #2f6f9c;min-width:0}
+.tool.sea .n{font-family:var(--display);font-size:8px;color:#8cc8f0}
+.tool.sea .v{font-size:18px;display:flex;justify-content:space-between;align-items:baseline;gap:8px;white-space:nowrap;overflow:hidden}
+.tool.sea .v small{font-size:14px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.tool.sea.out{border-color:var(--brass)}
+.offnote{font-style:normal;color:#8cc8f0}
 .bar .tool .v{font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
 .bar .tool.sell{border-color:var(--brass-2)}
 .bar .tool.sell .n,.bar .tool.sell .v{color:var(--brass)}
@@ -198,6 +204,7 @@ canvas.icon{width:40px;height:40px;image-rendering:pixelated;flex:none}
 .catch .pill{justify-self:center;font-family:var(--display);font-size:8px;padding:6px 10px;background:#2a5a74;color:var(--text);letter-spacing:.5px}
 .catch .pill.gold{background:var(--brass-2);color:#2b1d05}
 .catch .pill.far{background:#5a3a74}
+.catch .pill.off{background:#12406a;border:1px solid #4aa0d8;color:#bfe4ff}
 .chip.static{opacity:.75}
 .list .row.sel{border-left:3px solid var(--brass);padding-left:6px}
 .legend small .kind{color:var(--brass-2);font-family:var(--display);font-size:8px;letter-spacing:.5px}
@@ -447,6 +454,7 @@ const T = {
   handWait: [6000, 16000],       // rod: ms to a bite (6 to 16 s; the float sits a while)
   snapShare: 1, snapMax: 0.3,    // a cast breaks off with odds snapShare × the share of the water held by fish too heavy for the line at their smallest, at most snapMax
   snapHeld: [0.35, 0.2, 0.8],    // a fish rolled heavier than the line breaks off with odds 0.35, + 0.2 for every line-weight it is over, at most 0.8; otherwise it is held to the line (LINE HELD)
+  offshore: { wait: 1.8, luck: 0.6, boatLuck: 0.12, tiers: [1, 2, 4, 6], commonShare: 0.45, perKind: 0.15, tall: 1.25, visit: 1, inland: ['river', 'lake', 'pond', 'marsh', 'hotspring', 'cave', 'crater'] }, // from the boat on open water: every wait is × wait (rod and soaking lines alike); luck is added to the rod's and the bait's (+ boatLuck for every boat past the raft: a bigger boat goes further out); a fish weighs × tiers[its rarity rank] (common, uncommon, rare, epic), and the commons together are held to commonShare of the pool (the rest get at least perKind of it per species, up to 1 − commonShare); the size roll leans up by tall (f → f^(1/tall)); the island's rarer fish from its other waters (never the inland ones) also come out there, at a spot weight of visit
   trophyMinKg: 0.3,              // the trophy line never hooks a species whose largest adult is under this
   weatherFadeMs: 60000,          // a new sky fades in over the first game hour of its slot, the old one fading out under it
   islePanel: 190, sceneZoom: 2,  // the strip: the panel's height in CSS px (the ground line sits just above it), and how many walker pixels one scenery pixel is
@@ -8543,6 +8551,11 @@ const T_FIGHT = { netBonus: 1.6, speedBase: { dart: 0.5, other: 0.2 }, speedPerD
 const hitWindowFor = sp => T.hitWindow * (1 + Math.max(0, 0.45 - (sp.diff || 0)) * 4) * (S.prologue ? 1.5 : 1);
 const spotOf = (locId, spotId) => { const l = LOC[locId]; return l.spots.find(sp => sp.id === spotId) || l.spots[0]; };
 const spot = () => spotOf(S.loc, S.spot);
+// Offshore: the island's open-water spot, fished from your own boat. Slower bites, rarer fish (T.offshore).
+const offshore = (locId, spotId) => { const sp = spotOf(locId || S.loc, spotId === undefined ? S.spot : spotId); return !!(sp && sp.boat) && !S.prologue; };
+const offshoreLuck = () => T.offshore.luck + T.offshore.boatLuck * Math.max(0, Math.min(6, boatRange()) - 1);
+const boatName = () => (BOATS.find(b => b.id === S.boat) || BOATS[0]).name.replace(/^Driftwood /, '');
+const offSpot = l => (l.spots || []).find(sp => sp.boat), shoreSpot = l => l.spots.find(sp => sp.id === S.shoreSpot && !sp.boat) || l.spots.find(sp => !sp.boat) || l.spots[0];
 // Weight from length: kg = k × cm³ / 1000, with k a condition factor by body shape (a species can override with `k`).
 const K_SHAPE = { fry: 0.009, bream: 0.018, trout: 0.011, pike: 0.006, eel: 0.0025, big: 0.012, flat: 0.013 };
 const kgOf = (sp, cm, jit) => Math.round((sp.k || K_SHAPE[sp.shape] || 0.01) * cm * cm * cm / 1000 * (1 + (jit || 0)) * 1000) / 1000;
@@ -10220,7 +10233,7 @@ const HARD_NAME = ['', 'soft as talc', 'soft', 'soft', 'firm', 'firm', 'hard', '
 // ---------- state ----------
 function freshState() {
   return {
-    v: 16, started: false, loc: 'shoal', hunted: {}, stock: {}, broke: null, money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 1, trophyRig: false,
+    v: 17, started: false, loc: 'shoal', shoreSpot: null, hunted: {}, stock: {}, broke: null, money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 1, trophyRig: false,
     line: 'l10', pail: 'pail', // the line's test weight and the bucket in use (both bought in the shop)
     rodsOwned: ['stick'], linesOwned: ['l10'], pailsOwned: ['pail'], // everything bought stays in the rig sheet and can be put back on
     heldRod: true, // the storm's one question; let go and the sea takes you, and the voyage starts over
@@ -10314,7 +10327,8 @@ function load(seed) {
   if (d && d.v === 13) { d.sack = []; d.pick = 'maul'; d.picksOwned = ['maul']; d.lamp = 'candle'; d.lampsOwned = ['candle']; d.sack_ = 'oresack'; d.sacksOwned = ['oresack']; d.charges = {}; d.chargeSel = 'none'; d.aids = {}; d.aidSel = 'none'; d.mindex = {}; d.mine = null; d.mpending = null; d.v = 14; } // v13 -> v14: the mines
   if (d && d.v === 14) { d.hunted = {}; d.v = 15; } // v14 -> v15: overhunting pressure per island
   if (d && d.v === 15) { d.stock = {}; d.broke = null; d.v = 16; } // v15 -> v16: shop stock by the day, and the count of fish that broke the line
-  if (d && d.v === 16) S = Object.assign(freshState(), d);
+  if (d && d.v === 16) { d.shoreSpot = null; d.v = 17; } // v16 -> v17: the shore spot you left to go offshore
+  if (d && d.v === 17) S = Object.assign(freshState(), d);
   S.seen = S.seen || {}; for (const k in S.bait) if (S.bait[k] > 0) S.seen['bait:' + k] = true; for (const k in S.shot) if (S.shot[k] > 0) S.seen['shot:' + k] = true; for (const k in S.calls) if (S.calls[k] > 0) S.seen['call:' + k] = true; for (const k in S.charges || {}) if (S.charges[k] > 0) S.seen['charge:' + k] = true; for (const k in S.aids || {}) if (S.aids[k] > 0) S.seen['aid:' + k] = true; if (S.trophyRig) S.seen['rig:trophy'] = true; // things you hold now, you have seen
 }
 
@@ -10366,16 +10380,26 @@ function straysTo(locId) {
   return STRAYS[locId] = out;
 }
 // Each entry is [species, weight, stray].
-const KIND_NAME = { shore: 'Shore', wreck: 'Wreck', rocks: 'Rocks', lagoon: 'Lagoon', reef: 'Reef', pier: 'Pier', river: 'River', harbour: 'Harbour', saltflat: 'Salt flat', channel: 'Channel', flats: 'Flats', kelp: 'Kelp', deep: 'Deep water', ruins: 'Ruins', lava: 'Lava', hotspring: 'Hot spring', lake: 'Lake', cave: 'Cave', weed: 'Weed', ice: 'Ice', mangrove: 'Mangrove', open: 'Open sea', marsh: 'Marsh', strait: 'Strait', crater: 'Crater', pond: 'Pond', sky: 'Sky' };
+const KIND_NAME = { shore: 'Shore', wreck: 'Wreck', rocks: 'Rocks', lagoon: 'Lagoon', reef: 'Reef', pier: 'Pier', river: 'River', harbour: 'Harbour', saltflat: 'Salt flat', channel: 'Channel', flats: 'Flats', kelp: 'Kelp', deep: 'Deep water', ruins: 'Ruins', lava: 'Lava', hotspring: 'Hot spring', lake: 'Lake', cave: 'Cave', weed: 'Weed', ice: 'Ice', mangrove: 'Mangrove', open: 'Offshore', marsh: 'Marsh', strait: 'Strait', crater: 'Crater', pond: 'Pond', sky: 'Sky' };
+// Offshore, the island's rarer fish come out from its other waters: every uncommon, rare or epic fish (never a legend) that lives at
+// one of the island's spots on the sea is in the open-water pool too, at T.offshore.visit. Built once per island.
+const OFF_VISIT = {};
+function offVisitors(locId) {
+  if (OFF_VISIT[locId]) return OFF_VISIT[locId];
+  const l = LOC[locId], m = OFF_VISIT[locId] = {}, own = (l.spots.find(sp => sp.boat) || { fish: {} }).fish;
+  for (const sp of l.spots) { if (sp.boat || T.offshore.inland.includes(sp.kind)) continue;
+    for (const id in sp.fish) { const f = SP[id]; if (!f || f.kind || f.legend || own[id] || !(RARITY_RANK[rarityOf(f)] > 0)) continue; m[id] = T.offshore.visit; } }
+  return m;
+}
 let POOL_LOST = []; // what the last pool() left out for being too heavy for the line: [species, weight]
 function pool(locId, rig, baitId, t, spotId) {
   const lost = POOL_LOST = [];
   if (LOC[locId].noFish) return [];
   const ph = phaseAt(t), wx = weatherAt(t, locId), bt = BAITS[baitId].tier, out = [], sp = spotOf(locId, spotId === undefined ? S.spot : spotId);
   if (sp.boat && S.boat === 'none') return []; // open water: you need something that floats
-  const strays = rig === 'set' ? null : straysTo(locId), far = [];
+  const strays = rig === 'set' ? null : straysTo(locId), far = [], off = sp.boat && !S.prologue ? T.offshore : null, offLuck = off ? offshoreLuck() : 0, visit = off ? offVisitors(locId) : null;
   for (const s of SPECIES) {
-    let mult = sp.fish[s.id], stray = false; // a spot's own roster: overlapping, but each spot has fish the others lack
+    let mult = sp.fish[s.id] || (visit && visit[s.id]), stray = false; // a spot's own roster: overlapping, but each spot has fish the others lack
     if (!mult) { if (!strays || !strays.has(s)) continue; stray = true; } // ...or a stray, far from its own waters
     const w0 = stray ? 1 : (s.loc[locId] || 10) * mult;
     if (s.time && !s.time.includes(ph)) continue;
@@ -10390,7 +10414,7 @@ function pool(locId, rig, baitId, t, spotId) {
     if (rig === 'set' && s.shape === 'big') w *= 0.5;
     if (s.likes && s.likes[wx]) w *= s.likes[wx]; // ...and some bite harder under one
     if (!s.kind && kgOf(s, s.size[0], 0) > lineKg() * 1.05) { if (!stray && !s.legend) lost.push([s, w]); continue; } // too heavy for the line at its smallest: it is never landed (it can take the bait and break off: rollCatch)
-    if (!s.kind) { const luck = (rig === 'hand' ? rodOf().luck : 0) + (BAITS[baitId].luck || 0); w *= 1 + (RARITY_RANK[rarityOf(s)] || 0) * luck * 0.5; } // better rod, better bait: rarer fish more often
+    if (!s.kind) { const luck = (rig === 'hand' ? rodOf().luck : 0) + (BAITS[baitId].luck || 0) + offLuck, rk = RARITY_RANK[rarityOf(s)] || 0; w *= 1 + rk * luck * 0.5; } // better rod, better bait: rarer fish more often
     (stray ? far : out).push([s, w, stray]);
   }
   if (bt > 0 || rig === 'trophy') { // better bait and the trophy line are for the bigger fish
@@ -10401,6 +10425,13 @@ function pool(locId, rig, baitId, t, spotId) {
       const N = need.reduce((a, x) => a + x[1], 0), R0 = rest.reduce((a, x) => a + x[1], 0), share = BAITS[baitId].share || 1;
       if (N > 0 && R0 > N * share) { const k = N * share / R0; for (const x of rest) x[1] *= k; }
     }
+  }
+  if (off) { // offshore: the rarer fish come up and the common ones thin out; the pool's total stays what it was, so strays and break-offs keep their share
+    const fishy = out.filter(x => !x[0].kind && !x[0].legend), sum = a => a.reduce((n, x) => n + x[1], 0), T0 = sum(fishy), rk = x => RARITY_RANK[rarityOf(x[0])] || 0;
+    for (const x of fishy) x[1] *= off.tiers[rk(x)] || 1;
+    const com = fishy.filter(x => rk(x) === 0), rest = fishy.filter(x => rk(x) > 0), C = sum(com), R = sum(rest), want = Math.min(1 - off.commonShare, off.perKind * rest.length);
+    if (C > 0 && R > 0 && R / (R + C) < want) { const k = R * (1 - want) / (want * C); for (const x of com) x[1] *= k; }
+    const T1 = sum(fishy); if (T1 > 0) for (const x of fishy) x[1] *= T0 / T1;
   }
   if (far.length) { // far-from-home fish share a fixed sliver of the pool between them, however many islands feed it
     const R = out.reduce((a, x) => a + x[1], 0), SW = far.reduce((a, x) => a + x[1], 0), k = STRAY.share * R / SW;
@@ -10421,6 +10452,7 @@ function rollCatch(locId, rig, baitId, t, waitMs) {
   const skew = rig === 'trophy' ? 0.45 : rig === 'set' ? 1.7 : 1;
   let f = rig === 'set' ? Math.min(0.8, Math.pow(Math.random(), skew)) : Math.pow(Math.random(), skew); // a quick set-line hook never reaches trophy size...
   const bs = BAITS[baitId].size || 0; if (bs && !s.kind) f = Math.min(rig === 'set' ? 0.8 : 1, Math.pow(f, 1 / (1 + bs))); // bigger bait, bigger fish
+  const offS = offshore(locId); if (offS && !s.kind) f = Math.min(rig === 'set' ? 0.8 : 1, Math.pow(f, 1 / T.offshore.tall)); // deep water grows them a little bigger
   const soak = soakBonus(rig, waitMs || 0); if (soak > 0) f = Math.min(1, f + (1 - f) * soak * 0.95); // ...but the longer it soaks, the bigger what takes it
   let v = null; // the variant, if any
   if (!s.kind && !s.legend && !S.prologue) {
@@ -10436,12 +10468,12 @@ function rollCatch(locId, rig, baitId, t, waitMs) {
   const kg = s.kind ? 0 : kgOf(s, cm, rnd(-0.08, 0.08));
   const mult = v && !s.mutant ? VARIANTS[v].mult : 1;
   const bw = s.kind ? 1 : (BAITS[baitId].worth || 1); // a fish taken on better bait sells for more
-  return { id: s.id, cm, kg, value: Math.round(valueOf(s, kg, trophy, rnd(-0.15, 0.15)) * mult * bw), trophy, v, stray, capped, wx: weatherAt(t, locId) };
+  return { id: s.id, cm, kg, value: Math.round(valueOf(s, kg, trophy, rnd(-0.15, 0.15)) * mult * bw), trophy, v, stray, capped, off: offS || undefined, wx: weatherAt(t, locId) };
 }
 // The rod bites within a few seconds. A passive line soaks: a small chance every second, so the wait is exponential (memoryless), sampled
 // once at cast time so it survives closing the game. Nothing waits longer than soakCap means.
-const passiveMean = rig => rig === 'set' ? T.setMean : T.trophyMean;
-function waitFor(rig) { if (rig === 'hand') { const w = S.prologue ? T.prologueWait : T.handWait; return rnd(w[0], w[1]); } const m = passiveMean(rig); return Math.min(m * T.soakCap, Math.max(1500, -m * Math.log(1 - Math.random()))); }
+const passiveMean = rig => (rig === 'set' ? T.setMean : T.trophyMean) * (offshore() ? T.offshore.wait : 1); // offshore every line soaks longer
+function waitFor(rig) { if (rig === 'hand') { const w = S.prologue ? T.prologueWait : T.handWait; return rnd(w[0], w[1]) * (offshore() ? T.offshore.wait : 1); } const m = passiveMean(rig); return Math.min(m * T.soakCap, Math.max(1500, -m * Math.log(1 - Math.random()))); }
 // How much a long soak grows the fish: 0 at one mean or under, 1 at soakGrow means.
 const soakBonus = (rig, waitMs) => rig === 'hand' ? 0 : clamp((waitMs / passiveMean(rig) - 1) / (T.soakGrow - 1), 0, 1);
 
@@ -10484,6 +10516,7 @@ function land(i) {
     if (c.trophy) { ix.trophies++; p.tags.push('Trophy size'); }
     if (c.v) { ix.v = ix.v || {}; ix.v[c.v] = (ix.v[c.v] || 0) + 1; }
     if (c.stray) p.tags.push('Far from home');
+    if (c.off) p.tags.push('Offshore');
     if (c.capped) p.tags.push('Line held');
     if (s.weather) p.tags.push(WEATHER[p.wx].name + ' fish'); // it only shows under this sky
     if (s.legend) p.tags.push('Legend');
@@ -10733,7 +10766,8 @@ function waitNote(L) {
   if (L.rig === 'hand') return 'Waiting for a bite…';
   const m = passiveMean(L.rig), soaked = now() - L.t0; return `${BAITS[L.bait].name} on, soaking ${fmtDur(soaked)}. A chance every second, even with the game closed.${soaked > m * 1.5 ? ' Whatever takes it now will not be small.' : ''}`;
 }
-function rigNote(L) {
+function rigNote(L) { return rigNote0(L) + (offshore() ? ' <span class="offnote">Offshore: the wait is longer, the fish rarer.</span>' : ''); }
+function rigNote0(L) {
   if (L.rig === 'hand') return 'Tap Reel on the hit, then keep the fish in the net.';
   if (L.rig === 'set') return 'Soaks until something takes it, a chance every second, even while you are away. The longer it soaks, the bigger the fish. No fight.';
   return 'Soaks for minutes. Hooks big fish, bigger the longer it waits. Needs shrimp or squid. You still land it.';
@@ -10784,6 +10818,8 @@ function renderExtra() {
   h += `<div class="bar"><button class="tool" data-act="open" data-k="inv"><span class="n">INVENTORY</span><span class="v">${S.bucket.length}/${bucketCap()} fish${S.pack.length ? ' · ' + S.pack.length + ' game' : ''}${S.sack.length ? ' · ' + S.sack.length + ' ore' : ''}${!S.prologue && (S.raft || S.loc !== 'shoal') ? ' · ' + money(total) : ''}</span></button>`;
   if (loc().sell) h += `<button class="tool sell" data-act="sell" ${cnt ? '' : 'disabled'}><span class="n">MARKET</span><span class="v">${cnt ? 'Sell haul ' + money(total) : 'Nothing to sell'}</span></button>`;
   h += '</div>';
+  const os = offSpot(loc()); // offshore fishing: out on your own boat, or back in
+  if (os && S.boat !== 'none' && !S.prologue) { const out = spot().boat, to = out ? shoreSpot(loc()) : os; h = `<button class="tool sea ${out ? 'out' : ''}" data-act="spot" data-k="${to.id}"><span class="n">${out ? 'OFFSHORE · ' + boatName().toUpperCase() : 'YOUR ' + boatName().toUpperCase()}</span><span class="v">${out ? 'Back to shore' : 'Go offshore'}<small>${out ? 'slower bites · rarer fish' : 'slower bites, rarer fish'}</small></span></button>` + h; }
   $('#extra').innerHTML = h;
 }
 
@@ -10876,8 +10912,8 @@ function renderSheet() {
     drawIcons(el);
   } else if (sheetKind === 'spots') {
     const l = loc();
-    const rows = l.spots.map(sp => { const locked = sp.boat && S.boat === 'none'; return `<button class="row ${sp.id === S.spot ? 'sel' : ''} ${locked ? 'dim' : ''}" data-act="spot" data-k="${sp.id}"><div class="name">${sp.name}<small><b class="kind">${(KIND_NAME[sp.kind] || 'Shore').toUpperCase()}${sp.boat ? ' · FROM THE BOAT' : ''}</b> · ${locked ? 'Needs a boat. ' : ''}${sp.known}</small></div>${sp.id === S.spot ? '<div class="here">fishing here</div>' : ''}</button>`; }).join('');
-    el.innerHTML = `<div class="head"><h2>Spots · ${l.name}</h2><button class="x" data-act="close">✕</button></div><div class="note">${l.spots.length} places to fish here: shore, pier, river, lake, reef, and open water once you have a boat. Moving pulls in your lines.</div><div class="legend">${rows}</div>`;
+    const rows = l.spots.map(sp => { const locked = sp.boat && S.boat === 'none'; return `<button class="row ${sp.id === S.spot ? 'sel' : ''} ${locked ? 'dim' : ''}" data-act="spot" data-k="${sp.id}"><div class="name">${sp.name}<small><b class="kind">${(KIND_NAME[sp.kind] || 'Shore').toUpperCase()}${sp.boat ? ' · FROM THE BOAT' : ''}</b> · ${locked ? 'Needs a boat. ' : ''}${sp.known}${sp.boat ? ' <i class="offnote">Slower bites, rarer and bigger fish.</i>' : ''}</small></div>${sp.id === S.spot ? '<div class="here">fishing here</div>' : ''}</button>`; }).join('');
+    el.innerHTML = `<div class="head"><h2>Spots · ${l.name}</h2><button class="x" data-act="close">✕</button></div><div class="note">${l.spots.length} places to fish here. Offshore is fished from your own boat: every line waits longer out there, and rare fish come far more often. Moving pulls in your lines.</div><div class="legend">${rows}</div>`;
   } else if (sheetKind === 'index') {
     const fish = SPECIES.filter(s => !s.kind);
     const rows = fish.map(s => {
@@ -11599,7 +11635,7 @@ function showCatch() {
   const rarLine = rar ? `<div class="rar"><span class="badge" style="color:${RARITY[rar].col}">${RARITY[rar].name.toUpperCase()}</span>${V ? `<span class="badge" style="color:${V.col}">${V.name.toUpperCase()}${s.mutant ? '' : V.mult < 1 ? ' · HALF WORTH' : ' · ×' + V.mult + ' WORTH'}</span>` : ''}</div>` : '';
   $('#card').className = 'card catch';
   $('#card').innerHTML = `<div class="head" ${headCol}>${head}</div>
-    ${pills.length ? `<div class="pills">${pills.map(t => `<div class="pill ${t === 'Trophy size' || t === 'Legend' || t === 'Wanted' ? 'gold' : t === 'Far from home' ? 'far' : ''}">${t.toUpperCase()}</div>`).join('')}</div>` : ''}
+    ${pills.length ? `<div class="pills">${pills.map(t => `<div class="pill ${t === 'Trophy size' || t === 'Legend' || t === 'Wanted' ? 'gold' : t === 'Far from home' ? 'far' : t === 'Offshore' ? 'off' : ''}">${t.toUpperCase()}</div>`).join('')}</div>` : ''}
     <canvas class="art" id="ccv" width="192" height="96"></canvas>
     <div class="fish">${V ? `<span style="color:${V.col}">${V.name}</span> ` : ''}${s.name}</div>
     ${rarLine}
@@ -16822,7 +16858,7 @@ function startSail(from, to, pulled, first) {
 function sailAdvance() { if (!SAIL) return; SAIL.i++; if (SAIL.i >= 3) { finishSail(); return; } SAIL.t0 = performance.now(); sailCap(); }
 function finishSail() {
   if (!SAIL) return; const { to, pulled, first } = SAIL, L = LOC[to]; SAIL = null;
-  S.loc = to; S.visited[to] = true; if (!S.order.includes(to)) S.order.push(to); S.spot = L.spots[0].id; reseedFish();
+  S.loc = to; S.visited[to] = true; if (!S.order.includes(to)) S.order.push(to); S.spot = L.spots[0].id; S.shoreSpot = null; reseedFish();
   if (S.tut && S.tut !== 'done' && S.tutIsland !== to) S.tut = 'done'; // left the tutorial island: the lesson is over
   if (first && !L.noFish && S.order.filter(id => id !== 'shoal').length === 1) tutStart(to); // the first island after the shoal teaches the village and the wild
   save();
@@ -17129,7 +17165,7 @@ document.addEventListener('click', e => {
   else if (a === 'change') { rigOpen = !rigOpen; render(); }
   else if (a === 'catch') resolveCatch(k);
   else if (a === 'talk') talk();
-  else if (a === 'spot') { const spx = spotOf(S.loc, k); if (spx.boat && S.boat === 'none') { toast('You need a boat to fish out there.'); return; } if (k !== S.spot) { let pulled = 0; S.lines.forEach(L => { if (L && L.phase !== 'idle') { L.phase = 'idle'; L.c = null; pulled++; } }); S.spot = k; reseedFish(); save(); toast(`${spot().name}.` + (pulled ? ` Pulled in ${pulled} line${pulled > 1 ? 's' : ''}.` : '')); } closeSheet(); if (MODE !== 'game') fadeTo(enterFishing); else render(); }
+  else if (a === 'spot') { const spx = spotOf(S.loc, k); if (spx.boat && S.boat === 'none') { toast('You need a boat to fish out there.'); return; } if (k !== S.spot) { let pulled = 0; S.lines.forEach(L => { if (L && L.phase !== 'idle') { L.phase = 'idle'; L.c = null; pulled++; } }); if (spx.boat && !spot().boat) S.shoreSpot = S.spot; S.spot = k; reseedFish(); save(); toast(`${spot().name}.` + (spx.boat ? ' Offshore: slower bites, rarer fish.' : '') + (pulled ? ` Pulled in ${pulled} line${pulled > 1 ? 's' : ''}.` : '')); } closeSheet(); if (MODE !== 'game') fadeTo(enterFishing); else render(); }
   else if (a === 'walk') { if (!S.prologue) { if (tutAt('exit')) tutSet('village'); fadeTo(() => enterIsland('fish')); } }
   else if (a === 'enter') { const sp = nearSpot(); if (!sp || (ISL && ISL.auto)) return; if (sp.id === 'fish') openSheet('spots'); else startEntry(sp); }
   else if (a === 'leavehunt') { closeSheet(); fadeTo(() => enterIsland('hunt')); }
