@@ -181,6 +181,8 @@ canvas.icon{width:40px;height:40px;image-rendering:pixelated;flex:none}
 .buy{font-family:var(--display);font-size:9px;padding:8px 10px;background:var(--panel-2);border:2px solid var(--edge);white-space:nowrap}
 .buy[disabled]{opacity:.4;cursor:default}
 .list{display:grid;gap:2px}
+.seg.ix{margin:0 0 6px}.seg.ix button{display:grid;gap:2px;justify-items:center}.seg.ix small{font-size:14px;color:var(--muted)}
+.buy.more{display:block;width:100%;margin:10px 0 4px;padding:10px}
 .list .row{padding:8px 6px;border-bottom:1px solid var(--edge)}
 .list .row.dim{opacity:.55}
 .list canvas.mini{width:96px;height:auto;flex:none;background:var(--ink);border:1px solid var(--edge)}
@@ -455,6 +457,8 @@ const T = {
   snapShare: 1, snapMax: 0.3,    // a cast breaks off with odds snapShare × the share of the water held by fish too heavy for the line at their smallest, at most snapMax
   snapHeld: [0.35, 0.2, 0.8],    // a fish rolled heavier than the line breaks off with odds 0.35, + 0.2 for every line-weight it is over, at most 0.8; otherwise it is held to the line (LINE HELD)
   offshore: { wait: 1.8, luck: 0.6, boatLuck: 0.12, tiers: [1, 2, 4, 6], commonShare: 0.45, perKind: 0.15, tall: 1.25, visit: 1, inland: ['river', 'lake', 'pond', 'marsh', 'hotspring', 'cave', 'crater'] }, // from the boat on open water: every wait is × wait (rod and soaking lines alike); luck is added to the rod's and the bait's (+ boatLuck for every boat past the raft: a bigger boat goes further out); a fish weighs × tiers[its rarity rank] (common, uncommon, rare, epic), and the commons together are held to commonShare of the pool (the rest get at least perKind of it per species, up to 1 − commonShare); the size roll leans up by tall (f → f^(1/tall)); the island's rarer fish from its other waters (never the inland ones) also come out there, at a spot weight of visit
+  sceneryMs: 125,                // the cached scenery layers (the strip's land, a hunting ground, a mine's gallery) are redrawn this often, eight times a second; everything that moves is drawn every frame
+  indexPage: 40,                 // the index builds this many rows (and their sprites) at a time, more as it is scrolled
   trophyMinKg: 0.3,              // the trophy line never hooks a species whose largest adult is under this
   weatherFadeMs: 60000,          // a new sky fades in over the first game hour of its slot, the old one fading out under it
   islePanel: 190, sceneZoom: 2,  // the strip: the panel's height in CSS px (the ground line sits just above it), and how many walker pixels one scenery pixel is
@@ -10844,7 +10848,7 @@ function talk() {
   } else { talkLine = kp.lines[(talkN - 1) % kp.lines.length]; talkExpr = ['smile', 'laugh', 'sly', 'frown'][(talkN - 1) % 4]; } // the keeper's face follows the line: a smile, a laugh, a sly look, a scowl
   renderSheet(); animateTalk(talkExpr);
 }
-function closeSheet() { const was = sheetKind; sheetKind = null; $('#sheetWrap').hidden = true; if ((was === 'shop' || was === 'inv') && tutAt('talk', 'sell', 'buy')) tutSet('gate'); if (MODE === 'island') renderIsle(); }
+function closeSheet() { const was = sheetKind; sheetKind = null; $('#sheetWrap').hidden = true; $('#sheet').innerHTML = ''; ixList = []; if ((was === 'shop' || was === 'inv') && tutAt('talk', 'sell', 'buy')) tutSet('gate'); if (MODE === 'island') renderIsle(); }
 function renderSheet() {
   const el = $('#sheet');
   if (sheetKind === 'map') {
@@ -10915,29 +10919,16 @@ function renderSheet() {
     const rows = l.spots.map(sp => { const locked = sp.boat && S.boat === 'none'; return `<button class="row ${sp.id === S.spot ? 'sel' : ''} ${locked ? 'dim' : ''}" data-act="spot" data-k="${sp.id}"><div class="name">${sp.name}<small><b class="kind">${(KIND_NAME[sp.kind] || 'Shore').toUpperCase()}${sp.boat ? ' · FROM THE BOAT' : ''}</b> · ${locked ? 'Needs a boat. ' : ''}${sp.known}${sp.boat ? ' <i class="offnote">Slower bites, rarer and bigger fish.</i>' : ''}</small></div>${sp.id === S.spot ? '<div class="here">fishing here</div>' : ''}</button>`; }).join('');
     el.innerHTML = `<div class="head"><h2>Spots · ${l.name}</h2><button class="x" data-act="close">✕</button></div><div class="note">${l.spots.length} places to fish here. Offshore is fished from your own boat: every line waits longer out there, and rare fish come far more often. Moving pulls in your lines.</div><div class="legend">${rows}</div>`;
   } else if (sheetKind === 'index') {
-    const fish = SPECIES.filter(s => !s.kind);
-    const rows = fish.map(s => {
-      const ix = S.index[s.id], homes = LOCS.filter(l => s.loc[l.id]), home = homes[0], r = rarityOf(s), rarT = `<span style="color:${RARITY[r].col}">${RARITY[r].name}</span>`;
-      const homeT = homes.length > 1 ? homes.map(l => l.name).join(', ') : home.name;
-      const mini = `<canvas class="mini" width="64" height="36" data-fish="${s.id}" data-known="${ix ? 1 : 0}" data-v="${s.mutant ? 'mutated' : ''}"></canvas>`;
-      const vT = ix && ix.v ? ' · ' + Object.entries(ix.v).map(([k, n]) => `<span style="color:${VARIANTS[k].col}">${VARIANTS[k].name.toLowerCase()}${n > 1 ? ' ×' + n : ''}</span>`).join(', ') : '';
-      if (ix) return `<div class="row">${mini}<div class="name" style="flex:1">${s.name}<small>${rarT} · ${s.legend ? home.name + ' · legend, landed' : homeT + (s.time ? ' · ' + s.time.join('/') : '') + (weatherText(s) ? ' · ' + weatherText(s) : '') + (ix.bestKg ? ' · best ' + fmtKg(ix.bestKg) : '') + vT}</small></div><div class="price">×${ix.n} · ${ix.best} cm${ix.trophies ? ' · ★' + ix.trophies : ''}</div></div>`;
-      return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${rarT} · ${S.visited[home.id] ? homeT : 'somewhere out there'}${s.legend ? ' · legend: rod, squid, ' + s.time.join('/') : s.rare ? ' · rod or trophy line' : ''}${!s.legend && weatherText(s) ? ' · ' + weatherText(s) : ''}</small></div><div class="price">—</div></div>`;
-    }).join('');
-    const grows = GAME.map(c => { const gx = S.gindex[c.id], home = LOCS.find(l => c.loc[l.id]);
-      const mini = `<canvas class="mini game" width="80" height="48" data-game="${c.id}" data-known="${gx ? 1 : 0}"></canvas>`;
-      const gr = gameRarityOf(c), grT = `<span style="color:${RARITY[gr].col}">${RARITY[gr].name}</span>`;
-      if (gx) return `<div class="row">${mini}<div class="name" style="flex:1">${c.name}<small>${grT} · ${home.name}${c.legend ? ' · taken, once ever' : ''}${c.time ? ' · ' + c.time.join('/') : ''}</small></div><div class="price">×${gx.n} · ${fmtKg(gx.best)}</div></div>`;
-      return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${grT} · ${S.visited[home.id] ? home.name : 'somewhere out there'}${c.legend ? ' · once ever, ' + c.time.join('/') : ''}</small></div><div class="price">—</div></div>`; }).join('');
-    const mrows = MINERALS.map(m => { const mx = S.mindex[m.id], homes = LOCS.filter(l => m.loc[l.id]), home = homes[0], mr = mineralRarityOf(m), mrT = `<span style="color:${RARITY[mr].col}">${RARITY[mr].name}</span>`, homeT = homes.length > 1 ? homes.map(l => l.name).join(', ') : home.name;
-      const mini = `<canvas class="mini ore" width="64" height="48" data-ore="${m.id}" data-known="${mx ? 1 : 0}"></canvas>`, depthT = m.depth[0] === m.depth[1] ? 'level ' + m.depth[0] : 'levels ' + m.depth[0] + '–' + m.depth[1];
-      const vT = mx && mx.v ? ' · ' + Object.entries(mx.v).map(([k, n]) => `<span style="color:${MINERAL_VARIANTS[k].col}">${MINERAL_VARIANTS[k].name.toLowerCase()}${n > 1 ? ' ×' + n : ''}</span>`).join(', ') : '';
-      if (mx) return `<div class="row">${mini}<div class="name" style="flex:1">${m.name}<small>${mrT} · ${homeT} · ${depthT} · hardness ${m.hard}${m.relic ? ' · relic, taken once ever' : ''}${vT}</small></div><div class="price">×${mx.n} · ${fmtKg(mx.best)}</div></div>`;
-      return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${mrT} · ${S.visited[home.id] ? homeT : 'somewhere out there'} · ${depthT}${m.relic ? ' · once ever' : ''}</small></div><div class="price">—</div></div>`; }).join('');
-    el.innerHTML = `<div class="head"><h2>Index ${Object.keys(S.index).length}/${fish.length}</h2><button class="x" data-act="close">✕</button></div><div class="list">${rows}</div>
-      <div class="box"><h3>GAME ${Object.keys(S.gindex).length}/${GAME.length}</h3><div class="list">${grows}</div></div>
-      <div class="box"><h3>MINERALS ${Object.keys(S.mindex).length}/${MINERALS.length}</h3><div class="list">${mrows}</div></div>`;
-    drawMinis(el);
+    // Thousands of entries: one record at a time (fish, game, minerals), filtered (this island, caught, everything), a screenful at
+    // a time. Rows and their sprites are only built as the list is scrolled (indexMore), so the sheet opens at once.
+    const tabs = [['fish', 'Fish', Object.keys(S.index).length, IX_FISH.length], ['game', 'Game', Object.keys(S.gindex).length, GAME.length], ['ore', 'Minerals', Object.keys(S.mindex).length, MINERALS.length]];
+    const flt = [['here', 'This island'], ['got', 'Caught'], ['all', 'Everything']];
+    ixList = indexItems(); ixShown = 0;
+    el.innerHTML = `<div class="head"><h2>Index</h2><button class="x" data-act="close">✕</button></div>
+      <div class="seg ix">${tabs.map(([k, n, got, tot]) => `<button data-act="ixtab" data-k="${k}" class="${ixTab === k ? 'sel' : ''}">${n}<small>${got}/${tot}</small></button>`).join('')}</div>
+      <div class="seg ix">${flt.map(([k, n]) => `<button data-act="ixflt" data-k="${k}" class="${ixFilter === k ? 'sel' : ''}">${n}</button>`).join('')}</div>
+      <div class="note" id="ixNote"></div><div id="ixRows"></div><button class="buy more" id="ixMore" data-act="ixmore">Show more</button>`;
+    indexMore();
   } else if (sheetKind === 'inv') {
     const total = bucketTotal(), boat = BOATS.find(b => b.id === S.boat), rod = RODS.find(r => r.id === S.rod);
     const landed = S.pending && !SP[S.pending.id].kind && S.bucket.length >= bucketCap() ? SP[S.pending.id] : null;
@@ -10997,6 +10988,44 @@ function renderSheet() {
       <button class="cta alt" data-act="totitle">Back to title</button>`;
   }
 }
+// ---------- the index: one record at a time, a screenful at a time ----------
+let ixTab = 'fish', ixFilter = 'here', ixList = [], ixShown = 0;
+const IX_FISH = SPECIES.filter(s => !s.kind);
+function indexItems() {
+  const l = loc(), src = ixTab === 'fish' ? IX_FISH : ixTab === 'game' ? GAME : MINERALS, rec = ixTab === 'fish' ? S.index : ixTab === 'game' ? S.gindex : S.mindex;
+  if (ixFilter === 'got') return src.filter(x => rec[x.id]);
+  if (ixFilter === 'all') return src;
+  if (ixTab !== 'fish') return src.filter(x => x.loc[l.id]);
+  const at = new Set(); for (const sp of l.spots || []) for (const id in sp.fish) at.add(id); // a fish is here if it has a home here or sits in one of the island's spots
+  return src.filter(x => x.loc[l.id] || at.has(x.id));
+}
+function indexRowFish(s) {
+      const ix = S.index[s.id], homes = LOCS.filter(l => s.loc[l.id]), home = homes[0], r = rarityOf(s), rarT = `<span style="color:${RARITY[r].col}">${RARITY[r].name}</span>`;
+      const homeT = homesText(homes);
+      const mini = `<canvas class="mini" width="64" height="36" data-fish="${s.id}" data-known="${ix ? 1 : 0}" data-v="${s.mutant ? 'mutated' : ''}"></canvas>`;
+      const vT = ix && ix.v ? ' · ' + Object.entries(ix.v).map(([k, n]) => `<span style="color:${VARIANTS[k].col}">${VARIANTS[k].name.toLowerCase()}${n > 1 ? ' ×' + n : ''}</span>`).join(', ') : '';
+      if (ix) return `<div class="row">${mini}<div class="name" style="flex:1">${s.name}<small>${rarT} · ${s.legend ? home.name + ' · legend, landed' : homeT + (s.time ? ' · ' + s.time.join('/') : '') + (weatherText(s) ? ' · ' + weatherText(s) : '') + (ix.bestKg ? ' · best ' + fmtKg(ix.bestKg) : '') + vT}</small></div><div class="price">×${ix.n} · ${ix.best} cm${ix.trophies ? ' · ★' + ix.trophies : ''}</div></div>`;
+      return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${rarT} · ${S.visited[home.id] ? homeT : 'somewhere out there'}${s.legend ? ' · legend: rod, squid, ' + s.time.join('/') : s.rare ? ' · rod or trophy line' : ''}${!s.legend && weatherText(s) ? ' · ' + weatherText(s) : ''}</small></div><div class="price">—</div></div>`;
+}
+function indexRowGame(c) { const gx = S.gindex[c.id], home = LOCS.find(l => c.loc[l.id]);
+      const mini = `<canvas class="mini game" width="80" height="48" data-game="${c.id}" data-known="${gx ? 1 : 0}"></canvas>`;
+      const gr = gameRarityOf(c), grT = `<span style="color:${RARITY[gr].col}">${RARITY[gr].name}</span>`;
+      if (gx) return `<div class="row">${mini}<div class="name" style="flex:1">${c.name}<small>${grT} · ${home.name}${c.legend ? ' · taken, once ever' : ''}${c.time ? ' · ' + c.time.join('/') : ''}</small></div><div class="price">×${gx.n} · ${fmtKg(gx.best)}</div></div>`;
+      return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${grT} · ${S.visited[home.id] ? home.name : 'somewhere out there'}${c.legend ? ' · once ever, ' + c.time.join('/') : ''}</small></div><div class="price">—</div></div>`; }
+function indexRowOre(m) { const mx = S.mindex[m.id], homes = LOCS.filter(l => m.loc[l.id]), home = homes[0], mr = mineralRarityOf(m), mrT = `<span style="color:${RARITY[mr].col}">${RARITY[mr].name}</span>`, homeT = homesText(homes);
+      const mini = `<canvas class="mini ore" width="64" height="48" data-ore="${m.id}" data-known="${mx ? 1 : 0}"></canvas>`, depthT = m.depth[0] === m.depth[1] ? 'level ' + m.depth[0] : 'levels ' + m.depth[0] + '–' + m.depth[1];
+      const vT = mx && mx.v ? ' · ' + Object.entries(mx.v).map(([k, n]) => `<span style="color:${MINERAL_VARIANTS[k].col}">${MINERAL_VARIANTS[k].name.toLowerCase()}${n > 1 ? ' ×' + n : ''}</span>`).join(', ') : '';
+      if (mx) return `<div class="row">${mini}<div class="name" style="flex:1">${m.name}<small>${mrT} · ${homeT} · ${depthT} · hardness ${m.hard}${m.relic ? ' · relic, taken once ever' : ''}${vT}</small></div><div class="price">×${mx.n} · ${fmtKg(mx.best)}</div></div>`;
+      return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${mrT} · ${S.visited[home.id] ? homeT : 'somewhere out there'} · ${depthT}${m.relic ? ' · once ever' : ''}</small></div><div class="price">—</div></div>`; }
+function indexMore() { // the next screenful of rows, and only their sprites
+  const box = $('#ixRows'); if (!box || sheetKind !== 'index') return;
+  const part = ixList.slice(ixShown, ixShown + T.indexPage), row = ixTab === 'fish' ? indexRowFish : ixTab === 'game' ? indexRowGame : indexRowOre;
+  if (part.length) { const d = document.createElement('div'); d.className = 'list'; d.innerHTML = part.map(row).join(''); box.appendChild(d); drawMinis(d); ixShown += part.length; }
+  const left = ixList.length - ixShown, what = ixTab === 'fish' ? 'fish' : ixTab === 'game' ? 'creatures' : 'minerals';
+  $('#ixMore').hidden = left <= 0;
+  $('#ixNote').textContent = !ixList.length ? (ixFilter === 'got' ? `No ${what} recorded yet.` : ixFilter === 'here' ? `No ${what} are known from here.` : '') : ixFilter === 'here' ? `${ixList.length} ${what} ${ixTab === 'ore' ? 'lie under' : ixTab === 'game' ? 'live on' : 'swim off'} ${loc().name}. What you have not ${ixTab === 'ore' ? 'found' : ixTab === 'game' ? 'taken' : 'caught'} shows as a shadow.` : ixFilter === 'got' ? `${ixList.length} ${what} in your record.` : `All ${ixList.length} ${what} in the world, in the order of the islands.`;
+}
+const homesText = homes => homes.length > 4 ? homes.slice(0, 3).map(l => l.name).join(', ') + ` and ${homes.length - 3} more islands` : homes.map(l => l.name).join(', '); // a fish of twenty islands does not list all twenty
 function drawMinis(el) {
   el.querySelectorAll('canvas.mini.game').forEach(c => { const x = c.getContext('2d'); x.fillStyle = '#1e2a1c'; x.fillRect(0, 0, 80, 48); x.fillStyle = '#2c3a28'; x.fillRect(0, 44, 80, 4); const bc = beastC(c.dataset.game, 1, c.dataset.known === '0' ? 'dim' : 'color'); x.drawImage(bc, (80 - bc.width) >> 1, 44 - bc.height); });
   el.querySelectorAll('canvas.mini.ore').forEach(c => { const x = c.getContext('2d'); x.fillStyle = '#1a1620'; x.fillRect(0, 0, 64, 48); x.fillStyle = '#2a2430'; for (let k = 0; k < 12; k++) x.fillRect((hash(k, 1, 111) * 60) | 0, (hash(k, 2, 112) * 40) | 0, 3, 1); x.fillStyle = '#2a2420'; x.fillRect(0, 44, 64, 4); const mm = mineralMap(c.dataset.ore), sc = mm[0].length * 2 <= 60 && mm.length * 2 <= 42 ? 2 : 1, mc = mineralC(c.dataset.ore, sc, c.dataset.known === '0' ? 'dim' : 'color'); x.drawImage(mc, (64 - mc.width) >> 1, 44 - mc.height); });
@@ -15255,7 +15284,22 @@ const MOTES = Array.from({ length: 14 }, () => ({ x: prand(), y: prand(), s: 2 +
 const SNOW = Array.from({ length: 50 }, () => ({ x: prand(), y: prand(), s: 0.5 + prand() * 0.8 }));
 
 // ---------- canvas & layout ----------
-const cv = $('#scene'), g = cv.getContext('2d');
+const cv = $('#scene'); let g = cv.getContext('2d'); // g is whatever is being drawn into: the screen, or one of the scenery layers below
+// Scenery that does not move with the action (the strip's land and everything standing on it, a hunting ground, a mine's gallery)
+// is thousands of small rectangles. It is drawn into an offscreen layer and redrawn only every T.sceneryMs (its own lamps, smoke
+// and surf still move, a few times a second), and every frame just blits the layer: the walker, the animals, the fish, the shot
+// and the sky's weather stay at full rate. `key` forces a redraw at once when what is drawn changes (the island, the size, a walk-in).
+const LAYERS = {};
+function layer(name, w, h, key, draw) {
+  let L = LAYERS[name]; if (!L) L = LAYERS[name] = { c: document.createElement('canvas'), key: '', at: 0 };
+  if (L.c.width !== w || L.c.height !== h) { L.c.width = w; L.c.height = h; L.key = ''; }
+  const n = performance.now();
+  if (L.key !== key || n - L.at >= T.sceneryMs) {
+    L.key = key; L.at = n; const x = L.c.getContext('2d'), g0 = g; x.imageSmoothingEnabled = false; x.clearRect(0, 0, w, h);
+    g = x; try { draw(); } finally { g = g0; }
+  }
+  return L.c;
+}
 let ISLE_LAYOUT = false;
 let W = 195, H = 375, SURF = 150, scale = 2, shoreW = 66, SW = 195, PANEL_W = 0; // SW: the scene width beside the panel column on a phone held sideways (W otherwise)
 let skyKey = '', skyC = null, seaKey = '', seaC = null, curSky = null, lightX = -1, lightY = -1;
@@ -15276,11 +15320,11 @@ function skyLayer(h) {
   const key = Math.round(h * 12) + '|' + W + '|' + SURF; if (key === skyKey) return skyC; skyKey = key;
   const c = document.createElement('canvas'); c.width = W; c.height = SURF;
   const x = c.getContext('2d'), img = x.createImageData(W, SURF), d = img.data, sky = skyAt(h), bands = 10;
+  const cols = []; for (let k = 0; k <= bands; k++) cols.push(lerpC(sky.top, sky.bot, k / bands)); // the eleven band colours, worked out once and not once a pixel
   for (let y = 0; y < SURF; y++) {
     const fb = (y / (SURF - 1)) * bands, bi = Math.floor(fb), fr = fb - bi;
     for (let xx = 0; xx < W; xx++) {
-      const b = Math.min(bands, fr > BAYER[((y & 1) << 1) | (xx & 1)] ? bi + 1 : bi) / bands;
-      const col = lerpC(sky.top, sky.bot, b), i = (y * W + xx) * 4;
+      const col = cols[Math.min(bands, fr > BAYER[((y & 1) << 1) | (xx & 1)] ? bi + 1 : bi)], i = (y * W + xx) * 4;
       d[i] = col[0]; d[i + 1] = col[1]; d[i + 2] = col[2]; d[i + 3] = 255;
     }
   }
@@ -15290,11 +15334,11 @@ function seaLayer(h) {
   const key = Math.round(h * 12) + '|' + W + '|' + SURF + '|' + H; if (key === seaKey) return seaC; seaKey = key;
   const hh = H - SURF, c = document.createElement('canvas'); c.width = W; c.height = hh;
   const x = c.getContext('2d'), img = x.createImageData(W, hh), d = img.data, sky = skyAt(h), deep = lerpC(sky.sea, [3, 8, 18], 0.85), bands = 11;
+  const cols = []; for (let k = 0; k <= bands; k++) cols.push(lerpC(sky.sea, deep, k / bands));
   for (let y = 0; y < hh; y++) {
     const fb = Math.min(1, y / 150) * bands, bi = Math.floor(fb), fr = fb - bi;
     for (let xx = 0; xx < W; xx++) {
-      const b = Math.min(bands, fr > BAYER[((y & 1) << 1) | (xx & 1)] ? bi + 1 : bi) / bands;
-      const col = lerpC(sky.sea, deep, b), i = (y * W + xx) * 4;
+      const col = cols[Math.min(bands, fr > BAYER[((y & 1) << 1) | (xx & 1)] ? bi + 1 : bi)], i = (y * W + xx) * 4;
       d[i] = col[0]; d[i + 1] = col[1]; d[i + 2] = col[2]; d[i + 3] = 255;
     }
   }
@@ -15988,14 +16032,15 @@ function nearSpot() { if (!ISL) return null; const l = loc(); let best = null, b
 const wantsBeacon = () => S.raft && !S.prologue && S.order.filter(id => id !== 'shoal').length === 0;
 function mapBeacon() { const on = wantsBeacon(); document.querySelectorAll('.tabs [data-k="map"]').forEach(b => b.classList.toggle('pulse', on)); }
 function renderIsle() {
-  if (MODE !== 'island') return; mapBeacon();
-  $('#iMoney').textContent = money(S.money); $('#iClock').textContent = clockText(now());
-  const sp = nearSpot(), b = $('#iAct');
-  b.classList.toggle('ghost', !sp); b.textContent = sp ? sp.label : '·'; b.dataset.k = sp ? sp.id : '';
-  const l = loc(), tt = tutHere() ? tutStripText() : ''; $('#iHint').classList.toggle('tut', !!tt); if (tt) { $('#iHint').innerHTML = tt; return; }
-  const scr = Math.floor(ISL.px / W), nL = isleScreens(l), huntScr = nL - 2, villScr = nL - 1;
-  $('#iHint').innerHTML = sp ? `<b>${sp.hint}</b>` : scr < huntScr ? `${cap1(l.mine.name || 'the shaft')} lies this way.` : scr === huntScr ? `${l.hunt.name ? cap1(l.hunt.name) : 'The wild'} lies this way.` : scr === villScr ? (l.shop ? 'The village. Walk up to the door.' : l.sell ? 'The traders\' camp.' : 'Your camp.') : 'The shore. Your lines are to the right.';
+  if (MODE !== 'island') return;
+  const sp = nearSpot(), l = loc(), tt = tutHere() ? tutStripText() : '', scr = Math.floor(ISL.px / W), nL = isleScreens(l), huntScr = nL - 2, villScr = nL - 1;
+  const hint = tt || (sp ? `<b>${sp.hint}</b>` : scr < huntScr ? `${cap1(l.mine.name || 'the shaft')} lies this way.` : scr === huntScr ? `${l.hunt.name ? cap1(l.hunt.name) : 'The wild'} lies this way.` : scr === villScr ? (l.shop ? 'The village. Walk up to the door.' : l.sell ? 'The traders\' camp.' : 'Your camp.') : 'The shore. Your lines are to the right.');
+  const key = [S.money, clockText(now()), sp ? sp.id + sp.label : '', hint, wantsBeacon()].join('|'); if (key === isleUI) return; isleUI = key; // nothing it shows has changed: leave the page alone (this runs on every frame of a walk)
+  mapBeacon(); $('#iMoney').textContent = money(S.money); $('#iClock').textContent = clockText(now());
+  const b = $('#iAct'); b.classList.toggle('ghost', !sp); b.textContent = sp ? sp.label : '·'; b.dataset.k = sp ? sp.id : '';
+  $('#iHint').classList.toggle('tut', !!tt); $('#iHint').innerHTML = hint;
 }
+let isleUI = '';
 function stepIsle(dt) {
   if (!ISL) return; const l = loc(), nL = isleScreens(l), maxX = l.noFish ? 2 * W - 8 : nL * W + shoreW - 6, minX = l.noFish ? W + 8 : 8;
   if (ISL.auto) { const A = ISL.auto, dx = A.x - ISL.px; if (Math.abs(dx) > 1) { const step = Math.sign(dx) * Math.min(Math.abs(dx), T.walkSpeed * dt); ISL.px += step; ISL.dir = Math.sign(dx); ISL.anim += dt * T.walkFps; }
@@ -16057,9 +16102,8 @@ function drawIsland(t) {
   g.restore();
   // village, hunting gate and shaft head: land from the island's ground line down
   const o = l.mine ? W : 0;
-  if (!(sc && sc.weather === 'cave')) drawIsleBackdrop(l, cam, gy, SX);
-  drawLand(l, 0, SX + 1, t);
-  isleScenery(l, gy, t, nt, nL);
+  if (!(sc && sc.weather === 'cave')) g.drawImage(layer('hills', W, gy + 1, `${l.id}|${cam}|${gy}`, () => { g.save(); g.translate(-cam, 0); drawIsleBackdrop(l, cam, gy, SX); g.restore(); }), cam, 0); // the far hills: redrawn only when the camera moves
+  g.drawImage(layer('strip', SX + W, H, `${l.id}|${gy}|${SURF}|${ISL.auto ? ISL.auto.kind || 'in' : ''}`, () => { drawLand(l, 0, SX + 1, t); isleScenery(l, gy, t, nt, nL); }), 0, 0); // the land and all that stands on it: a layer, redrawn a few times a second
   sceneFx(l, t, nt);
   // the things you can press: a bobbing brass mark above each
   { const vbm = BUILD[l.village.kind] || BUILD.shack, Z = T.sceneZoom; for (const sp of isleSpots(l)) { const up = sp.id === 'fish' ? 38 : sp.id === 'shop' ? (vbm.h + (vbm.legs || 0)) * Z + 12 : sp.id === 'mine' ? 34 * Z + 10 : 30 * Z + 10, yy = (gy - up + Math.sin(t / 300 + sp.x) * 1.5) | 0; g.fillStyle = '#f0c050'; g.fillRect(sp.x - 3 | 0, yy, 7, 2); g.fillRect(sp.x - 2 | 0, yy + 2, 5, 1); g.fillRect(sp.x - 1 | 0, yy + 3, 3, 1); g.fillRect(sp.x | 0, yy + 4, 1, 1); } }
@@ -16249,10 +16293,12 @@ function drawHunt(t) {
   const l = loc(), h = hourAt(t), nt = drawSkyBase(h, t, {}); sceneWeather(l, t, nt);
   GSEED = groundSeed(l); const gy = SURF + 10, st = tintStyle(LAND_STYLE[GROUND_LAND[l.hunt.kind]] || LAND_STYLE.grass, GSEED);
   // a far ridge closes the gap between the sky and the ground, so nothing from the last screen shows through
-  const haze = css(lerpC(curSky.bot, [20, 30, 50], 0.5)); g.fillStyle = haze; g.fillRect(0, SURF - 8, W, gy - SURF + 8); for (let k = 0; k < W; k += 9) g.fillRect(k, SURF - 10 - ((k * 7) % 5), 6, 3);
-  g.fillStyle = st[0]; g.fillRect(0, gy, W, 12); g.fillStyle = st[1]; g.fillRect(0, gy + 12, W, 30); g.fillStyle = st[2]; g.fillRect(0, gy + 42, W, H - gy - 42); g.fillStyle = st[3]; g.fillRect(0, gy, W, 1);
-  drawGroundTex(l.hunt.kind, gy, st, t);
-  drawGroundDecor(l.hunt.kind, 0, gy, t, nt);
+  g.drawImage(layer('hunt', W, H, `${l.id}|${SURF}`, () => { // the ground and what grows on it: a layer, redrawn a few times a second
+    const haze = css(lerpC(curSky.bot, [20, 30, 50], 0.5)); g.fillStyle = haze; g.fillRect(0, SURF - 8, W, gy - SURF + 8); for (let k = 0; k < W; k += 9) g.fillRect(k, SURF - 10 - ((k * 7) % 5), 6, 3);
+    g.fillStyle = st[0]; g.fillRect(0, gy, W, 12); g.fillStyle = st[1]; g.fillRect(0, gy + 12, W, 30); g.fillStyle = st[2]; g.fillRect(0, gy + 42, W, H - gy - 42); g.fillStyle = st[3]; g.fillRect(0, gy, W, 1);
+    drawGroundTex(l.hunt.kind, gy, st, t);
+    drawGroundDecor(l.hunt.kind, 0, gy, t, nt);
+  }), 0, 0);
   if (HU && HU.phase === 'seen' || (HU && HU.phase === 'taken')) {
     const c = HU.roll.c, cx = (HU.tx * SW) | 0, bob = HU.look ? 0 : Math.sin(t / 260) > 0.6 ? 1 : 0, sc = HU.steps >= 2 ? 2 : 1;
     const mc = beastC(c.id, sc, 'color');
@@ -16513,19 +16559,21 @@ function mineDeco(kind, top, gy, t, level) {
 }
 function drawMine(t) {
   const l = loc(), kind = MINE_KIND[l.mine.kind] || MINE_KIND.rock, [deep, wall, light] = kind.wall, top = SURF - 56, gy = SURF + 8, lx = (SW * 0.36) | 0, ly = top + 22;
-  g.fillStyle = deep; g.fillRect(0, 0, W, H); g.fillStyle = 'rgba(255,255,255,0.03)'; for (let y = 0; y < H; y += 3) for (let x0 = 0; x0 < W; x0 += 3) if (hash(y, x0, 80) < 0.12) g.fillRect(x0, y, 2, 1); // the rock above and below the gallery
-  g.fillStyle = wall; g.fillRect(0, top, W, gy - top);
-  for (let y = top; y < gy; y += 2) for (let x0 = 0; x0 < W; x0 += 2) { const h = hash(y, x0, 81); if (h < 0.04) { g.fillStyle = deep; g.fillRect(x0, y, 2, 2); } else if (h > 0.975 && Math.hypot(x0 - lx, y - ly) < W * 0.5) { g.fillStyle = light; g.fillRect(x0, y, 2, 2); } }
-  mineDeco(kind.deco, top, gy, t, MI ? MI.level : 1);
-  g.fillStyle = light; g.fillRect(0, top, W, 1);
-  for (let x0 = 14; x0 < SW - 30; x0 += 44) { g.fillStyle = '#5a4630'; g.fillRect(x0, top, 3, gy - top); g.fillRect(x0 - 3, top, 9, 3); g.fillStyle = '#3a2a1a'; g.fillRect(x0 + 2, top + 3, 1, gy - top - 3); } // timber props
-  g.fillStyle = '#2a2420'; g.fillRect(0, gy, W, H - gy); g.fillStyle = '#4a4036'; g.fillRect(0, gy, W, 2);
-  g.fillStyle = '#5a4630'; for (let x0 = 2; x0 < W; x0 += 10) g.fillRect(x0, gy + 5, 6, 2); g.fillStyle = '#8a8a98'; g.fillRect(0, gy + 4, W, 1); g.fillRect(0, gy + 8, W, 1); // sleepers and rails
-  g.fillStyle = '#3a3a44'; g.fillRect(6, gy - 10, 22, 10); g.fillStyle = '#5a5a66'; g.fillRect(6, gy - 10, 22, 1); g.fillStyle = '#1a1a20'; g.fillRect(9, gy, 4, 3); g.fillRect(21, gy, 4, 3); // the ore cart
+  g.drawImage(layer('mine', W, H, `${l.id}|${SURF}|${MI ? MI.level : 1}`, () => { // the gallery's rock, props, rails and face wall: a layer, redrawn a few times a second
+    g.fillStyle = deep; g.fillRect(0, 0, W, H); g.fillStyle = 'rgba(255,255,255,0.03)'; for (let y = 0; y < H; y += 3) for (let x0 = 0; x0 < W; x0 += 3) if (hash(y, x0, 80) < 0.12) g.fillRect(x0, y, 2, 1); // the rock above and below the gallery
+    g.fillStyle = wall; g.fillRect(0, top, W, gy - top);
+    for (let y = top; y < gy; y += 2) for (let x0 = 0; x0 < W; x0 += 2) { const h = hash(y, x0, 81); if (h < 0.04) { g.fillStyle = deep; g.fillRect(x0, y, 2, 2); } else if (h > 0.975 && Math.hypot(x0 - lx, y - ly) < W * 0.5) { g.fillStyle = light; g.fillRect(x0, y, 2, 2); } }
+    mineDeco(kind.deco, top, gy, t, MI ? MI.level : 1);
+    g.fillStyle = light; g.fillRect(0, top, W, 1);
+    for (let x0 = 14; x0 < SW - 30; x0 += 44) { g.fillStyle = '#5a4630'; g.fillRect(x0, top, 3, gy - top); g.fillRect(x0 - 3, top, 9, 3); g.fillStyle = '#3a2a1a'; g.fillRect(x0 + 2, top + 3, 1, gy - top - 3); } // timber props
+    g.fillStyle = '#2a2420'; g.fillRect(0, gy, W, H - gy); g.fillStyle = '#4a4036'; g.fillRect(0, gy, W, 2);
+    g.fillStyle = '#5a4630'; for (let x0 = 2; x0 < W; x0 += 10) g.fillRect(x0, gy + 5, 6, 2); g.fillStyle = '#8a8a98'; g.fillRect(0, gy + 4, W, 1); g.fillRect(0, gy + 8, W, 1); // sleepers and rails
+    g.fillStyle = '#3a3a44'; g.fillRect(6, gy - 10, 22, 10); g.fillStyle = '#5a5a66'; g.fillRect(6, gy - 10, 22, 1); g.fillStyle = '#1a1a20'; g.fillRect(9, gy, 4, 3); g.fillRect(21, gy, 4, 3); // the ore cart
+    // the face you work, at the right, with the glints of whatever stands open in it
+    g.fillStyle = wall; g.fillRect(SW - 30, top, 30, gy - top); for (let y = top; y < gy; y += 2) for (let x0 = SW - 30; x0 < SW; x0 += 2) if (hash(y, x0, 83) < 0.08) { g.fillStyle = deep; g.fillRect(x0, y, 2, 2); }
+    g.fillStyle = deep; g.fillRect(SW - 30, top, 1, gy - top);
+  }), 0, 0);
   if (S.sack.length) for (let k = 0; k < Math.min(8, S.sack.length); k++) { g.fillStyle = mineralPal(MM[S.sack[k].id]).b; g.fillRect(8 + (k % 4) * 5, gy - 13 + ((k / 4) | 0) * 2, 4, 3); }
-  // the face you work, at the right, with the glints of whatever stands open in it
-  g.fillStyle = wall; g.fillRect(SW - 30, top, 30, gy - top); for (let y = top; y < gy; y += 2) for (let x0 = SW - 30; x0 < SW; x0 += 2) if (hash(y, x0, 83) < 0.08) { g.fillStyle = deep; g.fillRect(x0, y, 2, 2); }
-  g.fillStyle = deep; g.fillRect(SW - 30, top, 1, gy - top);
   if (MI) MI.tiles.forEach((tl, i) => { if (tl.s !== 'exposed' || !tl.m) return; const mp = mineralPal(MM[tl.m]), fx = SW - 26 + (i % T_MINE.cols) * 4, fy = top + 10 + ((i / T_MINE.cols) | 0) * 18; g.fillStyle = Math.sin(t / 250 + i) > 0.3 ? mp.h : mp.b; g.fillRect(fx, fy, 2, 2); });
   drawMiner(lx - 30, gy, t);
   const glow = MI ? clamp(MI.oil / MI.oilMax, 0.15, 1) : 1; // the lamp's halo
@@ -17053,11 +17101,15 @@ function fogLayer() {
   const c = document.createElement('canvas'); c.width = MW; c.height = MH; const m = c.getContext('2d'), img = m.createImageData(MW, MH), d = img.data;
   const cents = []; for (const l of LOCS) { const st = mapState(l); if (st === 'hidden' || l.id === 'stars') continue; cents.push([l.x, l.y, st === 'visited' ? 24 : st === 'known' ? 12 : 7, st === 'visited' ? 9 : 5]); }
   const segs = []; for (const l of LOCS) for (const k of l.links) if (S.visited[l.id] && S.visited[k] && l.id < k) segs.push([l.x, l.y, LOC[k].x, LOC[k].y]);
+  // how far each pixel is revealed: every island and every sailed route only touches the pixels inside its own reach, so this is a
+  // few hundred small boxes and not the whole sea for every island (which froze the chart for seconds once many islands were known)
+  const rv = new Float32Array(MW * MH);
+  for (const [cx, cy, R, soft] of cents) { const x0 = Math.max(0, Math.floor(cx - R)), x1 = Math.min(MW - 1, Math.ceil(cx + R)), y0 = Math.max(0, Math.floor(cy - R)), y1 = Math.min(MH - 1, Math.ceil(cy + R));
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const v = (R - Math.hypot(x - cx, y - cy)) / soft, i = y * MW + x; if (v > rv[i]) rv[i] = v; } }
+  for (const [sx0, sy0, sx1, sy1] of segs) { const dx = sx1 - sx0, dy = sy1 - sy0, L2 = dx * dx + dy * dy || 1, x0 = Math.max(0, Math.floor(Math.min(sx0, sx1) - 5)), x1 = Math.min(MW - 1, Math.ceil(Math.max(sx0, sx1) + 5)), y0 = Math.max(0, Math.floor(Math.min(sy0, sy1) - 5)), y1 = Math.min(MH - 1, Math.ceil(Math.max(sy0, sy1) + 5));
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const tt = clamp(((x - sx0) * dx + (y - sy0) * dy) / L2, 0, 1), v = (5 - Math.hypot(x - sx0 - dx * tt, y - sy0 - dy * tt)) / 3, i = y * MW + x; if (v > rv[i]) rv[i] = v; } }
   for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
-    let rev = 0;
-    for (const [cx, cy, R, soft] of cents) { const v = (R - Math.hypot(x - cx, y - cy)) / soft; if (v > rev) rev = v; }
-    for (const [x0, y0, x1, y1] of segs) { const dx = x1 - x0, dy = y1 - y0, tt = clamp(((x - x0) * dx + (y - y0) * dy) / (dx * dx + dy * dy), 0, 1), v = (5 - Math.hypot(x - x0 - dx * tt, y - y0 - dy * tt)) / 3; if (v > rev) rev = v; }
-    rev = clamp(rev, 0, 1); const dither = BAYER[((y & 1) << 1) | (x & 1)]; const a = rev >= 1 ? 0 : rev <= 0 ? 1 : (rev + (dither - 0.5) * 0.3 < 0.5 ? 1 : 0.55 - rev * 0.4);
+    const rev = Math.min(1, rv[y * MW + x]), dither = BAYER[((y & 1) << 1) | (x & 1)]; const a = rev >= 1 ? 0 : rev <= 0 ? 1 : (rev + (dither - 0.5) * 0.3 < 0.5 ? 1 : 0.55 - rev * 0.4);
     const i = (y * MW + x) * 4; d[i] = 7; d[i + 1] = 7; d[i + 2] = 11; d[i + 3] = Math.round(255 * clamp(a, 0, 1));
   }
   m.putImageData(img, 0, 0); FOG_C = c; return c;
@@ -17190,6 +17242,9 @@ document.addEventListener('click', e => {
   else if (a === 'open') openSheet(k);
   else if (a === 'close') closeSheet();
   else if (a === 'node') { mapSel = k; renderSheet(); }
+  else if (a === 'ixtab') { ixTab = k; renderSheet(); $('#sheet').scrollTop = 0; }
+  else if (a === 'ixflt') { ixFilter = k; renderSheet(); $('#sheet').scrollTop = 0; }
+  else if (a === 'ixmore') indexMore();
   else if (a === 'sail') sail(mapSel);
   else if (a === 'buy') buy(k);
   else if (a === 'bounty') claimBounty(k);
@@ -17282,6 +17337,7 @@ function start(data) {
   // a newer copy of this voyage on the cloud (played on another device) replaces this one while the title is still up
   if (S.code && cloudOn()) cloudGet(S.code).then(d => { if (d && (d.saved || 0) > (S.saved || 0) && MODE === 'title') { load(d); settleLines(); try { localStorage.setItem(KEY, JSON.stringify(S)); localStorage.setItem(saveKey(S.code), JSON.stringify(S)); } catch (e) {} showTitle(); } }).catch(() => {});
   setInterval(tick, 500);
+  $('#sheet').addEventListener('scroll', () => { const el = $('#sheet'); if (sheetKind === 'index' && ixShown < ixList.length && el.scrollTop + el.clientHeight > el.scrollHeight - 700) indexMore(); }, { passive: true }); // the index grows as it is scrolled
   requestAnimationFrame(frame);
   try { if (window.claude && window.claude.hot && window.claude.hot.snapshot) window.claude.hot.snapshot(() => S); } catch (e) {}
 }
