@@ -16216,7 +16216,7 @@ function LandLayer(S, name) {
   this.S = S; this.name = name; this.f = T_LAND.f[name]; this.u = T_LAND.u[name];
   this.pad = Math.ceil(S.W * 0.5); // room to the left of the furthest view, so nothing ends at a hard edge when the camera is clamped
   this.ox = Math.round(3 * S.W * this.f) + this.pad; // buffer x of v = 0
-  this.w = this.ox + S.W + 4; this.base = S.LH + S.top; this.h = this.base + S.foot;
+  this.w = this.ox + S.W + 4 + (S.wide && name !== 'near' ? Math.ceil(T_LAND.off[name === 'far' ? 0 : 1] * S.W) : 0); this.base = S.LH + S.top; this.h = this.base + S.foot; // the fishing view's far layers run on to the right: out on open water they slide that much further
   this.P = new Paint(this.w, this.h); this.P.seed = S.seed + (name === 'far' ? 101 : name === 'mid' ? 202 : 303);
   this.top = new Float32Array(this.w); // the highest land painted so far in each column (px above the base), for standing things on
 }
@@ -17151,7 +17151,7 @@ function landScene(l, yBase, mode) {
   const key = `${l.id}|${mode || ''}|${W}|${yBase}|${scale}`; let S = LAND_C[key]; if (S) return S;
   for (const k in LAND_C) if (k.indexOf(l.id + '|') !== 0) delete LAND_C[k]; // only the island you are on is kept
   const LH = clamp(yBase - Math.ceil(T_LAND.hud / scale), T_LAND.lh[0], T_LAND.lh[1]);
-  S = { id: l.id, l, W, LH, top: Math.round(LH * 0.34) + 6, foot: 1, seed: groundSeed(l) % 65521, tk: '', strip: mode === 'strip', cave: !!(l.scene && l.scene.weather === 'cave'), haze: null, lit: null };
+  S = { id: l.id, l, W, LH, top: Math.round(LH * 0.34) + 6, foot: 1, seed: groundSeed(l) % 65521, tk: '', strip: mode === 'strip', wide: !mode, cave: !!(l.scene && l.scene.weather === 'cave'), haze: null, lit: null };
   S.far = new LandLayer(S, 'far'); S.mid = new LandLayer(S, 'mid'); S.near = new LandLayer(S, 'near');
   try { (LANDS[l.id] || landAuto)(S, l); } catch (e) { console.error('landscape', l.id, e); }
   S.layers = [S.far, S.mid, S.near].map(L => ({ name: L.name, f: L.f, pad: L.pad, base: L.base, w: L.w, h: L.h, cv: L.P.canvas(), glow: L.P.glowCanvas(), tint: Object.assign(document.createElement('canvas'), { width: L.w, height: L.h }), em: L.P.em }));
@@ -19694,12 +19694,19 @@ LANDS.worldanchor = s => { const { far: F, mid: M, near: N } = s; // iron links 
   chainLinks(N, 0.54, 1.0, 1.0, { len: 46, w: 8, lit: true }); for (let x = N.x(0.4); x < N.x(0.8); x++) if (nH(x, 1, 5) > 0.3) N.P.px(x, N.base - 1, kHex(nH(x, 2, 5) > 0.5 ? '#c85a30' : '#a84a2a'));
 };
 LANDS.skippedstones = s => { const { far: F, mid: M, near: N } = s; // shingle to the horizon, grey and flat and whispering as it settles
-  const sh = { c: '#9a9aa0', tex: 'rock' }, skip = (L, a, b, n, ms) => L.P.em.push({ k: 'fn', x: L.x(a), y: L.base - 1, draw: (x, y, t) => { const w = L.x(b) - L.x(a), p = (t % ms) / ms, hops = n, q = p * hops, i = q | 0, f = q - i, hop = w * Math.pow(0.82, i) / hops * 1.6; let bx = x; for (let k = 0; k < i; k++) { bx += w * Math.pow(0.82, k) / hops * 1.6; const age = (i - k) / hops; g.fillStyle = `rgba(255,255,255,${(0.6 * (1 - age)).toFixed(2)})`; g.fillRect((bx - 3 - age * 4) | 0, y, (6 + age * 8) | 0, 1); } if (i < hops) { g.fillStyle = '#3a3a44'; g.fillRect((bx + hop * f) | 0, (y - 1 - Math.sin(f * 3.14159) * hop * 0.3) | 0, 2, 1); } } });
+  const sh = { c: '#9a9aa0', tex: 'rock' }, tones = ['#d8d8dc', '#9a9aa0', '#5a5a64', '#a08070', '#3a3a44'],
+    skip = (L, a, b, n, ms) => L.P.em.push({ k: 'fn', x: L.x(a), y: L.base - 1, draw: (x, y, t) => { const w = L.x(b) - L.x(a), p = (t % ms) / ms, hops = n, q = p * hops, i = q | 0, f = q - i, hop = w * Math.pow(0.82, i) / hops * 1.6; let bx = x; for (let k = 0; k < i; k++) { bx += w * Math.pow(0.82, k) / hops * 1.6; const age = (i - k) / hops; g.fillStyle = `rgba(255,255,255,${(0.6 * (1 - age)).toFixed(2)})`; g.fillRect((bx - 3 - age * 4) | 0, y, (6 + age * 8) | 0, 1); } if (i < hops) { g.fillStyle = '#3a3a44'; g.fillRect((bx + hop * f) | 0, (y - 1 - Math.sin(f * 3.14159) * hop * 0.3) | 0, 2, 1); } } }),
+    pebbles = (L, m, n, r) => { for (let k = 0; k < n; k++) { const x = m.x0 + 2 + Math.round(nH(k, 1, 11) * (m.x1 - m.x0 - 4)), hh = m.h[x]; if (hh < 3) continue; const y = m.y(x) + 2 + Math.round(nH(k, 2, 11) * (hh - 3)), c = kRamp(tones[(nH(k, 3, 11) * 5) | 0]), rr = Math.max(1, Math.round(r * (0.6 + nH(k, 4, 11)))), ry = Math.max(1, Math.round(rr * 0.55)); L.P.ell(x, y, rr, ry, c[2]); L.P.rect(x - rr + 1, y - ry, Math.max(1, rr), 1, c[3]); } },
+    heap = (L, m, v, w, h, tone, num) => { const P = L.P, x = L.x(v), R = kRamp(tone), hw = Math.round(w * L.u / 2), hh = Math.round(h * L.u), y = (m ? m.y(x) + 2 : L.base - 1); for (let j = 0; j < hh; j++) { const ww = Math.round(hw * (1 - j / hh)); for (let i = -ww; i <= ww; i++) P.px(x + i, y - j, R[(i + j * 3 + 99) % 5 === 0 ? 3 : i < -ww * 0.3 ? 1 : 2]); }
+      const bx = x + hw - 1, by = y - hh - 9, ds = String(num), ink = kHex('#2a2a30'); P.rect(bx + 4, by + 7, 1, hh + 2, kHex('#5a4630')); P.rect(bx, by, ds.length * 4 + 3, 8, kHex('#e8e0c8')); P.rect(bx, by + 7, ds.length * 4 + 3, 1, kHex('#b0a888')); for (let d = 0; d < ds.length; d++) { const mk = DIGITS[+ds[d]]; for (let i = 0; i < 15; i++) if (mk[i] === '1') P.px(bx + 2 + d * 4 + (i % 3), by + 1 + ((i / 3) | 0), ink); } }; // a heap for every count of hops, and the board that says which
   F.flat(-0.3, 1.02, sh, { h: 4 }).row('cairn', -0.26, 1.0, 30, { h: 3, jit: 0.8 });
-  const m = M.land([[-0.7, 0.08], [-0.2, 0.1], [0.3, 0.08], [0.66, 0.06], [0.76, 0]], sh, { rough: 0.2 }); m.rocks(-0.7, 0.76, 50, { c: '#8a8a94', size: 0.5 }).row('cairn', -0.6, 0.72, 16, { h: 2.4, jit: 0.7 }).row('bldg', -0.3, 0.2, 3, { w: 6, h: 2, wall: '#5a4a3a', wtex: 'stone', roof: 'gable', rc: '#5a8a44', rtex: 'turf', rh: 1.6, win: { n: 1 }, jit: 0.4 }).row('figure', 0.3, 0.72, 5, { jit: 0.8 });
-  skip(M, 0.72, 1.02, 7, 6000);
-  const n = N.land([[-1.3, 0.08], [-0.6, 0.1], [0, 0.08], [0.28, 0.05], [0.4, 0]], sh, { rough: 0.2 }); n.rocks(-1.3, 0.38, 40, { c: '#8a8a94', size: 0.5 }).row('cairn', -1.2, 0.3, 7, { h: 2, jit: 0.5 }).row('figure', -0.3, 0.2, 2, { c: '#c03a4a' });
-  skip(N, 0.38, 1.0, 9, 7400); skip(N, 0.42, 0.9, 5, 9100);
+  const m = M.land([[-0.7, 0.14], [-0.3, 0.2], [0.1, 0.26], [0.36, 0.3], [0.56, 0.24], [0.74, 0.1], [0.86, 0.03], [0.92, 0]], sh, { rough: 0.2, strata: 0 }); pebbles(M, m, 700, 2);
+  m.row('bldg', -0.3, 0.2, 3, { w: 6, h: 2, wall: '#5a4a3a', wtex: 'stone', roof: 'gable', rc: '#5a8a44', rtex: 'turf', rh: 1.6, win: { n: 1 }, jit: 0.4 }).row('cairn', 0.3, 0.6, 5, { h: 2.4, jit: 0.7 });
+  for (const [v, tone, num] of [[0.42, tones[0], 3], [0.53, tones[1], 5], [0.64, tones[2], 7], [0.75, tones[3], 9]]) heap(M, m, v, 5, 3, tone, num); m.row('figure', 0.46, 0.8, 4, { jit: 0.6, down: 0.5 }); // the sorting shore
+  skip(M, 0.9, 1.04, 5, 6000);
+  const n = N.land([[-1.3, 0.08], [-0.6, 0.1], [0, 0.08], [0.28, 0.05], [0.4, 0]], sh, { rough: 0.2, strata: 0 }); pebbles(N, n, 260, 3); n.row('cairn', -1.2, 0.3, 7, { h: 2, jit: 0.5 }).row('figure', -0.3, 0.2, 2, { c: '#c03a4a' });
+  const k = N.land([[0.5, 0, 'r'], [0.54, 0.05], [0.66, 0.07], [0.78, 0.05], [0.84, 0]], sh, { rough: 0.2, strata: 0 }); pebbles(N, k, 120, 3); heap(N, k, 0.64, 3, 2, tones[4], 31); { const x = N.x(0.72), y = k.y(x) + 1; ST.figure(N.P, x, y, 4, { c: '#5a6a7a' }); N.P.em.push({ k: 'fn', x: x + 3, y: y - 9, draw: (px, py, t) => { const p = (t % 7400) / 7400; if (p > 0.94) { g.fillStyle = '#e8c8a0'; g.fillRect(px, py - 2, 4, 1); } } }); } // the thirty-one, and the man who will not sell it, winding up
+  skip(N, 0.84, 1.3, 9, 7400); skip(N, 0.4, 0.5, 4, 9100);
 };
 LANDS.promises = s => { const { far: F, mid: M, near: N } = s; // a long turf house the length of the island with a window every yard, shelves of jars inside catching the light
   const jars = (L, x0, x1, y, n) => { for (let k = 0; k < n; k++) { const x = Math.round(x0 + (x1 - x0) * (k + 0.5) / n), c = ['#ffd27a', '#80c8ff', '#ff9a8a', '#a0ffb0', '#e0b0ff'][k % 5]; L.P.rect(x, y, Math.max(2, L.u), Math.max(2, L.u), kHex('#1c1a20')); L.P.px(x, y + 1, kHex(c)); L.P.lit(x, y + 1, kHex(c), 255); if (k % 3 === 0) L.P.em.push({ k: 'blink', x: x + 1, y, w: 1, h: 1, c, ms: 2000 + k * 170, duty: 0.5 }); } };
