@@ -8530,7 +8530,7 @@ const packCap = () => PACK().cap, maxSteps = () => BOOT().steps;
 const shotOf = () => SHOT[S.shotSel] && (S.shotSel === 'stones' || S.shot[S.shotSel] > 0) ? S.shotSel : 'stones';
 const callOf = () => CALLS[S.callSel] && (S.callSel === 'none' || S.calls[S.callSel] > 0) ? S.callSel : 'none';
 const gameRank = (c, locId) => { const w = c.loc[locId] || 20; return c.rare ? 3 : w >= 24 ? 0 : w >= 16 ? 1 : w >= 10 ? 2 : 3; }; // common to rare, from island weight
-const gameValue = (c, kg, jit) => Math.round(Math.max(3, c.rate * Math.pow(Math.max(kg, 0.001), 0.75) * (1 + (jit || 0))));
+const gameValue = (c, kg, jit) => Math.round(Math.max(T_VALUE.floor, worthOf('game', c) * sizeWorth(spanFrac(kg, c.kg[0], c.kg[1])) * (1 + (jit || 0)))); // by rarity (T_VALUE), a little by how big this one is
 // The stalk. A sighting starts far off: the band is narrow. You can creep closer up to three times; every step widens the band
 // (×(1 + nearBand × steps)) and raises the animal's alertness by creepCost × skittishness × the wind (in your face, across, at your
 // back) × 2 if it has its head up. Alertness also climbs on its own; at 1 it bolts. A closer shot is worth more (×(1 + nearWorth × steps)).
@@ -8566,19 +8566,48 @@ const K_SHAPE = { fry: 0.009, bream: 0.018, trout: 0.011, pike: 0.006, eel: 0.00
 const kgOf = (sp, cm, jit) => Math.round((sp.k || K_SHAPE[sp.shape] || 0.01) * cm * cm * cm / 1000 * (1 + (jit || 0)) * 1000) / 1000;
 const fishKg = f => f.kg != null ? f.kg : kgOf(SP[f.id], f.cm, 0);
 const fmtKg = kg => kg < 1 ? Math.round(kg * 1000) + ' g' : kg < 10 ? kg.toFixed(1) + ' kg' : Math.round(kg) + ' kg';
-// Worth: rate × kg^0.75, ±15% rolled at catch time, ×1.5 at trophy size, never under $3. Not a straight line on purpose.
-const valueOf = (sp, kg, trophy, jit) => sp.kind ? 0 : Math.round(Math.max(3, sp.rate * Math.pow(Math.max(kg, 0.001), 0.75) * (1 + (jit || 0))) * (trophy ? 1.5 : 1));
+// WORTH: RARITY SETS THE PRICE.
+// What a thing sells for follows its rarity, almost directly. A species' typical worth is unit[its kind][its home tier] × mid[its
+// rarity], and the species of one tier and one rarity are spread over hi/lo = spread[rarity] around that, each placed by where its
+// own `rate` put it among those peers (so a deep-sea oddity is still dearer than a cod of the same rarity; equal rates are spread
+// by a hash of the id). The bands never overlap, and the spread is by far the widest at the top: commons of a tier are all worth
+// about the same, while one once-ever legend, fabled creature or relic can be worth twenty times another. `rate` no longer
+// prices anything by itself; it only orders a species among its peers. The specimen then matters a little: × size[0] at the
+// bottom of its size range to × size[1] at the top, ±jit rolled at catch time, × trophy at trophy size, never under floor.
+const T_VALUE = {
+  unit: { fish: [22, 24, 30, 34, 38, 62, 105], game: [14, 32, 62, 140, 240, 340, 480], ore: [9, 11, 16, 26, 44, 75, 130] }, // the worth of a middling common thing, by the island tier it comes from
+  mid: { common: 1, uncommon: 4, rare: 16, epic: 80, legendary: 560, fabled: 380, relic: 380 }, // × the unit: the middle of each rarity's band
+  spread: { common: 2, uncommon: 2.5, rare: 3.5, epic: 4, legendary: 10, fabled: 5, relic: 5 }, // hi/lo across the species of one tier and rarity: 0.7–1.4, 2.5–6.3, 8.6–30 and 40–160 units, then 177–1,771 for a legend fish and 170–850 for a fabled creature or a relic
+  size: [0.7, 1.4], trophy: 1.5, jit: 0.15, floor: 3,
+};
+const WORTH = { fish: null, game: null, ore: null }; // typical worth by id, built once from the tables above
+const strHash = str => { let h = 11; for (let i = 0; i < str.length; i++) h = (Math.imul(h, 31) + str.charCodeAt(i)) | 0; return hash32(h); };
+const homeTier = it => { let t = 99; for (const id in it.loc) { const l = LOC[id]; if (l && l.range < t) t = l.range; } return t > 6 ? 1 : t; };
+function worthTable(kind) {
+  if (WORTH[kind]) return WORTH[kind];
+  const items = kind === 'fish' ? SPECIES.filter(s => !s.kind) : kind === 'game' ? GAME : MINERALS, rar = kind === 'fish' ? rarityOf : kind === 'game' ? gameRarityOf : mineralRarityOf;
+  const midKg = it => kind === 'fish' ? kgOf(it, (it.size[0] + it.size[1]) / 2, 0) : (it.kg[0] + it.kg[1]) / 2, groups = {}, out = {};
+  for (const it of items) { const k = homeTier(it) + '|' + rar(it); (groups[k] = groups[k] || []).push([it, it.rate * Math.pow(Math.max(midKg(it), 1e-4), 0.75), strHash(it.id)]); }
+  for (const k in groups) { const [t, r] = k.split('|'), a = groups[k].sort((x, y) => x[1] - y[1] || x[2] - y[2]), U = T_VALUE.unit[kind][+t] * T_VALUE.mid[r], S = T_VALUE.spread[r];
+    a.forEach((x, i) => { out[x[0].id] = U * Math.pow(S, (i + 0.5) / a.length - 0.5); }); }
+  return WORTH[kind] = out;
+}
+const worthOf = (kind, it) => worthTable(kind)[it.id] || T_VALUE.floor;
+const sizeWorth = f => T_VALUE.size[0] + (T_VALUE.size[1] - T_VALUE.size[0]) * clamp(f, 0, 1);
+const spanFrac = (v, lo, hi) => hi > lo ? clamp((v - lo) / (hi - lo), 0, 1) : 0.5;
+// a fish: f is how far up its length range it is (0 the smallest adult, 1 the largest)
+const valueOf = (sp, f, trophy, jit) => sp.kind ? 0 : Math.round(Math.max(T_VALUE.floor, worthOf('fish', sp) * sizeWorth(f) * (1 + (jit || 0))) * (trophy ? T_VALUE.trophy : 1));
 // Rarity tiers, shown in colour on the catch screen and in the index. Derived from the data: a legend is legendary, the `rare`
 // flag is rare (epic when it also needs squid, fights at 0.75+, or sits at weight 3 or under), otherwise the island weight decides.
 // A species can pin its own with `tier`.
 const RARITY = { common: { name: 'Common', col: '#c9d6e4' }, uncommon: { name: 'Uncommon', col: '#6fdc8c' }, rare: { name: 'Rare', col: '#5ab0ff' }, epic: { name: 'Epic', col: '#c68bff' }, legendary: { name: 'Legendary', col: '#ffcf4a' }, fabled: { name: 'Fabled', col: '#ff7f50' }, relic: { name: 'Relic', col: '#5ee8c0' } }; // fabled: the creatures' own once-ever tier, ember against the fish legends' gold; relic: the minerals', mint
 // A creature's rarity, derived like a fish's: fabled for the once-ever ones; the rare flag is epic when it also fights at 0.75+ or sits at ground weight 3 or under; the rest by ground weight.
 function gameRarityOf(c) { if (c.legend) return 'fabled'; const w = Math.max(...Object.values(c.loc)); if (c.rare) return c.diff >= 0.75 || w <= 3 ? 'epic' : 'rare'; return w >= 24 ? 'common' : w >= 14 ? 'uncommon' : w >= 8 ? 'rare' : 'epic'; }
-function rarityOf(s) {
-  if (s.kind) return null; if (s.legend) return 'legendary'; if (s.tier) return s.tier;
-  const w = Math.max(...Object.values(s.loc));
-  if (s.rare) return (s.minBait || 0) >= 2 || s.diff >= 0.75 || w <= 3 ? 'epic' : 'rare';
-  return w >= 16 ? 'common' : w >= 7 ? 'uncommon' : 'rare';
+function rarityOf(s) { // how scarce it is in its water, plus what it takes to tempt it, plus the rare flag: a step up for each
+  if (s.kind) return null; if (s.legend) return 'legendary'; if (s.tier) return s.tier; if (s._rar) return s._rar;
+  const w = Math.max(...Object.values(s.loc)); let rk = (w >= 16 ? 0 : w >= 7 ? 1 : 2) + (s.minBait || 0);
+  if (s.rare) rk = Math.max(2, rk + 1); // rod or trophy line only: never less than rare
+  return s._rar = ['common', 'uncommon', 'rare', 'epic'][Math.min(3, rk)];
 }
 // Variants, rolled at cast time. Large and gigantic come on the rod and the trophy line (a set line never lands them); albino and
 // mutated can come on anything. Worth is multiplied. A species with `mutant: true` only ever comes mutated, with no penalty: that is what it is.
@@ -10229,7 +10258,7 @@ const PICK = () => PICKS.find(x => x.id === S.pick) || PICKS[0], LAMP = () => LA
 const sackCap = () => SACK().cap;
 const chargeOf = () => CHARGES[S.chargeSel] && (S.chargeSel === 'none' || S.charges[S.chargeSel] > 0) ? S.chargeSel : 'none';
 const aidOf = () => AIDS[S.aidSel] && (S.aidSel === 'none' || S.aids[S.aidSel] > 0) ? S.aidSel : 'none';
-const mineralValue = (m, kg, jit) => Math.round(Math.max(3, m.rate * Math.pow(Math.max(kg, 0.0001), 0.75) * (1 + (jit || 0))));
+const mineralValue = (m, kg, jit) => Math.round(Math.max(T_VALUE.floor, worthOf('ore', m) * sizeWorth(spanFrac(kg, m.kg[0], m.kg[1])) * (1 + (jit || 0)))); // by rarity (T_VALUE), a little by the size of the specimen
 // A mineral's rarity, derived like a fish's: relic for the once-ever ones; the rare flag is epic at hardness 8+ or mine weight 3 or under; the rest by mine weight (22+ common, 12+ uncommon, 7+ rare, under 7 epic).
 function mineralRarityOf(m) { if (m.relic) return 'relic'; const w = Math.max(...Object.values(m.loc)); if (m.rare) return m.hard >= 8 || w <= 3 ? 'epic' : 'rare'; return w >= 22 ? 'common' : w >= 12 ? 'uncommon' : w >= 7 ? 'rare' : 'epic'; }
 const MINERAL_VARIANTS = { flawless: { name: 'Flawless', col: '#ffffff', mult: 3 }, giant: { name: 'Giant', col: '#ffd34a', mult: 2.5 }, chipped: { name: 'Chipped', col: '#a3aec6', mult: 0.5 } };
@@ -10315,7 +10344,7 @@ function load(seed) {
     d.v = 5;
   }
   if (d && d.v === 5) { // v5 -> v6: worth now comes from weight; reprice everything in hand
-    const re = f => { if (SP[f.id] && !SP[f.id].kind) f.value = valueOf(SP[f.id], f.kg != null ? f.kg : kgOf(SP[f.id], f.cm, 0), f.trophy, 0); };
+    const re = f => { const sp = SP[f.id]; if (sp && !sp.kind) f.value = valueOf(sp, spanFrac(f.cm, sp.size[0], sp.size[1]), f.trophy, 0); };
     (d.bucket || []).forEach(re); if (d.pending) re(d.pending); (d.lines || []).forEach(L => { if (L && L.c) re(L.c); });
     d.v = 6;
   }
@@ -10473,7 +10502,7 @@ function rollCatch(locId, rig, baitId, t, waitMs) {
   const kg = s.kind ? 0 : kgOf(s, cm, rnd(-0.08, 0.08));
   const mult = v && !s.mutant ? VARIANTS[v].mult : 1;
   const bw = s.kind ? 1 : (BAITS[baitId].worth || 1); // a fish taken on better bait sells for more
-  return { id: s.id, cm, kg, value: Math.round(valueOf(s, kg, trophy, rnd(-0.15, 0.15)) * mult * bw), trophy, v, stray, capped, off: offS || undefined, wx: weatherAt(t, locId) };
+  return { id: s.id, cm, kg, value: Math.round(valueOf(s, f, trophy, rnd(-T_VALUE.jit, T_VALUE.jit)) * mult * bw), trophy, v, stray, capped, off: offS || undefined, wx: weatherAt(t, locId) };
 }
 // The rod bites within a few seconds. A passive line soaks: a small chance every second, so the wait is exponential (memoryless), sampled
 // once at cast time so it survives closing the game. Nothing waits longer than soakCap means.
@@ -16153,7 +16182,7 @@ function rollGame() {
   for (const [cc, w] of p) { r -= w; if (r <= 0) { c = cc; break; } }
   return rollSize(c);
 }
-function rollSize(c) { const f = Math.pow(Math.random(), 1.3), kg = Math.round((c.kg[0] + (c.kg[1] - c.kg[0]) * f) * 1000) / 1000; return { c, kg, value: gameValue(c, kg, rnd(-0.15, 0.15)) }; }
+function rollSize(c) { const f = Math.pow(Math.random(), 1.3), kg = Math.round((c.kg[0] + (c.kg[1] - c.kg[0]) * f) * 1000) / 1000; return { c, kg, value: gameValue(c, kg, rnd(-T_VALUE.jit, T_VALUE.jit)) }; }
 function startStalk() {
   if (HU && HU.phase !== 'idle') return;
   const roll = rollGame(); if (!roll) { toast('Nothing stirs here at this hour.'); return; }
@@ -16420,7 +16449,7 @@ function found(m, how) {
   if (how === 'chipped') v = 'chipped';
   else if (!m.relic) { const r = Math.random(); if (r < T_MINE.flawless) v = 'flawless'; else if (r < T_MINE.flawless + T_MINE.giant) { v = 'giant'; kg = m.kg[1] * (1.1 + Math.random() * 0.4); } }
   kg = Math.round(kg * 10000) / 10000;
-  const value = Math.round(mineralValue(m, kg, rnd(-0.15, 0.15)) * (v ? MINERAL_VARIANTS[v].mult : 1)), tags = [];
+  const value = Math.round(mineralValue(m, kg, rnd(-T_VALUE.jit, T_VALUE.jit)) * (v ? MINERAL_VARIANTS[v].mult : 1)), tags = [];
   const mx = S.mindex[m.id] || (S.mindex[m.id] = { n: 0, best: 0 });
   if (mx.n === 0) tags.push('New find'); if (kg > mx.best) { if (mx.n > 0) tags.push('New record'); mx.best = kg; } mx.n++;
   if (v) { mx.v = mx.v || {}; mx.v[v] = (mx.v[v] || 0) + 1; }
