@@ -16298,7 +16298,7 @@ LandMass.prototype = {
 };
 // --- what grows on the land: trees one by one, forest as a canopy, fields, terraces, walls, water ---
 // A tree is drawn at any size from its height in pixels: x the foot of its trunk, y the ground, R the leaf ramp.
-const TRUNK = kHex('#4a3626'), TRUNK_D = kHex('#2e2018');
+let TRUNK = kHex('#4a3626'), TRUNK_D = kHex('#2e2018'); // the colour of a trunk: trees() can change it for a stretch (o.trunk)
 const TREE = {
   conifer(P, x, y, h, R, s) { // tiers of drooping boughs, a lit right side
     if (h < 5) { P.rect(x, y - h, 1, h, R[1]); if (h > 2) P.rect(x - 1, y - h + 2, 3, h - 3, R[2]); P.px(x + 1, y - h + 2, R[3]); return; }
@@ -16337,7 +16337,15 @@ const TREE = {
   crystal(P, x, y, h, R, s) { const n = h > 10 ? 3 : 1; for (let i = 0; i < n; i++) { const cx = x + (i - (n >> 1)) * Math.max(2, h * 0.16), ch = h * (i === (n >> 1) ? 1 : 0.6 + 0.2 * nH(s, i, 11)) | 0, w = Math.max(1, h * 0.07 | 0), ln = (i - (n >> 1)) * 0.14; for (let k = 0; k < ch; k++) { const px = cx + Math.round(ln * k), ww = k > ch - w * 2 ? Math.max(0, (ch - k) >> 1) : w; P.rect(px - ww, y - 1 - k, ww + 1, 1, R[2]); P.rect(px + 1, y - 1 - k, ww, 1, R[3]); P.px(px - ww, y - 1 - k, R[1]); } P.px(cx + Math.round(ln * ch), y - ch - 1, R[4]); } },
   coral(P, x, y, h, R, s) { const go = (px, py, len, a, d) => { for (let k = 0; k < len; k++) { P.px(px + Math.cos(a) * k, py + Math.sin(a) * k, k > len * 0.6 ? R[3] : R[2]); } if (d > 0 && len > 2) { go(px + Math.cos(a) * len, py + Math.sin(a) * len, len * 0.65, a - 0.6, d - 1); go(px + Math.cos(a) * len, py + Math.sin(a) * len, len * 0.65, a + 0.55, d - 1); } }; go(x, y, h * 0.45, -1.57 + (nH(s, 1, 12) - 0.5) * 0.3, h > 12 ? 3 : 2); },
 };
-const LEAF = { conifer: '#2f6a4a', broad: '#4a8a3a', palm: '#3a9a4a', cypress: '#2a5a3a', poplar: '#5a9a40', birch: '#8ab04a', acacia: '#6a8a3a', baobab: '#6a8a4a', bamboo: '#6a9a3a', willow: '#6a9a4a', bush: '#4a7a36', cactus: '#4a8a4a', fern: '#3a8a3a', mangrove: '#3a7a3a', mushroom: '#c04a3a', crystal: '#8adcea', coral: '#e07a8a', dead: '#3a3036' };
+TREE.swamp = (P, x, y, h, R, s) => { const th = h * 0.6 | 0, tc = kHex('#5a4a40'), td = kHex('#3a2e2a'); for (let k = 0; k < th; k++) { const ww = Math.max(0, Math.round(h * 0.09 * Math.pow(1 - k / th, 2.4))); P.rect(x - ww, y - 1 - k, ww * 2 + (h > 14 ? 2 : 1), 1, tc); P.px(x - ww, y - 1 - k, td); } for (let k = -2; k <= 2; k++) if (k && h > 10) P.rect(x + k * Math.max(2, h * 0.07 | 0), y - Math.max(1, (h * 0.07 * (3 - Math.abs(k))) | 0), 1, Math.max(1, (h * 0.07 * (3 - Math.abs(k))) | 0), td); const r = Math.max(2, h * 0.3); P.ball(x - r * 0.5, y - th - r * 0.1, r * 0.8, r * 0.5, R); P.ball(x + r * 0.6, y - th - r * 0.2, r * 0.9, r * 0.55, R); P.ball(x, y - th - r * 0.6, r, r * 0.6, R); const mc = kHex('#9aa890'); for (let k = -r; k <= r; k += 2) { const len = (r * (0.4 + 1.1 * nH(s, k, 8))) | 0; for (let j = 0; j < len; j++) if ((j + k) % 3) P.px(x + k, y - th + j, mc); } };
+TREE.cork = function (P, x, y, h, R, s) { // a cork oak: stripped red to the first branch, grey above, a wide low crown
+  if (h < 6) return TREE.broad(P, x, y, h, R, s);
+  const th = Math.max(3, h * 0.42 | 0), tw = Math.max(1, Math.round(h * 0.09)), r = Math.max(2, h * 0.36), cy = y - th - r * 0.5, red = kHex('#b8452e'), redD = kHex('#8a3020'), grey = kHex('#6a6258'), st = Math.round(th * 0.62);
+  P.rect(x - (tw >> 1), y - th, tw, th, grey); P.rect(x - (tw >> 1), y - st, tw, st, red); if (tw > 1) P.rect(x - (tw >> 1), y - st, 1, st, redD);
+  if (h > 10) { P.line(x, y - th, x - Math.round(r * 0.6), y - th - Math.round(r * 0.4), grey); P.line(x, y - th, x + Math.round(r * 0.7), y - th - Math.round(r * 0.5), grey); }
+  P.ball(x - r * 0.7, cy + r * 0.2, r * 0.8, r * 0.55, R); P.ball(x + r * 0.75, cy + r * 0.15, r * 0.85, r * 0.6, R); P.ball(x, cy - r * 0.2, r * 1.05, r * 0.7, R);
+};
+const LEAF = { cork: '#55703e', conifer: '#2f6a4a', broad: '#4a8a3a', palm: '#3a9a4a', cypress: '#2a5a3a', poplar: '#5a9a40', birch: '#8ab04a', acacia: '#6a8a3a', baobab: '#6a8a4a', bamboo: '#6a9a3a', willow: '#6a9a4a', bush: '#4a7a36', cactus: '#4a8a4a', fern: '#3a8a3a', mangrove: '#3a7a3a', mushroom: '#c04a3a', crystal: '#8adcea', coral: '#e07a8a', dead: '#3a3036', swamp: '#4a6a4a' };
 
 Object.assign(LandMass.prototype, {
   // where on the face of the land a thing stands: v along it, `down` px below the skyline
@@ -16348,10 +16356,10 @@ Object.assign(LandMass.prototype, {
     o = o || {}; if (a != null) o.a = a; if (b != null) o.b = b; if (n_ != null) o.n = n_; const L = this.L, P = this.P, u = L.u, xa = Math.max(this.x0 + 1, L.x(o.a == null ? -9 : o.a)), xb = Math.min(this.x1 - 1, L.x(o.b == null ? 9 : o.b)); if (xb <= xa) return this;
     const hr = o.h || [5, 9], n = o.n || Math.max(1, Math.round((xb - xa) / ((o.every || 6) * u))), on = o.on || 'both', deep = o.deep == null ? 0.7 : o.deep, kinds = Array.isArray(kind) ? kind : [kind], s0 = this.seed + (o.seed || 0) + 77, list = [];
     for (let k = 0; k < n; k++) { const x = Math.round(xa + (xb - xa) * (o.even ? (k + 0.5) / n : nH(k, 1, s0))), hh = this.h[x]; if (hh < 2) continue; const face = on === 'face' || (on === 'both' && nH(k, 2, s0) > 0.4), dy = face ? Math.round(nH(k, 3, s0) * hh * deep) : 0; list.push([x, this.y(x) + dy, k]); }
-    list.sort((p, q) => p[1] - q[1]);
+    list.sort((p, q) => p[1] - q[1]); const T0 = TRUNK, T1 = TRUNK_D; if (o.trunk) { TRUNK = kHex(o.trunk); TRUNK_D = kTone(TRUNK, -0.4); }
     for (const [x, y, k] of list) { const kd = kinds[(nH(k, 4, s0) * kinds.length) | 0], R = kRamp(kTone(kHex(o.c || LEAF[kd] || LEAF.broad), (nH(k, 5, s0) - 0.5) * 0.3)), hpx = Math.max(2, Math.round((hr[0] + (hr[1] - hr[0]) * nH(k, 6, s0)) * u * (y > this.y(x) ? 1 + 0.25 * (y - this.y(x)) / Math.max(8, this.h[x]) : 1)));
-      (TREE[kd] || TREE.broad)(P, x, y + 1, hpx, R, s0 + k); }
-    return this;
+      (TREE[kd] || TREE.broad)(P, x, y + 1, hpx, R, s0 + k); if (o.birds && nH(k, 7, s0) < o.birds) { const bc = kHex(o.birdc || '#f4f4f0'); if (u >= 3) for (let j = 0; j < 3; j++) { const bx = x + Math.round((nH(k, 8 + j, s0) - 0.5) * hpx * 0.5), by = y - Math.round(hpx * (0.62 + 0.36 * nH(k, 11 + j, s0))); P.rect(bx - 1, by, 4, 1, kHex('#4a3a28')); P.rect(bx, by - 3, 1, 3, kHex(j === 1 ? '#f4f4f0' : '#9aa0aa')); P.px(bx, by - 4, bc); P.px(bx + (j % 2 ? 1 : -1), by - 4, kHex('#e8b040')); } else { P.px(x - 1, y - hpx + 1, bc); P.px(x + 2, y - hpx + 3, bc); if (u >= 2) { P.px(x, y - hpx + 5, kHex('#9aa0aa')); P.px(x - 2, y - hpx + 3, bc); } } } }
+    TRUNK = T0; TRUNK_D = T1; return this;
   },
   // Forest as one canopy over a stretch of the land: crowns packed shoulder to shoulder, lit from the upper right.
   // o: a, b, c, kind ('broad' rounded crowns, 'conifer' spires), deep (0..1 of the land's height it covers from the skyline down), gaps (0..1 of clearings), size (metres across a crown)
@@ -16408,12 +16416,17 @@ Object.assign(LandMass.prototype, {
   // Boulders and outcrops on the face
   rocks(a, b, n_, o) { o = o || {}; if (a != null) o.a = a; if (b != null) o.b = b; if (n_ != null) o.n = n_; const L = this.L, P = this.P, xa = Math.max(this.x0 + 1, L.x(o.a == null ? -9 : o.a)), xb = Math.min(this.x1 - 1, L.x(o.b == null ? 9 : o.b)), R = kRamp(o.c || '#7a7a84'), n = o.n || 8, s0 = this.seed + 131; for (let k = 0; k < n; k++) { const x = Math.round(xa + (xb - xa) * nH(k, 1, s0)), hh = this.h[x]; if (hh < 2) continue; const y = this.y(x) + Math.round(nH(k, 2, s0) * hh * (o.deep == null ? 0.8 : o.deep)), r = Math.max(1, (o.size || 0.8) * L.u * (0.5 + nH(k, 3, s0))); P.ball(x, y - r * 0.5, r * 1.3, r, R); } return this; },
   // Small things in number: sheep, cattle, goats, people, haycocks, beehives, crosses... kind: [w, h, body colour, head colour]
-  dots(kind, a, b, n_, o) { o = o || {}; if (a != null) o.a = a; if (b != null) o.b = b; if (n_ != null) o.n = n_; const L = this.L, P = this.P, u = L.u, K = { sheep: ['#f0ece0', '#3a3430', 0.9], cow: ['#6a4a34', '#f0e8d8', 1.4], goat: ['#d8d0c0', '#5a5048', 0.8], pony: ['#5a4030', '#2a2018', 1.4], deer: ['#a8703a', '#f0e0c0', 1.2], hay: ['#d8b860', '#b89840', 1.4], hive: ['#d8b870', '#8a6a34', 0.7], stone: ['#9a9a90', '#c0c0b8', 0.8], cross: ['#e0dcd0', '#e0dcd0', 0.9], penguin: ['#20242c', '#f4f4f0', 0.7], seal: ['#5a5a66', '#7a7a86', 1.3], flamingo: ['#f08aa0', '#f8b8c8', 1.1], reindeer: ['#8a7a6a', '#e8e0d0', 1.3], yak: ['#3a2e28', '#6a5a50', 1.5], llama: ['#e8dcc8', '#b8a890', 1.2], turtle: ['#5a7a4a', '#3a5a34', 1.0], crab: ['#d0503a', '#f08a6a', 0.5] }[kind] || ['#f0ece0', '#3a3430', 0.9];
+  dots(kind, a, b, n_, o) { o = o || {}; if (a != null) o.a = a; if (b != null) o.b = b; if (n_ != null) o.n = n_; const L = this.L, P = this.P, u = L.u, K = { sheep: ['#f0ece0', '#3a3430', 0.9], cow: ['#6a4a34', '#f0e8d8', 1.4], goat: ['#d8d0c0', '#5a5048', 0.8], pony: ['#5a4030', '#2a2018', 1.4], deer: ['#a8703a', '#f0e0c0', 1.2], hay: ['#d8b860', '#b89840', 1.4], hive: ['#d8b870', '#8a6a34', 0.7], stone: ['#9a9a90', '#c0c0b8', 0.8], cross: ['#e0dcd0', '#e0dcd0', 0.9], penguin: ['#20242c', '#f4f4f0', 0.7], seal: ['#5a5a66', '#7a7a86', 1.3], flamingo: ['#f08aa0', '#f8b8c8', 1.1], egret: ['#f4f4f0', '#f4f4f0', 1.0], heron: ['#9aa0aa', '#f0f0f4', 1.1], reindeer: ['#8a7a6a', '#e8e0d0', 1.3], yak: ['#3a2e28', '#6a5a50', 1.5], llama: ['#e8dcc8', '#b8a890', 1.2], turtle: ['#5a7a4a', '#3a5a34', 1.0], crab: ['#d0503a', '#f08a6a', 0.5] }[kind] || ['#f0ece0', '#3a3430', 0.9];
     const xa = Math.max(this.x0 + 1, L.x(o.a == null ? -9 : o.a)), xb = Math.min(this.x1 - 1, L.x(o.b == null ? 9 : o.b)), n = o.n || 6, s0 = this.seed + 171 + (o.seed || 0), body = kHex(o.c || K[0]), head = kHex(K[1]), sz = K[2] * u;
-    for (let k = 0; k < n; k++) { const x = Math.round(xa + (xb - xa) * nH(k, 1, s0)), hh = this.h[x]; if (hh < 2) continue; const y = this.y(x) + Math.round((o.from || 0.1) * hh + nH(k, 2, s0) * hh * ((o.to == null ? 0.8 : o.to) - (o.from || 0.1))), w = Math.max(1, Math.round(sz)), h2 = Math.max(1, Math.round(sz * (kind === 'penguin' || kind === 'cross' || kind === 'flamingo' ? 1.4 : 0.62))), flip = nH(k, 3, s0) > 0.5;
+    const wader = kind === 'flamingo' || kind === 'egret' || kind === 'heron';
+    for (let k = 0; k < n; k++) { const x = Math.round(xa + (xb - xa) * nH(k, 1, s0)), hh = this.h[x]; if (hh < 2) continue; const y = this.y(x) + Math.round((o.from || 0.1) * hh + nH(k, 2, s0) * hh * ((o.to == null ? 0.8 : o.to) - (o.from || 0.1))), w = Math.max(1, Math.round(sz)), h2 = Math.max(1, Math.round(sz * (kind === 'penguin' || kind === 'cross' || wader ? 1.4 : 0.62))), flip = nH(k, 3, s0) > 0.5;
       if (kind === 'hay') { P.tri(x, y - h2 - 1, w, h2 + 1, body); P.px(x + 1, y - 1, head); continue; }
       if (kind === 'cross') { P.rect(x, y - h2 - 1, 1, h2 + 1, body); P.rect(x - 1, y - h2, 3, 1, body); continue; }
-      if (kind === 'flamingo') { P.rect(x, y - h2, 1, h2, kHex('#e87a90')); P.rect(x - 1, y - h2 - 1, w + 1, Math.max(1, w >> 1), body); P.px(x + (flip ? w : -2), y - h2 - 2, head); continue; }
+      if (wader) { if (u >= 3) { const lg = kHex(kind === 'flamingo' ? '#d8607a' : '#3a3a34'), bw = w + 1, hx = flip ? x + bw : x - 2, feed = nH(k, 5, s0) > 0.62; P.rect(x + 1, y - h2, 1, h2, lg); if (nH(k, 4, s0) > 0.4) P.rect(x + 3, y - h2, 1, h2, lg); P.rect(x - 1, y - h2 - 2, bw + 1, 3, body); P.rect(x, y - h2 - 3, bw - 1, 1, head); P.px(flip ? x - 2 : x + bw, y - h2 - 1, lg);
+          if (feed) { P.rect(hx, y - h2 - 1, 1, h2 - 1, body); P.px(hx + (flip ? 1 : -1), y - 2, head); } else { P.rect(hx, y - h2 - 6, 1, 5, body); P.rect(hx + (flip ? 0 : -1), y - h2 - 7, 2, 1, head); P.px(hx + (flip ? 2 : -2), y - h2 - 6, kHex(kind === 'flamingo' ? '#2a2028' : '#e8b040')); } }
+        else { P.rect(x, y - h2, 1, h2, kHex(kind === 'flamingo' ? '#e87a90' : '#3a3a34')); P.rect(x - 1, y - h2 - 1, w + 1, Math.max(1, w >> 1), body); P.px(x + (flip ? w : -2), y - h2 - 2, head); } continue; }
+      if (kind === 'seal' && u >= 3) { const B = kRamp(o.c || K[0]), hx = flip ? x + 6 : x; P.rect(x, y - 2, 7, 2, B[2]); P.rect(x + 1, y - 3, 4, 1, B[2]); P.rect(x + 1, y - 1, 5, 1, B[1]); P.rect(hx, y - 4, 1, 2, B[2]); P.px(flip ? hx + 1 : hx - 1, y - 4, B[2]); P.px(flip ? x - 1 : x + 7, y - 1, B[1]); P.px(flip ? x - 2 : x + 8, y - 2, B[1]); continue; }
+      if (kind === 'turtle' && u >= 3) { const B = kRamp(o.c || '#6a7a4a'), fl = kHex('#8a8a5a'); P.rect(x, y - 3, 6, 3, B[2]); P.rect(x + 1, y - 4, 4, 1, B[3]); P.rect(x + 1, y - 2, 4, 1, B[1]); P.px(x + 2, y - 3, B[1]); P.px(x + 4, y - 3, B[1]); P.px(flip ? x + 6 : x - 1, y - 2, fl); P.px(flip ? x + 7 : x - 2, y - 2, fl); P.px(x, y, fl); P.px(x + 5, y, fl); continue; }
       P.rect(x, y - h2, w, h2, body); if (kind === 'penguin') { P.px(x, y - h2 + 1, head); if (w > 1) P.rect(x, y - h2 + 1, 1, h2 - 1, head); continue; }
       P.px(flip ? x + w : x - 1, y - h2, head); if (u > 2) { P.px(x, y, head); P.px(x + w - 1, y, head); } }
     return this; },
@@ -16548,7 +16561,7 @@ const ST = {
   windmill(P, x, y, u, o) { o = o || {}; const t = tower(P, x, y, u, Object.assign({ w: 4.4, h: 8, taper: 0.42, wall: '#e8e0cc', cap: 'cone', caph: 1.8, capc: '#5a4030', wins: 2 }, o)); P.em.push({ k: 'sails', x, y: y - Math.round((o.h || 8) * u * 0.92), r: Math.round((o.r || 5.6) * u), ms: o.ms || 1500, ph: nH(x, 1, P.seed), c: o.sc || '#f0e8d0' }); return t; },
   watermill(P, x, y, u, o) { const r = bldg(P, x, y, u, Object.assign({ w: 7, h: 4, wall: '#9a968c', wtex: 'stone', roof: 'gable', rc: '#5a4a40', rh: 2, storeys: 2, win: { n: 2 } }, o)); const wx = r.x0 - Math.round(u * 0.4), wy = y - Math.round(u * 1.9), wr = Math.round(u * 1.9); for (let a = 0; a < 6.28; a += 0.12) P.px(wx + Math.cos(a) * wr, wy + Math.sin(a) * wr, kHex('#4a3626')); P.em.push({ k: 'wheel', x: wx, y: wy, r: wr - 1 }); P.rect(wx - wr, y - 1, wr * 2, 1, kHex('#a8d0e8')); return r; },
   // kilns and stacks
-  kiln(P, x, y, u, o) { o = o || {}; const h = Math.round((o.h || 7) * u), w = (o.w || 4.4) * u, R = kRamp(o.c || '#a8604a'); for (let k = 0; k < h; k++) { const q = k / h, ww = Math.max(1, Math.round((w / 2) * (q < 0.45 ? 1 : 1 - (q - 0.45) * 1.25))); P.rect(x - ww, y - 1 - k, ww * 2, 1, R[2]); P.rect(x - ww, y - 1 - k, Math.max(1, ww >> 1), 1, R[1]); P.px(x + ww - 1, y - 1 - k, R[3]); if (u >= 3 && k % Math.max(2, u >> 1) === 0) P.rect(x - ww, y - 1 - k, ww * 2, 1, R[1]); } if (u >= 2) { P.rect(x - Math.max(1, u >> 1), y - Math.round(u * 1.3), Math.max(2, u), Math.round(u * 1.3), kHex('#2a1612')); P.litRect(x - Math.max(1, u >> 1), y - Math.round(u * 1.1), Math.max(2, u), Math.round(u * 0.9), kHex('#ff7a30'), 255); P.px(x, y - Math.round(u * 0.6), kHex('#e0602a')); } P.em.push({ k: 'smoke', x, y: y - h - 1, rise: u * 6, n: 5, grow: u, c: o.sc || '120,112,112', a: 0.55, drift: u * 2.5 }); return { top: y - h }; },
+  kiln(P, x, y, u, o) { o = o || {}; const h = Math.round((o.h || 7) * u), w = (o.w || 4.4) * u, R = kRamp(o.c || '#a8604a'); for (let k = 0; k < h; k++) { const q = k / h, ww = Math.max(1, Math.round((w / 2) * (q < 0.45 ? 1 : 1 - (q - 0.45) * 1.25))); P.rect(x - ww, y - 1 - k, ww * 2, 1, R[2]); P.rect(x - ww, y - 1 - k, Math.max(1, ww >> 1), 1, R[1]); P.px(x + ww - 1, y - 1 - k, R[3]); if (u >= 3 && k % Math.max(2, u >> 1) === 0) P.rect(x - ww, y - 1 - k, ww * 2, 1, R[1]); } if (u >= 2) { P.rect(x - Math.max(1, u >> 1), y - Math.round(u * 1.3), Math.max(2, u), Math.round(u * 1.3), kHex('#2a1612')); P.litRect(x - Math.max(1, u >> 1), y - Math.round(u * 1.1), Math.max(2, u), Math.round(u * 0.9), kHex('#ff7a30'), 255); P.px(x, y - Math.round(u * 0.6), kHex('#e0602a')); } if (o.smoke !== false) P.em.push({ k: 'smoke', x, y: y - h - 1, rise: u * 6, n: 5, grow: u, c: o.sc || '120,112,112', a: 0.55, drift: u * 2.5 }); return { top: y - h }; },
   stack(P, x, y, u, o) { o = o || {}; const h = Math.round((o.h || 14) * u), w = Math.max(1, Math.round((o.w || 1.6) * u)), R = kRamp(o.c || '#8a5a48'); for (let k = 0; k < h; k++) { const ww = Math.max(1, Math.round((w / 2) * (1.25 - 0.4 * k / h))); P.rect(x - ww, y - 1 - k, ww * 2, 1, R[2]); P.rect(x - ww, y - 1 - k, Math.max(1, ww >> 1), 1, R[1]); if (u >= 3 && k % (u * 2) === 0) P.rect(x - ww, y - 1 - k, ww * 2, 1, R[0]); } P.rect(x - w, y - h - 1, w * 2, 1, R[0]); P.em.push({ k: 'plume', x, y: y - h - 2, rise: u * (o.rise || 12), n: 7, grow: u * 2.2, drift: u * 7, c: o.sc || '70,66,72', a: o.sa || 0.5, ms: 7000 }); return { top: y - h }; },
   smokehouse(P, x, y, u, o) { const r = bldg(P, x, y, u, Object.assign({ w: 4, h: 4.6, wall: '#3e3028', wtex: 'vplank', roof: 'gable', rc: '#2a2020', rh: 1.6, win: false, door: { at: 0.5, w: 1.2 } }, o)); const vx = x, vy = r.top; P.rect(vx - Math.max(1, u >> 1), vy - Math.round(u * 0.8), Math.max(2, u), Math.round(u * 0.8), kHex('#2a2020')); if (u >= 3) for (let k = 0; k < 3; k++) P.rect(vx - Math.max(1, u >> 1), vy - Math.round(u * 0.8) + k * 2, Math.max(2, u), 1, kHex('#4a3a34')); P.em.push({ k: 'smoke', x: vx, y: vy - Math.round(u * 0.9), rise: u * 5, n: 5, grow: u * 0.9, c: '150,140,130', a: 0.5, drift: u * 3 }); return r; },
   // harbour and shore furniture
@@ -16628,6 +16641,12 @@ Object.assign(ST, {
   // a flight of roosting or nesting birds drawn as specks on the ground (flamingos, penguins etc. use dots); a signal: arms on a post
   signal(P, x, y, u, o) { const c = kHex('#3a2a20'), h = Math.round(((o && o.h) || 6) * u); P.rect(x, y - h, Math.max(1, u >> 2), h, c); P.line(x, y - h + u, x + Math.round(u * 1.6), y - h - Math.round(u * 0.6), c); P.line(x, y - h + u * 2, x - Math.round(u * 1.6), y - h + Math.round(u * 2.8), c); P.rect(x + Math.round(u * 1.4), y - h - Math.round(u * 0.9), Math.max(1, u >> 1), Math.max(1, u >> 1), kHex('#c03030')); },
   arch(P, x, y, u, o) { o = o || {}; const R = kRamp(o.c || '#b8b4a8'), w = Math.round((o.w || 5) * u), h = Math.round((o.h || 6) * u), t = Math.max(1, Math.round((o.t || 1) * u)); P.rect(x - (w >> 1), y - h, t, h, R[2]); P.rect(x + (w >> 1) - t, y - h, t, h, R[2]); P.rect(x - (w >> 1), y - h, 1, h, R[1]); for (let k = 0; k < t + (w >> 2); k++) { const ww = Math.round((w / 2) * Math.sqrt(Math.max(0, 1 - Math.pow(k / (t + (w >> 2)), 2)))); P.rect(x - ww, y - h - 1 - k, ww * 2, 1, R[k > t ? 3 : 2]); } for (let k = 0; k < (w >> 2); k++) { const ww = Math.round((w / 2 - t) * Math.sqrt(Math.max(0, 1 - Math.pow(k / (w >> 2), 2)))); P.clear(x - ww, y - h - 1 - k, ww * 2, 1); } },
+  // a dome of brick let into the ground (an ice house, a kiln, a store), with its door
+  dome(P, x, y, u, o) { o = o || {}; const R = kRamp(o.c || '#a8604a'), r = Math.round((o.r || 3) * u); for (let k = 0; k < r; k++) { const ww = Math.round(r * Math.sqrt(1 - Math.pow(k / r, 2))); P.rect(x - ww, y - 1 - k, ww * 2, 1, R[k % Math.max(2, u >> 1) === 0 ? 1 : 2]); P.rect(x - ww, y - 1 - k, Math.max(1, ww >> 2), 1, R[1]); P.px(x + ww - 1, y - 1 - k, R[3]); } if (o.door !== false && u >= 2) { const dw = Math.max(1, Math.round(u * 0.9)), dh = Math.max(2, Math.round(u * 1.7)); P.rect(x - (dw >> 1), y - dh, dw, dh, kHex('#1c1410')); P.rect(x - (dw >> 1) - 1, y - dh - 1, dw + 2, 1, R[3]); } if (o.vent) P.em.push({ k: 'smoke', x, y: y - r - 1, rise: u * 4, n: 4, c: o.vent, a: 0.5, grow: u }); },
+  // a mine's engine house: a tall narrow stone house with its stack beside it and the beam nodding out of the wall
+  enginehouse(P, x, y, u, o) { o = o || {}; const wall = o.wall || '#8a8478', r = bldg(P, x, y, u, { w: 4.6, h: 8, storeys: 3, wall, wtex: 'stone', roof: 'gable', rc: '#4a4a52', rh: 1.6, win: { n: 1, at: 0.5, w: 0.7, h: 1.2 }, door: { at: 0.5 } }); ST.stack(P, r.x1 + Math.round(u * 1.2), y, u, { h: 11, w: 1.4, c: wall, sc: '90,86,90' }); const bx = r.x0, by = r.eave + Math.round(u * 1.5), c = kHex('#3a2e24'); P.em.push({ k: 'fn', x: bx, y: by, draw: (px, py, t) => { const a = Math.sin(t / 900) * 0.3, len = u * 3.4; g.fillStyle = '#3a2e24'; bres(g, px, py, (px - Math.cos(a) * len) | 0, (py + Math.sin(a) * len) | 0, '#3a2e24'); g.fillRect((px - Math.cos(a) * len) | 0, (py + Math.sin(a) * len) | 0, 1, (u * 4) | 0); } }); P.rect(bx - 1, by - 1, 3, 3, c); return r; },
+  // a cone of a furnace (a glasshouse, a bottle oven grown tall), glowing at its mouth and its top
+  cone(P, x, y, u, o) { o = o || {}; const R = kRamp(o.c || '#8a5a48'), h = Math.round((o.h || 12) * u), w = (o.w || 7) * u; for (let k = 0; k < h; k++) { const q = k / h, ww = Math.max(1, Math.round((w / 2) * (1 - 0.82 * Math.pow(q, 0.8)))); P.rect(x - ww, y - 1 - k, ww * 2, 1, R[k % Math.max(2, u) === 0 ? 1 : 2]); P.rect(x - ww, y - 1 - k, Math.max(1, ww >> 1), 1, R[1]); P.px(x + ww - 1, y - 1 - k, R[3]); } const mw = Math.max(2, Math.round(u * 1.4)), mh = Math.max(2, Math.round(u * 1.8)); P.rect(x - (mw >> 1), y - mh, mw, mh, kHex('#e0602a')); P.litRect(x - (mw >> 1), y - mh, mw, mh, kHex('#ffb050'), 255); P.halo(x, y - (mh >> 1), u * 3, kHex('#ff8a30'), 120); P.em.push({ k: 'pulse', x: x - (mw >> 1), y: y - mh, w: mw, h: mh, rgb: '255,200,90', a: 0.4, ms: 500 }); P.em.push({ k: 'plume', x, y: y - h - 1, rise: u * 10, n: 7, grow: u * 2, drift: u * 6, c: o.sc || '90,84,88', a: 0.5, ms: 6500 }); return { top: y - h }; },
   dish(P, x, y, u, o) { const c = kHex('#c8ccd4'), d = kHex('#6a6e78'), h = Math.round(u * 3); P.rect(x, y - h, Math.max(1, u >> 1), h, d); for (let k = 0; k < u * 2; k++) P.px(x - u + k, y - h - Math.round(Math.pow((k - u) / u, 2) * u) - 1, c); P.line(x, y - h - 1, x + u, y - h - u * 2, d); },
   pylon(P, x, y, u, o) { o = o || {}; const h = Math.round((o.h || 10) * u), c = kHex(o.c || '#4a4a54'); P.rect(x, y - h, 1, h, c); for (let k = 1; k <= 3; k++) P.rect(x - Math.round(u * (2 - k * 0.4)), y - Math.round(h * (0.55 + k * 0.14)), Math.round(u * (4 - k * 0.8)) + 1, 1, c); },
 });
@@ -16645,7 +16664,8 @@ Object.assign(LandMass.prototype, {
   // tidal creeks winding over flat ground: bright threads
   creeks(a, b, n, o) { o = o || {}; const L = this.L, P = this.P, xa = Math.max(this.x0, L.x(a)), xb = Math.min(this.x1, L.x(b)), c = kHex(o.c || '#9ac8dc'), hi = kHex('#e4f4fa'); for (let k = 0; k < n; k++) { const fr = 0.25 + 0.6 * (k + 0.5) / n; for (let x = xa; x <= xb; x++) { const hh = this.h[x]; if (hh < 2) continue; const y = this.y(x) + Math.round(hh * fr + Math.sin(x * 0.11 + k * 2.3) * 1.6 + Math.sin(x * 0.037 + k) * 2.2); if (y < L.base) P.px(x, y, nH(x, k, this.seed) > 0.8 ? hi : c); } } return this; },
   // snow lying in the hollows of the face (patches, not a cap)
-  patches(a, b, n, o) { o = o || {}; const L = this.L, P = this.P, xa = Math.max(this.x0 + 2, L.x(a)), xb = Math.min(this.x1 - 2, L.x(b)), R = kRamp(o.c || '#eef2f6'), s0 = this.seed + 511; for (let k = 0; k < n; k++) { const x = Math.round(xa + (xb - xa) * nH(k, 1, s0)), hh = this.h[x]; if (hh < 4) continue; const y = this.y(x) + Math.round((0.15 + nH(k, 2, s0) * 0.7) * hh), w = Math.max(2, Math.round((o.w || 2.4) * L.u * (0.5 + nH(k, 3, s0)))); P.rect(x, y, w, 1, R[3]); P.rect(x + 1, y + 1, Math.max(1, w - 2), 1, R[2]); } return this; },
+  // things laid out flat on the face: snow in the hollows, cloth bleaching, sails drying, hides, nets. o: c (a colour or a list of them), w, h (m), from, to
+  patches(a, b, n, o) { o = o || {}; const L = this.L, P = this.P, xa = Math.max(this.x0 + 2, L.x(a)), xb = Math.min(this.x1 - 2, L.x(b)), cs = Array.isArray(o.c) ? o.c : [o.c || '#eef2f6'], s0 = this.seed + 511 + (o.seed || 0); for (let k = 0; k < n; k++) { const x = Math.round(xa + (xb - xa) * nH(k, 1, s0)), hh = this.h[x]; if (hh < 4) continue; const R = kRamp(cs[(nH(k, 4, s0) * cs.length) | 0]), y = this.y(x) + Math.round(((o.from == null ? 0.15 : o.from) + nH(k, 2, s0) * ((o.to == null ? 0.85 : o.to) - (o.from == null ? 0.15 : o.from))) * hh), w = Math.max(2, Math.round((o.w || 2.4) * L.u * (0.5 + nH(k, 3, s0)))), h = Math.max(1, Math.round((o.h || 0.5) * L.u)); if (o.shape === 'sail') { const tri = nH(k, 5, s0) > 0.45; for (let j = 0; j < h; j++) { const ww = tri ? Math.max(1, Math.round(w * (j + 1) / h)) : Math.round(w * (0.72 + 0.28 * j / h)); P.rect(tri ? x + w - ww : x, y + j, ww, 1, R[j === 0 ? 4 : 3]); } P.rect(x, y + h, w, 1, R[1]); continue; } if (o.shape === 'sheet') { P.rect(x, y, w, h, R[3]); P.rect(x, y, w, 1, R[4]); P.rect(x + 1, y + h, w, 1, R[1]); continue; } for (let j = 0; j < h; j++) P.rect(x + j, y + j, Math.max(1, w - (j ? 1 : 0)), 1, R[j ? 2 : 3]); } return this; },
 });
 Object.assign(LandLayer.prototype, {
   // reeds standing in the water along a stretch of the layer's foot
@@ -16662,11 +16682,12 @@ function ship(P, x, y, u, o) {
   const mast = (mx, mh) => P.rect(mx, y - hh - mh, 1, mh, mc);
   const sq = (mx, top, w, h) => { for (let r = 0; r < h; r++) { const bw = Math.round(w * (0.86 + 0.14 * Math.sin(r / h * 3.14))); P.rect(mx - (bw >> 1), top + r, bw, 1, SA[r % Math.max(2, (h / 3) | 0) === 0 ? 1 : 2]); P.px(mx + (bw >> 1) - 1, top + r, SA[3]); } };
   const tri = (mx, top, h, w, dir) => { for (let r = 0; r < h; r++) { const ww = Math.max(1, Math.round(w * (r + 1) / h)); P.rect(dir > 0 ? mx + 1 : mx - ww, top + r, ww, 1, SA[2]); P.px(dir > 0 ? mx + ww : mx - ww, top + r, SA[3]); } };
-  if (rig === 'row') { if (u >= 2) { P.rect(x, y - hh - Math.round(u * 1.2), Math.max(1, u >> 1), Math.round(u * 1.2), kHex('#3a4a6a')); P.line(x, y - hh, x + u * 2, y + 1, mc); } }
+  if (rig === 'coracle') { P.rect(x0, y - hh + 1, len, hh, H[2]); P.rect(x0 + 1, y - hh, len - 2, 1, H[3]); P.rect(x, y - hh - Math.round(u * 1.4), Math.max(1, u >> 1), Math.round(u * 1.4), kHex('#3a4a5a')); P.line(x, y - hh - u, x + u * 2, y, mc); }
+  else if (rig === 'row') { if (u >= 2) { P.rect(x, y - hh - Math.round(u * 1.2), Math.max(1, u >> 1), Math.round(u * 1.2), kHex('#3a4a6a')); P.line(x, y - hh, x + u * 2, y + 1, mc); } }
   else if (rig === 'canoe') { P.rect(x0 + (len >> 2), y + 1, len >> 1, 1, H[1]); P.line(x0 + (len >> 2), y - hh, x0 + (len >> 2), y + 1, mc); mast(x, Math.round(len * 0.6)); tri(x, y - hh - Math.round(len * 0.6), Math.round(len * 0.55), Math.round(len * 0.4), 1); }
   else if (rig === 'sloop') { const mh = Math.round(len * 1.05); mast(x, mh); tri(x, y - hh - mh + 1, mh - 2, Math.round(len * 0.42), -1); tri(x, y - hh - Math.round(mh * 0.85), Math.round(mh * 0.8), Math.round(len * 0.34), 1); }
   else if (rig === 'lug' || rig === 'gaff' || rig === 'schooner') { const n = rig === 'gaff' ? 1 : 2; for (let k = 0; k < n; k++) { const mx = x0 + Math.round(len * (n === 1 ? 0.45 : 0.3 + k * 0.4)), mh = Math.round(len * (k ? 0.72 : 0.9)), sw = Math.round(len * (n === 1 ? 0.5 : 0.32)), sh = Math.round(mh * 0.72); mast(mx, mh); for (let r = 0; r < sh; r++) { const lift = Math.round((1 - r / sh) * sh * 0.22); P.rect(mx + 1, y - hh - mh + 2 + r - 0, sw - Math.round((sh - r) * 0.12), 1, SA[r % 4 === 3 ? 1 : 2]); if (r < 2) P.px(mx + sw - 1, y - hh - mh + r - lift, SA[2]); } P.px(mx + sw - 1, y - hh - mh + 2, SA[3]); } if (rig !== 'gaff') tri(x0 + Math.round(len * 0.3), y - hh - Math.round(len * 0.7), Math.round(len * 0.6), Math.round(len * 0.24), -1); }
-  else if (rig === 'square') { const n = len > u * 20 ? 3 : 2; for (let k = 0; k < n; k++) { const mx = x0 + Math.round(len * (0.2 + k * 0.6 / (n - 1 || 1) * 0.95 + 0.02)), mh = Math.round(len * (k === 1 || n === 2 ? 0.86 : 0.74)); mast(mx, mh); let top = y - hh - mh + 1; const tiers = 3; for (let t2 = 0; t2 < tiers; t2++) { const sh = Math.round(mh * (0.2 + t2 * 0.05)), sw = Math.round(len * (0.16 + t2 * 0.035)); sq(mx, top, sw, sh - 1); P.rect(mx - (sw >> 1) - 1, top - 1, sw + 2, 1, mc); top += sh; } } P.line(x0 + len, y - hh, x0 + len + Math.round(len * 0.16), y - hh - Math.round(len * 0.1), mc); tri(x0 + len - 1, y - hh - Math.round(len * 0.5), Math.round(len * 0.42), Math.round(len * 0.16), 1); }
+  else if (rig === 'square') { const n = len > u * 20 ? 3 : 2; for (let k = 0; k < n; k++) { const mx = x0 + Math.round(len * (0.2 + k * 0.6 / (n - 1 || 1) * 0.95 + 0.02)), mh = Math.round(len * (k === 1 || n === 2 ? 0.86 : 0.74)); mast(mx, mh); let top = y - hh - mh + 1; const tiers = 3; for (let t2 = 0; t2 < tiers; t2++) { const sh = Math.round(mh * (0.2 + t2 * 0.05)), sw = Math.round(len * (0.16 + t2 * 0.035)); if (!o.bare) sq(mx, top, sw, sh - 1); else P.rect(mx - (sw >> 1), top, sw, 1, SA[1]); P.rect(mx - (sw >> 1) - 1, top - 1, sw + 2, 1, mc); top += sh; } } P.line(x0 + len, y - hh, x0 + len + Math.round(len * 0.16), y - hh - Math.round(len * 0.1), mc); if (!o.bare) tri(x0 + len - 1, y - hh - Math.round(len * 0.5), Math.round(len * 0.42), Math.round(len * 0.16), 1); }
   else if (rig === 'junk') { const n = len > u * 12 ? 3 : 2; for (let k = 0; k < n; k++) { const mx = x0 + Math.round(len * (0.24 + k * 0.52 / (n - 1 || 1))), mh = Math.round(len * (k === 1 ? 0.95 : 0.72)), sw = Math.round(len * 0.3), sh = Math.round(mh * 0.8); mast(mx, mh); for (let r = 0; r < sh; r++) { const bw = Math.round(sw * (0.7 + 0.3 * Math.sin((r / sh) * 2.2 + 0.5))); P.rect(mx - Math.round(bw * 0.25), y - hh - mh + 2 + r, bw, 1, r % Math.max(2, Math.round(u * 0.9)) === 0 ? SA[0] : SA[2]); P.px(mx - Math.round(bw * 0.25) + bw - 1, y - hh - mh + 2 + r, SA[3]); } } P.rect(x0 + len - Math.round(len * 0.16), y - hh - Math.round(u * 1.4), Math.round(len * 0.16), Math.round(u * 1.4), H[2]); }
   else if (rig === 'lateen' || rig === 'dhow') { const n = len > u * 14 ? 2 : 1; for (let k = 0; k < n; k++) { const mx = x0 + Math.round(len * (n === 1 ? 0.5 : 0.36 + k * 0.36)), mh = Math.round(len * (k ? 0.5 : 0.62)), yl = Math.round(len * (k ? 0.5 : 0.72)); mast(mx, mh); const ax = mx - Math.round(yl * 0.42), ay = y - hh - Math.round(mh * 0.5), bx = mx + Math.round(yl * 0.36), by = y - hh - mh - Math.round(yl * 0.42); P.line(ax, ay, bx, by, mc); for (let r = 0; r < mh; r++) { const q = r / mh, lx = Math.round(ax + (bx - ax) * (1 - q)), ly = y - hh - 1 - r; if (ly < by) break; const yr = by + (ay - by) * ((lx - bx) / (ax - bx || 1)); if (ly >= yr) P.rect(lx, ly, Math.max(1, mx + Math.round(yl * 0.3 * (1 - q)) - lx), 1, SA[r % 5 === 4 ? 1 : 2]); } } P.px(x0 + len + 1, y - hh - 2, H[2]); P.px(x0 + len + 2, y - hh - 3, H[2]); }
   else if (rig === 'long') { mast(x, Math.round(len * 0.55)); const sw = Math.round(len * 0.5), sh = Math.round(len * 0.34), top = y - hh - Math.round(len * 0.52); for (let r = 0; r < sh; r++) for (let xx = 0; xx < sw; xx++) P.px(x - (sw >> 1) + xx, top + r, ((xx / Math.max(2, u)) | 0) % 2 ? kHex('#c03a2a') : SA[2]); P.px(x0 - 1, y - hh - 1, H[2]); P.px(x0 - 2, y - hh - 2, H[3]); P.px(x0 + len + 1, y - hh - 2, H[3]); if (u >= 2) for (let k = 2; k < len - 2; k += Math.max(2, u)) P.px(x0 + k, y - hh, kHex(k % 4 ? '#c8a040' : '#3a5a7a')); }
@@ -16674,6 +16695,7 @@ function ship(P, x, y, u, o) {
   else if (rig === 'light') { const mh = Math.round(u * 6); mast(x, mh); P.rect(x - Math.max(1, u >> 1), y - hh - mh - Math.max(1, u >> 1), Math.max(2, u), Math.max(2, u), kHex('#3a3a40')); P.em.push({ k: 'beam', x: x - Math.max(1, u >> 1), y: y - hh - mh - Math.max(1, u >> 1), w: Math.max(2, u), h: Math.max(2, u), len: u * 12, ms: 3200 }); if (u >= 2) { P.rect(x0 + 2, y - hh + 1, len - 4, 1, kHex('#f0ece0')); mast(x0 + Math.round(len * 0.2), Math.round(u * 3)); mast(x0 + Math.round(len * 0.8), Math.round(u * 3)); } }
   else if (rig === 'hulk') { mast(x0 + Math.round(len * 0.3), Math.round(len * 0.28)); P.line(x0 + Math.round(len * 0.6), y - hh, x0 + Math.round(len * 0.74), y - hh - Math.round(len * 0.32), mc); P.rect(x0 + Math.round(len * 0.7), y - hh - Math.round(u * 1.6), Math.round(len * 0.24), Math.round(u * 1.6), H[1]); if (u >= 2) for (let k = 3; k < len - 3; k += Math.max(3, u * 2)) P.px(x0 + k, y - hh + 2, kHex('#12100e')); }
   else if (rig === 'barge') { P.rect(x0 + Math.round(len * 0.15), y - hh - Math.round(u * 1.1), Math.round(len * 0.6), Math.round(u * 1.1), kHex(o.load || '#8a7a5a')); P.rect(x0 + Math.round(len * 0.8), y - hh - Math.round(u * 1.6), Math.round(len * 0.14), Math.round(u * 1.6), kHex('#5a4a3a')); }
+  if (o.fire) { const fx = x0 + len - Math.max(1, u), fy = y - hh - Math.max(1, u); P.rect(fx, fy, Math.max(1, u >> 1), Math.max(1, u >> 1), kHex('#ff9a30')); P.litRect(fx, fy, Math.max(1, u >> 1), Math.max(1, u >> 1), kHex('#ffd060'), 255); P.halo(fx, fy, u * 3, kHex('#ff9a40'), 120); P.em.push({ k: 'pulse', x: fx, y: fy - 1, w: Math.max(1, u >> 1), h: 1, rgb: '255,200,80', a: 0.8, ms: 220 }); }
   if (o.lamp) { P.px(x0 + len - 1, y - hh - 2, kHex('#ffd27a')); P.lit(x0 + len - 1, y - hh - 2, kHex('#ffd27a'), 255); P.halo(x0 + len - 1, y - hh - 2, Math.max(2, u * 2), kHex('#ffc060'), 90); }
   if (o.flag) P.em.push({ k: 'flag', x: x + 1, y: y - hh - Math.round(len * 0.9), w: Math.max(2, u), h: 1, c: o.flag });
   if (o.wake !== false && u >= 1.5) { const wc = kHex('#e8f4fa'); for (let k = 0; k < len + u * 2; k += 2) P.px(x0 - u + k, y + 1, wc); }
@@ -16807,6 +16829,30 @@ function drawVillage(l, wx, gy, t, nt) {
   if (V.glow && nt > 0.05) { g.globalAlpha = clamp(nt * 1.25, 0, 1); g.drawImage(V.glow, sx, sy); g.globalAlpha = 1; }
   for (const e of V.em) EMIT[e.k](e, e.x + sx, e.y + sy, t, nt, V);
 }
+// --- more things: what stands on quays and in yards ---
+Object.assign(ST, {
+  // barrels stood on a quay, one on top where there is room: o.n, o.c
+  barrels(P, x, y, u, o) { o = o || {}; const n = o.n || 4; for (let k = 0; k < n; k++) barrel(P, x + Math.round(k * u * 0.9), y, u, o.c); if (n > 2 && u >= 2) barrel(P, x + Math.round(u * 0.45), y - Math.round(u * 0.9), u, o.c); },
+  // sacks in a heap: o.n, o.c
+  sacks(P, x, y, u, o) { o = o || {}; const n = o.n || 5, R = kRamp(o.c || '#b89a6a'), w = Math.max(2, Math.round(u * 0.9)), h = Math.max(1, Math.round(u * 0.5)); let k = 0; for (let r = 0; k < n && r < 4; r++) for (let j = 0; j < Math.max(1, 3 - r) && k < n; j++, k++) { const sx = x + j * (w + 1) + r * (w >> 1), sy = y - (r + 1) * h; P.rect(sx, sy, w, h, R[2]); P.rect(sx, sy, w, 1, R[3]); P.px(sx, sy + h - 1, R[1]); } },
+  // straw skeps on a stone shelf under a slate roof: o.n
+  skeps(P, x, y, u, o) { o = o || {}; const n = o.n || 4, w = Math.round(n * u * 1.1) + 2, h = Math.max(3, Math.round(u * 1.5)), st = kRamp('#8a8a84'), sl = kHex('#4a4a56'), sk = kRamp('#d8b868'), x0 = x - (w >> 1); P.rect(x0 - 1, y - h - 1, w + 2, 1, sl); P.rect(x0, y - h, w, 1, kHex('#3a3a44')); P.rect(x0, y - h + 1, 1, h - 1, st[2]); P.rect(x0 + w - 1, y - h + 1, 1, h - 1, st[2]); P.rect(x0, y - 1, w, 1, st[1]);
+    for (let k = 0; k < n; k++) { const sx = x0 + 1 + Math.round(k * u * 1.1), sw = Math.max(1, Math.round(u * 0.8)), sh = Math.max(1, h - 3); P.rect(sx, y - 1 - sh, sw, sh, sk[2]); if (sw > 1) { P.px(sx + sw - 1, y - 1 - sh, sk[3]); P.rect(sx, y - 1 - sh, sw, 1, sk[3]); P.px(sx + (sw >> 1), y - 2, kHex('#3a2a1a')); } } },
+  // amphorae stacked on their sides in tiers, like a hillside: o.n (along the bottom), o.rows, o.c
+  amphorae(P, x, y, u, o) { o = o || {}; const n = o.n || 8, rows = o.rows || 4, R = kRamp(o.c || '#b8683e'), pw = Math.max(2, Math.round(u * 0.7)), ph = Math.max(2, Math.round(u * 0.8)); for (let r = 0; r < rows; r++) for (let k = 0; k < n - r; k++) { const px = x + k * (pw + 1) + r * ((pw + 1) >> 1), py = y - (r + 1) * ph; P.rect(px, py + 1, pw, ph - 1, R[2]); P.px(px + (pw >> 1), py, R[1]); P.px(px + pw - 1, py + 1, R[3]); if (u >= 3) { P.px(px, py + 1, R[1]); P.px(px + (pw >> 1), py + ph - 1, R[1]); } } },
+  // planks of bark stacked to dry, curling at the ends: o.n stacks, o.c
+  bark(P, x, y, u, o) { o = o || {}; const n = o.n || 3, R = kRamp(o.c || '#8a5a3a'); for (let k = 0; k < n; k++) { const sx = x + Math.round(k * u * 2.6), w = Math.round(u * 2), h = Math.round(u * (1.2 + 0.8 * nH(k, 1, P.seed + x))); for (let j = 0; j < h; j++) { P.rect(sx - (j % 2), y - 1 - j, w + (j % 2) * 2, 1, R[j % 2 ? 2 : 1]); P.px(sx + w + (j % 2) - 1, y - 1 - j, R[3]); if (j % 3 === 0) P.px(sx - (j % 2), y - 2 - j, R[3]); } } },
+  // a hammock slung between two trunks, somebody in it: o.w (m), o.c
+  hammock(P, x, y, u, o) { o = o || {}; const w = Math.round((o.w || 3) * u), h = Math.round(u * 1.6), c = kHex(o.c || '#e8e0d0'); for (let xx = 0; xx <= w; xx++) { const sag = Math.round(Math.sin(xx / w * 3.14) * u * 0.7); P.px(x + xx, y - h + sag, c); if (xx > w * 0.2 && xx < w * 0.8) P.px(x + xx, y - h + sag + 1, kHex('#c8b8a0')); } P.rect(x + (w >> 1) - 1, y - h + Math.round(u * 0.5), Math.max(2, u), 1, kHex('#3a4a6a')); },
+  // blocks cut square and stacked (ice, salt, peat, marble): o.n along the bottom, o.rows, o.c
+  blocks(P, x, y, u, o) { o = o || {}; const n = o.n || 4, R = kRamp(o.c || '#d8f0f8'), b = Math.max(2, Math.round(u * (o.b || 0.8))); for (let r = 0; r < (o.rows || 3); r++) for (let k = 0; k < n - r; k++) { const bx = x + k * (b + 1) + r * (b >> 1), by = y - (r + 1) * b; P.rect(bx, by, b, b, R[2]); P.rect(bx, by, b, 1, R[4]); P.px(bx + b - 1, by + b - 1, R[1]); } },
+  // a man carrying something bigger than himself on his back (a coracle, a creel, a bale): o.c load
+  carrier(P, x, y, u, o) { o = o || {}; ST.figure(P, x, y, u, o); const r = Math.max(2, Math.round(u * 0.9)), c = kRamp(o.load || '#3a3028'); for (let k = 0; k < r; k++) { const ww = Math.round(r * Math.sqrt(1 - Math.pow(k / r, 2))); P.rect(x - ww, y - Math.round(u * 1.2) - k, ww * 2 + 1, 1, c[k ? 2 : 1]); } },
+});
+// small things in the air over a stretch of a layer: bees over heather, flies over a marsh, sparks over a forge
+function swarm(L, v, o) { o = o || {}; const n = o.n || 16, w = (o.w || 0.4) * L.S.W, h = o.h || 20, c = o.c || '#3a2a10'; L.P.em.push({ k: 'fn', x: L.x(v), y: L.base - (o.up || 4), draw: (x, y, t, nt) => { if (o.night && nt < 0.3) return; if (o.day && nt > 0.7) return; g.fillStyle = c; for (let k = 0; k < n; k++) { const a = t / (300 + k * 37) + k * 2.4; g.fillRect((x + nH(k, 1, 9) * w + Math.sin(a) * 5) | 0, (y - nH(k, 2, 9) * h + Math.cos(a * 1.3) * 3) | 0, 1, 1); } } }); }
+// cold air or steam rolling low out of a door: a few soft puffs that drift and fade
+function creep(L, x, y, o) { o = o || {}; L.P.em.push({ k: 'smoke', x, y, rise: o.rise || 2, n: o.n || 5, grow: o.grow || L.u * 1.6, c: o.c || '236,244,250', a: o.a || 0.5, drift: o.drift || L.u * 5, ms: o.ms || 5200 }); }
 // --- the runtime: build an island's layers once, relight them with the hour, blit them ---
 const LANDS = {}; // island id -> s => { ... } : the island's own landscape, written against the layer API above
 let LAND_C = {};
@@ -16872,6 +16918,8 @@ const EMIT = {
   wheel(e, x, y, t) { const r = e.r || 5, a = t / (e.ms || 900); for (let i = 0; i < 4; i++) bres(g, (x - Math.cos(a + i * 0.785) * r) | 0, (y - Math.sin(a + i * 0.785) * r) | 0, (x + Math.cos(a + i * 0.785) * r) | 0, (y + Math.sin(a + i * 0.785) * r) | 0, e.c || '#5a4630'); },
   // something small that walks to and fro along a line (a figure, a cart, a sheep)
   walk(e, x, y, t) { const span = e.span || 20, p = (t / (e.ms || 14000) + (e.ph || 0)) % 2, q = p < 1 ? p : 2 - p, xx = (x + q * span) | 0, st = (t / 260 | 0) & 1; g.fillStyle = e.c || '#2a2430'; g.fillRect(xx, y - (e.h || 3), e.w || 1, e.h || 3); if (e.c2) { g.fillStyle = e.c2; g.fillRect(xx, y - (e.h || 3), e.w || 1, 1); } if ((e.h || 3) > 3) { g.fillStyle = e.c || '#2a2430'; g.fillRect(xx + (st ? 1 : -1), y - 1, 1, 1); } },
+  // kites on their strings: diamonds that swim in the wind above the place they are tied
+  kites(e, x, y, t) { const n = e.n || 8; for (let k = 0; k < n; k++) { const ax = x + (nH(k, 1, e.s | 0) - 0.5) * (e.w || 60), hgt = (e.h || 50) * (0.4 + 0.6 * nH(k, 2, e.s | 0)), kx = (ax + Math.sin(t / 1300 + k * 1.7) * 6 + hgt * 0.3) | 0, ky = (y - hgt + Math.sin(t / 900 + k * 2.3) * 3) | 0, c = e.cols ? e.cols[k % e.cols.length] : ['#c03030', '#e8c040', '#3a6ab0', '#e8e0d0', '#3a8a4a', '#d06a2a'][k % 6]; bres(g, ax | 0, y, kx, ky + 2, 'rgba(230,230,230,0.5)'); g.fillStyle = c; g.fillRect(kx - 1, ky, 3, 1); g.fillRect(kx - 2, ky + 1, 5, 1); g.fillRect(kx - 1, ky + 2, 3, 1); g.fillRect(kx, ky + 3, 1, 1); g.fillRect(kx, ky + 4 + ((t / 200 + k) % 2 | 0), 1, 2); } },
   // anything else: the island draws it itself
   fn(e, x, y, t, nt, Y) { e.draw(x, y, t, nt, Y); },
 };
@@ -17043,6 +17091,465 @@ LANDS.holywell = s => { const { far: F, mid: M, near: N } = s; // a holy well, a
   const n = N.land([[-1.3, 0.14], [-0.6, 0.18], [0, 0.13], [0.28, 0.06], [0.38, 0]], 'meadow', { rough: 0.4 });
   n.trees('bush', -1.3, 0.3, 26, { h: [1.2, 2.6], c: '#4a7a3a' }).put('wall', -0.8, { len: 40 }).row('cross', -0.5, 0.2, 3, { h: 2.4 }).put('boat', 0.26).row('figure', -0.3, 0.3, 4, { jit: 0.8 });
 };
+LANDS.eggcliff = s => { const { far: F, mid: M, near: N } = s; // a stack white with birds, men on ropes after the eggs
+  F.land([[-0.3, 0.16], [0.1, 0.22], [0.36, 0.1], [0.44, 0]], 'slate', { rough: 0.5 }); F.stack(0.86, 22, 0.1, { mat: 'slate', cap: { mat: 'grass', d: 2 } });
+  const r = M.land([[0.12, 0], [0.16, 0.5, 'l'], [0.22, 0.86], [0.34, 0.94], [0.46, 0.84, 'c'], [0.54, 0.3, 'l'], [0.6, 0]], 'chalk', { rough: 0.3, crag: 0.2, cap: { mat: 'grass', d: 4, steep: 0.9 } });
+  r.ledges(0.14, 0.58, 110, { air: 12, deep: 0.92 }).climbers(0.26, 3).climbers(0.44, 2); M.flock(0.36, 0.98, { n: 12, rx: 34, ry: 10 }); M.sea('rock', 0.68, { n: 4 });
+  M.land([[-0.7, 0.3], [-0.4, 0.36], [-0.1, 0.2], [0.04, 0]], 'chalk', { rough: 0.5, cap: { mat: 'grass', d: 5, steep: 1 } }).ledges(-0.6, 0, 20, { air: 0 }).town(-0.6, -0.2, 5, 'stone', { from: 0.1, to: 0.4 });
+  const n = N.land([[-1.3, 0.14], [-0.6, 0.18], [0, 0.1], [0.26, 0.05], [0.36, 0]], 'limestone', { rough: 0.6 });
+  n.rocks(-1.3, 0.34, 20, { c: '#d8d4c8' }).row('tent', -0.5, -0.2, 2, { c: '#c8b890' }).row('heap', -0.9, 0.2, 5, { c: '#e8e0c8', h: 0.7, w: 1.6, n: 2 }).row('figure', -0.7, 0.3, 5, { jit: 0.8 }).put('boat', 0.24).kelp(0.1, 0.36);
+};
+LANDS.musselropes = s => { const { far: F, mid: M, near: N } = s; // a bay strung with barrels, ropes of mussels hanging under them
+  F.land([[-0.3, 0.14], [0.1, 0.2], [0.4, 0.16], [0.7, 0.1], [0.84, 0.14], [1.02, 0.1]], 'downs', { rough: 0.4 }).trees('broad', -0.3, 1, 26, { on: 'ridge', h: [3, 5] }).fields(-0.3, 1, { from: 0.2, w: 9 }); // the bay's far arm closes the horizon
+  for (let k = 0; k < 4; k++) F.sea('floats', 0.3 + k * 0.02, { n: 40 - k * 6, gap: 1.7 + k * 0.4, c: '#3a2e24' });
+  const m = M.land([[-0.7, 0.2], [-0.3, 0.26], [0, 0.16], [0.24, 0.07], [0.3, 0]], 'grass', { rough: 0.4 }); m.town(-0.6, 0.1, 9, 'stone', { from: 0.2, to: 0.8 }).trees('broad', -0.7, 0.2, 10, { h: [4, 7] });
+  for (let k = 0; k < 3; k++) M.sea('floats', 0.36 + k * 0.03, { n: 22 - k * 3, gap: 2.4 + k * 0.5, c: '#2e241c' }); M.ship(0.6, 'barge', { len: 9, load: '#1e1e26' }); M.sea('ship', 0.84, { rig: 'row', len: 5 });
+  const n = N.land([[-1.3, 0.1], [-0.6, 0.12], [0, 0.09], [0.28, 0.05], [0.38, 0]], 'sand', { rough: 0.3 });
+  n.row('heap', -1.2, 0.3, 9, { c: '#2a2a3a', h: 1.2, w: 3.6, n: 2 }).row('house', -1.0, -0.3, 3, { st: 'stone' }).put('jetty', 0.24, { len: 12 }).row('boat', -0.2, 0.2, 3).row('pots', -0.6, 0.0, 3, { n: 3, c: '#3a3a44' });
+  for (let k = 0; k < 2; k++) N.sea('floats', 0.44 + k * 0.06, { n: 9, gap: 3.4, c: '#2a2018' });
+};
+LANDS.shearing = s => { const { far: F, mid: M, near: N } = s; // a green hump of sheep and a shed full of fleeces
+  F.land([[-0.3, 0.24], [0, 0.34], [0.26, 0.26], [0.46, 0.12], [0.56, 0]], 'downs', { rough: 0.4 }).dots('sheep', -0.3, 0.5, 30, { from: 0.1, to: 0.9 }).walls(-0.3, 0.5, { n: 2, down: 4 }); F.stack(0.84, 20, 0.06, { mat: 'slate', cap: { mat: 'grass', d: 2 } });
+  const m = M.land([[-0.7, 0.34], [-0.4, 0.5], [-0.08, 0.6], [0.2, 0.46], [0.42, 0.2], [0.56, 0.04], [0.6, 0]], 'meadow', { rough: 0.3 });
+  m.walls(-0.7, 0.55, { n: 3, down: 6 }).dots('sheep', -0.7, 0.55, 46, { from: 0.06, to: 0.92 }).put('longshed', 0.34, { len: 20, wall: '#8a8478', wtex: 'stone', rc: '#4a4a52', down: 0.75 }).put('figure', 0.2, { down: 0.7, hat: '#5a4a3a' }).trees('broad', -0.7, 0, 5, { on: 'ridge', h: [3, 5] });
+  M.sea('posts', 0.58, { n: 9, gap: 1.6, h: 1.2 }); M.ship(0.76, 'lug', { len: 8 });
+  const n = N.land([[-1.3, 0.16], [-0.7, 0.24], [-0.2, 0.16], [0.14, 0.1], [0.32, 0.05], [0.4, 0]], 'meadow', { rough: 0.4 });
+  n.put('wall', -1.25, { len: 60 }).put('wall', -0.1, { len: 28 }).dots('sheep', -1.3, 0.3, 16, { from: 0, to: 0.6 }).row('heap', -0.5, -0.2, 3, { c: '#f0ece0', h: 1.4, w: 2.4, n: 2 }).put('barn', -0.75, { wall: '#8a8478', wtex: 'stone' }).put('figure', -0.3);
+};
+LANDS.samphire = s => { const { far: F, mid: M, near: N } = s; // a salt marsh cut by a hundred creeks, a village on stilts in the middle of it
+  F.flat(-0.3, 1.02, '#6a8a5a', { h: 4 }).creeks(-0.3, 1, 2); F.fleet(0.5, 3, 'row', { len: 5, w: 0.3 });
+  const m = M.land([[-0.7, 0.06], [-0.2, 0.08], [0.3, 0.07], [0.7, 0.05], [0.86, 0]], '#7a9a5a', { rough: 0.12 });
+  m.creeks(-0.7, 0.85, 4).row('hut', -0.2, 0.5, 6, { stilts: 1.4, jit: 0.5 }).put('jetty', 0.52, { len: 30 }).row('figure', -0.6, 0.8, 9, { jit: 0.9, hat: '#e8d8a0' }).put('mast', 0.2, { h: 5, flag: '#e8e0d0', stay: false });
+  M.reeds(0.8, 1.0, { h: 1.4 });
+  const n = N.land([[-1.3, 0.07], [-0.6, 0.09], [0, 0.08], [0.3, 0.05], [0.4, 0]], '#6a9050', { rough: 0.2 });
+  n.creeks(-1.3, 0.4, 3).trees('bush', -1.3, 0.38, 60, { h: [0.5, 1.1], c: '#8ab850' }).row('figure', -1.0, 0.3, 6, { jit: 0.9, hat: '#e8d8a0' }).put('jetty', -0.5, { len: 26 }).row('heap', -0.2, 0.2, 3, { c: '#6aa040', h: 0.7, w: 1.2 }).put('boat', 0.3, { c: '#5a4a34' }); N.reeds(0.3, 0.46, { h: 1.6 });
+};
+LANDS.ropewalk = s => { const { far: F, mid: M, near: N } = s; // one roofed street a quarter of a mile long, where rope is walked out
+  F.land([[-0.3, 0.2], [0.05, 0.3], [0.3, 0.22], [0.5, 0.1], [0.6, 0]], 'downs', { rough: 0.4 }).fields(-0.3, 0.55, { from: 0.1, w: 10, cols: ['#b8b860', '#a8c060', '#c8c070'] }); F.stack(0.84, 18, 0.06, { mat: 'slate', cap: { mat: 'grass', d: 2 } }); F.ship(0.7, 'square', { len: 24 });
+  const m = M.land([[-0.7, 0.3], [-0.3, 0.26], [0.1, 0.2], [0.4, 0.12], [0.54, 0.04], [0.58, 0]], 'meadow', { rough: 0.2 });
+  m.fields(-0.7, 0.5, { from: 0.5, cols: ['#b8b860', '#a8c060', '#c8c070'], w: 8 }).put('longshed', -0.1, { len: 108, h: 2.4, wall: '#5a4630', open: true, rc: '#3a2e28', down: 0.2 }).put('pit', 0.44, { c: '#1e1a1a', rise: 12, sc: '60,56,58' }).town(0.3, 0.5, 5, 'brick', { from: 0.3, to: 0.7 });
+  const n = N.land([[-1.3, 0.12], [-0.6, 0.14], [0, 0.12], [0.28, 0.08, 'c'], [0.4, 0]], 'quay', { rough: 0.1 });
+  n.row('house', -1.2, -0.1, 7, { st: 'brick' }).row('heap', -1.15, 0.2, 9, { c: '#c8b070', h: 1, w: 1.6 }).put('longshed', -0.6, { len: 26, wall: '#6b4a2e', open: true }).put('crane', 0.2).put('masts', 0.32, { n: 3, w: 6 }).put('cart', 0.08, { load: '#c8b070' });
+};
+LANDS.kipper = s => { const { far: F, mid: M, near: N } = s; // a row of tall black smokehouses, the whole island hanging in oak smoke
+  F.land([[-0.3, 0.2], [0.1, 0.28], [0.4, 0.14], [0.52, 0]], 'downs', { rough: 0.4 }).forest(-0.3, 0.45, { deep: 0.6, c: '#4a7a3a' }); F.stack(0.84, 20, 0.06, { mat: 'slate', cap: { mat: 'grass', d: 2 } });
+  const m = M.land([[-0.7, 0.3], [-0.3, 0.4], [0.05, 0.3], [0.3, 0.16], [0.5, 0.06], [0.56, 0]], 'grass', { rough: 0.4 });
+  m.forest(-0.7, 0.2, { deep: 0.55, c: '#4a7a36', size: 3 }).row('smokehouse', 0.1, 0.5, 5, { down: 0.5 }).town(-0.5, 0.1, 6, 'brick', { from: 0.5, to: 0.9 });
+  M.fleet(0.62, 5, 'lug', { len: 7, sail: '#7a4a2a', w: 0.3 }); M.flock(0.5, 0.4, { n: 9, rx: 30 });
+  const n = N.land([[-1.3, 0.12], [-0.6, 0.14], [0, 0.12], [0.3, 0.09, 'c'], [0.42, 0]], 'quay', { rough: 0.1 });
+  n.row('smokehouse', -1.15, -0.1, 6, { h: 5.6, w: 4.4 }).row('heap', -1.2, 0.3, 7, { c: '#7a5a34', h: 1, w: 1.2, n: 3 }).put('crane', 0.18).row('figure', -0.4, 0.3, 4, { jit: 0.7 }).put('masts', 0.34, { n: 4, w: 7 });
+};
+LANDS.pilots = s => { const { far: F, mid: M, near: N } = s; // a white watch-house with a telescope in every window, a flag run up when a sail shows
+  F.flat(0.46, 0.7, 'sand', { h: 3 }); F.flat(0.76, 0.92, 'sand', { h: 2 }); F.ship(0.62, 'square', { len: 28 }); F.sea('buoy', 0.44); F.sea('buoy', 0.74, { c: '#2a6a3a', light: '#60ff80' }); F.land([[-0.3, 0.1], [0.1, 0.14], [0.3, 0.06], [0.38, 0]], 'dune', { rough: 0.5 });
+  const m = M.land([[-0.7, 0.2], [-0.3, 0.26], [0, 0.3], [0.26, 0.24], [0.42, 0.1], [0.5, 0]], 'dune', { rough: 0.5, cap: { mat: 'grass', d: 3, steep: 0.7 } });
+  m.trees('bush', -0.7, 0.45, 40, { h: [0.8, 1.6], c: '#8a9a5a' }).put('bldg', 0.14, { w: 6, h: 8.4, storeys: 3, wall: '#f4f2ea', roof: 'hip', rc: '#4a5060', rh: 1.6, win: { n: 3, w: 0.8, h: 1 }, chim: { at: 0.8 } }).put('mast', 0.28, { h: 11, flag: '#c03030', ball: '#2a2a2a' }).town(-0.4, 0.05, 5, 'white', { from: 0.1, to: 0.4 });
+  M.sea('buoy', 0.6, { c: '#c03030' }); M.ship(0.72, 'gaff', { len: 9 });
+  const n = N.land([[-1.3, 0.12], [-0.6, 0.16], [0, 0.12], [0.26, 0.06], [0.38, 0]], 'dune', { rough: 0.6, cap: { mat: 'grass', d: 3, steep: 0.5 } });
+  n.trees('bush', -1.3, 0.3, 30, { h: [0.8, 1.8], c: '#8aa058' }).put('boathouse', -0.1, { wall: '#f0ece0' }).put('jetty', 0.26, { len: 12 }).put('boat', 0.2, { len: 7, c: '#e8e4d8' }).row('figure', -0.3, 0.2, 3, { hat: '#2a2a34' }).put('fence', -0.9, { len: 30 });
+};
+LANDS.cockle = s => { const { far: F, mid: M, near: N } = s; // sand a mile wide at low water, the sea a line at the end of it
+  const f = F.flat(-0.3, 0.98, 'sand', { h: 4 }); f.row('figure', -0.2, 0.9, 16, { jit: 0.9 }).dots('pony', -0.2, 0.9, 9, { from: 0, to: 1 }); F.P.em.push({ k: 'glint', x: F.x(-0.2), y: F.base - 3, w: s.W, h: 3, n: 9, s: 5 });
+  const m = M.land([[-0.7, 0.14], [-0.3, 0.2], [0.1, 0.14], [0.34, 0.07], [0.5, 0.045], [0.9, 0.035], [1.02, 0.03]], 'sand', { rough: 0.15 });
+  m.creeks(0.4, 1, 2).row('figure', 0.4, 0.98, 9, { jit: 0.9, hat: '#3a3a44' }).dots('pony', 0.4, 0.98, 5, { from: 0, to: 0.8 }).row('cart', 0.5, 0.9, 2, { load: '#e8dcc8' }).row('house', -0.6, 0.2, 7, { st: 'white', jit: 0.4 }).trees('bush', -0.7, 0.3, 20, { h: [1, 2], c: '#7a9a50' });
+  const n = N.land([[-1.3, 0.14], [-0.6, 0.18], [-0.1, 0.12], [0.2, 0.07], [0.36, 0.03], [0.44, 0]], 'sand', { rough: 0.3 });
+  n.row('house', -1.2, -0.4, 4, { st: 'white' }).row('heap', -0.3, 0.3, 5, { c: '#f0e8d8', h: 0.8, w: 2 }).put('cart', 0.04, { load: '#e8dcc8' }).dots('pony', -0.2, 0.3, 3, { from: 0, to: 0.4 }).row('figure', -0.2, 0.36, 4, { jit: 0.8 }).trees('bush', -1.3, -0.3, 14, { h: [1, 2], c: '#7a9a50' });
+};
+LANDS.netmenders = s => { const { far: F, mid: M, near: N } = s; // nets pegged out over an acre of grass like a brown sea
+  F.land([[-0.3, 0.16], [0.1, 0.22], [0.4, 0.1], [0.5, 0]], 'downs', { rough: 0.4 }); F.stack(0.82, 20, 0.07, { mat: 'slate', cap: { mat: 'grass', d: 2 } }); F.fleet(0.56, 7, 'lug', { len: 6, w: 0.28 });
+  const m = M.land([[-0.7, 0.3], [-0.3, 0.38], [0.1, 0.3], [0.4, 0.16], [0.56, 0.04], [0.6, 0]], 'meadow', { rough: 0.2 });
+  for (let x = m.x0; x <= m.x1; x++) { const hh = m.h[x]; if (hh < 6) continue; for (let y = m.y(x) + Math.round(hh * 0.18); y < m.y(x) + Math.round(hh * 0.86); y++) if (n2(x * 0.03, y * 0.08, 77) > 0.34 && (x + y) % 2 === 0) M.P.px(x, y, kHex(((x >> 1) + (y >> 1)) % 3 ? '#8a6a44' : '#6a4a30')); } // the nets, spread
+  m.row('figure', -0.6, 0.5, 14, { jit: 0.9, down: 0.5 }).row('nets', -0.6, 0.4, 5, { n: 3 }).town(-0.5, 0.1, 5, 'thatch', { from: 0.02, to: 0.14 });
+  const n = N.land([[-1.3, 0.12], [-0.6, 0.16], [0, 0.12], [0.28, 0.06], [0.38, 0]], 'meadow', { rough: 0.3 });
+  n.row('nets', -1.2, 0.2, 6, { n: 4 }).row('heap', -1.1, 0.3, 6, { c: '#c8a070', h: 0.9, w: 1.6, n: 3 }).row('figure', -0.9, 0.2, 5, { jit: 0.8 }).put('house', -0.5, { st: 'thatch' }).put('boat', 0.26);
+};
+LANDS.boatyard = s => { const { far: F, mid: M, near: N } = s; // ribs of oak standing in rows like the bones of something
+  F.land([[-0.3, 0.26], [0.05, 0.36], [0.3, 0.26], [0.46, 0.1], [0.54, 0]], 'grass', { rough: 0.4 }).forest(-0.3, 0.5, { deep: 0.8, c: '#4a7a3a', size: 3 }); F.stack(0.84, 18, 0.06, { mat: 'slate', cap: { mat: 'grass', d: 2 } }); F.ship(0.68, 'schooner', { len: 16 });
+  const m = M.land([[-0.7, 0.36], [-0.3, 0.46], [0.05, 0.34], [0.3, 0.16], [0.5, 0.05], [0.56, 0]], 'grass', { rough: 0.4 });
+  m.forest(-0.7, 0.2, { deep: 0.7, c: '#3f7a38', size: 3.4 }).row('hull', 0.2, 0.5, 3, { len: 12, down: 0.6 }).put('shed', 0.1, { down: 0.6, w: 8 }).put('pit', 0.36, { c: '#3a3028', sc: '230,232,238', rise: 8 }); M.ship(0.68, 'hulk', { len: 16, wake: false });
+  const n = N.land([[-1.3, 0.12], [-0.6, 0.14], [0, 0.12], [0.3, 0.08, 'c'], [0.42, 0]], 'quay', { rough: 0.1 });
+  n.put('hull', -0.9, { len: 14, h: 4 }).put('hull', -0.4, { len: 11, h: 3 }).put('hull', 0.1, { len: 9, h: 2.6 }).row('heap', -1.2, 0.3, 6, { c: '#b89a66', h: 0.8, w: 3 }).put('shed', -0.65, { w: 6 }).put('crane', 0.26).row('figure', -1.0, 0.2, 5, { jit: 0.8 });
+};
+LANDS.lifeboat = s => { const { far: F, mid: M, near: N } = s; // a boathouse on legs with a slip running into the sea
+  F.land([[-0.3, 0.24], [0.05, 0.32], [0.32, 0.26, 'c'], [0.42, 0]], 'slate', { rough: 0.5, cap: { mat: 'grass', d: 3, steep: 0.9 } }).fields(-0.3, 0.3, { from: 0.2, to: 0.5, w: 8 }); F.sea('rock', 0.62, { n: 6, r: 1.5, c: '#2a2a32' }); F.sea('wreck', 0.7); F.stack(0.9, 12, 0.07, { mat: 'slate', top: 'peak' });
+  const m = M.land([[-0.7, 0.4], [-0.3, 0.46], [0.05, 0.4], [0.28, 0.42, 'c'], [0.42, 0.1, 'l'], [0.5, 0]], 'cliff', { rough: 0.4, cap: { mat: 'grass', d: 5, steep: 1 } });
+  m.town(-0.6, 0.2, 7, 'stone', { from: 0.02, to: 0.2 }).put('mast', 0.24, { h: 6, flag: '#c03030' }).dots('cow', -0.6, 0.2, 6, { from: 0, to: 0.15 }).put('bldg', 0.44, { w: 8, h: 3, stilts: 2.4, wall: '#2a5a9a', wtex: 'vplank', roof: 'gable', rc: '#3a3a44', rh: 1.6, win: false, door: { at: 0.94, w: 2.4, h: 2.4, c: '#12203a' } });
+  for (let k = 0; k < 26; k++) M.P.rect(M.x(0.5) + k * 2, M.base - 9 + (k >> 1), 2, 1, kHex('#6a5236')); // the slip
+  M.sea('rock', 0.76, { n: 4, c: '#22222a' });
+  const n = N.land([[-1.3, 0.2], [-0.6, 0.26], [0, 0.18], [0.2, 0.12, 'c'], [0.36, 0]], 'rock', { rough: 0.6, cap: { mat: 'grass', d: 4, steep: 0.8 } });
+  n.rocks(-1.3, 0.34, 14).put('house', -0.7, { st: 'white' }).put('bellpost', -0.3).put('wall', -1.2, { len: 40 }).dots('sheep', -1.3, 0, 6, { from: 0, to: 0.3 }).kelp(0.14, 0.36);
+};
+LANDS.limekiln = s => { const { far: F, mid: M, near: N } = s; // everything white: the cliff, the beach, the boats, the men
+  F.land([[-0.3, 0.3], [0.05, 0.4], [0.3, 0.36, 'c'], [0.42, 0]], 'chalk', { rough: 0.3, cap: { mat: 'downs', d: 3, steep: 0.8 } }); F.stack(0.84, 16, 0.1, { mat: 'chalk', cap: { mat: 'downs', d: 2 } }); F.ship(0.66, 'barge', { len: 12, c: '#e8e4d8', load: '#f8f8f4' });
+  const m = M.land([[-0.7, 0.5], [-0.3, 0.6], [0.05, 0.66], [0.3, 0.6, 'c'], [0.44, 0.16, 'l'], [0.56, 0.04], [0.6, 0]], 'chalk', { rough: 0.3, crag: 0.15, cap: { mat: 'downs', d: 5, steep: 0.9 }, step: 0 });
+  for (let k = 0; k < 5; k++) M.P.rect(M.x(-0.2), m.y(M.x(0)) + 12 + k * 9, Math.round(s.W * 0.42) - k * 7, 1, kHex('#b8b6aa')); // the quarry's benches
+  m.row('kiln', 0.4, 0.54, 3, { c: '#d8d4c8', h: 6, w: 4, sc: '236,236,232' }).put('crane', 0.3, { down: 0.3 }).row('figure', 0.36, 0.56, 4, { c: '#e8e6e0', jit: 0.6 });
+  M.ship(0.72, 'barge', { len: 10, c: '#dcd8cc', load: '#f8f8f4' });
+  const n = N.land([[-1.3, 0.14], [-0.6, 0.18], [0, 0.12], [0.28, 0.06], [0.38, 0]], 'chalk', { rough: 0.4 });
+  n.row('kiln', -1.0, -0.4, 3, { c: '#d0ccc0', sc: '236,236,232' }).row('heap', -1.2, 0.3, 7, { c: '#f8f8f2', h: 1.2, w: 3 }).row('cart', -0.3, 0.2, 2, { load: '#f8f8f2', c: '#c8c4b8' }).row('figure', -0.9, 0.3, 5, { c: '#e8e6e0', jit: 0.8 }).rocks(-1.3, 0.34, 10, { c: '#e4e2d8' });
+};
+LANDS.gansey = s => { const { far: F, mid: M, near: N } = s; // a rock of a dozen cottages where every woman knits
+  F.sea('rock', 0.5, { n: 5, r: 1.8, c: '#3a3a44' }); F.stack(0.7, 12, 0.08, { mat: 'granite', top: 'peak' }); F.stack(0.9, 8, 0.05, { mat: 'granite' }); F.land([[-0.3, 0.1], [0, 0.14], [0.2, 0.06], [0.28, 0]], 'granite', { rough: 0.6 });
+  const m = M.land([[-0.7, 0.26], [-0.4, 0.36], [-0.05, 0.44], [0.24, 0.36], [0.42, 0.16, 'c'], [0.5, 0]], 'granite', { rough: 0.6, crag: 0.3, cap: { mat: 'tundra', d: 3, steep: 0.7 } });
+  m.town(-0.5, 0.36, 12, 'stone', { from: 0.05, to: 0.6 }).row('washing', -0.4, 0.3, 3, { down: 0.3 }).dots('sheep', -0.7, 0.4, 12, { from: 0, to: 0.5 }).walls(-0.7, 0.4, { n: 2, down: 4 });
+  M.ship(0.66, 'lug', { len: 7 }); M.sea('rock', 0.8, { n: 3 });
+  const n = N.land([[-1.3, 0.16], [-0.6, 0.22], [0, 0.16], [0.2, 0.1, 'c'], [0.36, 0]], 'granite', { rough: 0.6, crag: 0.3 });
+  n.row('house', -1.1, -0.2, 4, { st: 'stone' }).row('washing', -0.9, 0, 3).row('figure', -1.0, 0.1, 6, { jit: 0.7, c: '#3a4a6a' }).rocks(-1.3, 0.34, 14, { c: '#8a8690' }).kelp(0.14, 0.36).put('boat', 0.2, { c: '#3a4a6a' });
+};
+LANDS.whelk = s => { const { far: F, mid: M, near: N } = s; // steam from a dozen shed roofs, shells heaped in white hills
+  F.land([[-0.3, 0.12], [0.1, 0.16], [0.4, 0.08], [0.48, 0]], 'dune', { rough: 0.5 }); F.stack(0.84, 18, 0.06, { mat: 'slate', cap: { mat: 'grass', d: 2 } }); F.fleet(0.6, 4, 'lug', { len: 5, w: 0.2 });
+  const m = M.land([[-0.7, 0.16], [-0.4, 0.26], [-0.2, 0.16], [0.0, 0.24], [0.2, 0.14], [0.36, 0.2], [0.5, 0.06], [0.56, 0]], '#e4e0d4', { rough: 0.4 }); // the shell hills
+  m.row('copper', -0.6, 0.5, 6, { down: 0.6, jit: 0.4 }).row('figure', -0.6, 0.5, 6, { jit: 0.8, down: 0.7 }).trees('bush', -0.7, 0.5, 14, { h: [0.8, 1.6], c: '#8a9a5a' });
+  M.sea('floats', 0.62, { n: 16, gap: 2 });
+  const n = N.land([[-1.3, 0.1], [-0.6, 0.12], [0, 0.1], [0.28, 0.05], [0.38, 0]], 'sand', { rough: 0.3 });
+  n.row('copper', -1.15, -0.1, 5).row('heap', -1.2, 0.3, 8, { c: '#f0ece2', h: 2.2, w: 5 }).row('pots', -0.9, 0.2, 5, { n: 3, c: '#6a6a54' }).put('boat', 0.24).row('figure', -0.6, 0.3, 4, { jit: 0.8 });
+};
+LANDS.birdringers = s => { const { far: F, mid: M, near: N } = s; // a low island on the flyway, a walled garden to catch the tired birds
+  F.flat(-0.3, 0.66, 'dune', { h: 5 }).trees('bush', -0.3, 0.6, 20, { h: [0.8, 1.6], c: '#8a9a5a', on: 'ridge' }); F.flock(0.3, 0.5, { n: 14, rx: 60, ry: 14, ms: 5200, c: '#3a3a44' }); F.flock(0.7, 0.3, { n: 9, rx: 40, ry: 10, c: '#3a3a44' });
+  const m = M.land([[-0.7, 0.14], [-0.3, 0.2], [0.1, 0.16], [0.4, 0.1], [0.56, 0.03], [0.6, 0]], 'dune', { rough: 0.5, cap: { mat: 'grass', d: 3, steep: 0.6 } });
+  const gx = M.x(0.0), gy = m.y(gx), gw = Math.round(s.W * 0.22); M.P.rect(gx, gy - 6, gw, 6, kHex('#9a968a')); M.P.rect(gx, gy - 6, gw, 1, kHex('#c0bcb0')); for (let k = 0; k < 9; k++) TREE.bush(M.P, gx + 4 + k * (gw - 8) / 8, gy - 5, 5 + (k % 3) * 2, kRamp('#4a8a3a'), k); // the trap garden
+  M.P.line(gx + gw, gy - 6, gx + gw + 18, gy - 2, kHex('#b8c0b8')); M.P.line(gx + gw, gy - 1, gx + gw + 18, gy - 2, kHex('#b8c0b8')); // the funnel of the trap
+  m.row('nets', -0.5, -0.1, 3, { n: 3 }).put('observatory', 0.34, { w: 4 }).put('mast', 0.42, { h: 8, flag: '#e8e0d0' }).put('bldg', 0.26, { w: 5, h: 2.2, wall: '#6a5a44', roof: 'gable', rc: '#5a8a3a', rtex: 'turf', rh: 1.6 });
+  const n = N.land([[-1.3, 0.1], [-0.6, 0.14], [0, 0.1], [0.28, 0.05], [0.38, 0]], 'dune', { rough: 0.6, cap: { mat: 'grass', d: 3, steep: 0.5 } });
+  n.trees('bush', -1.3, 0.34, 40, { h: [0.8, 2], c: '#8aa058' }).row('nets', -1.1, -0.2, 4, { n: 3 }).put('wall', -0.1, { len: 22 }).row('figure', -0.8, 0.2, 3, { jit: 0.7 }); N.flock(-0.5, 0.3, { n: 8, rx: 30, c: '#4a4a54' });
+};
+LANDS.coastguard = s => { const { far: F, mid: M, near: N } = s; // a whitewashed row with a flagpole, a man on the cliff with a glass
+  F.land([[-0.3, 0.24], [0.05, 0.3], [0.3, 0.24, 'c'], [0.4, 0]], 'slate', { rough: 0.5, cap: { mat: 'grass', d: 3, steep: 0.9 } }); F.stack(0.86, 14, 0.08, { mat: 'slate', top: 'peak' }); F.ship(0.64, 'steam', { len: 20 }); F.sea('wreck', 0.5);
+  const m = M.land([[-0.7, 0.4], [-0.3, 0.46], [0.05, 0.5], [0.34, 0.5, 'c'], [0.46, 0.12, 'l'], [0.52, 0]], 'granite', { rough: 0.4, crag: 0.2, cap: { mat: 'grass', d: 5, steep: 0.9 } });
+  m.row('house', -0.3, 0.12, 6, { st: 'white', w: 4.6, h: 2.6 }).put('bldg', 0.22, { w: 4, h: 5, storeys: 2, wall: '#f4f2ea', roof: 'hip', rc: '#4a5060', rh: 1.2, win: { n: 2 } }).put('mast', 0.3, { h: 9, flag: '#2a4a9a' }).put('figure', 0.34, { hat: '#2a2a34', rod: true }).ledges(0.34, 0.5, 10, { air: 4 });
+  const n = N.land([[-1.3, 0.2], [-0.6, 0.26], [0, 0.2], [0.2, 0.14, 'c'], [0.36, 0]], 'granite', { rough: 0.5, cap: { mat: 'grass', d: 4, steep: 0.8 } });
+  n.put('ruin', -0.9, { n: 4, h: 2.4, c: '#8a8a84' }).put('wall', -1.1, { len: 34, h: 1.6 }).put('cart', -0.4, { load: '#c8b890' }).put('shed', -0.6, { w: 4 }).rocks(-1.3, 0.34, 12).kelp(0.16, 0.36).put('fence', -0.2, { len: 22 });
+};
+LANDS.ferrysteps = s => { const { far: F, mid: M, near: N } = s; // worn steps down to a strait, and the far side always in sight
+  const o = F.land([[-0.3, 0.24], [0, 0.3], [0.3, 0.22], [0.56, 0.28], [0.8, 0.2], [1.02, 0.26]], 'grass', { rough: 0.4 }); // the other shore, right across the view
+  o.forest(-0.3, 1.02, { deep: 0.45, c: '#4a7a3a', size: 3, gaps: 0.3 }).fields(-0.3, 1, { from: 0.5, w: 9 }).put('house', 0.62, { st: 'slate', down: 0.85 }).put('steps', 0.66, { n: 5, down: 0.9 }).put('church', 0.3, { down: 0.4, sh: 4, w: 6, th: 6 });
+  M.sea('ship', 0.6, { rig: 'row', len: 7, c: '#3a2a22' }); M.sea('buoy', 0.8, { c: '#2a6a3a' });
+  const m = M.land([[-0.7, 0.34], [-0.3, 0.4], [0, 0.3], [0.24, 0.14], [0.36, 0]], 'grass', { rough: 0.4 }); m.forest(-0.7, 0.1, { deep: 0.7, c: '#3f7a38', size: 3.2 }).put('house', 0.18, { st: 'slate', chim: { at: 0.2 } });
+  const n = N.land([[-1.3, 0.2], [-0.6, 0.24], [-0.1, 0.16], [0.16, 0.1], [0.3, 0.04], [0.36, 0]], 'slate', { rough: 0.3, cap: { mat: 'grass', d: 4, steep: 0.6 } });
+  n.trees('broad', -1.3, -0.3, 10, { h: [5, 9] }).put('house', -0.5, { st: 'slate' }).put('steps', 0.3, { n: 9, weed: true }).put('bellpost', 0.2).put('figure', 0.14).put('wall', -0.2, { len: 16 });
+};
+LANDS.lightship = s => { const { far: F, mid: M, near: N } = s; // a red lightship on a chain over a sandbank, and nothing else
+  F.ship(0.3, 'steam', { len: 24 }); F.ship(0.84, 'square', { len: 20 }); F.sea('buoy', 0.56, { c: '#2a2a2a' }); F.flat(0.62, 0.78, 'sand', { h: 2 });
+  M.ship(0.62, 'light', { len: 30, c: '#b0302a', u: 2 }); const lx = M.x(0.62); for (let k = 0; k < 9; k++) M.P.rect(lx - 14 + k * 3, M.base - 18 + ((k * 7) % 3), 2, 3, kHex(pick(['#f0f0e8', '#3060c0', '#e8c040', '#f0f0e8'], k, 3))); // washing between the masts
+  M.flat(0.2, 0.5, 'sand', { h: 4 }).put('hull', 0.34, { len: 10, h: 2.4 }); M.sea('wreck', 0.44); M.flock(0.62, 0.3, { n: 6 });
+  const n = N.land([[-1.3, 0.06], [-0.6, 0.08], [0, 0.07], [0.28, 0.04], [0.38, 0]], 'sand', { rough: 0.3 });
+  n.put('hull', -0.8, { len: 12, h: 3 }).rocks(-1.3, 0.34, 10, { c: '#c8b890' }).row('heap', -0.5, 0.2, 3, { c: '#6a4a2e', h: 0.7, w: 2 }).put('mast', -0.3, { h: 5, flag: '#c03030', stay: false });
+  n.creeks(-1.3, 0.36, 2);
+};
+// the shops of the home waters, each in its island's own materials
+Object.assign(SHOP, { harbor: { st: 'brick' }, wreckers: { st: 'wood', wall: '#3e3026' }, crabpots: { st: 'pastel' }, tidemill: { st: 'slate' }, codflakes: { st: 'nordic' }, creel: { st: 'stone', accent: '#2a5a9a' }, musselropes: { st: 'stone' }, kipper: { wall: '#3e3028', rc: '#2a2020' }, netmenders: { st: 'thatch' }, whelk: { st: 'wood' }, ferrysteps: { st: 'slate' }, smugglers: { wall: '#5a5460' }, hermit: { wall: '#6a6660' } });
+// --- tier 2: the skiff's waters ---
+LANDS.reach = s => { const { far: F, mid: M, near: N } = s; // a cold kelp coast under pinewood, nobody to sell to
+  F.land([[-0.3, 0.3], [0, 0.42], [0.24, 0.3], [0.44, 0.36], [0.62, 0.16], [0.74, 0]], 'slate', { rough: 0.5 }).forest(-0.3, 0.74, { kind: 'conifer', deep: 0.9, c: '#2a5644' }); F.stack(0.9, 8, 0.1, { mat: 'slate', top: 'peak' }).trees('conifer', 0.88, 0.92, 3, { h: [3, 5], on: 'ridge' });
+  const m = M.land([[-0.7, 0.4], [-0.3, 0.52], [0.05, 0.4], [0.3, 0.3, 'c'], [0.42, 0.08, 'l'], [0.5, 0]], 'slate', { rough: 0.5, crag: 0.3 });
+  m.forest(-0.7, 0.34, { kind: 'conifer', deep: 0.62, c: '#2c5e44', size: 2.6 }).kelp(0.28, 0.5, { d: 4 }).fall(-0.1, { len: 0.4, top: 30 }); M.stack(0.62, 7, 0.22, { mat: 'slate', top: 'peak' }).kelp(0.58, 0.66, { d: 4 }); M.stack(0.74, 5, 0.12, { mat: 'slate' }).kelp(0.7, 0.78);
+  M.sea('floats', 0.52, { n: 30, gap: 1.5, c: '#3a4a2a' }); M.sea('rock', 0.86, { n: 3, r: 0.6, c: '#3a3028' }); // the kelp's own canopy on the water, and otters in it
+  const n = N.land([[-1.3, 0.2], [-0.6, 0.28], [-0.1, 0.18], [0.16, 0.12, 'c'], [0.36, 0]], 'slate', { rough: 0.6, crag: 0.3, cap: { mat: 'pinewood', d: 4, steep: 0.7 } });
+  n.trees('conifer', -1.3, 0.14, 22, { h: [7, 14], c: '#2a5a44' }).rocks(-0.2, 0.34, 12, { c: '#4a5260' }).kelp(0.1, 0.36, { d: 5 }).put('hull', -0.5, { len: 6, h: 2 });
+};
+LANDS.lantern = s => { const { far: F, mid: M, near: N } = s; // a river-mouth town under paper lanterns
+  F.land([[-0.3, 0.5], [-0.08, 0.86, 'l'], [0.08, 0.6], [0.26, 0.94, 'l'], [0.42, 0.56], [0.58, 0.72, 'l'], [0.76, 0.3], [0.9, 0.12], [1.0, 0.06]], '#6a7a8a', { tex: 'cliff', crag: 0.5, rough: 0.4 }).forest(-0.3, 1, { kind: 'conifer', deep: 0.12, c: '#3a5a50' }); F.cloud(0.26, 0.5, 0.5, { r: 4 });
+  const m = M.land([[-0.7, 0.36], [-0.3, 0.5], [0, 0.56], [0.24, 0.4], [0.42, 0.2], [0.54, 0.06], [0.58, 0]], 'jungle', { rough: 0.4 });
+  m.trees('bamboo', -0.7, 0.5, 26, { h: [5, 9] }).trees('broad', -0.5, 0.5, 12, { h: [4, 6], c: '#f0a8c0' }).row('torii', 0.26, 0.5, 5, { down: 0.6, jit: 0.2 }).town(-0.4, 0.44, 14, 'pagoda', { from: 0.3, to: 0.9 }).put('pagoda', 0.02, { tiers: 5, w: 5 });
+  M.ship(0.7, 'junk', { len: 13 }); M.ship(0.86, 'junk', { len: 8, sail: '#c8a060' });
+  const n = N.land([[-1.3, 0.14], [-0.6, 0.18], [0, 0.14], [0.28, 0.1, 'c'], [0.4, 0]], 'quay', { rough: 0.1 });
+  n.row('house', -1.2, -0.1, 6, { st: 'pagoda' }).trees(['bamboo', 'broad'], -1.3, 0.2, 10, { h: [5, 9], c: '#f0a0b8' }).put('torii', 0.14).put('stall', -0.36, { c: '#c03a2a' }).put('stall', 0.26, { c: '#c8a040' });
+  for (let k = 0; k < 16; k++) { const x = N.x(-0.5 + k * 0.05), y = n.y(x) - 13 + Math.round(Math.sin(k * 1.3) * 2); N.P.rect(x, y, 2, 3, kHex(k % 3 ? '#e04a3a' : '#f0b040')); N.P.litRect(x, y, 2, 3, kHex('#ffb060'), 255); N.P.halo(x, y + 1, 4, kHex('#ff9050'), 90); if (k < 15) N.P.line(x + 2, y, N.x(-0.45 + k * 0.05), n.y(N.x(-0.45 + k * 0.05)) - 13 + Math.round(Math.sin((k + 1) * 1.3) * 2), kHex('#3a2a20')); } // a string of paper lanterns
+};
+LANDS.market = s => { const { far: F, mid: M, near: N } = s; // a hundred rafts tied into a town, drifting
+  const raft = { c: '#7a5a34', tex: 'rock' };
+  F.stack(0.92, 28, 0.1, { mat: 'jungle', cap: { mat: 'jungle', d: 3 } }).trees('palm', 0.86, 0.98, 5, { h: [5, 8], on: 'ridge' });
+  const f = F.flat(-0.3, 0.8, '#6a5238', { h: 2, rough: 0.05 }); f.row('hut', -0.28, 0.78, 26, { w: 3.4, jit: 0.6 }).row('mast', -0.2, 0.76, 9, { h: 7, flag: '#e8c040', stay: false, jit: 0.6 }); F.fleet(0.1, 5, 'junk', { len: 9, w: 0.6 });
+  const m = M.land([[-0.7, 0.04], [-0.2, 0.045], [0.3, 0.04], [0.5, 0.045], [0.62, 0.04, 'c'], [0.66, 0]], raft, { rough: 0.04, strata: 3 });
+  m.row('hut', -0.66, 0.42, 14, { w: 3.6, jit: 0.5 }).row('stall', -0.6, 0.62, 9, { jit: 0.6 }).row('mast', -0.5, 0.6, 6, { h: 8, flag: '#e8c040', stay: false, jit: 0.5 }).put('pagoda', 0.52, { tiers: 4, w: 6, wall: '#a8482e' }).row('figure', -0.6, 0.64, 12, { jit: 0.9, hat: '#e8d8a0' });
+  M.ship(0.78, 'junk', { len: 15, sail: '#c0503a' }); M.ship(0.92, 'junk', { len: 10, sail: '#e0b050' }); M.sea('posts', 0.67, { n: 6, gap: 1.4, net: true });
+  const n = N.land([[-1.3, 0.05], [-0.6, 0.055], [0, 0.05], [0.34, 0.045, 'c'], [0.4, 0]], raft, { rough: 0.04, strata: 3 });
+  n.row('hut', -1.25, 0.0, 8, { w: 4, jit: 0.4 }).row('stall', -1.2, 0.3, 7, { jit: 0.5 }).row('heap', -1.1, 0.3, 6, { c: '#c8d0d8', h: 0.6, w: 1.4, n: 2 }).row('figure', -1.2, 0.34, 9, { jit: 0.9, hat: '#e8d8a0' }).row('boat', -0.9, 0.3, 4, { jit: 0.6 });
+  const r1 = N.land([[0.5, 0, 'r'], [0.52, 0.04, 'l'], [0.67, 0.04, 'c'], [0.69, 0]], raft, { rough: 0.02, strata: 3 }); // two rafts of the town, out where you fish
+  r1.put('hut', 0.56, { w: 4.4 }).put('stall', 0.63, { c: '#c03a2a' }).put('figure', 0.665, { rod: true, hat: '#e8d8a0' }).put('mast', 0.6, { h: 7, flag: '#e8c040', stay: false });
+  const r2 = N.land([[0.8, 0, 'r'], [0.82, 0.04, 'l'], [0.96, 0.04, 'c'], [0.98, 0]], raft, { rough: 0.02, strata: 3 });
+  r2.put('stall', 0.86, { c: '#3a6ab0' }).put('hut', 0.925, { w: 4 }).put('figure', 0.89, { hat: '#e8d8a0' });
+  N.sea('posts', 0.7, { n: 6, gap: 1.6, net: true }); // a fish pen between them
+};
+LANDS.monastery = s => { const { far: F, mid: M, near: N } = s; // monks on a pillar of rock, a bell for every hour
+  F.land([[-0.3, 0.4], [-0.05, 0.7, 'l'], [0.14, 0.44], [0.3, 0.56, 'l'], [0.48, 0.2], [0.58, 0]], 'slate', { crag: 0.6, cap: { mat: 'snow', from: 0.6, d: 8, steep: 2 } }); F.stack(0.9, 6, 0.16, { mat: 'slate', top: 'peak' });
+  const r = M.land([[0.22, 0], [0.25, 0.5, 'l'], [0.28, 0.74], [0.4, 0.8], [0.52, 0.76, 'c'], [0.56, 0.3, 'l'], [0.6, 0]], 'cliff', { rough: 0.3, crag: 0.2, cap: { mat: 'grass', d: 3, steep: 0.8 } });
+  r.put('bldg', 0.36, { w: 9, h: 4, storeys: 2, wall: '#e8e0d0', wtex: 'plaster', roof: 'gable', rc: '#a04a36', rtex: 'tile', rh: 1.6, win: { n: 4, w: 0.5, h: 0.8 } }).put('tower', 0.47, { w: 2.8, h: 8, taper: 0.06, wall: '#e8e0d0', cap: 'cone', caph: 2.4, capc: '#a04a36', wins: 2 }).put('chapel', 0.3, { wall: '#e8e0d0', rc: '#a04a36', w: 4 });
+  r.path(0.58, 0.3, { from: 0.96, to: 0.1, turns: 4, c: '#c8c0a8' }).dots('goat', 0.26, 0.56, 7, { from: 0.2, to: 0.9 }).ledges(0.24, 0.58, 16, { air: 5 });
+  for (let k = 0; k < 3; k++) M.P.rect(M.x(0.5 + k * 0.012), r.y(M.x(0.5)) + 6, 1, M.base - r.y(M.x(0.5)) - 6, kHex('#d8d0b8')); // the lines lowered from the refectory window
+  M.P.em.push({ k: 'blink', x: M.x(0.47), y: r.y(M.x(0.47)) - Math.round(6.4 * M.u), w: 2, h: 2, c: '#f0c050', ms: 3000, duty: 0.2 }); M.land([[-0.7, 0.24], [-0.4, 0.3], [-0.1, 0.14], [0.04, 0]], 'cliff', { rough: 0.5, cap: { mat: 'grass', d: 4 } }).dots('goat', -0.6, 0, 6); M.ship(0.76, 'row', { len: 6 });
+  const n = N.land([[-1.3, 0.2], [-0.6, 0.28], [-0.1, 0.16], [0.14, 0.1, 'c'], [0.34, 0]], 'cliff', { rough: 0.6, cap: { mat: 'grass', d: 4, steep: 0.8 } });
+  n.dots('goat', -1.3, 0.1, 8, { from: 0, to: 0.5 }).put('cross', -0.7, { h: 3 }).put('bellpost', -0.3).rocks(-1.3, 0.34, 12).kelp(0.1, 0.34).put('steps', 0.24, { n: 8 });
+};
+LANDS.sargasso = s => { const { far: F, mid: M, near: N } = s; // golden weed to every horizon, and whatever it has caught
+  const weed = '#b89a3a', w2 = '#a08430', berry = '#e8c850';
+  for (const [a, b] of [[-0.3, 0.12], [0.16, 0.46], [0.5, 0.66], [0.7, 1.02]]) F.flat(a, b, weed, { h: 2 });
+  F.ship(0.3, 'hulk', { len: 20, wake: false, c: '#4a3a2a' }); F.sea('wreck', 0.86, { u: 2 }); F.flock(0.62, 0.34, { n: 6 });
+  for (const [a, b] of [[-0.7, -0.24], [-0.14, 0.34], [0.4, 0.96]]) M.flat(a, b, w2, { h: 3 }).rocks(a, b, 14, { c: '#c8a840', size: 0.7, deep: 0.3 });
+  M.ship(0.56, 'hulk', { len: 24, wake: false, c: '#4a3a2a' }); M.flat(0.5, 0.82, weed, { h: 3 }).rocks(0.5, 0.82, 9, { c: '#d0b048', size: 0.6, deep: 0.3 }); // a ship the weed took, and kept
+  M.sea('floats', 0.36, { n: 12, gap: 1.2, c: berry }); M.ship(0.9, 'row', { len: 5, c: '#4a3a2a', wake: false });
+  const n = N.land([[-1.3, 0.06], [-0.6, 0.08], [0, 0.06], [0.3, 0.04], [0.4, 0]], '#a88a34', { rough: 0.4 });
+  n.rocks(-1.3, 0.38, 30, { c: '#c8a840', size: 0.6, deep: 0.4 }).dots('crab', -1.3, 0.38, 14, { from: 0, to: 0.6 }).put('hull', -0.6, { len: 7, h: 2 }).put('heap', -0.2, { c: '#6a4a2e', n: 3, h: 0.8, w: 2 }).put('mast', 0.1, { h: 4, flag: '#e8e0d0', stay: false });
+  for (const [a, b, k] of [[0.46, 0.62, 5], [0.68, 0.76, 2], [0.82, 0.99, 6]]) N.flat(a, b, weed, { h: 3 }).rocks(a, b, k + 3, { c: '#d0b048', size: 0.45, deep: 0.3 }).dots('crab', a, b, k, { from: 0, to: 0.5 }).dots('turtle', a, b, k > 4 ? 1 : 0, { from: 0, to: 0.2 });
+  N.sea('floats', 0.62, { n: 8, gap: 1.5, c: berry });
+};
+LANDS.fen = s => { const { far: F, mid: M, near: N } = s; // flat as a plate, half water, drained by windmills
+  const f = F.flat(-0.3, 1.02, '#6a8a50', { h: 4 }); f.row('windmill', -0.2, 0.96, 7, { h: 5, r: 4, jit: 0.5 }).put('church', 0.4, { w: 5, th: 7, sh: 0, spire: false }).trees(['poplar', 'willow'], -0.3, 1, 18, { h: [4, 7], on: 'ridge' });
+  const m = M.land([[-0.7, 0.05], [-0.2, 0.06], [0.3, 0.05], [0.8, 0.045], [0.9, 0]], '#5a8048', { rough: 0.1 });
+  m.creeks(-0.7, 0.88, 3, { c: '#8ab8d0' }).put('windmill', 0.08, { h: 7 }).put('windmill', 0.48, { h: 9, r: 6 }).put('windmill', 0.76, { h: 6 }).town(-0.5, 0.0, 4, 'thatch', { from: 0, to: 0.3 }).put('house', 0.6, { st: 'thatch' }).trees('willow', -0.7, 0.86, 11, { h: [4, 7] }).row('poles', 0.36, 0.44, 1, {});
+  M.reeds(-0.7, 0.98, { h: 2.4, thin: 0.45 }); M.ship(0.94, 'barge', { len: 6, load: '#6a5a40' });
+  const n = N.land([[-1.3, 0.06], [-0.6, 0.08], [0, 0.07], [0.3, 0.04], [0.4, 0]], '#5a8048', { rough: 0.15 });
+  n.creeks(-1.3, 0.4, 2).put('windmill', -0.7, { h: 9, r: 6.4 }).trees('willow', -1.3, 0.2, 7, { h: [5, 9] }).put('boat', 0.2, { len: 6, c: '#3a3a30' }).put('hut', -0.2, { w: 4 }).row('figure', -0.5, 0.3, 3, { rod: true, jit: 0.6 }); N.reeds(-1.3, 0.46, { h: 3, thin: 0.35 });
+  N.sea('posts', 0.56, { n: 5, gap: 2.2, h: 1.2 }); N.sea('posts', 0.8, { n: 4, gap: 2.4, h: 1.2 }); // eel traps staked out in the lode
+};
+LANDS.lazaret = s => { const { far: F, mid: M, near: N } = s; // a quarantine island nobody has needed for a hundred years
+  F.land([[-0.3, 0.16], [0.1, 0.22], [0.5, 0.14], [0.7, 0.2], [0.86, 0.08], [0.92, 0]], '#8a8a70', { rough: 0.4 }).trees('cypress', -0.3, 0.9, 16, { h: [5, 8], on: 'ridge' }); F.flock(0.5, 0.5, { n: 6, c: '#2a2a30', rx: 30 });
+  const m = M.land([[-0.7, 0.3], [-0.3, 0.4], [0.06, 0.5], [0.3, 0.54], [0.5, 0.42], [0.62, 0.2], [0.7, 0.06], [0.74, 0]], '#8a9068', { rough: 0.3 });
+  m.put('bldg', 0.33, { w: 28, h: 5.4, storeys: 2, wall: '#d8c070', wtex: 'plaster', roof: 'hip', rc: '#8a5a44', rtex: 'tile', rh: 1.6, win: { n: 10, w: 0.7, h: 1.1, lit: false, shut: '#6a7a5a' }, door: { at: 0.5, w: 1.6 }, sink: 2 })
+    .trees('cypress', -0.7, 0.16, 12, { h: [6, 10] }).trees('cypress', 0.5, 0.56, 3, { h: [7, 10] }).dots('cross', 0.5, 0.72, 34, { from: 0.25, to: 0.95 }).put('arch', 0.62, { w: 4, h: 4, down: 0.6 }).put('wall', 0.48, { len: 34, down: 0.97 }).path(0.64, 0.42, { from: 0.9, to: 0.1, c: '#b8b090' });
+  M.sea('buoy', 0.86, { c: '#e8c040', light: '#ffd040' });
+  const n = N.land([[-1.3, 0.14], [-0.6, 0.18], [0, 0.12], [0.28, 0.08, 'c'], [0.4, 0]], 'quay', { rough: 0.2 });
+  n.trees('cypress', -1.3, 0.2, 9, { h: [8, 13] }).put('ruin', -0.6, { n: 5, h: 3 }).put('kiln', -0.9, { c: '#9a968a', sa: 0 }).dots('cross', -0.4, 0.1, 9, { from: 0, to: 0.4 }).put('wall', -0.1, { len: 24, h: 1.8 }).put('gallows', 0.22).rocks(-1.3, 0.34, 6);
+};
+LANDS.dyers = s => { const { far: F, mid: M, near: N } = s; // white houses, blue domes, the whole harbour stained purple
+  F.stack(0.84, 26, 0.12, { mat: 'limestone', cap: { mat: 'heath', d: 3 } }); F.land([[-0.3, 0.3], [0, 0.4], [0.3, 0.26], [0.46, 0.08], [0.5, 0]], 'limestone', { rough: 0.4, cap: { mat: 'heath', d: 4, steep: 0.8 } }); F.fleet(0.62, 3, 'lateen', { len: 8 });
+  const m = M.land([[-0.7, 0.4], [-0.3, 0.56], [0, 0.6], [0.26, 0.46], [0.44, 0.2], [0.56, 0.05], [0.6, 0]], 'limestone', { rough: 0.4, cap: { mat: 'heath', d: 4, steep: 0.6 } });
+  m.town(-0.5, 0.46, 34, 'white', { from: 0.14, to: 0.92, big: 0.3 }).patches(-0.5, 0.46, 30, { c: ['#7a2a8a', '#9a3a9a', '#5a2a7a', '#b04a8a'], w: 2.6, h: 0.5 }).put('windmill', -0.1, { h: 5, wall: '#f4f0e8', capc: '#3a6ab0' }).trees('cypress', -0.7, 0.4, 8, { h: [4, 7] });
+  M.ship(0.72, 'lateen', { len: 12, sail: '#8a3a9a' });
+  const n = N.land([[-1.3, 0.14], [-0.6, 0.18], [0, 0.14], [0.28, 0.1, 'c'], [0.4, 0]], 'quay', { rough: 0.1 });
+  n.row('pans', -1.2, -0.1, 4, { n: 4, w: 2.6, c: '#7a2a8a', bank: '#d8d2c4', cone: false }).row('house', -1.1, 0.0, 5, { st: 'white' }).row('heap', -1.2, 0.3, 6, { c: '#c8a8b8', h: 1, w: 2.4 }).row('figure', -1, 0.3, 5, { c: '#6a2a7a', jit: 0.8 });
+  for (let k = 0; k < 4; k++) { const x = N.x(-0.4 + k * 0.17), y = n.y(x); N.P.rect(x, y - 12, 1, 12, kHex('#4a3626')); N.P.rect(x + 22, y - 12, 1, 12, kHex('#4a3626')); for (let j = 1; j < 22; j += 4) N.P.rect(x + j, y - 12 + ((j * 3) % 2), 3, 8, kHex(pick(['#7a2a8a', '#9a3a9a', '#b04a8a', '#5a2a7a'], j + k, 9))); } // the cloth, dripping
+};
+LANDS.terrace = s => { const { far: F, mid: M, near: N } = s; // a mountain carved into rice terraces, every one a pond
+  F.land([[-0.3, 0.5], [0, 0.8, 'l'], [0.2, 0.96, 'l'], [0.4, 0.7], [0.6, 0.5, 'l'], [0.8, 0.2], [0.94, 0]], 'jungle', { crag: 0.3, rough: 0.5 }); F.cloud(0.2, 0.84, 0.44, { r: 5 }); F.cloud(0.56, 0.5, 0.3, { r: 4 });
+  const m = M.land([[-0.7, 0.5], [-0.3, 0.68], [0, 0.74], [0.24, 0.6], [0.44, 0.3], [0.56, 0.08], [0.6, 0]], 'jungle', { rough: 0.3 });
+  m.terraces(-0.7, 0.58, { step: 2.2, water: true, flat: '#7ab850', wall: '#3a6a3a', from: 0.1 }).fall(0.1, { len: 0.5, top: 20 }).trees(['palm', 'bamboo'], -0.7, 0.5, 14, { h: [4, 7], on: 'ridge' }).dots('yak', -0.6, 0.5, 8, { from: 0.3, to: 0.9 }).row('hut', 0.3, 0.54, 5, { stilts: 1.2, down: 0.7, jit: 0.4 }).row('figure', -0.5, 0.5, 9, { hat: '#e8d8a0', down: 0.6, jit: 0.9 });
+  const n = N.land([[-1.3, 0.2], [-0.6, 0.26], [-0.1, 0.16], [0.2, 0.08], [0.36, 0.03], [0.42, 0]], 'jungle', { rough: 0.2 });
+  n.terraces(-1.3, 0.4, { step: 1.2, water: true, flat: '#7ab850', wall: '#3a6a3a' }).row('hut', -1.0, -0.2, 4, { stilts: 1.6, w: 4.4 }).trees(['palm', 'bamboo'], -1.3, 0.2, 9, { h: [6, 11] }).dots('yak', -0.8, 0.3, 4, { from: 0.2, to: 0.7 }).row('figure', -0.9, 0.3, 5, { hat: '#e8d8a0', jit: 0.8 });
+};
+LANDS.bayou = s => { const { far: F, mid: M, near: N } = s; // black water under cypress knees, moss hanging to the surface
+  const f = F.flat(-0.3, 1.02, '#3a4a3a', { h: 3 }); f.trees('swamp', -0.3, 1, 46, { h: [8, 16], on: 'ridge', c: '#3a5a44' });
+  const m = M.land([[-0.7, 0.05], [-0.2, 0.06], [0.3, 0.05], [0.56, 0.035], [0.64, 0]], '#4a4a38', { rough: 0.2 });
+  m.trees('swamp', -0.7, 0.6, 18, { h: [10, 17], on: 'ridge' }).row('hut', -0.4, 0.4, 5, { stilts: 1.4, jit: 0.5, wall: '#6a5a44' }).put('jetty', 0.42, { len: 12 }); M.fleet(0.72, 3, 'row', { len: 5, c: '#3a2e24', wake: false }); M.sea('floats', 0.66, { n: 14, gap: 1.7, c: '#5a9a4a' }); M.stack(0.86, 3, 0.02, { mat: '#4a4a38' }).trees('swamp', 0.84, 0.88, 2, { h: [10, 14], on: 'ridge' });
+  const n = N.land([[-1.3, 0.06], [-0.6, 0.07], [0, 0.06], [0.3, 0.04], [0.4, 0]], '#4a4638', { rough: 0.25 });
+  n.trees('swamp', -1.3, 0.38, 9, { h: [13, 20], on: 'ridge' }).put('bldg', -0.4, { w: 6, h: 2.6, stilts: 1.8, wall: '#6a5a44', wtex: 'vplank', roof: 'mono', rc: '#8a4a2a', rtex: 'metal', rh: 0.6, win: { n: 2 }, lamp: true }).row('boat', -0.9, 0.3, 4, { len: 5, c: '#3a2e24', jit: 0.6 }); N.sea('floats', 0.42, { n: 9, gap: 2.4, c: '#5a9a4a' });
+  N.P.em.push({ k: 'fn', x: N.x(-0.6), y: N.base - 20, draw: (x, y, t, nt) => { if (nt < 0.3) return; g.fillStyle = '#e8ff80'; for (let k = 0; k < 14; k++) if (Math.sin(t / 420 + k * 2.1) > 0.6) g.fillRect((x + nH(k, 1, 5) * s.W * 0.9 + Math.sin(t / 900 + k) * 4) | 0, (y - nH(k, 2, 5) * 30 + Math.cos(t / 700 + k) * 3) | 0, 1, 1); } }); // fireflies after dark
+};
+LANDS.spice = s => { const { far: F, mid: M, near: N } = s; // a dhow harbour that smells of cloves from a mile out
+  F.stack(0.86, 30, 0.1, { mat: 'jungle' }).trees('palm', 0.8, 0.92, 6, { h: [5, 8], on: 'ridge' }); F.land([[-0.3, 0.3], [0, 0.4], [0.3, 0.26], [0.46, 0.08], [0.5, 0]], 'jungle', { rough: 0.5 }); F.fleet(0.62, 4, 'dhow', { len: 9, w: 0.2 });
+  const m = M.land([[-0.7, 0.36], [-0.3, 0.5], [0, 0.46], [0.26, 0.3], [0.44, 0.14], [0.56, 0.05], [0.6, 0]], 'jungle', { rough: 0.4 });
+  m.fields(-0.7, 0.2, { from: 0.05, to: 0.5, cols: ['#3a6a3a', '#447a3a', '#3a703a'], hedge: '#2a4a2a', w: 6 }).trees('palm', -0.7, 0.5, 14, { h: [5, 9] }).town(-0.3, 0.5, 22, ['white', 'coral'], { from: 0.5, to: 0.95, big: 0.4 }).put('mosque', 0.16, { down: 0.6 }).put('fort', 0.42, { w: 12, h: 3.4, c: '#e0d0b0', down: 0.5, flag: '#c03030' });
+  M.ship(0.7, 'dhow', { len: 16 }); M.ship(0.84, 'dhow', { len: 11 });
+  const n = N.land([[-1.3, 0.14], [-0.6, 0.18], [0, 0.14], [0.28, 0.1, 'c'], [0.4, 0]], 'quay', { rough: 0.1 });
+  n.put('warehouse', -0.8, { wall: '#f0e8d8', wtex: 'plaster', roof: 'flat', rc: '#e0d8c8', door: { at: 0.5, w: 1.8, c: '#5a3a22' } }).row('house', -0.4, 0.1, 3, { st: 'coral', tall: 1 }).row('heap', -1.2, 0.3, 9, { c: ['#8a4a2a'][0], h: 1, w: 1.8, n: 3 }).trees('palm', -1.3, 0.2, 6, { h: [8, 12] }).row('figure', -1, 0.3, 6, { jit: 0.8, c: '#e8e0d0' }).put('crane', 0.24);
+};
+LANDS.flamingo = s => { const { far: F, mid: M, near: N } = s; // salt lagoons pink with flamingos, white horses in the reeds
+  const f = F.flat(-0.3, 1.02, '#8a9a7a', { h: 3 }); f.dots('flamingo', -0.3, 1, 90, { from: 0, to: 1 }).trees('bush', -0.3, 1, 20, { h: [2, 4], c: '#6a8a5a', on: 'ridge' }); F.reeds(-0.3, 1.02, { h: 1.2, thin: 0.6 }); F.flock(0.62, 0.36, { n: 9, c: '#f08aa0', rx: 26 }); F.flock(0.3, 0.52, { n: 5, c: '#f08aa0' });
+  const m = M.land([[-0.7, 0.05], [-0.2, 0.06], [0.3, 0.05], [0.72, 0.04], [0.82, 0]], '#7a9060', { rough: 0.12 });
+  m.creeks(-0.7, 0.8, 2).put('heap', 0.64, { c: '#fbfbf6', h: 5, w: 22 }).put('heap', 0.75, { c: '#f2eeec', h: 3.4, w: 13 }).dots('pony', -0.7, 0.6, 14, { c: '#f4f2ea', from: 0, to: 0.8 }).dots('cow', -0.6, 0.8, 10, { c: '#1e1c20', from: 0, to: 0.8 }).put('hut', 0.44, { wall: '#f0ece0', rc: '#b8a060', w: 4.4 }).put('cross', 0.475, { h: 2, c: '#e8e0d0' }).row('hut', -0.4, 0.2, 3, { wall: '#f0ece0', rc: '#b8a060', w: 4.4, jit: 0.5 }).trees('bush', -0.7, 0.7, 16, { h: [1.4, 2.6], c: '#6a8a5a' });
+  M.reeds(0.3, 1.0, { h: 1.6, thin: 0.5 });
+  const n = N.land([[-1.3, 0.06], [-0.6, 0.08], [0, 0.07], [0.3, 0.04], [0.4, 0]], '#7a9060', { rough: 0.15 });
+  n.dots('pony', -1.3, 0.2, 5, { c: '#f4f2ea', from: 0, to: 0.5 }).dots('cow', -1.2, -0.2, 4, { c: '#1e1c20', from: 0, to: 0.5 }).put('hut', -0.7, { wall: '#f0ece0', rc: '#b8a060', w: 5 }).put('cross', -0.62, { h: 2, c: '#e8e0d0' }).put('fence', -1.25, { len: 34 }).row('heap', 0.0, 0.3, 2, { c: '#fbfbf6', h: 1.6, w: 5 }); N.reeds(-1.3, 0.42, { h: 2.2, thin: 0.5 });
+  N.flat(0.46, 0.99, '#a8a4ac', { h: 3, rough: 0.02 }).dots('flamingo', 0.48, 0.97, 24, { from: 0, to: 0.9 }); // the birds themselves, wading the shallows
+};
+LANDS.spongers = s => { const { far: F, mid: M, near: N } = s; // a white island of sponge divers
+  F.stack(0.86, 24, 0.14, { mat: 'limestone', top: 'peak' }); F.land([[-0.3, 0.3], [0, 0.44, 'l'], [0.24, 0.3], [0.42, 0.1], [0.48, 0]], 'limestone', { rough: 0.5, crag: 0.3 }); F.fleet(0.62, 4, 'sloop', { len: 6, w: 0.2 });
+  const m = M.land([[-0.7, 0.44], [-0.36, 0.6, 'l'], [-0.1, 0.7], [0.16, 0.56], [0.36, 0.3], [0.5, 0.08], [0.56, 0]], 'limestone', { rough: 0.5, crag: 0.3 });
+  m.town(-0.5, 0.46, 36, ['white', 'pastel', 'white'], { from: 0.3, to: 0.95, big: 0.4 }).put('chapel', -0.1, { wall: '#f4f0e6', rc: '#3a6ab0' }).dots('goat', -0.7, 0.3, 9, { from: 0.02, to: 0.3 }).put('windmill', -0.36, { h: 5, wall: '#f4f0e8' });
+  M.ship(0.68, 'sloop', { len: 8, c: '#3a6ab0' }); M.ship(0.8, 'row', { len: 5, c: '#c8a040' });
+  const n = N.land([[-1.3, 0.16], [-0.6, 0.2], [0, 0.14], [0.28, 0.1, 'c'], [0.4, 0]], 'quay', { rough: 0.1 });
+  n.row('racks', -1.2, 0.2, 8, { n: 5, c: '#e0b860' }).row('heap', -1.15, 0.3, 8, { c: '#e0b860', h: 1.4, w: 2.4, n: 2 }).row('house', -1.0, -0.3, 3, { st: 'white' }).row('boat', -0.2, 0.3, 4, { c: '#3a6ab0', jit: 0.5 }).row('figure', -0.9, 0.3, 5, { jit: 0.8 });
+};
+LANDS.kites = s => { const { far: F, mid: M, near: N } = s; // a stack so windy the people grow kites instead
+  F.stack(0.84, 8, 0.2, { mat: 'slate', top: 'peak' }); F.P.em.push({ k: 'kites', x: F.x(0.84), y: F.base - Math.round(0.2 * s.LH), n: 5, w: 16, h: s.LH * 0.3, s: 3 });
+  const r = M.land([[0.14, 0], [0.18, 0.4, 'l'], [0.22, 0.7, 'l'], [0.3, 0.9], [0.4, 0.94], [0.48, 0.8, 'l'], [0.52, 0.5, 'c'], [0.58, 0.14, 'l'], [0.62, 0]], 'cliff', { rough: 0.3, crag: 0.3 });
+  for (let k = 0; k < 16; k++) { const v = 0.2 + nH(k, 1, 4) * 0.36; r.put('house', v, { st: pick(['wood', 'pastel', 'nordic'], k, 2), w: 3.4, h: 2.2, down: 0.06 + 0.8 * ((k * 0.618) % 1), win: { n: 1 } }); }
+  r.put('mast', 0.36, { h: 6, flag: '#c03030' }); M.P.em.push({ k: 'kites', x: M.x(0.38), y: r.y(M.x(0.38)), n: 16, w: s.W * 0.5, h: s.LH * 0.36, s: 7 }); M.sea('rock', 0.7, { n: 4 });
+  M.land([[-0.7, 0.3], [-0.4, 0.4], [-0.1, 0.2], [0.04, 0]], 'cliff', { rough: 0.5, crag: 0.3 }).row('house', -0.6, -0.1, 4, { st: 'wood', w: 3.4, down: 0.3, jit: 0.6 });
+  const n = N.land([[-1.3, 0.2], [-0.6, 0.28], [-0.1, 0.18], [0.14, 0.1, 'c'], [0.34, 0]], 'cliff', { rough: 0.6, crag: 0.4 });
+  n.row('house', -1.1, -0.2, 4, { st: 'wood', w: 4 }).row('washing', -1.0, 0.1, 4).put('jetty', 0.22, { len: 12 }).rocks(-1.3, 0.34, 12).put('mast', -0.5, { h: 7, flag: '#e8c040' }); N.P.em.push({ k: 'kites', x: N.x(-0.5), y: n.y(N.x(-0.5)) - 20, n: 9, w: s.W * 0.9, h: s.LH * 0.5, s: 11 });
+};
+LANDS.teariver = s => { const { far: F, mid: M, near: N } = s; // a river the colour of tea, through terraces of tea
+  F.land([[-0.3, 0.5], [-0.06, 0.8, 'l'], [0.14, 0.56], [0.34, 0.9, 'l'], [0.54, 0.5], [0.76, 0.24], [0.9, 0.08], [0.96, 0]], '#5a7a70', { tex: 'rock', crag: 0.4, rough: 0.5 }); F.cloud(0.1, 0.46, 0.6, { r: 4 });
+  const m = M.land([[-0.7, 0.46], [-0.3, 0.6], [0, 0.5], [0.2, 0.56], [0.4, 0.3], [0.54, 0.08], [0.58, 0]], '#3f7a3a', { rough: 0.3 });
+  m.terraces(-0.7, 0.56, { step: 1.5, flat: '#4f9a3f', wall: '#2f6a2f', from: 0.06 }).river(0.1, { c: '#8a5a2a', from: 0.1, w: 4, swing: 8 }).row('figure', -0.6, 0.5, 12, { hat: '#e8d8a0', down: 0.5, jit: 0.9 }).put('bldg', -0.3, { w: 9, h: 4, storeys: 2, wall: '#f0ece0', roof: 'hip', rc: '#a04a36', rh: 1.4, win: { n: 5, w: 0.5, h: 0.8 }, down: 0.3 }).trees('broad', -0.7, 0.5, 8, { on: 'ridge', h: [4, 7], c: '#2f6a3a' });
+  M.ship(0.74, 'barge', { len: 9, load: '#5a8a3a' });
+  const n = N.land([[-1.3, 0.2], [-0.6, 0.26], [-0.1, 0.16], [0.2, 0.08], [0.38, 0]], '#3f7a3a', { rough: 0.2 });
+  n.terraces(-1.3, 0.2, { step: 1.1, flat: '#4f9a3f', wall: '#2f6a2f' }).put('bldg', 0.1, { w: 6, h: 2.6, stilts: 1.8, wall: '#8a3a2a', wtex: 'vplank', roof: 'pagoda', tiers: 1, rc: '#2a3a4a', rh: 1.4, win: { n: 2 } }).row('figure', -1.1, 0, 6, { hat: '#e8d8a0', jit: 0.8 }).trees('bamboo', -1.3, -0.4, 5, { h: [6, 10] });
+  N.P.em.push({ k: 'smoke', x: N.x(0.1), y: n.y(N.x(0.1)) - 26, rise: 14, n: 5, grow: 4, c: '236,238,240', a: 0.4 });
+};
+LANDS.buttonworks = s => { const { far: F, mid: M, near: N } = s; // sheds where shell is punched into buttons, a beach of shell with the circles cut out
+  F.stack(0.88, 22, 0.08, { mat: 'slate', cap: { mat: 'grass', d: 2 } }); F.land([[-0.3, 0.14], [0.1, 0.2], [0.4, 0.1], [0.5, 0]], 'dune', { rough: 0.5 }); F.fleet(0.62, 3, 'lug', { len: 6 });
+  const m = M.land([[-0.7, 0.2], [-0.3, 0.28], [0.1, 0.22], [0.36, 0.26], [0.56, 0.2], [0.68, 0.08], [0.74, 0]], '#f0e8e2', { rough: 0.4 });
+  m.put('bldg', 0.42, { w: 16, h: 5, storeys: 2, wall: '#8a5a44', wtex: 'brick', roof: 'gable', rc: '#4a4650', rh: 1.4, win: { n: 7, w: 0.6, h: 0.9 }, sink: 1 }).put('stack', 0.53, { h: 13 }).row('shed', 0.58, 0.68, 2, { w: 5, down: 0.4 }).row('shed', -0.4, 0.2, 5, { w: 6, down: 0.3 }).row('heap', 0.3, 0.7, 6, { c: '#fbf4f0', h: 1.6, w: 4, down: 0.8 });
+  M.P.em.push({ k: 'glint', x: M.x(0), y: M.base - 26, w: s.W * 0.8, h: 26, n: 9, s: 4 });
+  const n = N.land([[-1.3, 0.1], [-0.6, 0.12], [0, 0.1], [0.28, 0.06], [0.38, 0]], '#f4ece6', { rough: 0.3 });
+  n.row('longshed', -1.0, -0.3, 2, { len: 16, wall: '#7a5a44', rc: '#4a4650' }).row('heap', -1.2, 0.34, 9, { c: '#fbf4f0', h: 1.4, w: 3.4, n: 2 }).row('figure', -1, 0.3, 6, { jit: 0.8 }).put('cart', 0.06, { load: '#fbf4f0' }); N.P.em.push({ k: 'glint', x: N.x(-1.3), y: N.base - 16, w: s.W * 1.7, h: 16, n: 12, s: 8 });
+};
+LANDS.cormorants = s => { const { far: F, mid: M, near: N } = s; // men fish at night with cormorants on ropes, a brazier in the bow
+  F.land([[-0.3, 0.4], [-0.06, 0.66, 'l'], [0.12, 0.46], [0.3, 0.74, 'l'], [0.5, 0.4], [0.7, 0.5, 'l'], [0.9, 0.2], [1.02, 0.14]], '#4a6a70', { tex: 'rock', crag: 0.3, rough: 0.5 }).forest(-0.3, 1.02, { kind: 'conifer', deep: 0.3, c: '#2f5a50' });
+  const m = M.land([[-0.7, 0.36], [-0.3, 0.46], [0, 0.4], [0.24, 0.26], [0.42, 0.1], [0.5, 0]], 'pinewood', { rough: 0.4 });
+  m.forest(-0.7, 0.3, { kind: 'conifer', deep: 0.6, c: '#2a5a48', size: 2.8 }).town(-0.2, 0.44, 12, 'pagoda', { from: 0.5, to: 0.95 }).put('torii', 0.46, { down: 0.8 }).put('pagoda', -0.04, { tiers: 3, w: 4.4, down: 0.3 });
+  for (const v of [0.58, 0.68, 0.8, 0.92]) { M.ship(v, 'row', { len: 7, c: '#3a2a22', fire: true, wake: false }); const x = M.x(v); for (let k = 0; k < 3; k++) M.P.rect(x - 6 + k * 3, M.base - 5, 1, 2, kHex('#1a1a20')); }
+  const n = N.land([[-1.3, 0.14], [-0.6, 0.18], [0, 0.12], [0.28, 0.06], [0.38, 0]], 'pinewood', { rough: 0.3 });
+  n.trees('conifer', -1.3, -0.3, 10, { h: [8, 13], c: '#2a5a48' }).row('house', -0.9, -0.2, 3, { st: 'pagoda' }).row('heap', -0.6, 0.3, 6, { c: '#c8b070', h: 0.8, w: 1.6 }).row('boat', -0.2, 0.3, 3, { len: 7, c: '#3a2a22' }); N.sea('posts', 0.42, { n: 7, gap: 2.4, h: 1.6 });
+  for (let k = 0; k < 7; k++) N.P.rect(N.x(0.42) + Math.round(k * 9.6), N.base - 9 - ((k * 3) % 4), 2, 3, kHex('#1a1a20')); // the birds on their perches
+};
+// --- tier 2, the second half ---
+LANDS.turtlebeach = s => { const { far: F, mid: M, near: N } = s; // a long white strand where the turtles come up by the thousand to lay
+  const sand = '#f6eedc', stick = (L, m, a, b, n, sd) => { for (let k = 0; k < n; k++) { const x = L.x(a + nH(k, 1, sd) * (b - a)), top = m.y(x), y = top + 2 + Math.round(nH(k, 2, sd) * Math.max(0, L.base - top - 5)); L.P.line(x, L.base - 1, x + L.u, y, kHex('#dcd0b4')); L.P.line(x + L.u, L.base - 1, x + L.u * 2, y, kHex('#dcd0b4')); L.P.rect(x + L.u, y - Math.round(L.u * 1.4), 1, Math.round(L.u * 1.4), kHex('#6a4a2e')); L.P.px(x + L.u + 1, y - Math.round(L.u * 1.4), kHex('#d04a3a')); } };
+  F.land([[-0.3, 0.12], [0.2, 0.16], [0.6, 0.12], [0.84, 0.06], [0.9, 0]], 'jungle', { rough: 0.3 }).trees('palm', -0.3, 0.88, 26, { h: [5, 9], on: 'ridge' }); F.stack(0.96, 12, 0.05, { mat: 'jungle' }).trees('palm', 0.94, 0.99, 3, { h: [4, 6], on: 'ridge' });
+  const m = M.land([[-0.7, 0.14], [-0.2, 0.18], [0.3, 0.14], [0.66, 0.1], [0.9, 0.05], [0.98, 0]], sand, { rough: 0.12 });
+  m.trees('palm', -0.7, 0.86, 20, { h: [6, 10], on: 'ridge' }); stick(M, m, 0.3, 0.94, 22, 7); m.dots('turtle', 0.3, 0.96, 24, { from: 0.3, to: 1 }); // a track up from the water to every nest, a stick with a rag to mark it
+  const n = N.land([[-1.3, 0.12], [-0.6, 0.16], [0, 0.12], [0.28, 0.06], [0.4, 0]], sand, { rough: 0.15 });
+  n.trees('palm', -1.3, 0.2, 9, { h: [9, 14], on: 'ridge' }); stick(N, n, -1.2, 0.3, 12, 3); n.put('hammock', -0.52, { w: 4 }).put('hammock', -0.94, { w: 3.4 }).put('tent', -0.2, { c: '#d8c8a0' }).dots('turtle', -1.2, 0.36, 9, { from: 0.3, to: 1 }).row('figure', -1.0, 0.2, 3, { hat: '#e8d8a0', jit: 0.6 });
+  const bar = N.flat(0.5, 0.97, sand, { h: 6 }); stick(N, bar, 0.54, 0.92, 4, 5); bar.dots('turtle', 0.52, 0.95, 7, { from: 0.2, to: 0.9 }); // a bar they haul out on in daylight
+};
+LANDS.flaxisle = s => { const { far: F, mid: M, near: N } = s; // blue fields, brown ponds, the greens white with bleaching cloth
+  const blue = ['#6a8ae0', '#5878c8', '#86a2ea', '#6a9a4a', '#5a80d0', '#7a94e4'], cloth = ['#fbfbf6', '#f0f0ea', '#fdfdfa'];
+  F.stack(0.9, 26, 0.1, { mat: 'downs', cap: { mat: 'grass', d: 2 } }); F.land([[-0.3, 0.3], [0, 0.42], [0.3, 0.3], [0.5, 0.1], [0.56, 0]], 'downs', { rough: 0.4 }).fields(-0.3, 0.52, { cols: blue, from: 0.08, w: 7 });
+  const m = M.land([[-0.7, 0.42], [-0.3, 0.56], [0, 0.56], [0.3, 0.52], [0.5, 0.42], [0.64, 0.24], [0.74, 0.08], [0.8, 0]], 'downs', { rough: 0.3 });
+  m.fields(-0.7, 0.44, { cols: blue, hedge: '#3a5a34', from: 0.04, to: 0.55, w: 9 }).patches(0.36, 0.76, 26, { c: cloth, w: 6, h: 1.1, from: 0.14, to: 0.86, shape: 'sheet' }).town(-0.1, 0.3, 6, 'white', { from: 0.64, to: 0.82 }).put('pans', 0.52, { n: 4, w: 3, c: '#5a4026', bank: '#7a8a50', cone: false, down: 0.95 }).trees('poplar', -0.7, 0.5, 9, { h: [5, 8], on: 'ridge' }).row('figure', 0.4, 0.72, 5, { c: '#e8e0d0', down: 0.6, jit: 0.9 });
+  const n = N.land([[-1.3, 0.14], [-0.6, 0.18], [0, 0.12], [0.26, 0.06], [0.38, 0]], 'meadow', { rough: 0.2 });
+  n.fields(-1.3, -0.5, { cols: blue, from: 0, to: 0.7, w: 10 }).row('pans', -0.5, 0.0, 2, { n: 3, w: 3, c: '#5a4026', bank: '#7a8a50', cone: false }).patches(-0.9, 0.3, 9, { c: cloth, w: 3.4, h: 0.5, from: 0.3, to: 0.9, shape: 'sheet' }).row('washing', -0.4, 0.2, 3).row('figure', -0.9, 0.3, 6, { c: '#e8e0d0', jit: 0.8 }).put('stones', 0.16, { n: 3, h: 0.6, r: 2 });
+};
+LANDS.skeps = s => { const { far: F, mid: M, near: N } = s; // heather to the sky, and every yard of it humming
+  const hea = { c: '#7a5488', tex: 'soft' }, bloom = ['#a06ab0', '#8a549a', '#b47cc0', '#5a7a44', '#6a4a7a'], bothy = { w: 6, h: 2.4, wall: '#8a8a84', wtex: 'stone', roof: 'gable', rc: '#4a4a56', rtex: 'slate', rh: 1.2, chim: { at: 0.2, smoke: true }, door: { at: 0.5, w: 1.1, light: true }, win: { n: 2 } };
+  F.land([[-0.3, 0.5], [-0.1, 0.72, 'l'], [0.1, 0.5], [0.3, 0.84, 'l'], [0.5, 0.56], [0.7, 0.68, 'l'], [0.9, 0.34], [1.02, 0.24]], '#6a6a84', { tex: 'rock', crag: 0.4, rough: 0.5 }); F.cloud(0.3, 0.7, 0.4, { r: 4 });
+  const m = M.land([[-0.7, 0.4], [-0.3, 0.52], [0, 0.46], [0.3, 0.52], [0.52, 0.36], [0.66, 0.12], [0.72, 0]], hea, { rough: 0.5 });
+  m.patches(-0.7, 0.7, 70, { c: bloom, w: 5, h: 1.1, from: 0, to: 0.95 }).rocks(-0.7, 0.7, 10, { c: '#8a8a90' }).row('skeps', -0.5, 0.3, 4, { n: 4, down: 0.2, jit: 0.4 }).row('skeps', 0.34, 0.62, 4, { n: 4, down: 0.45, jit: 0.4 }).row('skeps', 0.4, 0.66, 3, { n: 3, down: 0.75, jit: 0.4 }).put('bldg', 0.38, Object.assign({ down: 0.12 }, bothy));
+  const [lx, ly] = m.spot(0.52, 0); M.P.ell(lx, ly + Math.round((M.base - ly) * 0.62), 8, 2, kHex('#1c2026')); M.P.rect(lx - 5, ly + Math.round((M.base - ly) * 0.62) - 1, 7, 1, kHex('#4a5868')); // the lochan, black as tea
+  const n = N.land([[-1.3, 0.2], [-0.6, 0.26], [-0.1, 0.18], [0.16, 0.1, 'c'], [0.34, 0]], hea, { rough: 0.5 });
+  n.patches(-1.3, 0.3, 46, { c: bloom, w: 3, h: 0.7, from: 0, to: 0.9 }).row('skeps', -1.2, 0.12, 6, { n: 5, down: 0.16, jit: 0.3 }).rocks(-1.3, 0.34, 9, { c: '#8a8a90' }).put('bldg', -0.75, bothy).put('figure', -0.6, { c: '#e8e4d8', hat: '#e8e4d8' });
+  swarm(N, -1.2, { w: 1.5, h: 26, n: 30, day: true }); swarm(M, 0.3, { w: 0.4, h: 16, n: 12, day: true, up: 20 });
+};
+LANDS.coracle = s => { const { far: F, mid: M, near: N } = s; // a brown river down between willows, fished from round boats of hide
+  F.land([[-0.3, 0.4], [-0.1, 0.62], [0.1, 0.46], [0.3, 0.7], [0.5, 0.44], [0.72, 0.5], [0.9, 0.24], [1.02, 0.16]], '#5a7068', { tex: 'rock', rough: 0.6, crag: 0.2 }).forest(-0.3, 1.02, { deep: 0.3, c: '#3a5a48' });
+  const m = M.land([[-0.7, 0.34], [-0.3, 0.44], [0, 0.36], [0.24, 0.3], [0.44, 0.26], [0.6, 0.1], [0.68, 0]], 'meadow', { rough: 0.3 });
+  m.fields(-0.7, 0.22, { from: 0.05, to: 0.6, w: 8, hedge: '#3a5a34' }).river(0.34, { c: '#8a6238', w: 5, swing: 10, from: 0.05 }).trees('willow', -0.2, 0.62, 14, { h: [5, 8] }).put('chapel', 0.47, { down: 0.2 }).put('house', 0.2, { st: 'slate', down: 0.5 }).dots('sheep', -0.7, 0.2, 9, { from: 0.1, to: 0.6 });
+  M.ship(0.74, 'coracle', { len: 2.2, wake: false }); M.ship(0.8, 'coracle', { len: 2.2, wake: false }); M.sea('floats', 0.755, { n: 6, gap: 0.9, c: '#d8d0c0' }); M.ship(0.93, 'coracle', { len: 2.2, wake: false });
+  const n = N.land([[-1.3, 0.14], [-0.6, 0.18], [0, 0.12], [0.26, 0.06], [0.38, 0]], 'meadow', { rough: 0.25 });
+  n.trees('willow', -1.3, 0.24, 9, { h: [7, 11], on: 'ridge' }).put('chapel', -0.9).row('carrier', -0.5, 0.2, 2, { load: '#3a3028', jit: 0.6 }).row('dome', -0.2, 0.1, 3, { r: 1.1, c: '#3a3028', door: false, jit: 0.4 }).put('nets', 0.14, { n: 3 });
+  N.sea('rock', 0.44, { n: 5, r: 0.5, c: '#6a6a70' }); N.ship(0.58, 'coracle', { len: 2.2, wake: false }); N.ship(0.7, 'coracle', { len: 2.2, wake: false }); N.sea('floats', 0.6, { n: 9, gap: 1.1, c: '#d8d0c0' }); N.ship(0.9, 'coracle', { len: 2.2, wake: false }); // the ford's stones, and two to a net
+};
+LANDS.copperisle = s => { const { far: F, mid: M, near: N } = s; // a hill the colour of a bruise, and a bay so green it looks lit from below
+  const bruise = { c: '#6a5468', tex: 'rock' }, verd = '#3ac8a8', spoil = ['#c8b040', '#5aa880', '#d0a030', '#7ab890', '#b85a30'];
+  F.land([[-0.3, 0.4], [-0.1, 0.66, 'l'], [0.12, 0.44], [0.32, 0.6], [0.5, 0.3], [0.6, 0.1], [0.64, 0]], '#5a5a70', { tex: 'rock', crag: 0.4, rough: 0.5 }); F.stack(0.86, 9, 0.12, { mat: bruise, top: 'peak' });
+  const m = M.land([[-0.7, 0.4], [-0.36, 0.56], [-0.06, 0.7], [0.22, 0.66], [0.42, 0.5], [0.56, 0.3, 'c'], [0.64, 0.1, 'l'], [0.7, 0]], bruise, { rough: 0.5, crag: 0.25 });
+  m.put('enginehouse', 0.34, {}).put('enginehouse', -0.2, { wall: '#7a7068' }).patches(-0.6, 0.6, 14, { c: spoil, w: 7, h: 2.2, from: 0.3, to: 0.9 }).river(0.5, { c: verd, w: 3, swing: 5, from: 0.3 }).cave(0.45, { down: 0.5, w: 3, h: 3 }).row('hut', 0.0, 0.3, 3, { down: 0.6, wall: '#6a6058', jit: 0.4 }).put('derrick', 0.14, { down: 0.04 });
+  for (let x = M.x(0.38); x < M.x(0.8); x++) if (nH(x, 1, 3) > 0.25) M.P.px(x, M.base - 1, kHex(nH(x, 2, 3) > 0.3 ? verd : '#e8a040')); // where the adit water meets the sea
+  const n = N.land([[-1.3, 0.18], [-0.6, 0.24], [-0.1, 0.16], [0.16, 0.1, 'c'], [0.36, 0]], bruise, { rough: 0.6, crag: 0.3 });
+  n.row('heap', -1.2, 0.0, 6, { c: '#c8b040', h: 2.4, w: 6, jit: 0.5 }).row('heap', -1.0, 0.1, 4, { c: '#5aa880', h: 1.8, w: 5, jit: 0.5 }).put('bldg', -0.6, { w: 7, h: 3, wall: '#8a8478', wtex: 'stone', roof: 'gable', rc: '#4a4a52', win: { n: 3 }, door: { at: 0.3 } }).put('cart', -0.2, { load: '#5aa880' }).row('figure', -0.9, 0.2, 5, { c: '#2a2a30', jit: 0.8 }).rocks(0.0, 0.36, 10, { c: '#4ac0a8' });
+  for (let x = N.x(0.1); x < N.x(0.6); x++) if (nH(x, 1, 5) > 0.3) N.P.px(x, N.base - 1, kHex(nH(x, 2, 5) > 0.4 ? verd : '#8adcc8'));
+};
+LANDS.flourmill = s => { const { far: F, mid: M, near: N } = s; // a polder below the sea behind its dyke, sails turning on every skyline
+  F.flat(-0.3, 1.02, '#6a8a50', { h: 3 }).row('windmill', -0.26, 0.98, 11, { h: 5.5, r: 4, jit: 0.4 }).trees('poplar', -0.3, 1.0, 14, { h: [4, 7], on: 'ridge' });
+  M.flat(-0.7, 0.96, '#6a9a4a', { h: 3 }).row('house', -0.5, 0.8, 7, { st: 'red', tall: 1, jit: 0.5 }).row('windmill', -0.6, 0.9, 8, { h: 11, r: 5.4, jit: 0.3 }).trees('poplar', -0.7, 0.9, 12, { h: [7, 10], on: 'ridge' }); // the polder, lower than the sea: only what is tall shows over the dyke
+  const d = M.land([[-0.7, 0.1, 'l'], [0.9, 0.1, 'c'], [0.96, 0]], '#5f8a48', { rough: 0.03, strata: 0 });
+  d.row('figure', -0.6, 0.86, 7, { jit: 0.9 }).put('arch', 0.62, { w: 3, h: 2.4, c: '#8a8478', down: 0.3 }).dots('sheep', -0.7, 0.9, 16, { from: 0.15, to: 0.8 }).put('cart', 0.44, { load: '#e8e4d8' }); M.P.em.push({ k: 'walk', x: M.x(0.5), y: d.y(M.x(0.5)) + 1, span: 50, h: 3, c: '#3a3440', ms: 26000 });
+  M.ship(0.99, 'barge', { len: 7, load: '#e8e4d8' });
+  const n = N.land([[-1.3, 0.1, 'l'], [0.24, 0.1, 'c'], [0.36, 0]], 'quay', { rough: 0.04 });
+  n.put('windmill', -0.74, { h: 11, r: 7 }).put('windmill', -0.2, { h: 9, r: 6 }).row('sacks', -1.1, 0.2, 5, { c: '#e8e4d8', n: 6, jit: 0.5 }).row('figure', -1, 0.2, 4, { c: '#e8e4d8', jit: 0.8 }).put('cart', 0.06, { load: '#e8e4d8' }).put('house', -1.05, { st: 'red' });
+};
+LANDS.potters = s => { const { far: F, mid: M, near: N } = s; // a red island of clay pits and bottle kilns, the beach made of broken pots
+  const clay = { c: '#b0583a', tex: 'soft' }, terra = '#c8683e';
+  F.stack(0.88, 24, 0.1, { mat: clay }); F.land([[-0.3, 0.24], [0.1, 0.32], [0.4, 0.2], [0.52, 0]], clay, { rough: 0.4 }).trees('broad', -0.3, 0.5, 9, { h: [3, 5], on: 'ridge' });
+  const m = M.land([[-0.7, 0.3], [-0.3, 0.42], [0, 0.36], [0.3, 0.38], [0.5, 0.28], [0.66, 0.1], [0.72, 0]], clay, { rough: 0.3 });
+  m.terraces(-0.7, 0.04, { step: 2.6, flat: '#c06a44', wall: '#8a3e28', from: 0.05, to: 0.9 }).town(-0.2, 0.34, 7, 'brick', { from: 0.5, to: 0.9 });
+  for (let k = 0; k < 6; k++) m.put('kiln', 0.2 + k * 0.075, { h: 7 + (k * 5 % 3), w: 4.6, c: '#a8553a', smoke: k % 2 === 0, sink: 1 }); // bottle kilns in a row like fat chimneys, smoke from three
+  m.row('pots', 0.2, 0.62, 5, { n: 5, c: terra, down: 0.8, jit: 0.4 }); M.ship(0.84, 'barge', { len: 8, load: terra });
+  const n = N.land([[-1.3, 0.12], [-0.6, 0.16], [0, 0.12], [0.26, 0.06], [0.38, 0]], { c: '#c07050', tex: 'soft' }, { rough: 0.3 });
+  n.row('house', -1.2, -0.3, 4, { st: 'brick' }).put('kiln', -0.6, { h: 8, w: 5 }).row('pots', -1.1, 0.2, 6, { n: 7, rows: 2, c: terra, jit: 0.4 }).row('heap', -1.0, 0.3, 6, { c: '#b86a48', h: 1, w: 3, jit: 0.6 }).row('figure', -1, 0.2, 4, { jit: 0.8 });
+  N.P.em.push({ k: 'glint', x: N.x(-0.4), y: N.base - 12, w: s.W * 0.8, h: 12, n: 8, s: 6, c: '#ffd0a0' });
+};
+LANDS.floatglass = s => { const { far: F, mid: M, near: N } = s; // a cone furnace glowing through its own smoke, green glass floats by the thousand
+  const green = '#4aa878', pale = '#7ad8a8';
+  F.stack(0.9, 20, 0.08, { mat: 'dune' }); F.land([[-0.3, 0.16], [0.1, 0.22], [0.4, 0.12], [0.5, 0]], 'dune', { rough: 0.5 });
+  const m = M.land([[-0.7, 0.2], [-0.3, 0.3], [0, 0.22], [0.3, 0.26], [0.52, 0.2], [0.66, 0.08], [0.72, 0]], 'dune', { rough: 0.5 });
+  m.put('longshed', 0.32, { len: 12, wall: '#7a5a48', sink: 1 }).put('cone', 0.45, { h: 13, w: 8, sink: 1 }).row('shed', 0.54, 0.62, 2, { w: 5, down: 0.3 }).row('heap', -0.5, 0.66, 12, { c: green, h: 1.6, w: 4, down: 0.7, jit: 0.5 }).trees('bush', -0.7, 0.66, 12, { h: [1.2, 2], c: '#8a9a5a' });
+  M.sea('floats', 0.74, { n: 18, gap: 1.3, c: green }); M.P.em.push({ k: 'glint', x: M.x(0.2), y: M.base - 8, w: s.W * 0.6, h: 8, n: 8, s: 4, c: '#b0ffd8' });
+  const n = N.land([[-1.3, 0.12], [-0.6, 0.16], [0, 0.12], [0.26, 0.06], [0.38, 0]], 'dune', { rough: 0.4 });
+  n.row('racks', -1.2, -0.2, 4, { n: 4, c: green }).row('heap', -1.2, 0.3, 9, { c: green, h: 1.2, w: 3, n: 2, jit: 0.5 }).row('nets', -0.3, 0.1, 2, { n: 4 }).row('figure', -1, 0.2, 5, { rod: true, jit: 0.8 }).put('shed', -0.7, { w: 6 });
+  for (let k = 0; k < 40; k++) { const x = N.x(-0.3 + nH(k, 1, 8) * 0.5), y = n.y(x) - 2 - Math.round(nH(k, 2, 8) * 6); N.P.rect(x, y, 2, 2, kHex(k % 3 ? green : pale)); N.P.px(x, y, kHex('#d0ffe8')); } // the floats themselves, cooling in the nets
+  N.sea('floats', 0.44, { n: 16, gap: 1.6, c: pale }); N.P.em.push({ k: 'glint', x: N.x(-0.4), y: N.base - 12, w: s.W * 0.8, h: 12, n: 10, s: 7, c: '#b0ffd8' });
+};
+LANDS.heronry = s => { const { far: F, mid: M, near: N } = s; // every tall tree a stack of nests, white with herons
+  F.flat(-0.3, 0.34, '#5a7a4a', { h: 4 }).trees('broad', -0.3, 0.34, 14, { h: [5, 9], on: 'ridge' }); F.flock(0.56, 0.5, { n: 7, c: '#e8e8ec', rx: 34, ry: 10 });
+  const m = M.land([[-0.7, 0.14], [-0.3, 0.2], [0.1, 0.16], [0.44, 0.18], [0.66, 0.1], [0.76, 0]], '#6a8a50', { rough: 0.3 });
+  m.patches(-0.7, 0.76, 34, { c: ['#e8e8e0', '#d8d8cc'], w: 2.4, h: 0.5, from: 0.1, to: 0.9 }).trees(['broad', 'dead', 'broad'], -0.7, 0.72, 26, { h: [11, 18], on: 'ridge', c: '#3f6a3a', birds: 0.9, birdc: '#f0f0f4' }); // the ground chalky under them
+  M.flock(0.5, 0.42, { n: 6, c: '#c8ccd4', rx: 40, ry: 12, ms: 5200 }); M.sea('posts', 0.8, { n: 5, gap: 2.6, h: 1 });
+  for (let k = 0; k < 5; k++) { const x = M.x(0.8) + Math.round(k * 5.2); if (k % 2 === 0) { M.P.rect(x, M.base - 8, 1, 4, kHex('#9aa0aa')); M.P.px(x, M.base - 9, kHex('#f0f0f4')); } } // and one on every post
+  const n = N.land([[-1.3, 0.08], [-0.6, 0.1], [0, 0.08], [0.28, 0.05], [0.4, 0]], '#6a8a50', { rough: 0.25 });
+  n.patches(-1.3, 0.38, 26, { c: ['#e8e8e0', '#d8d8cc'], w: 1.6, h: 0.4, from: 0, to: 0.9 }).trees(['broad', 'broad', 'dead'], -1.3, 0.3, 10, { h: [14, 22], on: 'ridge', c: '#3f6a3a', birds: 1, birdc: '#f0f0f4' }).put('hut', -0.5, { w: 4.4, rc: '#5a7a44' }).row('figure', -0.4, -0.2, 1, { c: '#3a5a3a' });
+  N.flat(0.5, 0.72, '#8a8a70', { h: 3 }).dots('egret', 0.52, 0.7, 3, { from: 0, to: 0.6 }).dots('heron', 0.54, 0.7, 2, { from: 0, to: 0.6 }); // egrets on the mud
+};
+LANDS.sailloft = s => { const { far: F, mid: M, near: N } = s; // sails spread on the hillside like a flock of white birds landed
+  const sail = ['#f4f0e4', '#ece6d4', '#f8f6ee', '#e6dfca'];
+  F.stack(0.94, 20, 0.1, { mat: 'downs', cap: { mat: 'grass', d: 2 } }); F.land([[-0.3, 0.3], [0, 0.42], [0.3, 0.3], [0.48, 0.1], [0.54, 0]], 'downs', { rough: 0.4 }); F.fleet(0.62, 3, 'square', { len: 14, bare: true, w: 0.2 });
+  const m = M.land([[-0.7, 0.42], [-0.3, 0.58], [0, 0.64], [0.3, 0.6], [0.48, 0.48], [0.6, 0.28], [0.68, 0.1], [0.72, 0]], 'downs', { rough: 0.3 });
+  m.patches(-0.6, 0.66, 44, { c: sail, w: 6, h: 2.2, from: 0.04, to: 0.6, shape: 'sail' }).put('bldg', 0.44, { w: 20, h: 4.4, storeys: 2, wall: '#c8b898', wtex: 'plank', roof: 'gable', rc: '#5a5460', rh: 1.4, win: { n: 11, w: 0.9, h: 0.9 }, down: 0.74, door: { at: 0.94 } }).put('bldg', 0.1, { w: 14, h: 4, storeys: 2, wall: '#bca888', wtex: 'plank', roof: 'gable', rc: '#5a5460', rh: 1.3, win: { n: 8, w: 0.9, h: 0.9 }, down: 0.7 }).town(-0.6, 0.0, 9, 'slate', { from: 0.6, to: 0.9 }).row('figure', 0.0, 0.6, 7, { down: 0.4, jit: 0.9 });
+  M.ship(0.84, 'square', { len: 19, bare: true, wake: false });
+  const n = N.land([[-1.3, 0.14], [-0.6, 0.18], [0, 0.14], [0.28, 0.1, 'c'], [0.4, 0]], 'quay', { rough: 0.1 });
+  n.put('longshed', -0.8, { len: 18, wall: '#c8b898', rc: '#5a5460' }).row('heap', -1.2, 0.3, 7, { c: '#f0ece0', h: 0.9, w: 3, jit: 0.5 }).row('barrels', -0.3, 0.2, 3, { n: 3, jit: 0.4 }).put('masts', 0.2, { n: 3, w: 8 }).row('figure', -1, 0.3, 5, { jit: 0.8 });
+  for (let k = 0; k < 3; k++) { const x = N.x(-0.3 + k * 0.16), y = n.y(x); for (let r = 0; r < 9; r++) N.P.rect(x - r, y - 2 - r, 14 + r, 1, kHex(sail[(k + (r > 5 ? 1 : 0)) % 4])); N.P.rect(x - 9, y - 11, 1, 10, kHex('#4a3626')); } // a mainsail pegged out to be cut
+};
+LANDS.sealpool = s => { const { far: F, mid: M, near: N } = s; // a walled sea pool full of seals being mended
+  F.stack(0.88, 22, 0.1, { mat: 'granite' }); F.land([[-0.3, 0.2], [0.1, 0.3], [0.4, 0.16], [0.52, 0]], 'granite', { rough: 0.6, crag: 0.3, cap: { mat: 'grass', d: 3 } });
+  const m = M.land([[-0.7, 0.3], [-0.3, 0.42], [0, 0.34], [0.3, 0.38], [0.5, 0.22], [0.62, 0.08], [0.68, 0]], 'granite', { rough: 0.6, crag: 0.3, cap: { mat: 'grass', d: 4, steep: 0.7 } });
+  m.put('bldg', 0.38, { w: 7, h: 3, wall: '#f4f0e6', wtex: 'plaster', roof: 'gable', rc: '#5a6a7a', rh: 1.3, win: { n: 3 }, chim: { at: 0.8, smoke: true }, sink: 1 }).put('shed', 0.49, { w: 5, sink: 1 }).rocks(0.3, 0.68, 12).dots('seal', 0.4, 0.68, 14, { from: 0.6, to: 1 });
+  M.stack(0.78, 9, 0.05, { mat: 'granite' }).dots('seal', 0.75, 0.81, 5, { from: 0, to: 0.5 }); M.stack(0.93, 6, 0.04, { mat: 'granite' }).dots('seal', 0.91, 0.95, 3, { from: 0, to: 0.4 }); M.ship(0.86, 'row', { len: 5 });
+  const n = N.land([[-1.3, 0.16], [-0.6, 0.22], [-0.1, 0.14], [0.16, 0.08, 'c'], [0.34, 0]], 'granite', { rough: 0.6, crag: 0.3 });
+  n.dots('seal', -1.2, 0.3, 9, { from: 0, to: 0.5 }).put('shed', -0.7, { w: 6 }).row('barrels', -0.4, 0.0, 2, { n: 3 }).put('figure', -0.2, { c: '#e8c040', hat: '#e8c040' }).rocks(-1.3, 0.34, 10);
+  N.land([[0.46, 0, 'r'], [0.475, 0.045, 'l'], [0.8, 0.045, 'c'], [0.815, 0]], 'granite', { rough: 0.03, strata: 3 }).dots('seal', 0.48, 0.78, 6, { from: 0, to: 0.05 }).put('figure', 0.62, { c: '#e8c040', hat: '#e8c040' }); // the pool's wall, run out round a bight of the sea
+};
+LANDS.vineyard = s => { const { far: F, mid: M, near: N } = s; // stone walls climbing the hill in a thousand steps, vines on every one
+  F.land([[-0.3, 0.5], [-0.1, 0.76, 'l'], [0.1, 0.52], [0.3, 0.66], [0.46, 0.3], [0.54, 0]], '#7a8478', { tex: 'rock', crag: 0.4, rough: 0.5 }); F.stack(0.9, 16, 0.14, { mat: 'limestone', top: 'peak' });
+  const m = M.land([[-0.7, 0.5], [-0.36, 0.7], [-0.1, 0.84], [0.14, 0.9], [0.34, 0.74], [0.5, 0.44], [0.6, 0.16], [0.66, 0]], 'limestone', { rough: 0.3 });
+  m.terraces(-0.7, 0.64, { step: 1.9, flat: '#6a9a3a', wall: '#c0b8a4', from: 0.03 }).trees('cypress', -0.7, 0.5, 9, { h: [4, 7] }).row('figure', -0.4, 0.56, 10, { c: '#e8e0d0', hat: '#c8a040', down: 0.5, jit: 0.9 }).put('chapel', 0.14, { wall: '#f4f0e6' }).put('bldg', 0.5, { w: 9, h: 3.4, wall: '#f4f0e6', wtex: 'plaster', roof: 'gable', rc: '#b85a3a', rtex: 'tile', rh: 1.4, win: { n: 3 }, door: { at: 0.5, w: 1.8 }, down: 0.86 }).put('barrels', 0.58, { n: 4, down: 0.92 });
+  M.ship(0.8, 'lateen', { len: 10 }); M.ship(0.92, 'barge', { len: 6, load: '#7a5a34' });
+  const n = N.land([[-1.3, 0.2], [-0.6, 0.26], [-0.1, 0.16], [0.16, 0.1, 'c'], [0.34, 0]], 'limestone', { rough: 0.4 });
+  n.terraces(-1.3, -0.2, { step: 1.5, flat: '#6a9a3a', wall: '#c0b8a4' }).row('house', -1.1, -0.5, 3, { st: 'white' }).row('barrels', -0.4, 0.2, 4, { n: 4, jit: 0.4 }).row('figure', -1, 0.2, 5, { hat: '#c8a040', jit: 0.8 }).put('cart', -0.1, { load: '#6a3a6a' });
+};
+LANDS.almadraba = s => { const { far: F, mid: M, near: N } = s; // a maze of nets a mile long off the point, and a man in a tower looking for the shoal
+  F.stack(0.94, 20, 0.08, { mat: 'limestone' }); F.land([[-0.3, 0.2], [0.1, 0.28], [0.4, 0.14], [0.5, 0]], 'dune', { rough: 0.4 });
+  const m = M.land([[-0.7, 0.24], [-0.3, 0.32], [0, 0.28], [0.3, 0.26], [0.5, 0.2], [0.6, 0.14, 'c'], [0.66, 0]], 'dune', { rough: 0.3 });
+  m.town(-0.5, 0.3, 14, 'white', { from: 0.2, to: 0.8 }).patches(-0.6, 0.56, 16, { c: ['#b89a6a', '#a88a5a', '#8a6a44'], w: 7, h: 0.8, from: 0.5, to: 0.95 }).put('chapel', 0.4, { wall: '#f4f0e6' });
+  { const c = m.last; if (c) { const cx = c.x0 + c.x1 >> 1; M.P.rect(cx - 2, c.top - 4, 5, 2, kHex('#3a5a8a')); M.P.px(cx - 3, c.top - 5, kHex('#3a5a8a')); M.P.px(cx - 3, c.top - 2, kHex('#3a5a8a')); M.P.rect(cx, c.top - 2, 1, 2, kHex('#2a2a30')); } } // the tuna on the chapel roof
+  m.put('tower', 0.57, { w: 3, h: 11, wall: '#e8dcc0', cap: 'crenel', wins: 2 }).row('boat', 0.1, 0.5, 6, { down: 0.9, jit: 0.4 });
+  M.sea('floats', 0.67, { n: 34, gap: 1.6 }); M.ship(0.76, 'row', { len: 6, wake: false }); M.ship(0.86, 'row', { len: 6, wake: false }); M.ship(0.95, 'row', { len: 5, wake: false });
+  const n = N.land([[-1.3, 0.12], [-0.6, 0.16], [0, 0.12], [0.26, 0.06], [0.38, 0]], 'dune', { rough: 0.3 });
+  n.row('nets', -1.2, 0.2, 5, { n: 4 }).patches(-1.2, 0.34, 9, { c: ['#b89a6a', '#a88a5a'], w: 4, h: 0.5, from: 0.3, to: 0.9 }).row('boat', -0.8, 0.3, 5, { jit: 0.5 }).row('house', -1.2, -0.6, 2, { st: 'white' }).row('figure', -1, 0.3, 5, { jit: 0.8 }).put('sacks', -0.1, { c: '#f0f0ea', n: 6 });
+  N.sea('floats', 0.44, { n: 22, gap: 1.7 }); N.sea('floats', 0.52, { n: 12, gap: 1.2, poles: true }); N.ship(0.68, 'row', { len: 6, wake: false }); N.ship(0.9, 'row', { len: 6, wake: false }); N.sea('floats', 0.74, { n: 9, gap: 1.2, poles: true }); // the chambers, and the boats waiting round the last
+};
+LANDS.garum = s => { const { far: F, mid: M, near: N } = s; // rows of square stone vats older than anyone, amphorae stacked like a hillside
+  const stone = '#c8c0a8', terra = '#b8683e';
+  F.stack(0.9, 22, 0.08, { mat: 'limestone' }); F.land([[-0.3, 0.2], [0.1, 0.3], [0.4, 0.16], [0.5, 0]], 'limestone', { rough: 0.4, cap: { mat: 'heath', d: 3 } }).trees('cypress', -0.3, 0.5, 8, { h: [4, 7], on: 'ridge' });
+  const m = M.land([[-0.7, 0.22], [-0.3, 0.3], [0, 0.24], [0.3, 0.26], [0.5, 0.18], [0.64, 0.08], [0.72, 0]], '#b8b090', { rough: 0.3 });
+  m.put('ruin', 0.3, { n: 7, h: 4, lintel: true, c: '#d8d0bc' }).trees('cypress', -0.7, 0.5, 9, { h: [5, 8] }).trees('broad', -0.6, 0.4, 8, { h: [3, 4], c: '#6a7a4a' }).put('amphorae', 0.44, { n: 14, rows: 6, c: terra, down: 0.5 }).row('pans', -0.4, 0.5, 3, { n: 5, w: 2.4, c: '#5a3a2a', bank: stone, cone: false, down: 0.9 }).put('temple', 0.58, { c: '#d8d0bc', w: 6, down: 0.6 });
+  M.ship(0.8, 'lateen', { len: 9 }); M.ship(0.93, 'row', { len: 5 });
+  const n = N.land([[-1.3, 0.12], [-0.6, 0.14], [0, 0.12], [0.28, 0.08, 'c'], [0.4, 0]], 'quay', { rough: 0.1 });
+  n.row('pans', -1.2, 0.0, 4, { n: 4, w: 2.2, c: '#5a3a2a', bank: stone, cone: false }).put('amphorae', -0.3, { n: 9, rows: 4, c: terra }).put('amphorae', 0.1, { n: 6, rows: 3, c: terra }).row('figure', -1.1, 0.2, 5, { rod: true, jit: 0.8 }).put('temple', -0.7, { c: '#d8d0bc', w: 7 });
+};
+LANDS.corkoak = s => { const { far: F, mid: M, near: N } = s; // cork oaks stripped to the waist and standing red as skinned animals
+  const dry = { c: '#b8a860', tex: 'soft' };
+  F.land([[-0.3, 0.4], [-0.08, 0.6], [0.14, 0.46], [0.34, 0.66], [0.54, 0.4], [0.76, 0.46], [0.92, 0.2], [1.02, 0.14]], '#8a8468', { tex: 'rock', rough: 0.6, crag: 0.2 }).trees('bush', -0.3, 1.02, 40, { h: [2, 4], c: '#5a6a44' });
+  const m = M.land([[-0.7, 0.34], [-0.3, 0.46], [0, 0.4], [0.3, 0.44], [0.5, 0.34], [0.66, 0.14], [0.74, 0]], dry, { rough: 0.3 });
+  m.dots('goat', -0.7, 0.7, 14, { c: '#1a1a1e', from: 0.1, to: 0.9 }).trees('cork', -0.7, 0.7, 30, { h: [7, 11] }).row('bark', 0.4, 0.66, 4, { n: 3, down: 0.85, jit: 0.3 }).put('copper', 0.58, { down: 0.8 });
+  const n = N.land([[-1.3, 0.14], [-0.6, 0.18], [0, 0.12], [0.26, 0.06], [0.38, 0]], dry, { rough: 0.25 });
+  n.dots('goat', -1.3, 0.3, 8, { c: '#1a1a1e', from: 0.1, to: 0.8 }).trees('cork', -1.3, 0.2, 9, { h: [9, 13], on: 'ridge' }).row('bark', -1.1, 0.2, 5, { n: 4, jit: 0.4 }).put('copper', -0.6).put('tent', -0.9, { c: '#d8c8a0' }).row('figure', -0.5, 0.2, 2, { c: '#8a3a2a', jit: 0.6 }).put('sacks', 0.1, { n: 6 });
+  const k = N.flat(0.56, 0.8, dry, { h: 5 }); k.trees('cork', 0.6, 0.76, 2, { h: [10, 12], on: 'ridge', even: true }).put('bark', 0.66, { n: 2 }); // a spit with two of them on it, numbers painted on the trunks
+};
+LANDS.icehouse = s => { const { far: F, mid: M, near: N } = s; // brick domes like buried eggs with doors in the hillside, fog coming out into the heat
+  F.stack(0.9, 22, 0.1, { mat: 'grass' }); F.land([[-0.3, 0.3], [0.1, 0.4], [0.4, 0.2], [0.52, 0]], 'downs', { rough: 0.4 }).forest(-0.3, 0.5, { deep: 0.4 });
+  const m = M.land([[-0.7, 0.36], [-0.3, 0.5], [0, 0.56], [0.3, 0.5], [0.5, 0.3], [0.62, 0.1], [0.68, 0]], 'grass', { rough: 0.3 });
+  m.patches(-0.5, 0.62, 20, { c: ['#e0c870', '#d0b860'], w: 3, h: 0.5, from: 0.3, to: 0.95 }).trees('broad', -0.7, 0.5, 8, { on: 'ridge', h: [4, 7] }).path(0.6, 0.0, { from: 0.9, to: 0.3, c: '#c8b888' });
+  for (let k = 0; k < 11; k++) m.put('dome', -0.4 + k * 0.095, { r: 2.6 + (k % 3) * 0.4, c: '#a85a44', down: 0.2 + 0.6 * ((k * 0.618) % 1), sink: 1 });
+  { const [x, y] = m.spot(-0.4 + 9 * 0.095, 0), yy = y + Math.round((M.base - y) * (0.2 + 0.6 * ((9 * 0.618) % 1))); creep(M, x, yy - 1, { drift: 12, grow: 4, n: 6 }); }
+  M.ship(0.8, 'lug', { len: 9 }); M.ship(0.93, 'barge', { len: 6, load: '#c8b890' });
+  const n = N.land([[-1.3, 0.16], [-0.6, 0.2], [-0.1, 0.14], [0.16, 0.08, 'c'], [0.34, 0]], 'granite', { rough: 0.4, cap: { mat: 'grass', d: 3, steep: 0.6 } });
+  n.put('dome', -0.84, { r: 3.4, c: '#a85a44' }).put('dome', -0.4, { r: 3, c: '#a0553f' }).put('cart', -0.1, { load: '#d8f0f8' }).put('blocks', 0.04, { n: 5 }).row('figure', -0.7, 0.2, 4, { c: '#e8e0d0', jit: 0.8 }).patches(-1.2, 0.3, 12, { c: ['#e0c870', '#d0b860'], w: 1.6, h: 0.3, from: 0, to: 0.6 });
+  creep(N, N.x(-0.4), n.y(N.x(-0.4)) - 3, { drift: 18, grow: 6, n: 6 }); N.ship(0.56, 'barge', { len: 7, load: '#c8b890' });
+};
+Object.assign(SHOP, { lantern: { st: 'pagoda' }, market: { st: 'wood' }, monastery: { st: 'stone' }, fen: { st: 'thatch' }, dyers: { st: 'white' }, terrace: { st: 'wood' }, bayou: { st: 'tin' }, spice: { st: 'coral' }, flamingo: { st: 'thatch', wall: '#f0ece0' }, spongers: { st: 'white' }, kites: { st: 'wood' }, teariver: { st: 'pagoda' }, buttonworks: { st: 'brick' }, cormorants: { st: 'pagoda' }, coracle: { st: 'slate' }, copperisle: { st: 'stone' }, potters: { st: 'brick' }, floatglass: { st: 'brick' }, sailloft: { st: 'wood', wall: '#c8b898' }, vineyard: { st: 'white' }, almadraba: { st: 'white' }, garum: { st: 'stone', wall: '#d8d0bc' }, icehouse: { st: 'brick' } });
 // ---------- end of landscapes ----------
 
 // ---------- hunting: wait, sight, draw, loose ----------
