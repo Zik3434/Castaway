@@ -462,6 +462,7 @@ const T = {
   trophyMinKg: 0.3,              // the trophy line never hooks a species whose largest adult is under this
   weatherFadeMs: 60000,          // a new sky fades in over the first game hour of its slot, the old one fading out under it
   islePanel: 190, sceneZoom: 2,  // the strip: the panel's height in CSS px (the ground line sits just above it), and how many walker pixels one scenery pixel is
+  cartRide: { hop: 340, wait: 120, roll: 700, sink: 520, lift: 11, drop: 28 }, // the way into a mine: ms of the hop into the cart, the beat before it moves, the roll to the adit and the sink down the incline; how many px his feet stand above the ground in the cart, and how far the cart sinks
   entryMs: 900,                  // the walk into a door, a gate or an adit before the cut: ms
   prologueWait: [3000, 7000],    // rod in the tutorial: quicker, so the first two fish teach without a long wait
   setMean: 60000,                // set line: a chance every second, one hook a minute on average (exponential wait), keeps ticking while you're away
@@ -16025,6 +16026,7 @@ function startEntry(sp) {
   else if (sp.id === 'mine') fn = enterMine;
   else fn = () => { if (tutAt('village')) tutSet(l.keeper ? 'talk' : haulCount() ? 'sell' : 'gate'); openSheet(l.shop ? 'shop' : 'inv'); };
   const stair = sp.id === 'hunt' && l.hunt.kind === 'cliffs', Z = T.sceneZoom;
+  if (sp.id === 'mine') { const cx = sp.x + (CART_DX + CART_W / 2) * Z; ISL.walk = 0; ISL.auto = { kind: 'mine', home: sp.x, cx, x: cx - 8 * Z, t0: now(), at: 0, fn, done: false }; renderIsle(); return; } // to the cart's near side, then in and down (stepIsle, drawCartEntry)
   ISL.walk = 0; ISL.auto = { kind: sp.id, stair, x0: sp.x - 10 * Z, x: sp.x + (stair ? 14 * Z : sp.id === 'hunt' ? 6 * Z : 0), t0: now(), dur: T.entryMs * (stair ? 1.5 : 1), fn, done: false }; renderIsle();
 }
 function nearSpot() { if (!ISL) return null; const l = loc(); let best = null, bd = 18; for (const sp of isleSpots(l)) { const d = Math.abs(sp.x - ISL.px); if (d < bd) { bd = d; best = sp; } } return best; }
@@ -16043,11 +16045,17 @@ function renderIsle() {
 let isleUI = '';
 function stepIsle(dt) {
   if (!ISL) return; const l = loc(), nL = isleScreens(l), maxX = l.noFish ? 2 * W - 8 : nL * W + shoreW - 6, minX = l.noFish ? W + 8 : 8;
-  if (ISL.auto) { const A = ISL.auto, dx = A.x - ISL.px; if (Math.abs(dx) > 1) { const step = Math.sign(dx) * Math.min(Math.abs(dx), T.walkSpeed * dt); ISL.px += step; ISL.dir = Math.sign(dx); ISL.anim += dt * T.walkFps; }
+  if (ISL.auto && ISL.auto.kind === 'mine') { const A = ISL.auto, R = T.cartRide, n = now(); // walk to the cart, hop in, ride it to the adit, go down
+    if (!A.at) { const dx = A.x - ISL.px; A.moving = Math.abs(dx) > 1; if (A.moving && n - A.t0 < 4000) { ISL.px += Math.sign(dx) * Math.min(Math.abs(dx), T.walkSpeed * dt); ISL.dir = Math.sign(dx); ISL.anim += dt * T.walkFps; } else { A.at = n; A.moving = false; ISL.px = A.x; ISL.dir = 1; } return; }
+    const u = n - A.at, ru = u - R.hop - R.wait;
+    if (u < R.hop) ISL.px = A.x + (A.cx - A.x) * (u / R.hop); else { const p = clamp(ru / R.roll, 0, 1); ISL.px = A.cx + (A.home - A.cx) * p * p; ISL.dir = -1; } // he turns to face the way it goes
+    if (!A.done && ru >= R.roll + R.sink) { A.done = true; const fn = A.fn; fadeTo(() => { if (ISL) { ISL.px = A.home; ISL.auto = null; } fn(); if (MODE === 'island') renderIsle(); }); }
+    return; }
+  if (ISL.auto) { const A = ISL.auto, dx = A.x - ISL.px; A.moving = Math.abs(dx) > 1; if (Math.abs(dx) > 1) { const step = Math.sign(dx) * Math.min(Math.abs(dx), T.walkSpeed * dt); ISL.px += step; ISL.dir = Math.sign(dx); ISL.anim += dt * T.walkFps; }
     if (!A.done && now() - A.t0 >= A.dur) { A.done = true; const fn = A.fn; fadeTo(() => { if (ISL) ISL.auto = null; fn(); if (MODE === 'island') renderIsle(); }); } return; }
   if (ISL.walk) { ISL.px = clamp(ISL.px + ISL.walk * T.walkSpeed * dt, minX, maxX); ISL.dir = ISL.walk; ISL.anim += dt * T.walkFps; renderIsle(); }
 }
-function isleFrame() { const k = Math.floor(ISL.anim) & 3; return ISL.walk ? { spr: sprite(['walkA', 'stand', 'walkC', 'stand'][k]), bob: k & 1 ? -1 : 0 } : { spr: sprite('stand'), bob: 0 };
+function isleFrame() { const k = Math.floor(ISL.anim) & 3; return ISL.walk || (ISL.auto && ISL.auto.moving) ? { spr: sprite(['walkA', 'stand', 'walkC', 'stand'][k]), bob: k & 1 ? -1 : 0 } : { spr: sprite('stand'), bob: 0 };
 }
 // The strip's scenery stands at T.sceneZoom walker pixels to the scenery pixel, so a shack is taller than the man walking past it, a
 // pine is a tree and a gate is something you walk through: everything on the land (the ground's texture, the hunting ground's decor
@@ -16110,9 +16118,9 @@ function drawIsland(t) {
   // the fisherman
   const { spr, bob } = isleFrame();
   let fy = (ISL.px >= SX ? shoreTop(l, Math.min(shoreW - 1, Math.max(0, ISL.px - SX | 0))) : gy) - spr.height + 1 + bob, alpha = 1;
-  if (ISL.auto) { const A = ISL.auto, p = clamp((t - A.t0) / A.dur, 0, 1), near = Math.abs(A.x - ISL.px) < 3 ? 1 : 0; // the walk in: up the cliff stair, through the gate, down the adit, in at the door
+  if (ISL.auto) { const A = ISL.auto, p = clamp((t - A.t0) / A.dur, 0, 1), near = Math.abs(A.x - ISL.px) < 3 ? 1 : 0; // the walk in: up the cliff stair, through the gate, into the cart and down the adit, in at the door
     if (A.stair) { fy -= clamp(ISL.px - A.x0, 0, 24 * T.sceneZoom) | 0; if (near) alpha = 1 - clamp((p - 0.75) / 0.25, 0, 1); } // one step up for every step along
-    else if (A.kind === 'mine') { if (near) { fy += (p * 8) | 0; alpha = 1 - clamp((p - 0.4) / 0.6, 0, 1); } }
+    else if (A.kind === 'mine') { drawCartEntry(A, l, gy, t, spr, bob); alpha = 0; } // into the cart and down: drawn there, cart and all
     else if (near) alpha = 1 - clamp((p - 0.4) / 0.6, 0, 1);
   }
   if (alpha > 0) { g.save(); g.globalAlpha = alpha; blit(g, spr, (ISL.px - spr.width / 2) | 0, fy | 0, ISL.dir > 0); g.restore(); }
@@ -16600,8 +16608,36 @@ function drawShaftHead(l, x, gy, t, nt) { // an outcrop of the mine's own rock t
   g.fillStyle = '#8a6a44'; g.fillRect(x - 10, gy - 21, 1, 21); g.fillRect(x + 7, gy - 21, 1, 21); g.fillRect(x - 12, gy - 24, 24, 1); g.fillStyle = '#3a2a1a'; g.fillRect(x - 8, gy - 21, 1, 21); g.fillRect(x + 9, gy - 21, 1, 21); g.fillRect(x - 12, gy - 22, 24, 1); g.fillRect(x - 11, gy - 23, 1, 1); g.fillRect(x + 10, gy - 23, 1, 1);
   g.fillStyle = '#3a2816'; g.fillRect(x + 12, gy - 20, 1, 3); g.fillStyle = nt > 0.25 ? '#ffd27a' : '#f0c050'; g.fillRect(x + 11, gy - 17, 3, 4); g.fillStyle = '#3a2816'; g.fillRect(x + 11, gy - 13, 3, 1); if (nt > 0.2) halo(x + 12, gy - 15, 6, '240,192,80', 0.2 * nt); // a lamp hung on the post
   g.fillStyle = '#5a4630'; for (let k = x - 4; k < x + 40; k += 5) g.fillRect(k, gy - 1, 3, 1); g.fillStyle = '#8a8a98'; g.fillRect(x - 6, gy - 2, 48, 1); g.fillStyle = '#5a5a66'; g.fillRect(x - 6, gy, 48, 1); // rails out of the mouth, on sleepers
-  const cx = x + 24; g.fillStyle = '#3a3a44'; g.fillRect(cx, gy - 10, 14, 7); g.fillRect(cx + 1, gy - 3, 12, 1); g.fillStyle = '#5a5a66'; g.fillRect(cx, gy - 10, 14, 1); g.fillStyle = '#2a2a32'; g.fillRect(cx, gy - 6, 14, 1); g.fillStyle = '#1a1a20'; g.fillRect(cx + 2, gy - 3, 3, 3); g.fillRect(cx + 9, gy - 3, 3, 3); g.fillStyle = '#6a6a76'; g.fillRect(cx + 3, gy - 2, 1, 1); g.fillRect(cx + 10, gy - 2, 1, 1);
-  g.fillStyle = wall; g.fillRect(cx + 2, gy - 12, 10, 2); g.fillRect(cx + 4, gy - 13, 6, 1); g.fillStyle = light; g.fillRect(cx + 5, gy - 13, 2, 1); g.fillRect(cx + 9, gy - 12, 1, 1); // a cart with a load of the rock
+  if (!(MODE === 'island' && ISL && ISL.auto && ISL.auto.kind === 'mine')) drawCart(x + CART_DX, gy, wall, light, true, 0); // a cart with a load of the rock (on the way down it is drawn live, with him in it: drawCartEntry)
+}
+// The ore cart on the shaft head's rails, in scenery pixels: 14 wide, its left edge CART_DX from the adit's middle. `load` heaps it
+// with the mine's rock; `spin` (0 or 1) turns the wheels.
+const CART_DX = 24, CART_W = 14;
+function drawCart(cx, gy, wall, light, load, spin) {
+  g.fillStyle = '#3a3a44'; g.fillRect(cx, gy - 10, 14, 7); g.fillRect(cx + 1, gy - 3, 12, 1); g.fillStyle = '#5a5a66'; g.fillRect(cx, gy - 10, 14, 1); g.fillStyle = '#2a2a32'; g.fillRect(cx, gy - 6, 14, 1); g.fillStyle = '#1a1a20'; g.fillRect(cx + 2, gy - 3, 3, 3); g.fillRect(cx + 9, gy - 3, 3, 3);
+  g.fillStyle = '#6a6a76'; if (spin) { g.fillRect(cx + 2, gy - 3, 1, 1); g.fillRect(cx + 4, gy - 1, 1, 1); g.fillRect(cx + 9, gy - 3, 1, 1); g.fillRect(cx + 11, gy - 1, 1, 1); } else { g.fillRect(cx + 3, gy - 2, 1, 1); g.fillRect(cx + 10, gy - 2, 1, 1); }
+  if (load) { g.fillStyle = wall; g.fillRect(cx + 2, gy - 12, 10, 2); g.fillRect(cx + 4, gy - 13, 6, 1); g.fillStyle = light; g.fillRect(cx + 5, gy - 13, 2, 1); g.fillRect(cx + 9, gy - 12, 1, 1); }
+}
+// The way down a mine: he walks to the cart on the rails and hops in (the load of rock tips out), the cart rolls to the adit
+// with him standing in it, and there it goes down the incline into the dark. Everything is drawn here, live, over the scenery
+// layer (which leaves its own cart out for the duration); stepIsle moves him and keeps the time (A.at is when he reached the cart).
+function drawCartEntry(A, l, gy, t, spr, bob) {
+  const Z = T.sceneZoom, R = T.cartRide, kind = MINE_KIND[l.mine.kind] || MINE_KIND.rock, [deep, wall, light] = kind.wall;
+  const u = A.at ? t - A.at : -1, hopP = u < 0 ? 0 : clamp(u / R.hop, 0, 1), rollU = u - R.hop - R.wait, rollP = clamp(rollU / R.roll, 0, 1), sinkP = clamp((rollU - R.roll) / R.sink, 0, 1);
+  const rolling = rollU > 0 && rollP < 1, cartC = A.cx + (A.home - A.cx) * rollP * rollP, sink = (sinkP * sinkP * R.drop) | 0, inCart = hopP >= 1;
+  const mx = A.home - (CART_W / 2) * Z, mw = CART_W * Z, mh = 19 * Z; // the adit's mouth: the cart fits it
+  const cart = () => { g.save(); g.translate((cartC - (CART_W / 2) * Z) | 0, gy + sink); g.scale(Z, Z); drawCart(0, 0, wall, light, u < 0, rolling ? Math.floor(t / 70) & 1 : 0); g.restore(); };
+  let wx = ISL.px, wy = gy - spr.height + 1;
+  if (u < 0) wy += bob; // still walking to it
+  else if (!inCart) wy -= Math.sin(hopP * Math.PI) * 16 + hopP * R.lift; // the hop: up, over the side, and in
+  else { wx = cartC; wy += sink - R.lift + (rolling ? Math.floor(t / 90) & 1 : 0); } // standing in it, jolting as it rolls
+  const man = () => blit(g, spr, (wx - spr.width / 2) | 0, wy | 0, ISL.dir > 0);
+  g.save();
+  if (sinkP > 0) { g.beginPath(); g.rect(mx, gy - mh, mw, mh); g.clip(); } // going down: only what is still inside the mouth shows
+  if (hopP > 0.5) { man(); cart(); } else { cart(); man(); } // once he is over the side the cart's wall hides his legs
+  if (sinkP > 0) { g.fillStyle = `rgba(7,7,11,${(sinkP * 0.92).toFixed(2)})`; g.fillRect(mx, gy - mh, mw, mh); } // ...and the dark takes them
+  g.restore();
+  if (u >= 0 && u < 650) { const q = u / 650; for (let k = 0; k < 6; k++) { const x = A.cx + ((k - 2.5) * 8 + (k % 2 ? 5 : -5)) * q, y = gy - 22 - (16 + (k % 3) * 7) * q + 64 * q * q; if (y < gy - 1) { g.fillStyle = k % 2 ? light : wall; g.fillRect(x | 0, y | 0, 2, 2); } } } // the rock he tipped out
 }
 function drawMineDecor(l, x0, gy) {
   const kind = MINE_KIND[l.mine.kind] || MINE_KIND.rock, [deep, wall, light] = kind.wall, r = k => ((k * 7919 + l.id.length * 31) % 97) / 97;
