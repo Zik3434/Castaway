@@ -15376,6 +15376,7 @@ function seaLayer(h) {
   x.putImageData(img, 0, 0); seaC = c; return c;
 }
 let shaftC = null;
+const SURF_PLAIN = [1, 1, 1, 0]; // rows of waves, their speed, their length, how white (SPOTWATER gives each kind of water its own)
 function shaftLayer() {
   if (shaftC) return shaftC; const c = document.createElement('canvas'); c.width = 70; c.height = 100; const x = c.getContext('2d');
   for (let y = 0; y < 100; y++) { const w = 7 + y * 0.14; x.fillStyle = `rgba(210,235,255,${(0.2 * (1 - y / 100)).toFixed(3)})`; x.fillRect((22 + y * 0.4 - w / 2) | 0, y, w | 0, 1); }
@@ -15426,15 +15427,19 @@ function drawSeaBase(h, t, nt, o) {
   o = o || {};
   g.drawImage(seaLayer(h), 0, SURF);
   if (o.tint) { g.fillStyle = o.tint; g.fillRect(0, SURF, W, H - SURF); }
+  const wt = o.water, sf = (wt && wt.surf) || SURF_PLAIN; // the water at this spot: a tint over the island's own, and how its surface moves
+  if (wt && wt.tint) { g.fillStyle = wt.tint; g.fillRect(0, SURF, W, H - SURF); }
+  if (o.tint2) { g.fillStyle = o.tint2; g.fillRect(0, SURF, W, H - SURF); }
   g.fillStyle = rgba(lerpC(curSky.sea, [255, 255, 255], 0.55), 0.95); g.fillRect(0, SURF, W, 1);
-  const wave = rgba(lerpC(curSky.sea, [255, 255, 255], 0.3), 1);
+  const wave = rgba(lerpC(curSky.sea, [255, 255, 255], 0.3 + 0.3 * sf[3]), 1);
   const rows = [[2, 3, 9], [5, 4, 12], [9, 5, 15], [14, 6, 19], [21, 8, 24], [30, 9, 30]];
-  rows.forEach(([dy, len, gap], r) => { const y = SURF + dy, off = (((t / (150 + r * 40)) + r * 7) % gap) | 0; g.fillStyle = wave; for (let x = -gap + off; x < W; x += gap) g.fillRect(x, y, len, 1); });
+  rows.forEach(([dy, len, gap], r) => { if (r >= Math.ceil(rows.length * sf[0])) return; const y = SURF + dy, off = (((t * sf[1] / (150 + r * 40)) + r * 7) % gap) | 0, ln = Math.max(1, Math.round(len * sf[2])); g.fillStyle = wave; for (let x = -gap + off; x < W; x += gap) g.fillRect(x, y, ln, 1); });
+  if (sf[0] > 1.3) { g.fillStyle = 'rgba(255,255,255,0.7)'; for (const [dy, len, gap] of [[1, 5, 11], [3, 7, 17]]) { const off = ((t * sf[1] / 120 + dy * 5) % gap) | 0; for (let x = -gap + off; x < W; x += gap) g.fillRect(x, SURF + dy, len, 1); } } // fast water runs white
   if (lightX >= 0 && lightY > SURF - SURF * 0.45) {
     const a = nt > 0.5 ? 0.12 : 0.22;
     for (let y = SURF + 1; y < SURF + 44; y += 2) { const f = (y - SURF) / 44, w = (9 * (1 - f) + 2) | 0, j = Math.sin(t / 300 + y) * 3 * f; g.fillStyle = `rgba(255,224,150,${(a * (1 - f)).toFixed(3)})`; g.fillRect((lightX - w / 2 + j) | 0, y, w, 1); }
   }
-  if (nt < 0.75 && !o.noShafts) {
+  if (nt < 0.75 && !o.noShafts && !(wt && wt.shafts === false)) {
     const sh = shaftLayer(); g.globalAlpha = (1 - nt) * 0.9;
     for (let k = 0; k < 5; k++) { g.globalAlpha = (1 - nt) * (0.45 + 0.45 * Math.abs(Math.sin(t / 1400 + k * 1.3))); g.drawImage(sh, (shoreW + 4 + k * ((W - shoreW) / 4.6) + Math.sin(t / 1000 + k) * 3) | 0, SURF + 1); }
     g.globalAlpha = 1;
@@ -15447,7 +15452,7 @@ function reseedFish() {
   const p = pool(S.loc, 'hand', 'squid', now()).filter(x => !x[0].kind);
   for (let k = 0; k < 7 && p.length; k++) {
     const s = p[Math.floor(Math.random() * p.length)][0];
-    const deep = S.loc === 'trench' || S.loc === 'fjord' ? 110 : 54;
+    let deep = S.loc === 'trench' || S.loc === 'fjord' ? 110 : 54; try { const sq = spot(); if (sq && sq.kind !== 'open' && S.loc !== 'sea') deep = Math.max(deep === 110 ? 60 : 12, spotSprite(loc(), sq).fish); } catch (e) {} // no deeper than the bed at this spot, and deeper where there is none
     swim.push({ x: rnd(shoreW + 10, W - 10), y: rnd(SURF + 12, SURF + deep), dir: Math.random() < 0.5 ? -1 : 1, sp: rnd(3, 9) * (s.shape === 'fry' ? 1.6 : 1), shape: s.shape, sc: s.big ? 2 : 1, ph: rnd(0, 6) });
   }
 }
@@ -15542,8 +15547,8 @@ function drawWx(l, wx, t, nt, alpha) {
   }
   g.restore();
 }
-function drawShoreGeneric(l, t, nt) { // the bed under the water, then the island's own bank with what stands on it; returns the seat
-  g.drawImage(floorLayer(l.id), 0, SURF);
+function drawShoreGeneric(l, t, nt) { // the bed and what stands in the water at this spot, then the island's own bank with what stands on it; returns the seat
+  drawSpot(l, t, nt);
   return drawBank(l, t, nt);
 }
 // An open-water spot: your own boat on deep water, the island a shape behind you on the left, no shore at all.
@@ -15610,6 +15615,7 @@ function drawShore(id, t, nt, o) {
     return [bw - 38, by - 31];
   }
   if (id === 'trench') {
+    drawSpot(LOC.trench, t, nt); // the wall going down under the buyer boat, and whatever passes below
     const bw = shoreW + 16, by = SURF + 1;
     drawBoat(-6, by, bw, S.boat === 'raft' ? 'raft' : S.boat, t, false);
     g.fillStyle = '#5a3a22'; g.fillRect(-6, by - 3, bw, 2);
@@ -15619,11 +15625,7 @@ function drawShore(id, t, nt, o) {
   }
   // the first islands' banks are painted like every other island's now; what moved on them still moves
   if (id === 'fjord' && nt > 0.35) for (let k = 0; k < 4; k++) { g.fillStyle = `rgba(90,220,160,${(0.09 * nt).toFixed(3)})`; for (let x = 0; x < W; x += 6) g.fillRect(x, (8 + k * 7 + Math.sin(x / 22 + t / 1300 + k) * 5) | 0, 5, 3); }
-  g.drawImage(floorLayer(id), 0, SURF);
-  if (id === 'reach') for (const xk of [shoreW + 36, shoreW + 64, W - 52, W - 20]) { // kelp standing off the rocks
-    const base = floorShelf(xk);
-    for (let i = 0; i < 64; i++) { const x = xk + Math.round(Math.sin(i * 0.4 + t / 700) * 1.6), y = (base - i) | 0; if (y < SURF + 6) break; g.fillStyle = i % 6 < 3 ? '#2f7a4a' : '#3f9a5c'; g.fillRect(x, y, 1, 1); if (i % 5 === 2) g.fillRect(x + 1, y, 2, 1); }
-  }
+  drawSpot(LOC[id], t, nt); // the reach's kelp stands at its kelp spots now, like any other island's
   const seat = drawBank(LOC[id], t, nt, o.noSeat);
   if (id === 'fjord') {
     for (let k = 0; k < 3; k++) { const fx = (((t / 1000) * 2 + k * (W / 3)) % (W + 40)) - 20 | 0; if (fx < shoreW + 4) continue; g.fillStyle = '#e6eef5'; g.fillRect(fx, SURF - 2, 14 + k * 4, 3); g.fillStyle = '#b7c9d8'; g.fillRect(fx, SURF + 1, 14 + k * 4, 1); }
@@ -15668,11 +15670,11 @@ function drawRodStand(sx, gy, L, on, t) {
 
 function drawGame(t) {
   const h = hourAt(t), nt = drawSkyBase(h, t, {}); sceneWeather(loc(), t, nt);
-  drawLandscape(loc(), 3 * W, SURF, t, nt, { off: spot().kind === 'open' }); // the island behind the shore (further off, out on open water)
+  const sp0 = spot(), onWater = sp0.kind === 'open', vw = onWater ? 1 : spotView(loc(), sp0); // where the eye turns at this spot: inland up a river, out toward open water
+  drawLandscape(loc(), 3 * W + Math.min(0, vw) * W, SURF, t, nt, { off: onWater ? true : Math.max(0, vw) }); // the island behind the shore, from where this spot looks at it
   const tint = S.loc === 'trench' ? 'rgba(0,0,12,0.32)' : S.loc === 'fjord' ? 'rgba(120,180,220,0.1)' : (loc().scene && loc().scene.tint) || null;
-  drawSeaBase(h, t, nt, { tint });
+  drawSeaBase(h, t, nt, onWater ? { tint } : { tint, water: spotWater(sp0), tint2: spotSprite(loc(), sp0).tint }); // the island's own water, then this spot's
   drawFish(t);
-  const onWater = spot().kind === 'open';
   const spot_ = onWater ? drawOpenWater(loc(), t, nt) : drawShoreAny(S.loc, t, nt);
   const rodOut = S.lines.some(L => L && L.rig === 'hand' && L.phase !== 'idle');
   const fight = F && !F.over ? { i: F.i, big: !!(F.trophy || F.s.big || (F.kg || 0) >= 4) } : null;
@@ -15827,7 +15829,7 @@ function drawIsland(t) {
   }
   // fishing shore (right screen)
   g.save(); g.translate(SX, 0);
-  drawSeaBase(h, t, nt, { tint: S.loc === 'trench' ? 'rgba(0,0,12,0.32)' : S.loc === 'fjord' ? 'rgba(120,180,220,0.1)' : (sc && sc.tint) || null });
+  drawSeaBase(h, t, nt, { tint: S.loc === 'trench' ? 'rgba(0,0,12,0.32)' : S.loc === 'fjord' ? 'rgba(120,180,220,0.1)' : (sc && sc.tint) || null, water: spotWaterOf(l) });
   drawFish(t); const seat = drawShoreAny(l.id, t, nt);
   S.lines.forEach((L, i) => { if (!L || i >= S.slots || L.phase === 'idle') return; const bx = floatX(i), by = (SURF - 1 + Math.sin(t / 400 + i) * 0.8) | 0; g.fillStyle = L.rig === 'hand' ? '#d7362a' : L.rig === 'trophy' ? '#2d6fb0' : '#f0a040'; g.fillRect(bx - 1, by - 1, 3, 2); });
   g.restore();
@@ -17566,9 +17568,11 @@ function bankWet(P, wl, l) {
 }
 // things a bank's description may ask for once everything on it is painted (o.post: ['mirror', ...])
 const BANKPOST = {};
+// the things beside him at another of the island's spots: the same things, another of them nearest (one fixed by `at` stays where it is)
+function bankTurned(things, turn) { if (!turn) return things; const fixed = t => Array.isArray(t) && t[1] && t[1].at != null, free = things.filter(t => !fixed(t)), k = turn % Math.max(1, free.length); if (free.length < 2 || !k) return things; const turned = free.slice(k).concat(free.slice(0, k)); let j = 0; return things.map(t => fixed(t) ? t : turned[j++]); }
 function bankSprite(l, noSeat) {
-  const bw = shoreW, dep = clamp(H - SURF, 24, T_BANK.depth), key = l.id + '|' + bw + '|' + dep + (noSeat ? '|n' : ''); let C = BANK_C.get(key); if (C) return C;
-  if (BANK_C.size > 5) BANK_C.delete(BANK_C.keys().next().value);
+  const bw = shoreW, dep = clamp(H - SURF, 24, T_BANK.depth), turn = noSeat ? 0 : spotTurn(l), key = l.id + '|' + bw + '|' + dep + (noSeat ? '|n' : '') + '|' + turn; let C = BANK_C.get(key); if (C) return C; // turn: which of the island's spots this is, so each shows another stretch of the same shore
+  if (BANK_C.size > 7) BANK_C.delete(BANK_C.keys().next().value);
   const o = bankOf(l), F = BANKFORM[o.form] || BANKFORM.beach, s = groundSeed(l) % 9973, u = T_BANK.u, w = bw + T_BANK.pad, wl = T_BANK.room, h = wl + dep, P = new Paint(w, h); P.seed = s;
   const top = new Float32Array(w).fill(NaN), thick = new Float32Array(w).fill(1e9), E = F.edge ? bw - T_BANK.back : bw, deep = F.under === 'deep';
   F.top(top, bw, o, s, thick);
@@ -17591,7 +17595,7 @@ function bankSprite(l, noSeat) {
   try {
     // the things beside him, nearest first, walking away from the water until there is no more bank
     let cx = sx - (o.gap == null ? 4 : o.gap); const put = [];
-    for (const th of (o.things || [])) { const nm = Array.isArray(th) ? th[0] : th, po = Object.assign({}, (Array.isArray(th) && th[1]) || {}), fn = VPROP[nm]; if (!fn) { console.warn('no such thing:', nm); continue; } const tw = Math.round((po.w || VPROP_W[nm] || 1) * (po.u || u)), px = po.at != null ? Math.round(po.at * E) : cx - (tw >> 1); if (po.at == null) { if (px < -(tw >> 2)) break; cx -= tw + (po.gap == null ? 3 : po.gap); } put.push([fn, px, Math.max(gy(px - (tw >> 2)), gy(px + (tw >> 2))) + (po.sink || 0), po]); }
+    for (const th of bankTurned(o.things || [], turn)) { const nm = Array.isArray(th) ? th[0] : th, po = Object.assign({}, (Array.isArray(th) && th[1]) || {}), fn = VPROP[nm]; if (!fn) { console.warn('no such thing:', nm); continue; } const tw = Math.round((po.w || VPROP_W[nm] || 1) * (po.u || u)), px = po.at != null ? Math.round(po.at * E) : cx - (tw >> 1); if (po.at == null) { if (px < -(tw >> 2)) break; cx -= tw + (po.gap == null ? 3 : po.gap); } put.push([fn, px, Math.max(gy(px - (tw >> 2)), gy(px + (tw >> 2))) + (po.sink || 0), po]); }
     B.put = put;
     for (let k = put.length - 1; k >= 0; k--) put[k][0](P, put[k][1], put[k][2], put[k][3].u || u, put[k][3]); // the furthest first, so the nearer stand in front
     if (!edge && !noSeat) (SEAT[o.seat] || SEAT.crate)(P, sx + 3, seatTop, gy, o.seato || {});
@@ -19107,6 +19111,371 @@ MASSON.suckers = function (P, M, o) { const R = kRamp(o.c || '#e8c8d4'), st = o.
 MASSON.script = function (P, M, o) { const c = kHex(o.c || '#5a5a66'), st = o.step || 8; for (let x = M.x0 + 3; x <= M.x1 - 3; x++) { const h = M.top[x]; if (!(h > 6)) continue; const y0 = Math.max(2, M.gy - bankUp(h) + 5); for (let y = y0 + ((n1(x * 0.02, M.s) * 2) | 0); y < M.gy - 5; y += st) { const wv = nH(x >> 1, y, M.s); if (wv < 0.72 && nH(x >> 4, y + 7, M.s) > 0.18) P.px(x, y + (wv < 0.2 ? -1 : wv > 0.6 ? 1 : 0), c); } } };
 // a light under a gate
 GDECO.glow = function (P, x, y, o) { const gc = kHex(o.c || '#8ac8ff'), w = o.w || 10; P.halo(x, y, o.r || 16, gc, o.a || 120); for (let i = -w; i <= w; i++) P.lit(x + i, y, gc, 220); };
+// --- the water at a spot: every fishing spot is its own place ---
+// Where the eye turns (spotView: inland up a river, out past the reef), what the water is (SPOTWATER: a tint laid over the island's
+// own, how its surface moves) and what stands in it and lies under it (spotSprite: painted once per spot from its kind, its name and
+// the island's own colours and seed, so two reefs on two islands are two reefs).
+const T_SPOT = {
+  up: 64,        // rows of the picture above the waterline (reeds, rocks awash, piles); a sea cave's roof takes the whole sky
+  step: 0.24,    // an island's spots look at least this far apart (screens)
+  inland: 1.5,   // the furthest the eye turns inland (screens the camera steps back toward the land)
+  out: 0.8,      // the furthest out short of open water (a share of the open-water slide)
+  clear: 26,     // px of water off the bank kept clear of what stands in it
+  keep: 4,       // painted spots kept
+  night: 0.6,    // how far night darkens what stands in the water
+  extras: 2,     // things a spot's name may add to its kind's
+};
+// where the eye turns at each kind of water: below 0 inland, above 0 out to sea
+const SPOT_VIEW = { river: -1.15, lake: -1.35, pond: -1.5, marsh: -1.0, hotspring: -0.85, crater: -1.25, cave: -0.6, mangrove: -0.7, lagoon: -0.45, saltflat: -0.55, flats: -0.3, harbour: -0.2, ice: -0.25, lava: -0.35, shore: 0, pier: 0.1, wreck: 0.18, ruins: 0.2, rocks: 0.25, channel: 0.32, kelp: 0.36, weed: 0.42, reef: 0.48, strait: 0.6, deep: 0.7, sky: 0.5 };
+// the island's first spot keeps the view its landscape was composed for; the others turn by their kind and are kept apart
+function spotViews(l) {
+  if (l._sv) return l._sv; const V = {}, used = [], cave = !!(l.scene && l.scene.weather === 'cave'), s = groundSeed(l) % 9973, lo = -T_SPOT.inland, hi = cave ? 0 : T_SPOT.out; let first = true;
+  (l.spots || []).forEach((sp, i) => {
+    if (sp.kind === 'open') { V[sp.id] = 1; return; }
+    let v = first ? 0 : (SPOT_VIEW[sp.kind] || 0) + (nH(i, 7, s) - 0.5) * 0.16; first = false; if (cave && v > 0) v = -v;
+    const clash = x => used.some(u => Math.abs(u - x) < T_SPOT.step - 1e-6); let dir = v >= 0 && !cave ? 1 : -1, n = 0;
+    while (clash(v) && n++ < 16) { v += dir * T_SPOT.step; if (v > hi || v < lo) { dir = -dir; v = clamp(v, lo, hi); } }
+    v = clamp(v, lo, hi); used.push(v); V[sp.id] = v;
+  });
+  return l._sv = V;
+}
+const spotView = (l, sp) => { const v = spotViews(l)[sp.id]; return v == null ? 0 : v; };
+// the water itself: tint (over the island's own), surf [how many wave rows, how fast, how long, whiter], shafts (light from above), fish (how deep the shadows swim)
+const SPOTWATER = {
+  shore: { surf: [1, 1, 1, 0] },
+  pier: { tint: 'rgba(10,30,40,0.10)', surf: [0.8, 0.8, 1, 0] },
+  harbour: { tint: 'rgba(40,50,30,0.18)', surf: [0.5, 0.5, 0.8, 0] },
+  river: { tint: 'rgba(96,84,40,0.26)', surf: [1.2, 2.4, 1.7, 0] },
+  lake: { tint: 'rgba(20,50,50,0.22)', surf: [0.4, 0.4, 0.8, 0] },
+  pond: { tint: 'rgba(50,90,40,0.28)', surf: [0.25, 0.3, 0.6, 0], shafts: false },
+  marsh: { tint: 'rgba(80,90,40,0.30)', surf: [0.3, 0.3, 0.6, 0], shafts: false },
+  lagoon: { tint: 'rgba(60,220,200,0.20)', surf: [0.5, 0.5, 0.8, 0] },
+  flats: { tint: 'rgba(170,200,160,0.18)', surf: [0.5, 0.6, 0.7, 0] },
+  saltflat: { tint: 'rgba(240,220,220,0.26)', surf: [0.2, 0.3, 0.5, 0] },
+  reef: { tint: 'rgba(40,200,190,0.16)', surf: [1.1, 1.1, 1, 0] },
+  rocks: { tint: 'rgba(20,40,60,0.10)', surf: [1.4, 1.5, 1.1, 1] },
+  kelp: { tint: 'rgba(30,80,40,0.22)', surf: [0.8, 0.8, 1, 0] },
+  weed: { tint: 'rgba(120,110,30,0.20)', surf: [0.5, 0.5, 1, 0] },
+  channel: { tint: 'rgba(10,30,50,0.16)', surf: [1.1, 1.9, 1.5, 0] },
+  strait: { tint: 'rgba(10,24,44,0.24)', surf: [1.8, 3, 1.8, 1] },
+  deep: { tint: 'rgba(0,6,24,0.36)', surf: [1.2, 0.8, 1.6, 0] },
+  crater: { tint: 'rgba(10,20,80,0.30)', surf: [0.5, 0.5, 0.8, 0] },
+  wreck: { tint: 'rgba(20,50,40,0.14)', surf: [0.9, 0.9, 1, 0] },
+  ruins: { tint: 'rgba(60,90,80,0.16)', surf: [0.7, 0.7, 1, 0] },
+  cave: { tint: 'rgba(0,0,10,0.34)', surf: [0.5, 0.5, 0.8, 0], shafts: false },
+  ice: { tint: 'rgba(150,200,230,0.14)', surf: [0, 0, 0, 0], shafts: false },
+  lava: { tint: 'rgba(120,30,0,0.20)', surf: [0.6, 0.7, 1, 0] },
+  hotspring: { tint: 'rgba(120,220,210,0.22)', surf: [0.4, 0.5, 0.8, 0] },
+  mangrove: { tint: 'rgba(90,60,20,0.30)', surf: [0.3, 0.3, 0.7, 0], shafts: false },
+  sky: { tint: 'rgba(230,240,255,0.30)', surf: [0.4, 0.4, 1, 0] },
+};
+const spotWater = sp => SPOTWATER[sp.kind] || SPOTWATER.shore;
+
+// what a spot is painted with: the bed's line, a layer of things (F) standing on it and in the water, and the island's own colours
+function SpotB(l, sp) {
+  const cave = !!(l.scene && l.scene.weather === 'cave'); this.l = l; this.sp = sp; this.w = W; this.caveIsle = cave;
+  this.up = sp.kind === 'cave' && !cave ? SURF : T_SPOT.up; this.h = this.up + (H - SURF);
+  let hs = 7; for (let i = 0; i < sp.id.length; i++) hs = (Math.imul(hs, 31) + sp.id.charCodeAt(i)) | 0; this.s = ((groundSeed(l) ^ hash32(hs)) >>> 0) % 9973;
+  this.F = new Paint(this.w, this.h); this.F.seed = this.s; this.top = new Float32Array(this.w).fill(this.h + 4);
+  const fl = FLOORS[l.id] || FLOORS.sea, wt = wildTone(l); this.near = fl.near; this.deep = fl.deep; this.kDeep = kRGB(fl.deep[0], fl.deep[1], fl.deep[2]);
+  this.noBank = l.id === 'trench'; // fished from your own boat: no shore for the bed to come up to
+  this.rock = kRamp(wt.rock || kRGB(fl.near[0] * 0.7 + 44, fl.near[1] * 0.7 + 44, fl.near[2] * 0.7 + 48)); this.deepBank = bankDeep(l);
+  this.x0 = shoreW + T_SPOT.clear; this.x1 = W - 3; this.floats = [0, 1, 2, 3].map(floatX); this.n = Math.max(1, (this.x1 - this.x0) / 130);
+  this.bedTex = 'sand'; this.bedC = null; this.lit = 0; this.fish = 0; this.tint = null; this.mods = [];
+  const cold = climateOf(l) === 'cold'; this.pal = cold ? ['#c8a8a0', '#a8b8c0', '#d8c8b0', '#b89a8a'] : [['#e07a6a', '#f0b040', '#c85aa0', '#6ac8b8'], ['#f4d8c8', '#8a6ad8', '#e8904a', '#5aa8d8'], ['#d85a5a', '#f0d060', '#a878c8', '#68c098']][this.s % 3];
+}
+SpotB.prototype = {
+  r(k) { return nH(k, 17, this.s); },
+  ri(k, a, b) { return a + Math.floor(this.r(k) * (b - a + 1)); },
+  // keep a place off the floats
+  off(x, pad) { for (const f of this.floats) if (Math.abs(x - f) < pad) x = f + (x < f ? -pad : pad); return Math.round(x); },
+  // n places across the open water, spread and a little off the grid
+  xs(n, k, pad, a, b) { a = a == null ? this.x0 : a; b = b == null ? this.x1 : b; const out = []; n = Math.max(0, Math.round(n)); for (let i = 0; i < n; i++) { let x = Math.round(a + (b - a) * (i + 0.15 + 0.7 * nH(i, k, this.s)) / n); if (pad) x = this.off(x, pad); if (x >= a - 2 && x <= b + 2) out.push(x); } return out; },
+  bedY(x) { return Math.round(this.top[clamp(x | 0, 0, this.w - 1)]); },
+  // the bed: D [a, b] px under the surface (none: it falls away out of sight), its small relief, a shape of its own (o.f)
+  bed(o) {
+    o = o || {}; const up = this.up, s = this.s, D = o.D, rel = o.relief == null ? 2 : o.relief, sw = shoreW;
+    for (let x = 0; x < this.w; x++) {
+      let d = D ? D[0] + (D[1] - D[0]) * n1(x * 0.022 + 3, s) + (n1(x * 0.11, s + 5) - 0.5) * rel * 2 : 60 + Math.max(0, x - sw - 20) * (o.fall || 3.2);
+      if (o.f) d = o.f(x, d); for (const m of this.mods) d = m(x, d);
+      if (this.noBank) d = D ? Math.max(d, 80) : 110 + x * 0.8; else if (this.deepBank) { const k = clamp((x - sw) / 50, 0, 1), kk = k * k * (3 - 2 * k); d = Math.max(d, 56) * (1 - kk) + d * kk; } else d = x < sw ? 0 : Math.min(d, (x - sw) * 2.5);
+      this.top[x] = up + Math.max(0, d);
+    }
+    this.bedTex = o.tex || 'sand'; if (o.c) this.bedC = o.c;
+  },
+  // a bed paler than the island's (warm sand under clear water)
+  paleBed(k) { return [lerpC(this.near, [236, 226, 190], k), lerpC(this.deep, [120, 150, 150], k * 0.6)]; },
+  // --- what lies on the bed ---
+  stone(x, r, o) { o = o || {}; const F = this.F, R = o.R || this.rock, y = this.bedY(x); F.ball(x, y - r * 0.5, r * 1.25, r, R); for (let k = 0; k < r + 2; k++) { const a = nH(k, x, this.s) * 6.28; F.px(x + Math.cos(a) * r * 0.8, y - r * 0.5 + Math.sin(a) * r * 0.6, R[nH(k, 2, x) > 0.5 ? 3 : 1]); } if (o.weed) this.tuft(x - 1, 3 + (r >> 1), y - r * 1.3); },
+  stones(n, k, rr, o) { for (const x of this.xs(n * this.n, k, 0, shoreW + 10)) this.stone(x, rr[0] + nH(x, k, this.s) * (rr[1] - rr[0]), o); },
+  tuft(x, hgt, y, c) { const F = this.F, R = kRamp(c || '#3f8a52'); y = y == null ? this.bedY(x) : Math.round(y); for (let b = -1; b <= 1; b++) { const hh = Math.max(2, Math.round(hgt * (0.6 + 0.5 * nH(x + b, 5, this.s)))); for (let i = 0; i < hh; i++) F.px(x + b * 2 + Math.round((i / hh) * (i / hh) * b * 1.5 + Math.sin(i * 0.5 + x) * 0.6), y - 1 - i, R[b === 0 ? 3 : b < 0 ? 1 : 2]); } },
+  grass(n, k, o) { o = o || {}; for (const x of this.xs(n * this.n, k, 0, shoreW + 8)) for (let j = 0; j < (o.clump || 3); j++) this.tuft(x + j * 3 - 3, o.h || 6, null, o.c); },
+  scatter(what, n, k) {
+    const F = this.F, s = this.s;
+    for (const x of this.xs(n * this.n, k, 0, shoreW + 8)) { const y = this.bedY(x);
+      if (what === 'shell') { F.px(x, y - 1, kHex('#f8f4f0')); F.px(x + 1, y - 1, kHex('#d8d0c8')); }
+      else if (what === 'pebble') { const c = this.rock[nH(x, 1, s) > 0.5 ? 3 : 1]; F.px(x, y - 1, c); F.px(x + 1, y - 1, c); if (nH(x, 2, s) > 0.5) F.px(x, y - 2, this.rock[2]); }
+      else if (what === 'star') { const c = kHex(nH(x, 3, s) > 0.5 ? '#e8743a' : '#c8486a'); F.px(x, y - 3, c); F.rect(x - 2, y - 2, 5, 1, c); F.rect(x - 1, y - 1, 3, 1, c); F.px(x - 2, y, c); F.px(x + 2, y, c); }
+      else if (what === 'urchin') { const c = kHex('#2a1a3a'); F.rect(x - 1, y - 2, 3, 2, c); F.px(x - 2, y - 3, c); F.px(x + 2, y - 3, c); F.px(x, y - 4, c); F.px(x - 3, y - 1, c); F.px(x + 3, y - 1, c); }
+      else if (what === 'bone') { const c = kHex('#e8e0cc'); F.rect(x - 2, y - 1, 5, 1, c); F.px(x - 3, y - 2, c); F.px(x + 3, y - 2, c); F.px(x - 3, y, c); F.px(x + 3, y, c); }
+      else if (what === 'bottle') { const c = kHex('#4a8a6a'); F.rect(x - 2, y - 2, 4, 2, c); F.px(x + 2, y - 2, kHex('#8ac0a0')); F.px(x - 2, y - 2, kHex('#c8f0d8')); }
+      else if (what === 'leaf') { F.px(x, y - 1, kHex(nH(x, 4, s) > 0.5 ? '#a86a2a' : '#7a5a2a')); if (nH(x, 5, s) > 0.5) F.px(x + 1, y - 1, kHex('#c88a3a')); }
+      else if (what === 'cast') { const c = kMix(kRGB(this.near[0], this.near[1], this.near[2]), 0xff000000, 0.3); F.px(x, y - 2, c); F.rect(x - 1, y - 1, 3, 1, c); } }
+  },
+  junk(n, k) { const F = this.F, c = kHex('#3a3a44'), c2 = kHex('#6a5a4a'); for (const x of this.xs(n * this.n, k, 0, shoreW + 12)) { const y = this.bedY(x), v = (nH(x, 6, this.s) * 3) | 0;
+      if (v === 0) { F.rect(x, y - 8, 1, 7, c); F.rect(x - 2, y - 8, 5, 1, c); F.px(x - 3, y - 3, c); F.px(x - 2, y - 2, c); F.rect(x - 1, y - 1, 3, 1, c); F.px(x + 2, y - 2, c); F.px(x + 3, y - 3, c); } // an anchor
+      else if (v === 1) { F.rect(x - 3, y - 4, 6, 4, c2); F.rect(x - 3, y - 4, 6, 1, kHex('#8a7a66')); F.rect(x - 3, y - 2, 6, 1, c); } // a keg, staved in
+      else { F.rect(x - 2, y - 2, 5, 2, c); F.rect(x - 2, y - 4, 2, 2, c); F.px(x + 2, y - 2, kHex('#5a5a66')); } } }, // a boot
+  log(x, len) { const F = this.F, R = kRamp('#4a3a28'), y = this.bedY(x); F.rect(x, y - 3, len, 3, R[2]); F.rect(x, y - 3, len, 1, R[3]); F.rect(x, y - 1, len, 1, R[1]); F.rect(x + len - 1, y - 3, 1, 3, kHex('#8a7450')); for (let i = 3; i < len - 3; i += 7) F.px(x + i, y - 2, R[1]); const bx = x + (len >> 1); for (let i = 0; i < 6; i++) F.px(bx + i, y - 4 - i, R[2]); },
+  drums(n, k) { const F = this.F, R = kRamp('#cfc8b8'); for (const x of this.xs(n * this.n, k, 0, shoreW + 12)) { const y = this.bedY(x); F.rect(x - 4, y - 5, 8, 5, R[2]); F.rect(x - 4, y - 5, 8, 1, R[4]); F.rect(x - 4, y - 1, 8, 1, R[1]); for (let i = -3; i < 4; i += 2) F.rect(x + i, y - 4, 1, 3, R[3]); } },
+  stubs(n, k) { const F = this.F, R = this.rock; for (const x of this.xs(n * this.n, k, 0, shoreW + 10)) { const y = this.bedY(x), hh = 4 + ((nH(x, 3, this.s) * 7) | 0); for (let i = 0; i < hh; i++) { const hw = Math.round((1 - i / hh) * 2.4); F.rect(x - hw, y - i, hw * 2 + 1, 1, R[2]); F.px(x - hw, y - i, R[1]); F.px(x + hw, y - i, R[3]); } } },
+  cracks(n, k, o) { o = o || {}; const F = this.F, gc = kHex(o.c || '#ff7a30'); for (const x of this.xs(n * this.n, k, 0, shoreW + 6)) { let xx = x, yy = this.bedY(x); const len = 6 + ((nH(x, 1, this.s) * 12) | 0); for (let i = 0; i < len; i++) { F.px(xx, yy, gc); F.lit(xx, yy, gc, 255); if (i % 4 === 0) F.halo(xx, yy, 5, gc, 60); xx += nH(i, x, this.s) > 0.5 ? 1 : -1; yy = Math.max(this.bedY(xx), yy + (nH(i, x + 3, this.s) > 0.6 ? 1 : 0)); } } },
+  // --- what grows ---
+  coral(x, wd, hgt, o) {
+    o = o || {}; const F = this.F, s = this.s + x * 3, y = this.bedY(x), R = kRamp(o.c || this.pal[(nH(x, 4, this.s) * this.pal.length) | 0]), kind = o.kind || ['brain', 'branch', 'fan', 'tube'][(nH(x, 6, this.s) * 4) | 0]; hgt = Math.max(4, hgt); if (o.y != null) return this.coralAt(x, o.y, wd, hgt, R, kind, s);
+    this.coralAt(x, y, wd, hgt, R, kind, s);
+  },
+  coralAt(x, y, wd, hgt, R, kind, s) {
+    const F = this.F;
+    if (kind === 'brain') { F.ball(x, y - hgt * 0.45, wd / 2, hgt * 0.55, R); for (let i = -(wd >> 1) + 1; i < wd / 2; i += 2) for (let j = 1; j < hgt; j += 3) if (nH(i, j, s) > 0.45) F.px(x + i, y - j, R[1]); }
+    else if (kind === 'branch') { const arms = 3 + ((nH(1, 1, s) * 3) | 0); for (let a = 0; a < arms; a++) { const ang = -1.57 + (a - (arms - 1) / 2) * 0.5 + (nH(a, 2, s) - 0.5) * 0.3, len = hgt * (0.7 + 0.4 * nH(a, 3, s)); for (let k = 0; k < len; k++) { const px = x + Math.cos(ang) * k + Math.sin(k * 0.5 + a) * 0.6, py = y - 1 + Math.sin(ang) * k; F.px(px, py, R[2]); F.px(px + 1, py, R[k > len - 2 ? 4 : 3]); if (k > len * 0.5 && k % 3 === 0) F.px(px + (a % 2 ? 2 : -1), py - 1, R[3]); } } }
+    else if (kind === 'fan') { const r = Math.max(4, hgt * 0.6), by = y - Math.round(hgt * 0.4); F.rect(x, by, 1, Math.round(hgt * 0.4), R[1]); for (let a = -1.2; a <= 1.2; a += 0.1) for (let k = 2; k < r; k++) if (((k + Math.round(a * 20)) & 1) === 0) F.px(x + Math.sin(a) * k, by - Math.cos(a) * k, R[a > 0.3 ? 3 : 2]); }
+    else { const n = 3 + ((nH(2, 2, s) * 3) | 0); for (let a = 0; a < n; a++) { const tx = x + Math.round((a - n / 2) * 3), th = Math.round(hgt * (0.5 + 0.5 * nH(a, 5, s))); F.rect(tx, y - th, 2, th, R[2]); F.rect(tx + 1, y - th, 1, th, R[3]); F.rect(tx, y - th, 2, 1, R[4]); } }
+  },
+  // a head of rock grown over with coral, its top a few px under the surface
+  bommie(x) { const F = this.F, R = kRamp(this.s % 2 ? '#b8a48c' : '#a89a94'), s = this.s + x, wd = 7 + ((nH(x, 1, s) * 6) | 0), dep = 3 + ((nH(x, 2, s) * 5) | 0), top = this.up + dep, bot = this.bedY(x), st = wd * (0.5 + 0.2 * nH(x, 3, s));
+    for (let y = top; y <= bot; y++) { const j = y - top, hw = Math.round((j < 9 ? wd * Math.sqrt(Math.max(0.08, 1 - Math.pow((9 - j) / 9.5, 2))) : st + Math.max(0, wd - st) * Math.max(0, 1 - (j - 9) / 6) + Math.max(0, 6 - (bot - y)) * 0.8) + (n1(y * 0.3, s) - 0.5) * 3); for (let i = -hw; i <= hw; i++) F.px(x + i, y, R[j === 0 ? 4 : i < -hw * 0.4 ? 1 : nH((x + i) >> 1, y >> 1, s) > 0.72 ? 1 : i > hw * 0.35 ? 3 : 2]); }
+    for (let k = -2; k <= 2; k++) this.coralAt(x + k * Math.round(wd * 0.45), top + 1 + Math.abs(k), 6, 4 + ((nH(k, 3, s) * 5) | 0), kRamp(this.pal[(nH(k, 4, s) * this.pal.length) | 0]), ['brain', 'tube', 'branch', 'fan'][(nH(k, 5, s) * 4) | 0], s + k);
+    for (let k = 0; k < 3; k++) { const yy = top + 14 + k * 9 + ((nH(k, 6, s) * 5) | 0), sd = k % 2 ? 1 : -1; if (yy < bot - 6) this.coralAt(x + sd * Math.round(st + 1), yy, 6, 5, kRamp(this.pal[(nH(k, 7, s) * this.pal.length) | 0]), 'fan', s + k * 3); } },
+  kelp(x, o) {
+    o = o || {}; const F = this.F, s = this.s + x, R = kRamp(o.c || '#3a8a50'), up = this.up, y0 = this.bedY(x), topY = up + (o.under || 0), n = y0 - topY, lean = o.lean == null ? 2 : o.lean; if (n < 6) return;
+    for (let i = 0; i < n; i++) { const xx = x + Math.round(Math.sin(i * 0.22 + s) * 1.6 + (i / n) * lean), y = y0 - i; F.px(xx, y, R[i % 6 < 3 ? 1 : 2]); if (i % 4 === 1) { const d = (i >> 2) & 1 ? 1 : -1; F.px(xx + d, y, R[3]); F.px(xx + d * 2, y - 1, R[2]); if (i % 8 === 1) F.px(xx + d * 3, y - 1, R[2]); } }
+    if (!o.under) { const tx = x + Math.round(Math.sin(n * 0.22 + s) * 1.6 + lean); F.rect(tx - 1, up - 1, 3, 2, kHex('#8a8a3a')); F.px(tx, up - 2, kHex('#b8b050')); F.rect(tx + 2, up, 4, 1, R[3]); F.rect(tx - 5, up, 4, 1, R[2]); }
+  },
+  reeds(x, wd, hgt, o) { const F = this.F, up = this.up, c = kHex('#3a5a34'); bigAt(F, 'reeds', x, up + 1, 1, Object.assign({ h: hgt, w: wd, dense: 0.8, s: this.s + x }, o)); for (let i = -(wd >> 1); i < wd / 2; i += 2) if (nH(i, 3, this.s + x) > 0.35) for (let y = up + 1; y < this.bedY(x + i); y++) F.px(x + i, y, c); },
+  pads(n, k, o) { o = o || {}; const F = this.F, up = this.up, R = kRamp(o.c || '#4a9a48'); for (const x of this.xs(n * this.n, k, 5)) { const wd = 5 + ((nH(x, 1, this.s) * 4) | 0); F.rect(x - (wd >> 1), up - 1, wd, 1, R[3]); F.rect(x - (wd >> 1), up, wd, 1, R[1]); F.px(x + (wd >> 1) - 1, up - 1, R[1]); if (nH(x, 2, this.s) < (o.flower == null ? 0.35 : o.flower)) { const fc = kHex(nH(x, 3, this.s) > 0.5 ? '#f8f4f8' : '#f0a0c0'); F.rect(x - 1, up - 3, 2, 2, fc); F.px(x, up - 3, kHex('#f0d040')); } for (let y = up + 2; y < this.bedY(x); y += 2) F.px(x + ((y >> 3) & 1), y, R[0]); } },
+  duckweed() { const F = this.F, up = this.up, c = kHex('#7ab048'); for (let x = this.x0 - 12; x < this.w; x++) if (nH(x, 9, this.s) > 0.74 && !this.floats.some(f => Math.abs(x - f) < 3)) F.px(x, up, c); },
+  roots(x, wd, hgt, o) {
+    o = o || {}; const F = this.F, up = this.up, R = kRamp(o.c || '#6a5236'), n = 4 + ((nH(x, 1, this.s) * 3) | 0), ty = up - hgt;
+    for (let k = 0; k < n; k++) { const ex = x + Math.round((k / (n - 1) - 0.5) * wd), ey = this.bedY(ex) + 1, st = 2 * Math.max(Math.abs(ex - x), ey - ty) + 2; for (let i = 0; i <= st; i++) { const f = i / st, xx = x + (ex - x) * Math.pow(f, 0.6), yy = ty + (ey - ty) * Math.pow(f, 1.6); F.px(xx, yy, R[2]); F.px(xx + 1, yy, R[3]); } }
+    F.rect(x - 1, 0, 3, Math.max(0, ty), R[1]); F.rect(x, 0, 1, Math.max(0, ty), R[3]);
+    for (let k = 0; k < 5; k++) leafClump(F, x + (nH(k, 3, this.s + x) - 0.5) * wd * 1.1, 3 + nH(k, 4, this.s + x) * 12, 9, 6, kRamp(o.leaf || '#3e7a3a'), this.s + x + k, {});
+  },
+  mat(x, wd, o) { o = o || {}; const F = this.F, up = this.up, R = kRamp(o.c || '#a8922c'); for (let i = 0; i < wd; i++) { const f = Math.abs(i / wd - 0.5) * 2, xx = x + i - (wd >> 1); if (this.floats.some(q => Math.abs(xx - q) < 3)) continue; if (nH(i, 1, this.s + x) > f * 0.8) { F.px(xx, up - 1, R[nH(i, 2, this.s + x) > 0.5 ? 3 : 4]); F.px(xx, up, R[2]); if (f < 0.6) F.px(xx, up + 1, R[1]); } if (nH(i, 3, this.s + x) > 0.72) { const len = 4 + ((nH(i, 4, this.s + x) * 11) | 0); for (let j = 0; j < len; j++) F.px(xx + Math.round(Math.sin(j * 0.5 + i) * 0.7), up + 2 + j, R[j % 4 === 3 ? 4 : 1]); } } },
+  // --- what stands in the water ---
+  // a rock from the bed up through the surface, hgt px above it, spreading toward its foot
+  awash(x, wd, hgt, o) {
+    o = o || {}; const F = this.F, R = o.R || this.rock, up = this.up, s = this.s + x, hw = wd / 2, deepHere = this.bedY(x) - up, sl = o.slope || (deepHere > hgt * 3 + 16 ? 2.4 : 0), far = Math.ceil(hw + (sl ? deepHere / sl + 5 : 0)), lump = (nH(x, 31, s) - 0.5) * hw * 0.9;
+    for (let i = -far; i <= far; i++) { const xx = x + i, a = Math.abs(i), bot = this.bedY(xx) + 1;
+      const dome = Math.max(0, 1 - Math.pow(a / hw, 2)) * (0.7 + 0.5 * n1(xx * 0.45, s)), dome2 = 0.62 * Math.max(0, 1 - Math.pow(Math.abs(i - lump) / (hw * 0.55), 2));
+      const top = Math.round(a <= hw ? up - hgt * Math.max(dome, dome2) - (a < hw - 1 ? 1 : 0) : up + (a - hw) * sl + n1(xx * 0.3, s) * 3); if (top > bot) continue;
+      for (let y = top; y <= bot; y++) { let t = i < -hw * 0.35 ? 1 : i > hw * 0.3 ? 3 : 2; if (y === top) t = y < up ? 4 : 3; else if (nH(xx >> 1, y >> 1, s) > 0.8) t = Math.max(1, t - 1); else if ((y - top) % 5 === 3 && nH(xx >> 2, y, s) > 0.5) t = Math.max(1, t - 1); if (y >= up - 1 && y <= up && y > top) t = 1; F.px(xx, y, R[t]); } }
+    if (o.weed !== false) for (let i = -hw - 3; i < hw + 4; i += 2) if (nH(i, 9, s) > 0.35) { const yy = up + 1 + ((nH(i, 8, s) * 5) | 0); F.px(x + i, yy, kHex('#3f8a52')); F.px(x + i, yy + 1, kHex('#2f6a42')); if (nH(i, 7, s) > 0.6) F.px(x + i, yy + 2, kHex('#2f6a42')); }
+    if (o.foam !== false) F.em.push({ k: 'glint', x: x - Math.ceil(hw) - 3, y: up - 1, w: wd + 6, h: 2, n: 4, ms: 260, s: s % 97, c: '#ffffff' });
+  },
+  // the bed coming up under a list of places to tops px beneath the surface: a shape for bed({ f })
+  rises(xs, tops, flat, slope) { const s = this.s; return (x, d) => { for (let i = 0; i < xs.length; i++) { const a = Math.abs(x - xs[i]), fl = flat * (0.8 + 0.9 * nH(i, 51, s)), sl = slope * (x < xs[i] ? 0.6 + 0.7 * nH(i, 52, s) : 0.6 + 0.7 * nH(i, 53, s)); d = Math.min(d, tops[i] + Math.pow(Math.max(0, a - fl), 0.92) * sl + (n1(x * 0.21, s + i) - 0.5) * 6); } return d; }; },
+  // a spire of rock that does not reach the surface: depth px under it at its top
+  pinnacle(x, depth, wd) { const F = this.F, R = this.rock, s = this.s + x; for (let i = -wd; i <= wd; i++) { const f = Math.abs(i) / wd, top = Math.round(this.up + depth + Math.pow(f, 1.4) * (this.h - this.up - depth) * 0.9 + n1((x + i) * 0.3, s) * 5); for (let y = top; y < this.h; y++) F.px(x + i, y, R[y === top ? 3 : i < -wd * 0.2 ? 1 : nH((x + i) >> 2, y >> 2, s) > 0.6 ? 2 : 1]); } },
+  pile(x, hgt, o) {
+    o = o || {}; const F = this.F, up = this.up, R = kRamp(o.c || '#5a4030'), y0 = this.bedY(x) + 2, wd = o.w || 4;
+    for (let y = up - hgt; y < y0; y++) for (let i = 0; i < wd; i++) F.px(x + i, y, R[i === 0 ? 1 : i === wd - 1 ? 3 : (y % 9 === 4 ? 1 : 2)]); F.rect(x, up - hgt, wd, 1, R[4]);
+    for (let y = up - 2; y < up + 5; y++) for (let i = 0; i < wd; i++) if (nH(i, y, this.s + x) > 0.35) F.px(x + i, y, kHex(y < up ? '#2a3a2a' : '#2f6a42'));
+    for (let y = up + 6; y < Math.min(y0, up + 18); y++) if (nH(x, y, this.s) > 0.6) F.px(x + ((nH(y, x, 3) * wd) | 0), y, kHex('#1a1a26'));
+    if (o.lamp) { const lx = x + (wd >> 1), ly = up - hgt - 7, gc = kHex('#ffd27a'); F.rect(lx, ly + 5, 1, 2, R[1]); F.rect(lx - 1, ly + 1, 3, 4, gc); F.rect(lx - 2, ly, 5, 1, R[1]); F.rect(lx - 2, ly + 5, 5, 1, R[1]); F.litRect(lx - 1, ly + 1, 3, 4, gc, 255); F.halo(lx, ly + 3, 14, gc, 120); }
+  },
+  brace(xa, xb, y) { const F = this.F, R = kRamp('#5a4030'), n = Math.max(1, xb - xa); F.rect(xa, y, n, 2, R[2]); F.rect(xa, y, n, 1, R[3]); for (let i = 0; i < n; i++) F.px(xa + i, y + 3 + Math.round(i * 9 / n), R[1]); },
+  withy(x, hgt, o) { o = o || {}; const F = this.F, up = this.up, c = kHex('#4a3a2a'); for (let y = up - hgt; y < this.bedY(x); y++) F.px(x, y, c); if (o.top === 'can') F.rect(x - 1, up - hgt - 3, 3, 3, kHex(o.c || '#c8382a')); else if (o.top === 'cone') { F.px(x, up - hgt - 3, kHex(o.c || '#2e8a4a')); F.rect(x - 1, up - hgt - 2, 3, 2, kHex(o.c || '#2e8a4a')); } else { F.px(x - 1, up - hgt + 1, c); F.px(x + 1, up - hgt + 2, c); F.px(x - 2, up - hgt, c); F.px(x + 2, up - hgt + 1, c); } },
+  buoy(x, o) {
+    o = o || {}; const F = this.F, up = this.up, R = kRamp(o.c || '#d0502a'); F.rect(x - 2, up - 4, 5, 5, R[2]); F.rect(x - 2, up - 4, 5, 1, R[4]); F.rect(x + 2, up - 3, 1, 4, R[3]); F.rect(x - 2, up - 3, 1, 4, R[1]); F.rect(x - 1, up - 2, 3, 1, kHex('#f4f0e4')); if (o.mast !== false) { F.rect(x, up - 8, 1, 4, kHex('#2a2a30')); F.rect(x - 1, up - 9, 3, 1, R[2]); } F.rect(x - 1, up + 1, 3, 2, R[1]);
+    const y0 = this.bedY(x + 6); for (let y = up + 3; y < y0; y++) if (y & 1) F.px(x + Math.round((y - up) / Math.max(1, y0 - up) * 6 + Math.sin(y * 0.3) * 0.8), y, kHex('#3a3a44')); F.rect(x + 4, y0 - 2, 4, 2, kHex('#2a2a30'));
+  },
+  // a pot's float on the surface, its line down to the pot on the bed
+  pot(x, c) { const F = this.F, up = this.up, y0 = this.bedY(x); F.rect(x - 1, up - 2, 3, 3, kHex(c || '#e8e0d0')); F.rect(x - 1, up - 1, 3, 1, kHex('#c8382a')); for (let y = up + 2; y < y0 - 4; y += 2) F.px(x, y, kHex('#8a8a7a')); const R = kRamp('#5a4a3a'); F.rect(x - 3, y0 - 5, 7, 5, R[1]); for (let i = -2; i < 3; i += 2) F.rect(x + i, y0 - 4, 1, 3, R[3]); F.rect(x - 3, y0 - 5, 7, 1, R[3]); },
+  ribs(x, n, hgt, o) {
+    o = o || {}; const F = this.F, R = kRamp(o.c || '#4a3826'), sp = 7;
+    for (let k = 0; k < n; k++) { const bx = x + k * sp, y0 = this.bedY(bx), hh = hgt * (0.55 + 0.45 * Math.sin((k + 0.5) / n * Math.PI)) * (0.85 + 0.3 * nH(k, 1, this.s + x)); if (nH(k, 2, this.s + x) < 0.12) continue; for (let i = 0; i < hh; i++) { const xx = bx + Math.round(Math.pow(i / hh, 2) * (o.curl == null ? 4 : o.curl)); F.px(xx, y0 - i, R[2]); F.px(xx + 1, y0 - i, R[i % 5 === 0 ? 1 : 3]); } }
+    const y1 = this.bedY(x + (n * sp >> 1)); F.rect(x - 3, y1 - 2, n * sp + 4, 3, R[1]); F.rect(x - 3, y1 - 2, n * sp + 4, 1, R[3]); for (let i = 0; i < n * sp; i += 3) if (nH(i, 7, this.s) > 0.5) F.px(x + i, y1 - 3, kHex('#3f8a52'));
+  },
+  mast(x, hgt, lean) { const F = this.F, R = kRamp('#5a4630'), y0 = this.bedY(x); lean = lean || 0.25; for (let i = 0; i < hgt; i++) { const xx = x + Math.round(i * lean); F.px(xx, y0 - i, R[2]); F.px(xx + 1, y0 - i, R[3]); } const cx = x + Math.round(hgt * 0.78 * lean), cy = y0 - Math.round(hgt * 0.78); F.rect(cx - 5, cy, 12, 1, R[1]); F.rect(cx - 5, cy - 1, 12, 1, R[3]); },
+  column(x, hgt, o) {
+    o = o || {}; const F = this.F, R = kRamp(o.c || '#cfc8b8'), y0 = this.bedY(x) + 1, wd = o.w || 6, top = y0 - Math.round(hgt);
+    for (let y = top; y < y0; y++) for (let i = 0; i < wd; i++) F.px(x + i, y, R[i === 0 ? 1 : i === wd - 1 ? 3 : (i & 1 ? 2 : 3)]); F.rect(x - 1, y0 - 2, wd + 2, 2, R[1]);
+    if (o.broken) { for (let i = 0; i < wd; i++) { const cut = (nH(i, 3, this.s + x) * 4) | 0; for (let j = 0; j < cut; j++) { const yy = top + j, xx = x + i; if (yy >= 0 && xx >= 0 && xx < F.w) F.d[yy * F.w + xx] = 0; } } }
+    else { F.rect(x - 1, top - 2, wd + 2, 2, R[3]); F.rect(x - 1, top - 3, wd + 2, 1, R[4]); F.rect(x - 2, top - 4, wd + 4, 1, R[2]); }
+    for (let y = top + 3; y < y0; y += 6) if (nH(y, 5, this.s + x) > 0.6) F.px(x + 1 + ((nH(y, 6, x) * (wd - 2)) | 0), y, R[1]);
+  },
+  // the top of a drowned tower: masonry from the bed to hgt px above the water, a window, a cap
+  tower(x, hgt, o) {
+    o = o || {}; const F = this.F, R = kRamp(o.c || '#b8b0a0'), up = this.up, wd = o.w || 14, y0 = this.bedY(x) + 1, top = up - hgt;
+    for (let y = top; y < y0; y++) for (let i = 0; i < wd; i++) { let t = i < 2 ? 1 : i > wd - 3 ? 3 : 2; if ((y % 5) === 0 || ((i + ((y / 5) | 0) * 3) % 7) === 0) t = Math.max(1, t - 1); F.px(x + i, y, R[t]); }
+    if (o.cap === 'spire') for (let k = 0; k < wd; k++) { const hw = Math.round((wd / 2 + 1) * (1 - k / wd)); F.rect(x + (wd >> 1) - hw, top - 1 - k, hw * 2 + 1, 1, kRamp(o.roof || '#5a6a78')[k % 3 ? 2 : 1]); } else for (let i = 0; i < wd; i += 4) F.rect(x + i, top - 3, 2, 3, R[3]);
+    const wx = x + (wd >> 1) - 1, wy = top + 5; F.rect(wx, wy, 3, 6, kHex('#14121a')); F.px(wx + 1, wy - 1, kHex('#14121a'));
+    for (let y = up - 2; y < up + 5; y++) for (let i = 0; i < wd; i++) if (nH(i, y, this.s + x) > 0.4) F.px(x + i, y, kHex(y < up ? '#2a3a2a' : '#2f6a42'));
+  },
+  // an arch standing in the water: two piers and the ring sprung between them (a bridge's, a ruin's)
+  piers(xa, xb, o) {
+    o = o || {}; const F = this.F, R = kRamp(o.c || '#9a968c'), up = this.up, pw = 8, sp = xb - xa - pw, spring = up - (o.spring || 16), rise = Math.min(spring - 6, Math.max(10, sp * 0.42)), cx = xa + pw + sp / 2, ring = 4;
+    const stone = (x, y, i) => { let t = i < 2 ? 1 : i > pw - 3 ? 3 : 2; if ((y % 6) === 0 || ((i + ((y / 6) | 0) * 4) % 9) === 0) t = Math.max(1, t - 1); F.px(x, y, R[t]); };
+    for (const x of [xa, xb]) { const y0 = this.bedY(x) + 1; for (let y = spring - rise - ring - 5; y < y0; y++) for (let i = 0; i < pw; i++) stone(x + i, y, i); for (let y = up - 2; y < up + 5; y++) for (let i = 0; i < pw; i++) if (nH(i, y, this.s + x) > 0.4) F.px(x + i, y, kHex(y < up ? '#2a3a2a' : '#2f6a42')); }
+    for (let x = xa + pw; x < xb; x++) { const f = (x - cx) / (sp / 2), yy = Math.round(spring - rise * Math.sqrt(Math.max(0, 1 - f * f))), top = spring - rise - ring - 5; for (let y = top; y < yy; y++) F.px(x, y, y >= yy - ring ? R[(x + y) % 5 === 0 ? 1 : 3] : R[(y % 6) === 0 || ((x + ((y / 6) | 0) * 4) % 9) === 0 ? 1 : 2]); }
+    F.rect(xa - 1, spring - rise - ring - 7, xb - xa + pw + 2, 2, R[4]); if (o.broken) for (let x = Math.round(cx - 3 + this.r(55) * 8), n = 0; n < 9; n++, x++) for (let y = 0; y < up; y++) { const xx = x + ((n1(y * 0.2, this.s) * 3) | 0); if (xx > xa + pw && xx < xb) F.d[y * F.w + xx] = 0; }
+  },
+  bell(x) { const F = this.F, R = kRamp('#7a8a5a'), y = this.bedY(x); for (let k = 0; k < 9; k++) { const hw = k < 2 ? 2 : k < 7 ? 3 + (k >> 2) : 5; F.rect(x - hw + (k >> 2), y - 10 + k, hw * 2 + 1, 1, R[k === 8 ? 1 : 2]); F.px(x + hw + (k >> 2), y - 10 + k, R[4]); } F.rect(x - 1, y - 12, 3, 2, R[1]); F.px(x + 2, y - 2, kHex('#c8b040')); },
+  // an ice sheet over the water, open where the lines go down
+  ice(o) {
+    o = o || {}; const F = this.F, up = this.up, R = kRamp(o.c || '#cfe4f0'), holes = this.floats, a = Math.max(0, shoreW - 6);
+    for (let x = a; x < this.w; x++) { if (holes.some(f => Math.abs(x - f) < 6)) continue; const th = 3 + ((n1(x * 0.07, this.s) * 3) | 0), ic = nH(x, 4, this.s) > 0.8 ? 1 + ((nH(x, 5, this.s) * 4) | 0) : 0; for (let y = up - 2; y < up + th + ic; y++) F.px(x, y, y === up - 2 ? kHex('#ffffff') : y < up ? R[4] : y < up + th - 1 ? R[2] : R[1]); }
+    for (const f of holes) for (const d of [-6, 5]) for (let y = up - 3; y < up + 3; y++) F.px(f + d, y, R[y < up ? 3 : 1]);
+  },
+  ridge(n, k) { const F = this.F, up = this.up, R = kRamp('#dfeef6'); for (const x of this.xs(n * this.n, k, 12)) for (let j = 0; j < 3; j++) { const bw = 5 + ((nH(x, j, this.s) * 5) | 0), bh = 3 + ((nH(x, j + 4, this.s) * 4) | 0), bx = x + (j - 1) * 5, by = up - 2 - bh - (j === 1 ? 3 : 0); F.rect(bx, by, bw, bh, R[2]); F.rect(bx, by, bw, 1, kHex('#ffffff')); F.rect(bx, by + 1, 1, bh - 1, R[1]); F.rect(bx + bw - 1, by + 1, 1, bh - 1, R[4]); } },
+  floes(n, k) { const F = this.F, up = this.up, R = kRamp('#dfeef6'); for (const x of this.xs(n * this.n, k, 9)) { const wd = 8 + ((nH(x, 1, this.s) * 9) | 0); F.rect(x - (wd >> 1), up - 2, wd, 2, R[4]); F.rect(x - (wd >> 1), up - 2, wd, 1, kHex('#ffffff')); F.rect(x - (wd >> 1) + 1, up, wd - 2, 2, R[2]); F.rect(x - (wd >> 1) + 2, up + 2, wd - 4, 1, R[1]); } },
+  // sinter terraces stepping up out of a hot spring to the surface
+  terrace(xa, xb, n, o) {
+    o = o || {}; const F = this.F, up = this.up, R = kRamp(o.c || '#e8dcc8'), R2 = kRamp(o.c2 || '#d8a060');
+    for (let k = 0; k < n; k++) { const a = Math.round(xa + (xb - xa) * k / n), y = Math.round(this.bedY(a) - (this.bedY(a) - up - 2) * (k + 1) / n); for (let x = a; x < this.w; x++) { const lip = x - a < 3 ? 1 : 0, bot = this.bedY(x) + 1; for (let yy = y - lip; yy < bot; yy++) F.px(x, yy, yy <= y ? R[4] : (x - a) < 2 ? R2[2] : nH(x >> 1, yy >> 1, this.s) > 0.7 ? R[3] : R[2]); } for (let j = 1; j < 5 + ((nH(a, 2, this.s) * 7) | 0); j++) F.px(a - 1, y + j, R2[3]); }
+  },
+  pillars(n, k) { const F = this.F, c = kHex('#f8f4ec'), c2 = kHex('#d8ccc8'); for (const x of this.xs(n * this.n, k, 6)) { const y = this.bedY(x), hh = 3 + ((nH(x, 3, this.s) * 6) | 0); for (let i = 0; i < hh; i++) { const hw = i < hh - 2 ? 1 : 0; F.rect(x - hw, y - 1 - i, hw * 2 + 1, 1, c); F.px(x - hw, y - 1 - i, c2); } } },
+  rafts(n, k) { const F = this.F, up = this.up; for (const x of this.xs(n * this.n, k, 5)) { const wd = 3 + ((nH(x, 1, this.s) * 4) | 0); F.rect(x, up - 1, wd, 1, kHex('#ffffff')); F.rect(x + 1, up, wd - 1, 1, kHex('#e8dcd8')); } },
+  vent(x, o) { o = o || {}; const F = this.F, R = kRamp(o.c || '#2a2228'), y0 = this.bedY(x) + 1, hgt = o.h || 9; for (let i = 0; i < hgt; i++) { const hw = Math.round(1 + (1 - i / hgt) * 3); F.rect(x - hw, y0 - i, hw * 2 + 1, 1, R[2]); F.px(x - hw, y0 - i, R[1]); F.px(x + hw, y0 - i, R[3]); } if (o.glow) { const gc = kHex(o.glow); F.rect(x - 1, y0 - hgt, 3, 1, gc); F.litRect(x - 1, y0 - hgt, 3, 1, gc, 255); F.halo(x, y0 - hgt, 9, gc, 110); } this.bubbles(x, y0 - hgt - 1); },
+  // a sea cave: the roof over the water and the far wall coming down into it (the island's own rock, in shadow)
+  roof(o) {
+    o = o || {}; const F = this.F, up = this.up, w = this.w, s = this.s, R = (o.R || this.rock).map(c => kMix(c, 0xff181010, 0.34)), xa = Math.round(shoreW * 0.5);
+    for (let x = xa; x < w; x++) { const f = (x - xa) / Math.max(1, w - xa), far = clamp((x - (w - 30)) / 26, 0, 1), th = Math.round(up * (0.42 + 0.2 * Math.pow(f, 0.7)) + n1(x * 0.07, s) * 10 + far * far * up * 0.6 - (f < 0.14 ? (0.14 - f) * up * 1.6 : 0)), st = nH(x >> 1, 3, s) > 0.76 ? 3 + ((nH(x >> 1, 4, s) * 13) | 0) : 0;
+      for (let y = 0; y < Math.min(up - 4, th + st); y++) { let t = nH(x >> 3, y >> 2, s) > 0.6 ? 2 : 1; if (y >= th) t = (x & 1) ? 1 : 2; else if (y > th - 3) t = 3; if ((y % 11) === ((x >> 4) % 11) && nH(x >> 2, y, s) > 0.4) t = 0; F.px(x, y, R[t]); } }
+    for (let x = w - 15; x < w; x++) for (let y = 0; y < this.bedY(x) + 1; y++) if (x - (w - 15) >= 2 + ((n1(y * 0.1, s) * 3) | 0)) F.px(x, y, R[nH(x >> 2, y >> 3, s) > 0.5 ? 1 : 2]);
+    this.drips(3, up * 0.5);
+  },
+  // --- what moves ---
+  bubbles(x, y) { const up = this.up, s = this.s + x; this.F.em.push({ k: 'fn', x, y: 0, wide: true, draw: (X, Y, t) => { const span = y - up - 2; if (span < 4) return; g.fillStyle = 'rgba(220,240,250,0.7)'; for (let k = 0; k < 5; k++) { const p = ((t / 2600) + k / 5 + nH(k, 1, s)) % 1, yy = (Y + y - p * span) | 0, xx = X + Math.round(Math.sin(p * 9 + k * 2) * 1.6); g.fillRect(xx, yy, 1, 1); if (k % 2 === 0 && p > 0.5) g.fillRect(xx + 1, yy - 1, 1, 1); } } }); },
+  steam(x, o) { o = o || {}; this.F.em.push({ k: 'smoke', x, y: this.up - 1, n: 4, rise: o.rise || 20, c: o.c || '232,238,242', a: o.a || 0.4, ms: 3400, drift: 3, grow: 2.6, ph: nH(x, 2, this.s) }); },
+  glints(xa, xb, o) { o = o || {}; this.F.em.push({ k: 'glint', x: xa, y: this.up + (o.dy == null ? 1 : o.dy), w: xb - xa, h: o.h || 10, n: Math.max(3, Math.round((xb - xa) / 14)), ms: o.ms || 520, s: this.s % 89, c: o.c || '#ffffff' }); },
+  drips(n, from) { const up = this.up, s = this.s, y0 = from == null ? up - 40 : from; for (const x of this.xs(n * this.n, 41, 6)) this.F.em.push({ k: 'fn', x, y: 0, wide: true, draw: (X, Y, t) => { const p = ((t / 2400) + nH(x, 1, s)) % 1; if (p < 0.5) { g.fillStyle = 'rgba(200,225,240,0.8)'; g.fillRect(X, (Y + y0 + p * 2 * (up - y0)) | 0, 1, 2); } else { const r = ((p - 0.5) * 14) | 0; g.fillStyle = `rgba(220,235,245,${(0.6 * (1 - (p - 0.5) * 2)).toFixed(2)})`; g.fillRect(X - r, Y + up, 1, 1); g.fillRect(X + r, Y + up, 1, 1); } } }); },
+  // white water trailing from something that stands in a current
+  wake(x, len) { const up = this.up, s = this.s + x; this.F.em.push({ k: 'fn', x, y: 0, wide: true, draw: (X, Y, t) => { for (let k = 0; k < 4; k++) { const p = ((t / 900) + k / 4 + nH(k, 2, s)) % 1; g.fillStyle = `rgba(255,255,255,${(0.75 * (1 - p)).toFixed(2)})`; g.fillRect((X + p * len) | 0, Y + up + (k & 1), 2 + (k & 1), 1); } } }); },
+  // standing waves: crests that rear and fall where they are
+  crests(n, k) { const up = this.up, s = this.s, xs = this.xs(n * this.n, k, 7); this.F.em.push({ k: 'fn', x: 0, y: 0, wide: true, draw: (X, Y, t) => { for (const x of xs) { const a = 0.5 + 0.5 * Math.sin(t / 380 + x), hh = (a * 3) | 0; g.fillStyle = 'rgba(255,255,255,0.85)'; g.fillRect(X + x - 3, Y + up - hh, 6, 1); g.fillStyle = 'rgba(210,230,240,0.7)'; if (hh > 0) g.fillRect(X + x - 4, Y + up - hh + 1, 8, hh); } } }); },
+  eddy(x) { const up = this.up; this.F.em.push({ k: 'fn', x, y: 0, wide: true, draw: (X, Y, t) => { g.fillStyle = 'rgba(235,245,250,0.6)'; for (let k = 0; k < 7; k++) { const a = t / 700 + k * 0.9, r = 3 + k * 1.6; g.fillRect((X + Math.cos(a) * r) | 0, (Y + up + 3 + k + Math.sin(a) * r * 0.25) | 0, 2, 1); } } }); },
+  // something long passing in the deep, now and then
+  shadow() { const up = this.up, s = this.s, w = this.w, dep = 58 + ((this.r(77) * 30) | 0); this.F.em.push({ k: 'fn', x: 0, y: 0, wide: true, draw: (X, Y, t) => { const p = ((t / 46000) + nH(3, 3, s)) % 1; if (p > 0.3) return; const q = p / 0.3, xx = (X + shoreW + (w - shoreW + 80) * q - 40) | 0, yy = Y + up + dep + ((Math.sin(q * 6) * 3) | 0); g.fillStyle = 'rgba(2,6,14,0.55)'; g.fillRect(xx, yy, 34, 5); g.fillRect(xx + 4, yy - 2, 22, 2); g.fillRect(xx + 6, yy + 5, 18, 1); g.fillRect(xx - 7, yy + 1, 7, 3); g.fillRect(xx - 11, yy - 1, 4, 7); } }); },
+  // water let out through a sluice at the edge of the picture
+  sluice() { const F = this.F, up = this.up, x = this.w - 13, R = kRamp('#5a4030'); F.rect(x, up - 24, 3, 24 + (this.bedY(x) - up), R[2]); F.rect(x + 10, up - 24, 3, 24 + (this.bedY(x + 10) - up), R[2]); F.rect(x - 1, up - 26, 15, 3, R[3]); F.rect(x + 3, up - 20, 7, 10, R[1]); for (let i = 0; i < 3; i++) F.rect(x + 3, up - 18 + i * 3, 7, 1, R[2]); F.em.push({ k: 'fn', x: x + 3, y: 0, wide: true, draw: (X, Y, t) => { for (let k = 0; k < 7; k++) { const p = ((t / 420) + k / 7) % 1; g.fillStyle = 'rgba(235,245,250,0.85)'; g.fillRect(X + (k % 7), (Y + up - 10 + p * 10) | 0, 1, 2); } g.fillStyle = 'rgba(255,255,255,0.8)'; for (let k = 0; k < 5; k++) g.fillRect(X - 3 + ((t / 90 + k * 5) % 13 | 0), Y + up - 1 + (k & 1), 2, 1); } }); },
+  // the whips and fans that grow on a wall going down
+  wallweed() { const F = this.F, c = [kHex('#c8486a'), kHex('#e8743a'), kHex('#d8c040')]; for (let x = shoreW + 4; x < Math.min(this.w - 2, shoreW + 60); x += 5) { const y = this.bedY(x); if (y > this.h - 3 || y < this.up + 12) continue; const len = 4 + ((nH(x, 2, this.s) * 6) | 0), cc = c[(nH(x, 3, this.s) * 3) | 0]; for (let i = 0; i < len; i++) F.px(x + i, y - 1 - Math.round(Math.sin(i * 0.7) * 1.5) - (i >> 1), cc); } },
+  // a bird on the water (its feet under it), or standing where the name says
+  bird(nm, x, dy, flip) { if (CRIT[nm]) critAt(this.F, nm, x, this.up + (dy == null ? 2 : dy), { flip: !!flip }); },
+  // a fin cutting the surface, now and then
+  fin() { const up = this.up, s = this.s, w = this.w; this.F.em.push({ k: 'fn', x: 0, y: 0, wide: true, draw: (X, Y, t) => { const p = ((t / 38000) + nH(5, 5, s)) % 1; if (p > 0.16) return; const q = p / 0.16, dir = nH(6, 6, s) > 0.5 ? 1 : -1, xx = (X + (dir > 0 ? shoreW + 10 + (w - shoreW - 20) * q : w - 10 - (w - shoreW - 20) * q)) | 0, hh = Math.round(4 * Math.sin(q * Math.PI)); if (hh < 1) return; g.fillStyle = 'rgba(20,28,40,0.95)'; for (let k = 0; k < hh; k++) g.fillRect(xx - dir * k, Y + up - 1 - k, hh - k, 1); g.fillStyle = 'rgba(255,255,255,0.7)'; g.fillRect(xx - dir * 6, Y + up, 4, 1); } }); },
+  // --- put together ---
+  finish() {
+    const F = this.F, w = this.w, h = this.h, up = this.up, P = new Paint(w, h), bands = 8, near = this.bedC ? this.bedC[0] : this.near, deep = this.bedC ? this.bedC[1] : this.deep, tex = this.bedTex, s = this.s, cols = [];
+    for (let b = 0; b <= bands; b++) cols.push(lerpC(near, deep, b / bands));
+    let shallow = 1e9; for (let x = 0; x < w; x++) { const t0 = Math.max(up, Math.round(this.top[x])); if (x >= this.x0 && x <= this.x1) shallow = Math.min(shallow, t0 - up);
+      for (let y = t0; y < h; y++) { const dy = y - up, fb = Math.min(1, dy / 90) * bands, bi = Math.floor(fb), c = cols[Math.min(bands, fb - bi > BAYER[((y & 1) << 1) | (x & 1)] ? bi + 1 : bi)], j = y - t0; let k = 0;
+        if (j === 0) k = 0.22; else if (tex === 'sand') { if (j === 3 && (x * 7) % 9 < 3) k = -0.22; else if (j === 7 && (x * 5 + 3) % 11 < 3) k = -0.14; }
+        else if (tex === 'gravel') { if (j < 12) { const v = nH(x >> 1, j >> 1, s); k = v > 0.8 ? 0.2 : v < 0.14 ? -0.22 : 0; } }
+        else if (tex === 'rock') { if (j < 28) { const v = nH(x >> 2, y >> 1, s), fd2 = 1 - j / 28; k = (v > 0.74 ? 0.12 : v < 0.2 ? -0.16 : 0) * fd2; if ((y % 6) === 0 && nH(x >> 3, y, s) > 0.5) k = -0.2 * fd2; } }
+        else if (tex === 'mud') k = j < 3 ? -0.1 : 0;
+        else if (tex === 'crust') { if (j < 2) k = 0.5; else if (j === 2 && nH(x, 3, s) > 0.5) k = 0.3; }
+        const m = k > 0 ? 255 : 0, a = Math.abs(k); P.px(x, y, kRGB(c[0] + (m - c[0]) * a, c[1] + (m - c[1]) * a, c[2] + (m - c[2]) * a)); } }
+    // what stands in the water, wetter and dimmer the deeper it goes
+    const fd = F.d, pd = P.d, kd = this.kDeep; for (let y = 0; y < h; y++) { const wet = y > up ? clamp(0.16 + (y - up) / 140, 0, 0.72) : 0; for (let x = 0; x < w; x++) { const c = fd[y * w + x]; if ((c >>> 24) === 255) pd[y * w + x] = wet ? kMix(c, kd, wet) : c; } }
+    // where something stands through the surface: a wet line, and a fleck of foam either side
+    if (up > 0 && up < h - 1) for (let x = 1; x < w - 1; x++) { if ((fd[(up - 1) * w + x] >>> 24) !== 255 || (fd[(up + 1) * w + x] >>> 24) !== 255) continue; pd[up * w + x] = kMix(pd[up * w + x], 0xff181010, 0.45); if ((fd[(up - 1) * w + x - 1] >>> 24) !== 255 && nH(x, 1, s) > 0.3) pd[up * w + x - 1] = 0xffffffff; if ((fd[(up - 1) * w + x + 1] >>> 24) !== 255 && nH(x, 2, s) > 0.3) pd[up * w + x + 1] = 0xffffffff; }
+    return { cv: P.canvas(), dark: nightShape(F), glow: F.glowCanvas(), em: F.em, up, lit: this.lit, fish: this.fish || clamp(shallow - 6, 12, 54), tint: this.tint };
+  },
+};
+// --- each kind of water, and what a spot's own name adds to it ---
+const SPOTKIND = {
+  shore(B) { B.bed({ D: [54, 70], tex: 'sand' }); const v = B.ri(1, 0, 2); B.scatter('shell', 4, 2); if (v === 0) { B.grass(2, 3, { h: 5 }); B.scatter('star', 1, 4); } else if (v === 1) { B.scatter('pebble', 6, 5); B.stones(1, 6, [3, 5]); } else { B.scatter('star', 1.4, 7); B.grass(1, 8, { h: 4, c: '#6a7a3a' }); } },
+  pier(B) { B.bed({ D: [58, 72], tex: 'sand' }); const n = Math.max(2, Math.round(2.4 * B.n)), xa = B.x0 + 4, gap = Math.min(34, (B.x1 - xa - 8) / n), hs = 10 + B.ri(1, 0, 6), xs = []; for (let i = 0; i < n; i++) xs.push(B.off(Math.round(xa + i * gap + gap * 0.3), 7)); xs.forEach((x, i) => B.pile(x, hs - (i % 2) * 2, { lamp: i === xs.length - 1 })); for (let i = 0; i + 1 < xs.length; i++) if (B.r(20 + i) > 0.3) B.brace(xs[i] + 4, xs[i + 1], B.up - hs + 4); B.scatter('shell', 3, 2); B.junk(1, 9); },
+  harbour(B) { B.bed({ D: [60, 74], tex: 'mud' }); B.xs(Math.max(1, 1.6 * B.n), 3, 8).forEach((x, i) => B.buoy(x, { c: i % 2 ? '#e8b030' : '#d0502a' })); const px = B.off(B.x0 + B.ri(4, 2, 14), 9); B.pile(px, 12, { w: 5 }); B.pile(px + 6, 9, { w: 4 }); B.junk(3, 5); B.scatter('bottle', 2, 6); },
+  river(B) { const xr = B.xs(Math.max(1, 1.3 * B.n), 3, 9); B.bed({ D: [36, 52], tex: 'gravel', relief: 3, f: B.rises(xr, xr.map(x => 5 + B.ri(x + 5, 0, 4)), 9, 0.75) }); B.stones(3, 2, [3, 6]); for (const x of xr) { B.awash(x, 9 + B.ri(x, 0, 7), 2 + B.ri(x + 1, 0, 3), { weed: false, foam: false }); B.wake(x + 6, 16); } B.scatter('pebble', 8, 4); B.reeds(B.w - 10 - B.ri(5, 0, 8), 16, 13 + B.ri(6, 0, 6)); },
+  lake(B) { B.bed({ D: [60, 78], tex: 'mud' }); B.grass(3, 2, { h: 10, clump: 4, c: '#3a7a4a' }); B.log(Math.round(B.x0 + (B.x1 - B.x0 - 24) * (0.2 + 0.5 * B.r(3))), 22); B.reeds(B.w - 9, 18, 15 + B.ri(4, 0, 6)); if (B.r(5) > 0.5) B.pads(1.5, 6, { flower: 0.2 }); },
+  pond(B) { B.bed({ D: [28, 40], tex: 'mud' }); B.pads(4.5, 2, {}); B.reeds(B.off(Math.round(B.x0 + (B.x1 - B.x0) * (0.55 + 0.3 * B.r(3))), 12), 14, 12 + B.ri(4, 0, 5)); B.grass(2, 5, { h: 7, c: '#4a8a3a' }); B.duckweed(); },
+  marsh(B) { B.bed({ D: [22, 34], tex: 'mud', relief: 3 }); for (const x of B.xs(Math.max(2, 3 * B.n), 2, 12)) B.reeds(x, 12 + B.ri(x, 0, 8), 13 + B.ri(x + 1, 0, 9)); B.pads(1.6, 3, { flower: 0.15 }); B.grass(2, 4, { h: 6, c: '#5a7a34' }); },
+  lagoon(B) { B.bed({ D: [34, 46], tex: 'sand', c: B.paleBed(0.35) }); for (const x of B.xs(1.6 * B.n, 2, 0)) B.coral(x, 7 + B.ri(x, 0, 4), 6 + B.ri(x + 1, 0, 5)); B.scatter('shell', 4, 3); B.scatter('star', 1.5, 4); B.glints(B.x0, B.x1, { h: 16 }); },
+  flats(B) { B.bed({ D: [20, 30], tex: 'sand', relief: 1.5 }); B.grass(4, 2, { h: 5, clump: 4 }); B.scatter('shell', 6, 3); B.scatter('cast', 5, 4); if (B.r(5) > 0.4) for (const x of B.xs(1.4 * B.n, 6, 8)) B.withy(x, 7 + B.ri(x, 0, 5)); },
+  saltflat(B) { B.bed({ D: [16, 24], tex: 'crust', relief: 1, c: [[236, 228, 222], [150, 130, 140]] }); B.pillars(4, 2); B.rafts(5, 3); B.glints(B.x0, B.x1, { h: 8, ms: 700 }); },
+  reef(B) { B.bed({ D: [50, 66], tex: 'rock', relief: 4 }); for (const x of B.xs(3.4 * B.n, 2, 0)) B.coral(x, 8 + B.ri(x, 0, 7), Math.min(B.bedY(x) - B.up - 5, 14 + B.ri(x + 1, 0, 22))); for (const x of B.xs(Math.max(1, 1.2 * B.n), 3, 10)) B.bommie(x); B.scatter('urchin', 2, 4); B.scatter('star', 1, 5); B.glints(B.x0, B.x1, { h: 12 }); },
+  rocks(B) { const xs = B.xs(Math.max(2, 1.7 * B.n), 3, 12); B.bed({ D: [50, 68], tex: 'rock', relief: 5, f: B.rises(xs, xs.map(x => 6 + B.ri(x + 5, 0, 7)), 8, 1.7) }); B.stones(3, 2, [4, 8], { weed: true }); xs.forEach((x, i) => { const hh = 3 + B.ri(x + 1, 0, i === 0 ? 8 : 4); B.awash(x, 12 + B.ri(x, 0, 10), hh); if (i === 0 && (B.l.range || 0) <= 4 && !B.caveIsle && B.r(104) < 0.5) B.bird('cormorant', x, -hh + 1, B.r(105) > 0.5); }); B.scatter('urchin', 1.5, 4); },
+  kelp(B) { B.bed({ D: [62, 78], tex: 'rock', relief: 4 }); for (const x of B.xs(4.6 * B.n, 2, 5)) B.kelp(x, { lean: B.ri(x, -2, 3) }); B.stones(2, 3, [3, 6]); B.scatter('urchin', 2, 4); },
+  weed(B) { B.bed({ D: [70, 90], tex: 'sand' }); for (const x of B.xs(Math.max(2, 3 * B.n), 2, 0)) B.mat(x, 16 + B.ri(x, 0, 14)); },
+  channel(B) { const xc = B.x0 + (B.x1 - B.x0) * (0.45 + 0.2 * B.r(1)), hw = Math.max(26, (B.x1 - B.x0) * 0.3); B.bed({ D: [28, 36], tex: 'sand', f: (x, d) => d + 64 * Math.max(0, 1 - Math.pow(Math.abs(x - xc) / hw, 2)) }); const a = B.off(Math.round(xc - hw - 3), 7), b = B.off(Math.round(xc + hw + 3), 7); if (a > B.x0 - 8) B.withy(a, 9, { top: 'can' }); if (b < B.x1) B.withy(b, 9, { top: 'cone' }); B.grass(1.5, 3, { h: 5 }); B.scatter('shell', 3, 4); },
+  strait(B) { B.bed({ D: null, tex: 'rock', fall: 3 }); B.crests(4, 2); B.eddy(Math.round(B.x0 + (B.x1 - B.x0) * (0.4 + 0.3 * B.r(3)))); B.fish = 90; },
+  deep(B) { B.bed({ D: null, tex: 'rock', fall: 2.6 + B.r(1) * 2 }); if (B.r(9) > 0.45) B.fin(); const v = B.ri(2, 0, 3); if (v === 0) B.pinnacle(Math.round(B.x0 + (B.x1 - B.x0) * (0.5 + 0.3 * B.r(3))), 30 + B.ri(4, 0, 24), 14 + B.ri(5, 0, 8)); else if (v === 1) B.wallweed(); B.shadow(); B.fish = 96; },
+  crater(B) { const rimW = 20 + B.ri(1, 0, 10); B.bed({ D: null, tex: 'rock', fall: 4.2, f: (x, d) => x > B.w - rimW - 30 ? Math.min(d, Math.max(0, (B.w - rimW - x) * 4.2)) : d }); B.awash(B.w - (rimW >> 1), rimW * 1.4, 12 + B.ri(2, 0, 10), { foam: false }); B.fish = 90; },
+  wreck(B) { B.bed({ D: [56, 70], tex: 'sand' }); const n = 6 + B.ri(2, 0, 3), x = Math.round(B.x0 + 2 + Math.max(0, B.x1 - B.x0 - n * 7 - 8) * B.r(1)); B.ribs(x, n, 26 + B.ri(3, 0, 14)); B.mast(x + n * 3 + B.ri(4, -6, 6), 62 + B.ri(5, 0, 26), 0.22 + 0.2 * B.r(6)); B.grass(1.5, 7, { h: 6 }); B.scatter('shell', 3, 8); },
+  ruins(B) { B.bed({ D: [50, 66], tex: 'sand', relief: 3 }); B.xs(Math.max(3, 2.6 * B.n), 2, 8).forEach((x, i) => { const dep = B.bedY(x) - B.up; B.column(x, i % 3 === 0 ? dep + 6 + B.ri(x, 0, 10) : Math.round(dep * (0.45 + 0.4 * B.r(x))), { broken: i % 3 !== 0 || B.r(x + 1) > 0.5 }); }); B.drums(2, 3); B.grass(1.5, 4, { h: 5 }); },
+  cave(B) { B.bed({ D: [50, 64], tex: 'rock', relief: 4 }); if (!B.caveIsle) B.roof(); else B.drips(3); B.stones(2, 2, [3, 6]); B.stubs(3, 3); },
+  ice(B) { B.bed({ D: null, tex: 'rock', fall: 2.4 }); B.ice(); B.ridge(Math.max(1, 1.4 * B.n), 2); B.fish = 90; },
+  lava(B) { B.bed({ D: [36, 48], tex: 'rock', relief: 3, c: [[70, 50, 52], [30, 18, 22]] }); B.cracks(4, 2); for (const x of B.xs(Math.max(1, 1.5 * B.n), 3, 0)) B.vent(x, { glow: '#ff7a30' }); for (const x of B.xs(1.4 * B.n, 4, 9)) B.steam(x, { c: '240,230,220' }); B.lit = 0.75; },
+  hotspring(B) { B.bed({ D: [34, 46], tex: 'sand', c: B.paleBed(0.3) }); B.terrace(Math.round(B.x0 + (B.x1 - B.x0) * 0.55), B.w, 3 + B.ri(1, 0, 1)); for (const x of B.xs(Math.max(2, 2 * B.n), 2, 0, B.x0, B.x0 + (B.x1 - B.x0) * 0.5)) B.bubbles(x, B.bedY(x)); for (const x of B.xs(Math.max(2, 2.2 * B.n), 3, 8)) B.steam(x); },
+  mangrove(B) { B.bed({ D: [30, 44], tex: 'mud' }); for (const x of B.xs(Math.max(2, 1.8 * B.n), 2, 14)) B.roots(x, 26 + B.ri(x, 0, 12), 16 + B.ri(x + 1, 0, 10)); B.scatter('leaf', 8, 3); },
+  sky(B) { B.bed({ D: null, tex: 'sand', fall: 3 }); B.fish = 90; },
+};
+// what a spot's name may change about the bed before anything is painted on it: [words, a mod of the depth d at x]
+const SPOTBED = [
+  [/\b(hole|sump|well|pit|bowl|throat|gullet|drain)\b/i, B => { const xc = B.x0 + (B.x1 - B.x0) * (0.5 + 0.25 * B.r(61)), hw = 15 + B.ri(62, 0, 8); return (x, d) => d + 260 * Math.pow(Math.max(0, 1 - Math.pow(Math.abs(x - xc) / hw, 2)), 0.6); }],
+  [/\b(ledge|ledges|shelf|drop|wall|edge|lip|rim|trench)\b/i, B => { const xe = B.x0 + (B.x1 - B.x0) * (0.3 + 0.3 * B.r(63)); return (x, d) => x > xe ? d + (x - xe) * 4.6 : d; }],
+  [/\b(bar|shoal|shoals|bank|scalp|scalps)\b/i, B => { const xc = B.x0 + (B.x1 - B.x0) * (0.45 + 0.35 * B.r(64)), hw = 30 + B.ri(65, 0, 18), dep = 5 + B.ri(66, 0, 5); return (x, d) => { const a = Math.abs(x - xc) / hw, k = a >= 1 ? 0 : Math.pow(Math.cos(a * Math.PI / 2), 2); return d - Math.max(0, d - dep - n1(x * 0.2, B.s) * 2) * k; }; }],
+  [/\b(shallows|shallow|flat|wash)\b/i, B => (x, d) => d * 0.62],
+  [/\b(steps|stair|stairs|ghat|ghats)\b/i, B => (x, d) => x < shoreW + 44 ? Math.min(d, Math.floor(Math.max(0, x - shoreW) / 7) * 6 + 2) : d],
+];
+// what a spot's name may add to its water: [words, the kinds that have it already, what it paints]
+const SPOTEXTRA = [
+  [/\b(tower|steeple|chapel|spire|belfry)\b/i, '', B => B.tower(B.off(Math.round(B.x0 + (B.x1 - B.x0) * (0.5 + 0.3 * B.r(71))), 12), 18 + B.ri(72, 0, 12), { cap: B.r(73) > 0.5 ? 'spire' : 'wall' })],
+  [/\b(bridge|arches|arch|viaduct)\b/i, '', B => { const xa = B.off(Math.round(B.x0 + (B.x1 - B.x0) * 0.25), 9); B.piers(xa, B.off(Math.min(B.x1 - 10, xa + 40 + B.ri(74, 0, 14)), 9), { broken: B.sp.kind === 'ruins' }); }],
+  [/\bbells?\b/i, '', B => B.bell(Math.round(B.x0 + (B.x1 - B.x0) * (0.3 + 0.5 * B.r(75))))],
+  [/\b(lantern|lamp|lamps|light|lights)\b/i, 'pier', B => B.pile(B.off(Math.round(B.x0 + (B.x1 - B.x0) * (0.35 + 0.4 * B.r(76))), 8), 13, { lamp: true })],
+  [/\b(mooring|moorings|buoy|roads|anchorage)\b/i, 'harbour', B => B.xs(Math.max(1, 1.4 * B.n), 77, 8).forEach((x, i) => B.buoy(x, { c: i % 2 ? '#e8b030' : '#d0502a' }))],
+  [/\b(pot|pots|creel|creels|trap|traps|net|nets|string|strings)\b/i, '', B => B.xs(Math.max(2, 2 * B.n), 78, 6).forEach((x, i) => B.pot(x, ['#e8e0d0', '#f0c040', '#6ac0e0'][i % 3]))],
+  [/\b(rack|racks|stake|stakes|rows|ropes|withies)\b/i, '', B => B.xs(Math.max(3, 3 * B.n), 79, 6).forEach(x => B.withy(x, 6 + B.ri(x, 0, 5)))],
+  [/\b(sluice|mill|weir|outflow|outfall|race|falls|spout)\b/i, '', B => B.sluice()],
+  [/\b(root|roots|cypress|knees)\b/i, 'mangrove', B => B.roots(B.off(Math.round(B.x0 + (B.x1 - B.x0) * (0.6 + 0.3 * B.r(80))), 14), 26, 18)],
+  [/\b(reed|reeds|rush|rushes|papyrus|sedge|carr)\b/i, 'marsh', B => B.xs(Math.max(2, 2 * B.n), 81, 12).forEach(x => B.reeds(x, 14, 14 + B.ri(x, 0, 6)))],
+  [/\b(lily|lilies|pad|pads|lotus|marigold)\b/i, 'pond', B => B.pads(3, 82, { flower: 0.6 })],
+  [/\b(kelp|wrack|grass|weed)\b/i, 'kelp weed', B => B.xs(Math.max(2, 2.4 * B.n), 83, 5).forEach(x => B.kelp(x, { lean: B.ri(x, -2, 3) }))],
+  [/\b(hot|warm|spring|springs|boil|vent|vents|smoke|kiln|furnace|seep|chimneys)\b/i, 'hotspring lava', B => { for (const x of B.xs(Math.max(2, 2 * B.n), 84, 0)) B.vent(x, { h: 7 + B.ri(x, 0, 8) }); for (const x of B.xs(Math.max(1, 1.4 * B.n), 85, 8)) B.steam(x); }],
+  [/\b(cold|berg|floe|floes|lead|frozen)\b/i, 'ice', B => B.floes(Math.max(2, 2.4 * B.n), 86)],
+  [/\b(keel|keels|hull|hulls|hulk|hulks|wreck|ribs|holds)\b/i, 'wreck', B => { const n = 5 + B.ri(87, 0, 3); B.ribs(Math.round(B.x0 + Math.max(0, B.x1 - B.x0 - n * 7 - 6) * B.r(88)), n, 22 + B.ri(89, 0, 12)); }],
+  [/\b(bone|bones|skull|marrow|graves?|burial)\b/i, '', B => { B.scatter('bone', 5, 90); B.ribs(Math.round(B.x0 + (B.x1 - B.x0 - 40) * B.r(91)), 4, 16, { c: '#e8e0cc', curl: 7 }); }],
+  [/\b(shell|shells|mussel|mussels|oyster|oysters|pearl|cockle|cockles)\b/i, '', B => { B.scatter('shell', 16, 92); B.scatter('shell', 12, 93); }],
+  [/\b(pillar|pillars|column|columns|stack|stacks|throne|needle|sisters')\b/i, 'ruins', B => B.awash(B.off(Math.round(B.x0 + (B.x1 - B.x0) * (0.55 + 0.3 * B.r(94))), 10), 10, 24 + B.ri(95, 0, 14), { slope: 4 })],
+  [/\b(quay|jetty|stage|slip|stilts|landing|wharf|staithe)\b/i, 'pier', B => { const x = B.off(B.x0 + B.ri(96, 0, 10), 8); B.pile(x, 11); B.pile(x + 22, 9); B.brace(x + 4, x + 22, B.up - 7); }],
+  [/\b(eddy|turning|whirl|slack|gyre)\b/i, 'strait', B => B.eddy(Math.round(B.x0 + (B.x1 - B.x0) * (0.4 + 0.3 * B.r(97))))],
+  [/\b(glass|mirror|clear|silver|bright|moon)\b/i, 'lagoon reef', B => B.glints(B.x0, B.x1, { h: 14, ms: 640 })],
+  [/\b(garden|gardens|coral)\b/i, 'reef', B => { for (const x of B.xs(2.4 * B.n, 98, 0)) B.coral(x, 8 + B.ri(x, 0, 5), 8 + B.ri(x + 1, 0, 10)); }],
+  [/\b(boat|boats|fleet|market)\b/i, '', B => B.xs(Math.max(1, 1.2 * B.n), 99, 9).forEach(x => B.buoy(x, { c: '#e8e0d0', mast: false }))],
+];
+function spotExtras(B) { const nm = B.sp.name || ''; let n = 0; for (const [re, has, fn] of SPOTEXTRA) { if (n >= T_SPOT.extras) break; if (!re.test(nm) || has.split(' ').includes(B.sp.kind)) continue; try { fn(B); n++; } catch (e) { console.error('spot extra', B.l.id, B.sp.id, e); } } if (/\b(black|dark|ink|shade|night|shadow)\b/i.test(nm)) B.tint = 'rgba(0,0,12,0.26)'; }
+function spotLife(B) {
+  const l = B.l, k = B.sp.kind; if ((l.range || 0) > 4 || B.caveIsle || l.id === 'trench') return; const r = B.r(101), cold = climateOf(l) === 'cold', x = B.off(Math.round(B.x0 + (B.x1 - B.x0) * (0.25 + 0.65 * B.r(102))), 9), fl = B.r(103) > 0.5;
+  if (k === 'shore' || k === 'pier' || k === 'harbour' || k === 'channel' || k === 'lagoon' || k === 'wreck') { if (r < 0.5) B.bird(cold && r < 0.22 ? 'puffin' : 'gull', x, 2, fl); }
+  else if (k === 'lake' || k === 'pond' || k === 'river') { if (r < 0.55) B.bird(r < 0.3 ? 'duck' : cold ? 'goose' : 'duck', x, 2, fl); }
+  else if (k === 'flats' || k === 'marsh' || k === 'saltflat') { if (r < 0.55) B.bird(l.id === 'flamingo' ? 'flamingo' : r < 0.3 ? 'heron' : cold ? 'gull' : 'heron', x, Math.min(5, B.bedY(x) - B.up), fl); }
+}
+const SPOT_C = new Map();
+function spotSprite(l, sp) {
+  const key = l.id + '|' + sp.id + '|' + W + '|' + H + '|' + SURF + '|' + shoreW + '|' + SW; let C = SPOT_C.get(key); if (C) return C; if (SPOT_C.size >= T_SPOT.keep) SPOT_C.delete(SPOT_C.keys().next().value);
+  const B = new SpotB(l, sp), kind = SPOTKIND[sp.kind] || SPOTKIND.shore, nm = sp.name || '';
+  try { for (const [re, mod] of SPOTBED) if (re.test(nm)) { B.mods.push(mod(B)); break; } kind(B); spotExtras(B); spotLife(B); } catch (e) { console.error('spot', l.id, sp.id, e); if (B.top[0] > B.h) B.bed({ D: [56, 70] }); }
+  C = B.finish(); SPOT_C.set(key, C); return C;
+}
+// the spot the shore of island l shows: the one being fished, or its first when it is seen from elsewhere (a landfall, a cutscene)
+function spotShown(l) { if (!l.spots || !l.spots.length) return null; const cur = l.id === S.loc ? l.spots.find(s => s.id === S.spot) : null; return cur && cur.kind !== 'open' ? cur : l.spots.find(s => s.kind !== 'open') || null; }
+// the water of the spot island l shows (for the scenes that draw its shore without being the fishing screen: the strip, a landfall, the storm's last beat)
+const spotWaterOf = l => { const sp = spotShown(l); return sp ? spotWater(sp) : null; };
+// which of the island's spots is shown, counted among those fished from the shore (0 the first): the bank turns its things by it
+function spotTurn(l) { const sp = spotShown(l); return sp ? Math.max(0, l.spots.filter(q => q.kind !== 'open').indexOf(sp)) : 0; }
+// the bed and what stands in the water, where the old flat floor was drawn
+function drawSpot(l, t, nt) {
+  const sp = spotShown(l); if (!sp) { g.drawImage(floorLayer(FLOORS[l.id] ? l.id : 'sea'), 0, SURF); return; }
+  const V = spotSprite(l, sp), sy = SURF - V.up; g.drawImage(V.cv, 0, sy);
+  if (nt > 0.02) { g.globalAlpha = nt * T_SPOT.night; g.drawImage(V.dark, 0, sy); g.globalAlpha = 1; }
+  const gn = Math.max(nt, V.lit); if (V.glow && gn > 0.05) { g.globalAlpha = clamp(gn * 1.25, 0, 1); g.drawImage(V.glow, 0, sy); g.globalAlpha = 1; }
+  for (const e of V.em) EMIT[e.k](e, e.x, e.y + sy, t, gn, V);
+}
 // --- the runtime: build an island's layers once, relight them with the hour, blit them ---
 const LANDS = {}; // island id -> s => { ... } : the island's own landscape, written against the layer API above
 let LAND_C = {};
@@ -19125,7 +19494,7 @@ function landScene(l, yBase, mode) {
 function landTint(S, nt, off) {
   const hc = S.haze ? kHex(S.haze) : 0, hz = S.haze ? [hc & 255, (hc >> 8) & 255, (hc >> 16) & 255] : S.cave ? [12, 10, 18] : curSky.bot, hcss = `${hz[0] | 0},${hz[1] | 0},${hz[2] | 0}`; // underground the distance fades into the dark, not into the sky
   for (const Y of S.layers) {
-    const x = Y.tint.getContext('2d'), a = clamp(T_LAND.haze[Y.name] + (off ? 0.16 : 0), 0, 0.9);
+    const x = Y.tint.getContext('2d'), a = clamp(T_LAND.haze[Y.name] + 0.16 * (off === true ? 1 : +off || 0), 0, 0.9);
     x.globalCompositeOperation = 'copy'; x.drawImage(Y.cv, 0, 0); x.globalCompositeOperation = 'source-atop';
     x.fillStyle = `rgba(${hcss},${a.toFixed(3)})`; x.fillRect(0, 0, Y.w, Y.h);
     const mh = Math.max(4, Math.round(S.LH * 0.09)); if (Y.name !== 'near') for (let k = 0; k < 4; k++) { x.fillStyle = `rgba(${hcss},${(T_LAND.mist * (0.4 + 0.2 * k)).toFixed(3)})`; x.fillRect(0, Y.base - mh * (4 - k), Y.w, mh * (4 - k)); }
@@ -19137,12 +19506,12 @@ function landTint(S, nt, off) {
 // o.off: out on open water (further away, hazier, the near layer gone). o.flip: mirrored about the screen (a landfall seen from the sea).
 function drawLandscape(l, cam, yBase, t, nt, o) {
   o = o || {}; if (!l || l.id === 'sea' || l.id === 'stars') return;
-  const S = landScene(l, yBase, o.mode), tk = Math.round(hourAt(t) * 12) + '|' + ((nt * 16) | 0) + (o.off ? 'o' : ''); if (S.tk !== tk) { S.tk = tk; landTint(S, nt, o.off); }
+  const q = o.off === true ? 1 : clamp(+o.off || 0, 0, 1), S = landScene(l, yBase, o.mode), tk = Math.round(hourAt(t) * 12) + '|' + ((nt * 16) | 0) + '|' + Math.round(q * 20); if (S.tk !== tk) { S.tk = tk; landTint(S, nt, q); } // q: how far out on the water the eye is (1 on open water)
   const gn = S.cave ? Math.max(nt, S.lit == null ? 0.85 : S.lit) : S.lit != null ? Math.max(nt, S.lit) : nt; // underground the lamps are always lit, and on an island that asks for it (s.lit)
   g.save(); if (o.flip) { g.translate(W, 0); g.scale(-1, 1); }
   for (let i = 0; i < S.layers.length; i++) {
-    const Y = S.layers[i]; if (o.off && i === 2) continue;
-    const sx = -Y.pad - Math.round(cam * Y.f) - (o.off ? Math.round(T_LAND.off[i] * W) : 0), sy = yBase - Y.base;
+    const Y = S.layers[i]; if (q >= 1 && i === 2) continue;
+    const sx = -Y.pad - Math.round(cam * Y.f) - Math.round(T_LAND.off[i] * W * q), sy = yBase - Y.base;
     for (const e of Y.em) if (e.under) EMIT[e.k](e, e.x + sx, e.y + sy, t, nt, Y); // what shows through a hole in the layer (the day outside a cave's mouth)
     g.drawImage(Y.tint, sx, sy);
     if (Y.glow && gn > 0.05) { g.globalAlpha = clamp(gn * 1.25, 0, 1); g.drawImage(Y.glow, sx, sy); g.globalAlpha = 1; }
@@ -23745,7 +24114,7 @@ function drawDrift(p, t) {
 function beachScene(t, h, mode) {
   const nt = drawSkyBase(h, t, {});
   drawLandscape(LOC.shoal, 3 * W, SURF, t, nt); // the shoal's own country behind him, as it will be when the game takes over
-  drawSeaBase(h, t, nt, {});
+  drawSeaBase(h, t, nt, { water: spotWaterOf(LOC.shoal) }); // and the water of its first spot, so the cut into play changes nothing
   drawFish(t);
   const spot = drawShore('shoal', t, nt, { noSeat: mode !== 'fish' });
   const cx = (shoreW - 62 + Math.sin(t / 1300) * 9) | 0; blit(g, maskC('crab', '#c0392b', 1), cx, (sandTop(cx) | 0) - 7);
@@ -23953,7 +24322,7 @@ function drawCrew(bx, by, bw, t) { // the boat with the fisherman seated in it
 }
 function wake(x0, x1, y, t) { g.fillStyle = rgba(lerpC(curSky.sea, [255, 255, 255], 0.55), 0.8); for (let x = Math.min(x0, x1); x < Math.max(x0, x1); x += 3) g.fillRect(x + ((t / 120 + x) % 3 | 0), y + ((x >> 3) % 2), 2, 1); }
 function drawDepart(p, t) {
-  const l = LOC[SAIL.from], h = hourAt(t), nt = drawSkyBase(h, t, {}); sceneWeather(l, t, nt); drawLandscape(l, 3 * W, SURF, t, nt); drawSeaBase(h, t, nt, { tint: tintOf(l) }); drawFish(t);
+  const l = LOC[SAIL.from], h = hourAt(t), nt = drawSkyBase(h, t, {}), spD = spotShown(l), vwD = spD ? spotView(l, spD) : 0; sceneWeather(l, t, nt); drawLandscape(l, 3 * W + Math.min(0, vwD) * W, SURF, t, nt, { off: Math.max(0, vwD) }); drawSeaBase(h, t, nt, { tint: tintOf(l), water: spotWaterOf(l) }); drawFish(t); // the shore as it was fished from
   drawShoreFor(l, t, nt);
   const bw = boatW(SAIL.kind), bx = (shoreW - 16 + easeIn(p) * (W + 70 - shoreW)) | 0, by = (SURF + 1 + Math.sin(t / 700)) | 0;
   if (p > 0.05) wake(shoreW - 6, bx, by + 2, t);
@@ -23983,7 +24352,7 @@ function drawPassage(p, t) {
   if (p < 0.1) { g.fillStyle = `rgba(10,16,32,${(1 - p / 0.1).toFixed(2)})`; g.fillRect(0, 0, W, H); }
 }
 function drawArrive(p, t) {
-  const l = LOC[SAIL.to], h = hourAt(t), nt = drawSkyBase(h, t, {}); sceneWeather(l, t, nt); drawLandscape(l, 3 * W, SURF, t, nt, { flip: true }); drawSeaBase(h, t, nt, { tint: tintOf(l) }); drawFish(t);
+  const l = LOC[SAIL.to], h = hourAt(t), nt = drawSkyBase(h, t, {}); sceneWeather(l, t, nt); drawLandscape(l, 3 * W, SURF, t, nt, { flip: true }); drawSeaBase(h, t, nt, { tint: tintOf(l), water: spotWaterOf(l) }); drawFish(t);
   g.save(); g.translate(W, 0); g.scale(-1, 1); drawShoreFor(l, t, nt); g.restore(); // the new island is on the right: the shore mirrored
   const bw = boatW(SAIL.kind), bx = (-bw - 12 + easeOut(p) * (W - shoreW - bw + 4 + bw + 12)) | 0, by = (SURF + 1 + Math.sin(t / 700)) | 0;
   if (p > 0.05) wake(-10, bx, by + 2, t);
