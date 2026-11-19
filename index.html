@@ -15516,13 +15516,13 @@ function drawWx(l, wx, t, nt, alpha) {
     g.fillStyle = wx === 'storm' ? 'rgba(6,10,22,0.42)' : wx === 'rain' ? 'rgba(30,40,60,0.3)' : 'rgba(80,90,110,0.24)'; g.fillRect(0, 0, W, SURF);
     drawSkyDeck(l, wx, t, nt); // the deck itself, painted for this island: cloud down to a ragged base a third of the way to the horizon (the HUD covers the top of the sky)
     if (wx === 'storm') { g.fillStyle = 'rgba(0,0,10,0.18)'; g.fillRect(0, SURF, W, H - SURF); const cyc = 7300, ph = (t + 1900) % cyc; if (ph < 80 || (ph > 170 && ph < 215)) { g.fillStyle = 'rgba(255,255,255,0.22)'; g.fillRect(0, 0, W, H); bolt(Math.floor((t + 1900) / cyc) + 5); } }
-    if ((wx === 'rain' || wx === 'storm') && own !== 'rain') { const heavy = wx === 'storm'; for (const r of RAIN) { if (!heavy && r.s < 0.9) continue; const y = (((r.y + t / 1000 * r.s * (heavy ? 1.3 : 0.9)) % 1) * SURF) | 0, x = ((((r.x - t / 1000 * r.s * (heavy ? 0.25 : 0.1)) % 1) + 1) % 1 * W) | 0; g.fillStyle = heavy ? 'rgba(200,214,236,0.45)' : 'rgba(190,205,230,0.35)'; g.fillRect(x, y, 1, heavy ? 5 : 4); } }
+    if ((wx === 'rain' || wx === 'storm') && own !== 'rain') { const heavy = wx === 'storm', lean = skyDir(l) /* it leans the way the island's clouds go */; for (const r of RAIN) { if (!heavy && r.s < 0.9) continue; const y = (((r.y + t / 1000 * r.s * (heavy ? 1.3 : 0.9)) % 1) * SURF) | 0, x = ((((r.x - lean * t / 1000 * r.s * (heavy ? 0.25 : 0.1)) % 1) + 1) % 1 * W) | 0; g.fillStyle = heavy ? 'rgba(200,214,236,0.45)' : 'rgba(190,205,230,0.35)'; g.fillRect(x, y, 1, heavy ? 5 : 4); } }
   } else if (wx === 'snow') {
     g.fillStyle = 'rgba(200,210,225,0.2)'; g.fillRect(0, 0, W, SURF);
     if (own !== 'snow') for (const p of SNOW) { const y = (((p.y + t / 1000 * p.s * 0.08) % 1) * H) | 0, x = ((((p.x + Math.sin(t / 1300 + p.y * 9) * 0.01) % 1) + 1) % 1 * W) | 0; g.fillStyle = 'rgba(255,255,255,0.85)'; g.fillRect(x, y, 1, 1); }
   } else if (wx === 'fog') {
     g.fillStyle = 'rgba(205,214,226,0.34)'; g.fillRect(0, 0, W, SURF + 6);
-    for (let k = 0; k < 9; k++) { const x = ((k * 71 + t / (160 + k * 30)) % (W + 120)) - 80 | 0, y = SURF - 52 + ((k * 37) % 58), w = 60 + (k % 4) * 18; g.fillStyle = `rgba(222,230,240,${(0.22 + (k % 3) * 0.06).toFixed(2)})`; g.fillRect(x, y, w, 5); g.fillRect(x + 10, y - 2, w - 24, 2); g.fillRect(x + 6, y + 5, w - 12, 2); }
+    drawSkyFog(l, t, nt); // the banks themselves, painted for this island and drifting on its wind
     g.fillStyle = 'rgba(210,218,230,0.16)'; g.fillRect(0, SURF, W, 16);
   }
   g.restore();
@@ -19866,6 +19866,15 @@ function skyFarDeck(K) {
     else { const m = Math.max(3, Math.round(K.cw / (70 - j * 6))); for (let i = 0; i < m; i++) if (B.rnd() > 0.18) SKYGEN.streak(B, Math.round(((i + 0.8 * B.rnd()) / m) * K.cw), y + Math.round((B.rnd() - 0.5) * 7), 26 + B.rnd() * (70 - j * 8), { tone: j > 4 ? 3 : 2, ry: 0.8 + B.rnd() * (j > 4 ? 0.7 : 1.3) }); } } // the last of them are only lines
   return B;
 }
+// fog: banks lying on the water and a little above it, thick in the middle and thinning to nothing at their ends, the nearer ones lower and longer
+function skyFog(K) {
+  if (K.fog) return K.fog; const B = K.fog = new CloudB(K.cw, K.H, K.q.seed + 67), n = Math.max(9, Math.round(K.cw / 34)), u = K.H / 170;
+  for (let i = 0; i < n; i++) { const f = B.rnd(), y = Math.round(K.H - 2 - (1 - f * f) * 50 * u), w = (50 + 70 * f + 30 * B.rnd()), ry = (1.6 + 2.6 * f) * Math.max(0.8, u); SKYGEN.streak(B, Math.round(((i + 0.8 * B.rnd()) / n) * K.cw), y, w, { tone: f > 0.55 ? 3 : 6, ry }); SKYGEN.streak(B, Math.round(((i + 0.8 * B.rnd()) / n) * K.cw), y - Math.round(ry) - 1, w * 0.6, { tone: 7, ry: ry * 0.6 }); }
+  return B;
+}
+function drawSkyFog(l, t, nt) { const K = skyScape(l), f = c => lerpC(c, [14, 18, 34], nt * 0.7), w = f([226, 232, 242]), pal = [null, f([170, 180, 196]), f([196, 204, 218]), w, w, w, w, w]; skyBlit(skyStrip(K, 'fog', skyFog(K), pal, 'fog|' + ((nt * 8) | 0), false), -(t / 1000) * 0.9 * (K.q.wind < 0 ? -1 : 1) * Math.max(0.3, Math.min(1.2, Math.abs(K.q.wind))) + K.q.seed * 9); }
+// which way the island's weather leans: its rain falls with its clouds
+const skyDir = l => { const q = l ? skyScape(l).q : null; return q && q.wind < 0 ? -1 : 1; };
 // the decks in the sky over an island now, each with how far it has faded in: [[kind, alpha]…]
 function skyWx(l, t) {
   if (!l) return []; const sc = l.scene; if (sc && sc.weather) return sc.weather === 'storm' ? [['storm', 1]] : [];
