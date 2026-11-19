@@ -277,6 +277,28 @@ canvas.icon{width:40px;height:40px;image-rendering:pixelated;flex:none}
 .mapkey b{color:var(--text);font-weight:normal}
 .mapkey .v b{color:var(--good)}
 .stock{font-family:var(--display);font-size:7px;color:var(--good);white-space:nowrap}
+.gtag{font-family:var(--display);font-size:7px;margin-left:6px;padding:2px 4px;border:1px solid currentColor;vertical-align:middle;white-space:nowrap}
+.gtag.up{background:var(--good);border-color:var(--good);color:#0c2412}
+.note .upsay{color:var(--good);font-weight:normal}
+.gtag.trade{color:var(--brass)}
+.gtag.nobetter{color:var(--muted)}
+.gtag.owned,.gtag.inuse{color:#8fb4ff}
+.row .name small .gsay{display:block;color:var(--text)}
+.row .name small .gsay.up{color:var(--good)}
+.row .name small .gsay.trade{color:var(--brass)}
+.row .name small .gsay.nobetter{color:var(--muted)}
+.row .name small .cmp{display:block}
+.cmp b{font-weight:normal}
+.cmp i{font-style:normal;opacity:.75}
+.cmp.up{color:var(--good)}
+.cmp.down{color:var(--bad)}
+.cmp.same{color:var(--muted)}
+.row .name small .gmade{display:block;color:var(--muted);opacity:.8}
+.list .row.g-up{box-shadow:inset 4px 0 0 var(--good);padding-left:10px}
+.list .row.g-trade{box-shadow:inset 4px 0 0 var(--brass-2);padding-left:10px}
+.list .row.g-nobetter{box-shadow:inset 4px 0 0 #46557a;padding-left:10px}
+.list .row.g-owned,.list .row.g-inuse{box-shadow:inset 4px 0 0 #5a78c0;padding-left:10px}
+.legend .mtag.up{color:var(--good);border-style:dashed}
 .stock.out{color:var(--bad)}
 .legend .tierhead{font-family:var(--display);font-size:8px;color:var(--brass);letter-spacing:1px;padding:10px 6px 2px;border-top:1px solid var(--edge);margin-top:4px}
 .legend .mtag{font-family:var(--display);font-size:7px;margin-left:6px;padding:2px 4px;border:1px solid currentColor;vertical-align:middle;white-space:nowrap}
@@ -510,30 +532,31 @@ const BAITS = {
   shrimp: { name: 'Shrimp', tier: 1, luck: 0.5, size: 0.6, worth: 1.25, share: 0.5,  mouth: 0.03, price: 20, qty: 5 },
   squid:  { name: 'Squid',  tier: 2, luck: 1.2, size: 1.4, worth: 1.6,  share: 0.25, mouth: 0.25, price: 60, qty: 5 },
 };
+// The ladders are grades: what a thing can be made in. `tier` is the island tier whose shops make it (see "made here", by the shop).
 const RODS = [
-  { id: 'stick',    name: 'Stick rod',     bar: 0.24, luck: 0,   price: 0 },
-  { id: 'cane',     name: 'Cane rod',      bar: 0.30, luck: 0.35, price: 250 },
-  { id: 'carbon',   name: 'Carbon rod',    bar: 0.36, luck: 0.8, price: 900 },
-  { id: 'steel',    name: 'Steel rod',     bar: 0.40, luck: 1.4, price: 4000 },
-  { id: 'stariron', name: 'Star-iron rod', bar: 0.44, luck: 2.2, price: 25000 },
+  { id: 'stick',    name: 'Stick rod',     bar: 0.24, luck: 0,   price: 0,     tier: 0 },
+  { id: 'cane',     name: 'Cane rod',      bar: 0.30, luck: 0.35, price: 250,  tier: 1 },
+  { id: 'carbon',   name: 'Carbon rod',    bar: 0.36, luck: 0.8, price: 900,   tier: 2 },
+  { id: 'steel',    name: 'Steel rod',     bar: 0.40, luck: 1.4, price: 4000,  tier: 3 },
+  { id: 'stariron', name: 'Star-iron rod', bar: 0.44, luck: 2.2, price: 25000, tier: 5 },
 ];
 const LINE_TEST = [
-  { id: 'l10',   name: '10 lb line',        lb: 10,   price: 0 },
-  { id: 'l20',   name: '20 lb line',        lb: 20,   price: 120 },
-  { id: 'l40',   name: '40 lb line',        lb: 40,   price: 400 },
-  { id: 'l80',   name: '80 lb line',        lb: 80,   price: 1500 },
-  { id: 'l150',  name: '150 lb line',       lb: 150,  price: 5000 },
-  { id: 'l300',  name: '300 lb braid',      lb: 300,  price: 18000 },
-  { id: 'l600',  name: '600 lb cable',      lb: 600,  price: 60000 },
-  { id: 'l2000', name: 'Leviathan cable',   lb: 2000, price: 200000 },
+  { id: 'l10',   name: '10 lb line',        lb: 10,   price: 0,      tier: 0 },
+  { id: 'l20',   name: '20 lb line',        lb: 20,   price: 120,    tier: 1 },
+  { id: 'l40',   name: '40 lb line',        lb: 40,   price: 400,    tier: 2 },
+  { id: 'l80',   name: '80 lb line',        lb: 80,   price: 1500,   tier: 3 },
+  { id: 'l150',  name: '150 lb line',       lb: 150,  price: 5000,   tier: 4 },
+  { id: 'l300',  name: '300 lb braid',      lb: 300,  price: 18000,  tier: 5 },
+  { id: 'l600',  name: '600 lb cable',      lb: 600,  price: 60000,  tier: 6 },
+  { id: 'l2000', name: 'Leviathan cable',   lb: 2000, price: 200000, tier: 6, all: true }, // all: nothing is too heavy to take it (two legends' smallest adults outweigh even this, and could never bite)
 ];
 const lbKg = lb => lb * 0.4536;
 const BUCKETS = [
-  { id: 'pail',   name: 'Wooden pail',  cap: 10,  price: 0 },
-  { id: 'basket', name: 'Fish basket',  cap: 20,  price: 150 },
-  { id: 'barrel', name: 'Brine barrel', cap: 35,  price: 600 },
-  { id: 'chest',  name: 'Ice chest',    cap: 60,  price: 2500 },
-  { id: 'hold',   name: 'Fish hold',    cap: 100, price: 10000 },
+  { id: 'pail',   name: 'Wooden pail',  cap: 10,  price: 0,     tier: 0 },
+  { id: 'basket', name: 'Fish basket',  cap: 20,  price: 150,   tier: 1 },
+  { id: 'barrel', name: 'Brine barrel', cap: 35,  price: 600,   tier: 2 },
+  { id: 'chest',  name: 'Ice chest',    cap: 60,  price: 2500,  tier: 3 },
+  { id: 'hold',   name: 'Fish hold',    cap: 100, price: 10000, tier: 5 },
 ];
 const BOATS = [
   // range: the island tier the boat can take you to. reach: how far one voyage can go, in chart pixels from where you are
@@ -8542,8 +8565,8 @@ const GAME = [
   { id: 'pearlbear', name: 'Pearl Bear', loc: { greatpearl: 4 }, kg: [250, 400], rate: 1200, diff: 0.88, sil: 'bear', col: { base: '#f0e8f8', belly: '#ffffff', acc: '#f0c0d0', mark: '#a898b0' }, time: ['night'], rare: true },
 ];
 const GM = Object.fromEntries(GAME.map(c => [c.id, c]));
-const WEAPON = () => WEAPONS.find(w => w.id === S.weapon) || WEAPONS[0];
-const CLOAK = () => CLOAKS.find(x => x.id === S.cloak) || CLOAKS[0], BOOT = () => BOOTS.find(x => x.id === S.boots) || BOOTS[0], PACK = () => PACKS.find(x => x.id === S.pack_) || PACKS[0];
+const WEAPON = () => gearUsed('weapon');
+const CLOAK = () => gearUsed('cloak'), BOOT = () => gearUsed('boots'), PACK = () => gearUsed('gamepack');
 const packCap = () => PACK().cap, maxSteps = () => BOOT().steps;
 const shotOf = () => SHOT[S.shotSel] && (S.shotSel === 'stones' || S.shot[S.shotSel] > 0) ? S.shotSel : 'stones';
 const callOf = () => CALLS[S.callSel] && (S.callSel === 'none' || S.calls[S.callSel] > 0) ? S.callSel : 'none';
@@ -10272,7 +10295,7 @@ const RELIC_LORE = {
   rel_greatpearl: 'The first layer of the pearl, from the very bottom of the pit, a thin shell of nacre the size of a fist with the shape of the grit still on the inside of it, which is not a grain of sand: it is a face, small, asleep, with its mouth open, as if it had been saying something when the oyster closed on it. Nacre has looked at it a long time. She says the oyster was not hurt. She says it heard something it could not bear and has spent a thousand years wrapping it in silence, and the village lives on the silence, and she has measured the gap again, and it is a finger, and she says it is enough.',
 };
 const MM = Object.fromEntries(MINERALS.map(m => [m.id, m]));
-const PICK = () => PICKS.find(x => x.id === S.pick) || PICKS[0], LAMP = () => LAMPS.find(x => x.id === S.lamp) || LAMPS[0], SACK = () => SACKS.find(x => x.id === S.sack_) || SACKS[0];
+const PICK = () => gearUsed('pick'), LAMP = () => gearUsed('lamp'), SACK = () => gearUsed('sack');
 const sackCap = () => SACK().cap;
 const chargeOf = () => CHARGES[S.chargeSel] && (S.chargeSel === 'none' || S.charges[S.chargeSel] > 0) ? S.chargeSel : 'none';
 const aidOf = () => AIDS[S.aidSel] && (S.aidSel === 'none' || S.aids[S.aidSel] > 0) ? S.aidSel : 'none';
@@ -10389,11 +10412,11 @@ const locTitle = l => l.title || l.name; // what kind of island this is; the nam
 function islandNo(id) { if (id === 'sea') return 0; if (!S.order.includes(id)) S.order.push(id); return S.order.indexOf(id) + 1; }
 const islandLabel = l => l.id === 'sea' ? 'Open sea' : `Island ${islandNo(l.id)}`;
 const boatRange = () => BOATS.find(b => b.id === S.boat).range;
-const rodOf = () => RODS.find(r => r.id === S.rod) || RODS[0];
+const rodOf = () => gearUsed('rod');
 const rodBar = () => rodOf().bar;
-const lineOf = () => LINE_TEST.find(l => l.id === S.line) || LINE_TEST[0];
+const lineOf = () => gearUsed('line');
 const lineKg = () => lbKg(lineOf().lb);
-const bucketOf = () => BUCKETS.find(b => b.id === S.pail) || BUCKETS[0];
+const bucketOf = () => gearUsed('pail');
 const bucketCap = () => bucketOf().cap;
 const RARITY_RANK = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 1 };
 // the longest this species can be and still weigh no more than kg
@@ -10465,7 +10488,7 @@ function pool(locId, rig, baitId, t, spotId) {
     if (!s.kind && bt > 0 && (s.minBait || 0) === bt) w *= 1.5; // the fish that need this bait come to it
     if (rig === 'set' && s.shape === 'big') w *= 0.5;
     if (s.likes && s.likes[wx]) w *= s.likes[wx]; // ...and some bite harder under one
-    if (!s.kind && kgOf(s, s.size[0], 0) > lineKg() * 1.05) { if (!stray && !s.legend) lost.push([s, w]); continue; } // too heavy for the line at its smallest: it is never landed (it can take the bait and break off: rollCatch)
+    if (!s.kind && !lineOf().all && kgOf(s, s.size[0], 0) > lineKg() * 1.05) { if (!stray && !s.legend) lost.push([s, w]); continue; } // too heavy for the line at its smallest: it is never landed (it can take the bait and break off: rollCatch)
     if (!s.kind) { const luck = (rig === 'hand' ? rodOf().luck : 0) + (BAITS[baitId].luck || 0) + offLuck, rk = RARITY_RANK[rarityOf(s)] || 0; w *= 1 + rk * luck * 0.5; } // better rod, better bait: rarer fish more often
     (stray ? far : out).push([s, w, stray]);
   }
@@ -10637,10 +10660,120 @@ function sail(id) {
   startSail(S.loc, id, pulled, first); // casting off, open water, landfall; finishSail lands
 }
 
+// ---------- made here: every shop's gear is its own ----------
+// A shop does not sell "the next rung". It sells one piece of each kind of gear it stocks, made on its island and sold nowhere else:
+// in a grade that goes with the island's tier (one of the ladders' rungs), with numbers of its own. So a port is worth the voyage for
+// what only it sells, and what it sells may or may not be better than what you carry: the shop says which, stat by stat.
+// A piece you own is kept as `grade@island` in the same lists as before; a plain grade id is the old ladder gear and what you start with.
+const GEAR = { // the ten kinds: the ladder its grades come from, where the save keeps what is owned and in use, what it is measured by (and which way is better)
+  rod:      { list: RODS,      owned: 'rodsOwned',    use: 'rod',    stats: [['bar', 1], ['luck', 1]] },
+  line:     { list: LINE_TEST, owned: 'linesOwned',   use: 'line',   stats: [['lb', 1]] },
+  pail:     { list: BUCKETS,   owned: 'pailsOwned',   use: 'pail',   stats: [['cap', 1]] },
+  weapon:   { list: WEAPONS,   owned: 'weaponsOwned', use: 'weapon', stats: [['acc', 1], ['power', 1], ['quiet', -1], ['loud', -1]] },
+  cloak:    { list: CLOAKS,    owned: 'cloaksOwned',  use: 'cloak',  stats: [['calm', -1]] },
+  boots:    { list: BOOTS,     owned: 'bootsOwned',   use: 'boots',  stats: [['steps', 1]] },
+  gamepack: { list: PACKS,     owned: 'packsOwned',   use: 'pack_',  stats: [['cap', 1]] },
+  pick:     { list: PICKS,     owned: 'picksOwned',   use: 'pick',   stats: [['hard', 1]] },
+  lamp:     { list: LAMPS,     owned: 'lampsOwned',   use: 'lamp',   stats: [['oil', 1]] },
+  sack:     { list: SACKS,     owned: 'sacksOwned',   use: 'sack_',  stats: [['cap', 1]] },
+};
+const GEAR_KINDS = ['rod', 'line', 'pail', 'weapon', 'cloak', 'boots', 'gamepack', 'pick', 'lamp', 'sack']; // the order a shop lays them out in
+// grade: the odds that an island makes a thing in the grade below its tier's, and in the one above (otherwise its tier's own; where a
+// tier has several grades of a thing, one of them). The rest is how far a piece's numbers stray from its grade's: a rod leans to the net
+// or to luck (lean: the odds of each, else it is even), a weapon shoots true or hits heavy, a line is so many times its grade's weight,
+// a bucket, bag or sack so many times its room, a cloak so much calmer or less, a lamp so much oil, and a pick is half a point harder at
+// these odds. price: what a poor piece of its grade and a fine one cost, of the grade's price. The top grade never falls below its ladder's
+// own numbers on what it gates (the cable still holds everything, the star-iron bow still takes everything).
+const T_MADE = {
+  grade: [0.22, 0.18],
+  rod: { lean: [0.38, 0.38], net: { bar: [0.008, 0.02], luck: [0.72, 0.9] }, luck: { bar: [-0.014, -0.004], luck: [1.15, 1.4] }, even: { bar: [-0.004, 0.008], luck: [0.95, 1.1] } },
+  weapon: { lean: [0.36, 0.36], true: { acc: [1.06, 1.14], power: [0.8, 0.95] }, heavy: { acc: [0.92, 0.98], power: [1.15, 1.4] }, even: { acc: [0.97, 1.04], power: [0.95, 1.08] } },
+  line: [0.8, 1.3], cap: [0.85, 1.3], cloak: [-0.05, 0.03], lamp: [0.9, 1.25], pick: 0.35, price: [0.8, 1.35],
+};
+const strSeed = str => { let h = 7; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0; return h; };
+const madeRnd = (l, kind, n) => hash32(strSeed(l.id + '|' + kind) + n * 7919) / 4294967296; // the same number for this island, this kind and this question, always
+const between = (r, u) => r[0] + (r[1] - r[0]) * u;
+const nicePrice = v => { const st = v < 100 ? 5 : v < 1000 ? 10 : v < 10000 ? 50 : v < 100000 ? 500 : 1000; return Math.max(st, Math.round(v / st) * st); };
+const niceLb = v => v < 50 ? Math.round(v / 2) * 2 : v < 200 ? Math.round(v / 5) * 5 : v < 1000 ? Math.round(v / 10) * 10 : Math.round(v / 100) * 100;
+const niceKg = v => v < 30 ? Math.round(v) : v < 300 ? Math.round(v / 5) * 5 : v < 2000 ? Math.round(v / 10) * 10 : Math.round(v / 100) * 100;
+const madeBy = l => l.name.replace(/^The /, ''); // whose make it is: the island's name goes on everything it sells
+function madeGrade(l, kind) { // the grade this island makes the thing in (an index into its ladder; never the starting rung)
+  const L = GEAR[kind].list, t = l.range; let same = []; for (let i = 1; i < L.length; i++) if ((L[i].tier || 0) === t) same.push(i);
+  if (!same.length) { let hi = 1; for (let i = 1; i < L.length; i++) if ((L[i].tier || 0) <= t) hi = i; same = [hi]; } // no grade of its own tier: the best of the tiers below
+  const r = madeRnd(l, kind, 1), lo = same[0] - 1, up = same[same.length - 1] + 1;
+  if (r < T_MADE.grade[0] && lo >= 1) return lo;
+  if (r > 1 - T_MADE.grade[1] && up < L.length && (L[up].tier || 0) <= t + 1) return up;
+  return same[(madeRnd(l, kind, 2) * same.length) | 0];
+}
+const MADE_C = new Map();
+function madeAt(l, kind, gi) { // the piece of this kind made on this island in this grade: the grade's numbers, strayed its own way
+  const key = kind + '|' + l.id + '|' + gi; let it = MADE_C.get(key); if (it) return it;
+  const G = GEAR[kind], base = G.list[gi], top = gi === G.list.length - 1, u = n => madeRnd(l, kind, n), M = T_MADE; let q = 0.5; // q: how good a piece of its grade it is, 0 to 1: what it costs goes by it
+  it = Object.assign({}, base, { id: base.id + '@' + l.id, grade: base.id, loc: l.id, made: true, short: base.name });
+  if (kind === 'rod') { const r = u(3), lean = r < M.rod.lean[0] ? 'net' : r < M.rod.lean[0] + M.rod.lean[1] ? 'luck' : 'even', R = M.rod[lean]; it.lean = lean; it.bar = Math.round((base.bar + between(R.bar, u(4))) * 100) / 100; it.luck = Math.round(base.luck * between(R.luck, u(5)) * 20) / 20; q = 0.5 + (it.bar - base.bar) * 12 + (it.luck / base.luck - 1) * 0.8; it.note = lean === 'net' ? 'Built wide in the net.' : lean === 'luck' ? 'The rarer fish come to it.' : ''; }
+  else if (kind === 'line') { let f = between(M.line, u(3)); if (top) f = Math.max(1, f); it.lb = niceLb(base.lb * f); q = (it.lb / base.lb - M.line[0]) / (M.line[1] - M.line[0]); it.short = `${it.lb} lb ${it.lb >= 1500 ? 'cable' : it.lb >= 500 ? 'cable' : it.lb >= 250 ? 'braid' : 'line'}`; }
+  else if (kind === 'pail' || kind === 'gamepack' || kind === 'sack') { it.cap = Math.max(base.cap - 2, Math.round(base.cap * between(M.cap, u(3)))); q = (it.cap / base.cap - M.cap[0]) / (M.cap[1] - M.cap[0]); }
+  else if (kind === 'weapon') { const r = u(3), lean = r < M.weapon.lean[0] ? 'true' : r < M.weapon.lean[0] + M.weapon.lean[1] ? 'heavy' : 'even', R = M.weapon[lean]; it.lean = lean; it.acc = Math.round(base.acc * between(R.acc, u(4)) * 200) / 200; let pf = between(R.power, u(5)); if (top) pf = Math.max(1, pf); it.power = niceKg(base.power * pf); q = 0.5 + (it.acc / base.acc - 1) * 3 + (it.power / base.power - 1) * 1.2; it.note = lean === 'true' ? 'Shoots true.' : lean === 'heavy' ? 'Hits heavy.' : ''; }
+  else if (kind === 'cloak') { it.calm = clamp(Math.round((base.calm + between(M.cloak, u(3))) * 100) / 100, 0.3, 0.95); q = 0.5 - (it.calm - base.calm) * 8; }
+  else if (kind === 'pick') { if (!top && u(3) < M.pick) { it.hard = base.hard + 0.5; q = 0.9; it.note = 'Tempered half a point harder than its kind.'; } else q = 0.35; }
+  else if (kind === 'lamp') { it.oil = Math.round(base.oil * between(M.lamp, u(3))); q = (it.oil / base.oil - M.lamp[0]) / (M.lamp[1] - M.lamp[0]); }
+  else if (kind === 'boots') q = u(3);
+  it.name = kind === 'line' ? `${madeBy(l)} ${it.lb} lb ${it.lb >= 1500 ? 'leviathan cable' : it.lb >= 500 ? 'cable' : it.lb >= 250 ? 'braid' : 'line'}` : `${madeBy(l)} ${base.name.charAt(0).toLowerCase() + base.name.slice(1)}`;
+  it.price = nicePrice(base.price * between(M.price, clamp(q, 0, 1)));
+  MADE_C.set(key, it); return it;
+}
+const madeHere = (l, kind) => madeAt(l, kind, madeGrade(l, kind)); // what this island's shop sells of this kind
+const GEAR_C = new Map();
+function gearGet(kind, id) { // any piece by its id: a ladder's own rung, or grade@island
+  const key = kind + ':' + id; let it = GEAR_C.get(key); if (it !== undefined) return it;
+  const G = GEAR[kind], at = String(id).indexOf('@');
+  if (at < 0) it = G.list.find(x => x.id === id) || null;
+  else { const l = LOC[id.slice(at + 1)], gi = G.list.findIndex(x => x.id === id.slice(0, at)); it = l && gi > 0 ? madeAt(l, kind, gi) : null; }
+  GEAR_C.set(key, it); return it;
+}
+const gearUsed = kind => gearGet(kind, S[GEAR[kind].use]) || GEAR[kind].list[0]; // the piece of this kind in use
+const gearLc = x => x.made ? x.name : x.name.toLowerCase(); // its name inside a sentence: an island's name keeps its capitals
+const gearShort = x => x.short || x.name; // its name where there is no room for whose make it is
+const statOf = (x, key) => x[key] == null ? (key === 'quiet' || key === 'loud' ? 1 : 0) : x[key];
+// what a piece is measured by, said in full and in brief
+const GEAR_SAY = {
+  bar: v => `Net ${Math.round(v * 100)}% of the track`, luck: v => `Luck ${+v.toFixed(2)}`, lb: v => `Holds fish to ${fmtKg(lbKg(v))}`,
+  cap: (v, kind) => `Room for ${v} ${kind === 'pail' ? 'fish' : kind === 'gamepack' ? 'game' : 'finds'}`, acc: v => `Band ${Math.round(v * 200)}% of the bar`, power: v => `Takes game to ${fmtKg(v)}`,
+  quiet: v => v < 1 ? 'Quiet: creeping costs less' : 'Not a quiet one', loud: v => v > 1 ? 'Loud: scatters the ground' : 'Not loud',
+  calm: v => v < 1 ? `Game takes alarm ${Math.round((1 - v) * 100)}% slower` : 'No cover at all', steps: v => `${v} steps of creeping`, hard: v => `Pries stone to hardness ${v} of 10`, oil: v => `${v} oil a descent`,
+}, GEAR_BRIEF = { bar: v => Math.round(v * 100) + '%', luck: v => +v.toFixed(2), lb: v => v + ' lb', cap: v => v, acc: v => Math.round(v * 200) + '%', power: v => fmtKg(v), quiet: v => v < 1 ? 'quiet' : 'not quiet', loud: v => v > 1 ? 'loud' : 'not loud', calm: v => Math.round((1 - v) * 100) + '%', steps: v => v, hard: v => v, oil: v => v };
+// how a piece measures against another of its kind, stat by stat: d is +1 where it is better, -1 where it is worse
+function gearCmp(kind, a, b) { return GEAR[kind].stats.map(([key, dir]) => { const va = statOf(a, key), vb = statOf(b, key), diff = (va - vb) * dir; return { key, va, vb, d: diff > 1e-9 ? 1 : diff < -1e-9 ? -1 : 0 }; }).filter(c => !((c.key === 'quiet' || c.key === 'loud') && c.va === 1 && c.vb === 1)); }
+// Is it an upgrade? `inuse` or `owned`: you have it. `nobetter`: something you own is at least as good in every way. `up`: better than
+// what you use in some way and worse in none. `trade`: better in one way, worse in another.
+function gearVerdict(kind, it) {
+  const G = GEAR[kind], owned = S[G.owned] || [], cur = gearUsed(kind);
+  if (owned.includes(it.id)) return { v: it.id === S[G.use] ? 'inuse' : 'owned', than: cur, c: gearCmp(kind, it, cur) };
+  for (const id of owned) { const o = gearGet(kind, id); if (o && gearCmp(kind, it, o).every(c => c.d <= 0)) return { v: 'nobetter', than: o, c: gearCmp(kind, it, o) }; }
+  const c = gearCmp(kind, it, cur); return { v: c.every(x => x.d >= 0) ? 'up' : 'trade', than: cur, c };
+}
+const GEAR_TAG = { up: 'UPGRADE', trade: 'TRADE-OFF', nobetter: 'NO BETTER', owned: 'OWNED', inuse: 'IN USE' };
+// the lines under a piece in the shop: each thing it is measured by, with an arrow against the piece it is being held up to
+function gearSub(kind, it, V) {
+  const yours = V.v === 'nobetter' && V.than.id !== S[GEAR[kind].use] ? `your ${gearLc(V.than)}` : 'yours';
+  const lines = V.c.map(c => { const same = c.d === 0, mine = V.v === 'inuse'; return `<span class="cmp ${mine ? '' : c.d > 0 ? 'up' : c.d < 0 ? 'down' : 'same'}">${GEAR_SAY[c.key](c.va, kind)}${mine ? '' : ` <b>${c.d > 0 ? '▲' : c.d < 0 ? '▼' : '='}</b> <i>${same ? 'same as ' + yours : yours + ' ' + GEAR_BRIEF[c.key](c.vb)}</i>`}</span>`; }).join('');
+  const head = V.v === 'up' ? `Better than your ${gearLc(V.than)}.` : V.v === 'trade' ? `Against your ${gearLc(V.than)}: better one way, worse another.` : V.v === 'nobetter' ? `No better than ${yours === 'yours' ? 'the ' + gearLc(V.than) + ' you use' : yours}.` : V.v === 'owned' ? 'You own it: use it from your kit.' : 'This is the one you use.';
+  return `<span class="gsay ${V.v}">${head}</span>${lines}${it.note ? `<span class="gmade">${it.note}</span>` : ''}`; // (that it is made here and sold nowhere else is said once, at the head of the shop)
+}
+// what a shop stocks of the ten kinds: the four it always has, and the shelves its island keeps
+const shopKinds = l => { const stock = shopStock(l); return GEAR_KINDS.filter(k => !(k in SHOP_SHELVES) || stock.has(k)); };
+// how many pieces on this island's shelves would better what you use now (for the chart's list)
+function shopUpgrades(l) { if (!l.shop || l.spaceport) return 0; let n = 0; for (const k of shopKinds(l)) if (gearVerdict(k, madeHere(l, k)).v === 'up') n++; return n; }
+// every piece of a kind you own, weakest first, for the rig and kit sheets
+function gearRowsOf(kind, sub, busy) {
+  const G = GEAR[kind], cur = S[G.use], [mk, md] = G.stats[0];
+  return S[G.owned].map(id => gearGet(kind, id)).filter(Boolean).sort((a, b) => (statOf(a, mk) - statOf(b, mk)) * md || G.list.findIndex(x => x.id === (a.grade || a.id)) - G.list.findIndex(x => x.id === (b.grade || b.id)))
+    .map(x => `<div class="row ${x.id === cur ? 'sel' : ''}">${icon(kind + ':' + x.id)}<div class="name" style="flex:1">${x.name}<small>${sub(x)}${x.made ? ` Made at ${LOC[x.loc].name}.` : ''}</small></div>${x.id === cur ? '<div class="here">in use</div>' : `<button class="buy" data-act="equip" data-k="${kind}:${x.id}" ${busy ? 'disabled' : ''}>USE</button>`}</div>`).join('');
+}
+
 // ---------- shop ----------
 // Is the mysterious chart on this shop's shelf today? Fixed per island per real day, so it does not flicker.
 function chartInStock(l) { const day = Math.floor(now() / 864e5), h = (day * 7919 + l.x * 31 + l.y * 17 + l.id.length * 131) % 100; return h < T_WORLD.chartOdds; }
-const best = (list, owned) => Math.max(...owned.map(id => list.findIndex(x => x.id === id)), 0); // the highest rung owned on a ladder
 const SHOP_SHELVES = { pail: 'buckets', cloak: 'cloaks', boots: 'boots', gamepack: 'game bags', lamp: 'lamps', sack: 'ore sacks', charges: 'charges', aids: 'mine aids', calls: 'calls' };
 function shopStock(l) { // what this shop keeps beside the basics: a fixed hash of the island picks five of the nine optional shelves, so ports differ
   let seed = 7; for (let i = 0; i < l.id.length; i++) seed = (seed * 31 + l.id.charCodeAt(i)) | 0;
@@ -10653,7 +10786,7 @@ function shopSold(l) { const day = stockDay(); S.stock = S.stock || {}; let st =
 function shopLeft(l, k) { const r = T_WORLD.stock[k.split(':')[0]]; if (!r) return null; let seed = 13; const key = l.id + '|' + k; for (let i = 0; i < key.length; i++) seed = (seed * 31 + key.charCodeAt(i)) | 0;
   return Math.max(0, r[0] + hash32(seed + stockDay() * 7919) % (r[1] - r[0] + 1) - (shopSold(l)[k] || 0)); }
 function shopItems() { const l = loc(), items = shopItemsRaw();
-  for (const it of items) { const left = shopLeft(l, it.k); if (left == null) { if (!it.locked) it.stock = '1 on the shelf'; continue; }
+  for (const it of items) { const left = shopLeft(l, it.k); if (left == null) { if (!it.locked) it.stock = it.owned ? '' : it.made ? 'the only one' : '1 on the shelf'; continue; }
     it.left = left; it.stock = left > 0 ? `${left} pack${left === 1 ? '' : 's'} left` : 'sold out'; if (left <= 0) it.soldOut = true;
     it.sub = (left > 0 ? `${left} pack${left === 1 ? '' : 's'} left on the shelf today. ` : 'Sold out today: more comes with the morning boat. ') + it.sub; }
   return items; }
@@ -10665,29 +10798,12 @@ function shopItemsRaw() {
   }
   if (l.range >= 5 && !S.known.spaceport && !S.visited.spaceport && chartInStock(l)) items.push({ k: 'chart', name: 'A mysterious chart', sub: 'Oilcloth, salt-stiff, one island on it at the far edge of the world. The keeper will not say where it came from.', price: T_WORLD.chartPrice });
   if (S.slots < 4) items.push({ k: 'slot', name: `Line ${S.slots + 1}`, sub: 'One more line in the water.', price: SLOT_PRICES[S.slots] });
-  const ri = best(RODS, S.rodsOwned);
-  if (ri < RODS.length - 1) { const r = RODS[ri + 1]; items.push({ k: 'rod', name: r.name, sub: `Wider net in the fight (${Math.round(r.bar * 100)}% of the track), and rarer fish take it more often.`, price: r.price }); }
-  const li = best(LINE_TEST, S.linesOwned);
-  if (li < LINE_TEST.length - 1) { const x = LINE_TEST[li + 1]; items.push({ k: 'line', name: x.name, sub: `Holds fish to ${fmtKg(lbKg(x.lb))}. Nothing heavier than your line will bite; you have ${lineOf().lb} lb.`, price: x.price }); }
-  const pi = best(BUCKETS, S.pailsOwned);
-  if (stock.has('pail') && pi < BUCKETS.length - 1) { const x = BUCKETS[pi + 1]; items.push({ k: 'pail', name: x.name, sub: `Room for ${x.cap} fish. Your ${bucketOf().name.toLowerCase()} holds ${bucketCap()}.`, price: x.price }); }
+  // the gear: this island's own make of each kind it stocks, whatever you carry. gearVerdict says whether it betters it.
+  const kinds = shopKinds(l), gear = kind => { if (!kinds.includes(kind)) return; const it = madeHere(l, kind), V = gearVerdict(kind, it); items.push({ k: kind, name: it.name, made: it, verdict: V, html: gearSub(kind, it, V), sub: '', price: it.price, owned: V.v === 'owned' || V.v === 'inuse' }); };
+  gear('rod'); gear('line'); gear('pail');
   if (!S.trophyRig) items.push({ k: 'trig', name: 'Trophy rig', sub: 'A long passive line. Needs shrimp or squid. Hooks big fish; you still land them yourself.', price: TROPHY_RIG_PRICE });
-  // the hunting kit: the next rung of each ladder this island's shops stock, and shot and calls by the pack
-  const tier = l.range, wi = best(WEAPONS, S.weaponsOwned);
-  if (wi < WEAPONS.length - 1 && WEAPONS[wi + 1].tier <= tier) { const w = WEAPONS[wi + 1]; items.push({ k: 'weapon', name: w.name, sub: `Band ${Math.round(w.acc * 200)}% of the bar, takes game to ${fmtKg(w.power)}${w.quiet ? ', quiet' : w.loud ? ', loud: scatters the ground' : ''}. Your ${WEAPON().name.toLowerCase()} takes ${fmtKg(WEAPON().power)}.`, price: w.price }); }
-  const ci = best(CLOAKS, S.cloaksOwned);
-  if (stock.has('cloak') && ci < CLOAKS.length - 1 && CLOAKS[ci + 1].tier <= tier) { const x = CLOAKS[ci + 1]; items.push({ k: 'cloak', name: x.name, sub: `Game takes alarm ${Math.round((1 - x.calm) * 100)}% slower while you creep.`, price: x.price }); }
-  const bo = best(BOOTS, S.bootsOwned);
-  if (stock.has('boots') && bo < BOOTS.length - 1 && BOOTS[bo + 1].tier <= tier) { const x = BOOTS[bo + 1]; items.push({ k: 'boots', name: x.name, sub: `${x.steps} steps of creeping before point blank. You have ${maxSteps()}.`, price: x.price }); }
-  const pk = best(PACKS, S.packsOwned);
-  if (stock.has('gamepack') && pk < PACKS.length - 1 && PACKS[pk + 1].tier <= tier) { const x = PACKS[pk + 1]; items.push({ k: 'gamepack', name: x.name, sub: `Room for ${x.cap} game. Your ${PACK().name.toLowerCase()} holds ${packCap()}.`, price: x.price }); }
-  // the mining kit: the next pick, lamp and sack this island's shops stock, and charges and aids by the pack
-  const pki = best(PICKS, S.picksOwned);
-  if (pki < PICKS.length - 1 && PICKS[pki + 1].tier <= tier) { const x = PICKS[pki + 1]; items.push({ k: 'pick', name: x.name, sub: `Pries stone to hardness ${x.hard} of 10. Your ${PICK().name.toLowerCase()} stops at ${PICK().hard}; harder stone stays in the wall.`, price: x.price }); }
-  const lmi = best(LAMPS, S.lampsOwned);
-  if (stock.has('lamp') && lmi < LAMPS.length - 1 && LAMPS[lmi + 1].tier <= tier) { const x = LAMPS[lmi + 1]; items.push({ k: 'lamp', name: x.name, sub: `${x.oil} oil a descent: more strikes, and deeper. Your ${LAMP().name.toLowerCase()} gives ${LAMP().oil}.`, price: x.price }); }
-  const ski = best(SACKS, S.sacksOwned);
-  if (stock.has('sack') && ski < SACKS.length - 1 && SACKS[ski + 1].tier <= tier) { const x = SACKS[ski + 1]; items.push({ k: 'sack', name: x.name, sub: `Room for ${x.cap} finds. Your ${SACK().name.toLowerCase()} holds ${sackCap()}.`, price: x.price }); }
+  // the hunting kit and the mining kit: the island's own weapon and pick, and what its shelves keep of cloaks, boots, bags, lamps and sacks; shot, calls, charges and aids by the pack
+  const tier = l.range; gear('weapon'); gear('cloak'); gear('boots'); gear('gamepack'); gear('pick'); gear('lamp'); gear('sack');
   if (stock.has('charges')) for (const [id, ch] of Object.entries(CHARGES)) if (ch.qty && ch.tier <= tier) items.push({ k: 'charge:' + id, name: `${ch.name} ×${ch.qty}`, sub: `Have ${S.charges[id] || 0}. Opens a block ${ch.radius * 2 + 1} tiles across in one strike. Spent per blast.`, price: ch.price });
   if (stock.has('aids')) for (const [id, ad] of Object.entries(AIDS)) if (ad.qty && ad.tier <= tier) items.push({ k: 'aid:' + id, name: `${ad.name} ×${ad.qty}`, sub: `Have ${S.aids[id] || 0}. ${ad.gas ? 'Shows every pocket of gas in the face. ' : ''}${ad.tells ? 'Every glint plain and two tiles out. ' : ''}${ad.roof ? 'The roof takes half the strain. ' : ''}Spent per descent.`, price: ad.price });
   for (const [id, sh] of Object.entries(SHOT)) if (sh.qty && sh.tier <= tier) items.push({ k: 'shot:' + id, name: `${sh.name} ×${sh.qty}`, sub: `Have ${S.shot[id] || 0}. ${sh.shun ? 'The common game keeps back and the rarer game shows far more often. ' : sh.luck ? 'Rarer game shows more often. ' : ''}${sh.worth ? `A clean kill pays ×${sh.worth}. ` : ''}${sh.calm ? 'The animal takes alarm slower and the mark swings slower. ' : ''}Spent per shot.`, price: sh.price });
@@ -10703,21 +10819,13 @@ function shopItemsRaw() {
 }
 function buy(k) {
   const it = shopItems().find(x => x.k === k); if (!it || it.locked) return;
+  if (it.owned) { toast('You own it already.'); return; }
   if (it.soldOut) { toast('Sold out today. More comes with the morning boat.'); return; }
   if (S.money < it.price) { toast('Not enough money.'); return; }
-  S.money -= it.price; if (it.left != null) { const sold = shopSold(loc()); sold[k] = (sold[k] || 0) + 1; } if (tutAt('buy')) tutSet('gate');
+  let worn = true; S.money -= it.price; if (it.left != null) { const sold = shopSold(loc()); sold[k] = (sold[k] || 0) + 1; } if (tutAt('buy')) tutSet('gate');
   if (k === 'slot') { S.slots++; S.lines[S.slots - 1] = { rig: 'set', bait: 'scraps', phase: 'idle' }; }
-  else if (k === 'rod') { const r = RODS[Math.max(...S.rodsOwned.map(id => RODS.findIndex(x => x.id === id))) + 1]; S.rodsOwned.push(r.id); S.rod = r.id; }
   else if (k === 'trig') { S.trophyRig = true; S.seen['rig:trophy'] = true; }
-  else if (k === 'line') { const x = LINE_TEST[Math.max(...S.linesOwned.map(id => LINE_TEST.findIndex(y => y.id === id))) + 1]; S.linesOwned.push(x.id); S.line = x.id; }
-  else if (k === 'pail') { const x = BUCKETS[Math.max(...S.pailsOwned.map(id => BUCKETS.findIndex(y => y.id === id))) + 1]; S.pailsOwned.push(x.id); S.pail = x.id; }
-  else if (k === 'weapon') { const w = WEAPONS[best(WEAPONS, S.weaponsOwned) + 1]; S.weaponsOwned.push(w.id); S.weapon = w.id; }
-  else if (k === 'cloak') { const x = CLOAKS[best(CLOAKS, S.cloaksOwned) + 1]; S.cloaksOwned.push(x.id); S.cloak = x.id; }
-  else if (k === 'boots') { const x = BOOTS[best(BOOTS, S.bootsOwned) + 1]; S.bootsOwned.push(x.id); S.boots = x.id; }
-  else if (k === 'gamepack') { const x = PACKS[best(PACKS, S.packsOwned) + 1]; S.packsOwned.push(x.id); S.pack_ = x.id; }
-  else if (k === 'pick') { const x = PICKS[best(PICKS, S.picksOwned) + 1]; S.picksOwned.push(x.id); S.pick = x.id; }
-  else if (k === 'lamp') { const x = LAMPS[best(LAMPS, S.lampsOwned) + 1]; S.lampsOwned.push(x.id); S.lamp = x.id; }
-  else if (k === 'sack') { const x = SACKS[best(SACKS, S.sacksOwned) + 1]; S.sacksOwned.push(x.id); S.sack_ = x.id; }
+  else if (GEAR[k]) { const G = GEAR[k], m = it.made; S[G.owned].push(m.id); if (it.verdict.v !== 'nobetter') S[G.use] = m.id; else worn = false; } // a piece made here: it is yours, and in use unless you own better
   else if (k.startsWith('charge:')) { const b = k.slice(7); S.charges[b] = (S.charges[b] || 0) + CHARGES[b].qty; S.seen[k] = true; if (S.chargeSel === 'none') S.chargeSel = b; }
   else if (k.startsWith('aid:')) { const b = k.slice(4); S.aids[b] = (S.aids[b] || 0) + AIDS[b].qty; S.seen[k] = true; if (S.aidSel === 'none') S.aidSel = b; }
   else if (k.startsWith('shot:')) { const b = k.slice(5); S.shot[b] = (S.shot[b] || 0) + SHOT[b].qty; S.seen[k] = true; if (S.shotSel === 'stones') S.shotSel = b; }
@@ -10725,7 +10833,7 @@ function buy(k) {
   else if (k.startsWith('bait:')) { const b = k.slice(5); S.bait[b] = (S.bait[b] || 0) + BAITS[b].qty; S.seen[k] = true; }
   else if (k === 'boat') { const bi = BOATS.findIndex(b => b.id === S.boat); S.boat = BOATS[bi + 1].id; }
   else if (k === 'chart') { S.known.spaceport = true; setTimeout(() => toast('One island on it, at the far edge of the world. It is on your chart now.'), 900); }
-  save(); render(); renderSheet(); toast(`Bought ${it.name}.`);
+  save(); render(); renderSheet(); toast(`Bought ${it.name}.` + (it.made ? (worn ? ' It is in use.' : ' It is in your kit; what you use is better.') : ''));
 }
 
 // Something too heavy for the line took the bait: the line comes back cut. Counted per line in use (S.broke), said in a toast every
@@ -10848,7 +10956,7 @@ function renderAction() {
   const i = S.sel, L = S.lines[i], box = $('#action');
   if (!L) { box.innerHTML = '<div class="note">Pick a line.</div>'; return; }
   if (L.phase === 'idle') {
-    box.innerHTML = `<div class="rigrow"><div class="rigsum"><div class="l1">${RIG_LABEL[L.rig]} · ${baitLabel(L.bait)}</div><div class="l2">${rodOf().name} · ${lineOf().name}</div></div>${S.prologue ? '' : '<button class="rigbtn" data-act="open" data-k="rig">Change rig</button>'}</div>
+    box.innerHTML = `<div class="rigrow"><div class="rigsum"><div class="l1">${RIG_LABEL[L.rig]} · ${baitLabel(L.bait)}</div><div class="l2">${gearShort(rodOf())} · ${gearShort(lineOf())}</div></div>${S.prologue ? '' : '<button class="rigbtn" data-act="open" data-k="rig">Change rig</button>'}</div>
       <div class="note">${S.prologue && S.casts === 0 ? 'Cast the rod. When the float dips, tap Reel, then keep the fish inside the net.' : rigNote(L)}</div>${brokeNote()}
       <button class="cta go ${S.prologue ? 'tut' : ''}" data-act="cast" data-i="${i}">${L.rig === 'hand' ? 'Cast' : 'Set the line'}</button>`;
   } else if (L.phase === 'waiting') {
@@ -10909,8 +11017,9 @@ function renderSheet() {
       const far = l.id !== S.loc && !withinReach(l), days = l.id === S.loc ? 0 : sailDays(l), dayTxt = days === 1 ? 'a day out' : days + ' days out';
       const sub = st === 'fog' ? (l.range > R ? 'Land, by the gulls. Needs ' + anA(need ? need.name.toLowerCase() : 'bigger boat') + '.' : far ? `Land, by the gulls, ${dayTxt}. Too far for your ${boat.name.toLowerCase()}.` : `Land, by the gulls, ${dayTxt}. Nobody you know has been.`)
         : st === 'known' ? (l.range > R ? 'Rumored. Needs ' + anA(need ? need.name.toLowerCase() : 'bigger boat') + '.' : far ? `Rumored, ${dayTxt}. Too far for your ${boat.name.toLowerCase()}.` : 'Rumored: ' + l.rumor) : (far ? `${dayTxt}: too far for your ${boat.name.toLowerCase()}. ` : '') + l.blurb;
+      const ups = st === 'visited' ? shopUpgrades(l) : 0; // what its shop holds that would better what you carry now
       const out = l.range > R || far; // not to be sailed to from here with this boat: an island you have landed on keeps its name and its flag at full strength all the same
-      return { range: l.range, html: `<button class="row st-${st} ${l.id === mapSel ? 'sel' : ''} ${st !== 'visited' && (st === 'fog' || out) ? 'dim' : ''} ${st === 'visited' && out ? 'far' : ''}" data-act="node" data-k="${l.id}"><span class="mk ${st}"></span><div class="name"><span class="nm">${name}</span> <span class="ttag">tier ${l.range}</span>${st === 'visited' ? '<span class="vtag visited">visited</span>' : st === 'known' ? '<span class="vtag not">not visited</span>' : ''}${st === 'visited' ? (l.shop ? '<span class="mtag shop">shop</span>' : l.sell ? '<span class="mtag sell">traders only · no shop</span>' : '<span class="mtag none">no market</span>') : ''}<small>${sub}</small></div>${l.id === S.loc ? '<div class="here">you are here</div>' : ''}</button>` };
+      return { range: l.range, html: `<button class="row st-${st} ${l.id === mapSel ? 'sel' : ''} ${st !== 'visited' && (st === 'fog' || out) ? 'dim' : ''} ${st === 'visited' && out ? 'far' : ''}" data-act="node" data-k="${l.id}"><span class="mk ${st}"></span><div class="name"><span class="nm">${name}</span> <span class="ttag">tier ${l.range}</span>${st === 'visited' ? '<span class="vtag visited">visited</span>' : st === 'known' ? '<span class="vtag not">not visited</span>' : ''}${st === 'visited' ? (l.shop ? '<span class="mtag shop">shop</span>' : l.sell ? '<span class="mtag sell">traders only · no shop</span>' : '<span class="mtag none">no market</span>') : ''}${st === 'visited' && ups ? `<span class="mtag up">▲ ${ups} upgrade${ups > 1 ? 's' : ''} for you</span>` : ''}<small>${sub}</small></div>${l.id === S.loc ? '<div class="here">you are here</div>' : ''}</button>` };
     }).reduce((acc, row) => { // the legend is grouped by tier, each group headed by the boat that reaches it
       if (row.range !== acc.last) { const b = BOATS.find(x => x.range === row.range); acc.out.push(`<div class="tierhead">Tier ${row.range}${row.range === 0 ? ' · where you washed up' : b ? ' · ' + (row.range <= R ? 'your boat reaches it' : 'needs ' + anA(b.name.toLowerCase())) : ''}</div>`); acc.last = row.range; }
       acc.out.push(row.html); return acc; }, { out: [], last: -1 }).out.join('');
@@ -10929,7 +11038,7 @@ function renderSheet() {
     const L = S.lines[S.sel], busy = !L || L.phase !== 'idle', rigs = [['hand', 'Rod'], ['set', 'Set line'], ['trophy', 'Trophy line']];
     const known = key => S.seen[key] || ['rig:hand', 'rig:set', 'bait:scraps'].includes(key);
     const seg = (items, cur, act, dis) => { const have = items.filter(([k]) => known(act + ':' + k)); return `<div class="seg icons">${have.map(([k, n]) => `<button data-act="${act}" data-k="${k}" class="${cur === k ? 'sel' : ''}" ${busy || dis(k) ? 'disabled' : ''}>${icon(act + ':' + k)}<span>${n}</span></button>`).join('')}${have.length < items.length ? '<button class="empty" disabled><div class="slot"></div><span>empty</span></button>' : ''}</div>`; }; // only what you have ever had; one empty slot stands for whatever you equip later
-    const gearRows = (list, owned, cur, kind, sub) => list.filter(x => owned.includes(x.id)).map(x => `<div class="row ${x.id === cur ? 'sel' : ''}">${icon(kind + ':' + x.id)}<div class="name" style="flex:1">${x.name}<small>${sub(x)}</small></div>${x.id === cur ? '<div class="here">in use</div>' : `<button class="buy" data-act="equip" data-k="${kind}:${x.id}">USE</button>`}</div>`).join('');
+    const gearRows = (list, owned, cur, kind, sub) => gearRowsOf(kind, sub, false);
     el.innerHTML = `<div class="head"><h2>Rig · Line ${S.sel + 1}</h2><button class="x" data-act="close">✕</button></div>
       ${busy ? '<div class="note">This line is in the water. Pull it in to change its rig or bait.</div>' : ''}
       <div class="box"><h3>RIG</h3>${seg(rigs, L && L.rig, 'rig', k => k === 'trophy' && !S.trophyRig)}<div class="note">${L && L.rig === 'hand' ? 'Tap Reel on the hit, then keep the fish in the net. Rarer fish take a better rod.' : L && L.rig === 'set' ? 'Soaks until something takes it, a chance every second, even while you are away. A quick hook is a small fish; a long soak grows it. No fight.' : 'Soaks for minutes, a chance every second. Hooks big fish, bigger the longer it waits. Needs shrimp or squid. You still land it.'}${S.trophyRig ? '' : ' The trophy rig is sold at the harbor.'}</div></div>
@@ -10943,7 +11052,7 @@ function renderSheet() {
     const busy = MODE === 'hunt' && HU && HU.phase !== 'idle';
     const known = key => S.seen[key] || ['shot:stones', 'call:none'].includes(key);
     const seg = (items, cur, act, dis) => { const have = items.filter(([k]) => known(act + ':' + k)); return `<div class="seg icons">${have.map(([k, n]) => `<button data-act="${act}" data-k="${k}" class="${cur === k ? 'sel' : ''}" ${busy || dis(k) ? 'disabled' : ''}>${icon(act + ':' + k)}<span>${n}</span></button>`).join('')}${have.length < items.length ? '<button class="empty" disabled><div class="slot"></div><span>empty</span></button>' : ''}</div>`; }; // only what you have ever had; one empty slot stands for whatever you equip later
-    const gearRows = (list, owned, cur, kind, sub) => list.filter(x => owned.includes(x.id)).map(x => `<div class="row ${x.id === cur ? 'sel' : ''}">${icon(kind + ':' + x.id)}<div class="name" style="flex:1">${x.name}<small>${sub(x)}</small></div>${x.id === cur ? '<div class="here">in use</div>' : `<button class="buy" data-act="equip" data-k="${kind}:${x.id}" ${busy ? 'disabled' : ''}>USE</button>`}</div>`).join('');
+    const gearRows = (list, owned, cur, kind, sub) => gearRowsOf(kind, sub, busy);
     el.innerHTML = `<div class="head"><h2>Hunting kit</h2><button class="x" data-act="close">✕</button></div>
       ${busy ? '<div class="note">Mid-stalk. Finish or give up before changing your kit.</div>' : ''}
       <div class="box"><h3>SHOT</h3>${seg(Object.entries(SHOT).map(([k, b]) => [k, k === 'stones' ? 'Stones' : b.short + ' ×' + (S.shot[k] || 0)]), shotOf(), 'shot', k => k !== 'stones' && !(S.shot[k] > 0))}<div class="note">Stones are free. The shops sell better shot: some brings rarer game out, some pays better, some keeps the animal calm. One is spent per shot.</div></div>
@@ -10957,7 +11066,7 @@ function renderSheet() {
     const busy = MODE === 'mine' && MI && MI.pry;
     const known = key => S.seen[key] || ['charge:none', 'aid:none'].includes(key);
     const seg = (items, cur, act, dis) => { const have = items.filter(([k]) => known(act + ':' + k)); return `<div class="seg icons">${have.map(([k, n]) => `<button data-act="${act}" data-k="${k}" class="${cur === k ? 'sel' : ''}" ${busy || dis(k) ? 'disabled' : ''}>${icon(act + ':' + k)}<span>${n}</span></button>`).join('')}${have.length < items.length ? '<button class="empty" disabled><div class="slot"></div><span>empty</span></button>' : ''}</div>`; };
-    const gearRows = (list, owned, cur, kind, sub) => list.filter(x => owned.includes(x.id)).map(x => `<div class="row ${x.id === cur ? 'sel' : ''}">${icon(kind + ':' + x.id)}<div class="name" style="flex:1">${x.name}<small>${sub(x)}</small></div>${x.id === cur ? '<div class="here">in use</div>' : `<button class="buy" data-act="equip" data-k="${kind}:${x.id}" ${busy ? 'disabled' : ''}>USE</button>`}</div>`).join('');
+    const gearRows = (list, owned, cur, kind, sub) => gearRowsOf(kind, sub, busy);
     el.innerHTML = `<div class="head"><h2>Mining kit</h2><button class="x" data-act="close">✕</button></div>
       ${busy ? '<div class="note">Mid-pry. Finish or leave the stone before changing your kit.</div>' : MODE === 'mine' ? '<div class="note">A new lamp lights the next descent; an aid is picked up on the way down.</div>' : ''}
       <div class="box"><h3>CHARGE</h3>${seg(Object.entries(CHARGES).map(([k, b]) => [k, k === 'none' ? 'None' : b.short + ' ×' + (S.charges[k] || 0)]), chargeOf(), 'charge', k => k !== 'none' && !(S.charges[k] > 0))}<div class="note">Set a blast and the next strike opens a block of tiles around the one you hit. Powder a small block, dynamite a wide one. Spent per blast; the roof feels every tile.</div></div>
@@ -10982,7 +11091,7 @@ function renderSheet() {
       <div class="note" id="ixNote"></div><div id="ixRows"></div><button class="buy more" id="ixMore" data-act="ixmore">Show more</button>`;
     indexMore();
   } else if (sheetKind === 'inv') {
-    const total = bucketTotal(), boat = BOATS.find(b => b.id === S.boat), rod = RODS.find(r => r.id === S.rod);
+    const total = bucketTotal(), boat = BOATS.find(b => b.id === S.boat), rod = rodOf();
     const landed = S.pending && !SP[S.pending.id].kind && S.bucket.length >= bucketCap() ? SP[S.pending.id] : null;
     const order = S.bucket.map((f, j) => j); if (landed) order.sort((a, b) => S.bucket[a].value - S.bucket[b].value); // making room: the cheapest fish first, so the one to let go is at the top
     const rows = order.map(j => { const f = S.bucket[j], sp = SP[f.id], V = f.v ? VARIANTS[f.v] : null, r = rarityOf(sp); return `<div class="row"><canvas class="mini" width="64" height="36" data-fish="${f.id}" data-known="1" data-v="${fishMode(f) === 'color' ? '' : fishMode(f)}"></canvas><div class="name" style="flex:1">${V ? `<span style="color:${V.col}">${V.name}</span> ` : ''}${sp.name}<small><span style="color:${RARITY[r].col}">${RARITY[r].name}</span> · ${f.cm} cm · ${fmtKg(fishKg(f))}${f.trophy ? ' · ★ trophy' : ''}</small></div><div class="price">${money(f.value)}</div><button class="buy" data-act="release" data-i="${j}">LET GO</button></div>`; }).join('');
@@ -11017,14 +11126,14 @@ function renderSheet() {
     drawIcons(el);
     drawMinis(el); drawFaces(el);
   } else if (sheetKind === 'shop') {
-    const shopIcon = it => it.k === 'rod' ? 'rod:' + RODS[Math.max(...S.rodsOwned.map(id => RODS.findIndex(x => x.id === id))) + 1].id : it.k === 'line' ? 'line:' + LINE_TEST[Math.max(...S.linesOwned.map(id => LINE_TEST.findIndex(x => x.id === id))) + 1].id : it.k === 'pail' ? 'pail:' + BUCKETS[Math.max(...S.pailsOwned.map(id => BUCKETS.findIndex(x => x.id === id))) + 1].id : it.k.startsWith('bait:') ? it.k : it.k.startsWith('shot:') ? it.k : it.k.startsWith('call:') ? it.k : it.k === 'weapon' ? 'weapon:' + WEAPONS[best(WEAPONS, S.weaponsOwned) + 1].id : it.k === 'cloak' ? 'cloak:' + CLOAKS[best(CLOAKS, S.cloaksOwned) + 1].id : it.k === 'boots' ? 'boots:' + BOOTS[best(BOOTS, S.bootsOwned) + 1].id : it.k === 'gamepack' ? 'gamepack:' + PACKS[best(PACKS, S.packsOwned) + 1].id : it.k === 'pick' ? 'pick:' + PICKS[best(PICKS, S.picksOwned) + 1].id : it.k === 'lamp' ? 'lamp:' + LAMPS[best(LAMPS, S.lampsOwned) + 1].id : it.k === 'sack' ? 'sack:' + SACKS[best(SACKS, S.sacksOwned) + 1].id : it.k.startsWith('charge:') || it.k.startsWith('aid:') ? it.k : it.k === 'boat' ? 'boat:' + (loc().spaceport ? 'starship' : BOATS[BOATS.findIndex(b => b.id === S.boat) + 1].id) : it.k === 'weapon' ? 'weapon:' + WEAPONS[WEAPONS.findIndex(w => w.id === S.weapon) + 1].id : it.k === 'slot' ? 'rig:set' : it.k === 'trig' ? 'rig:trophy' : null;
-    const rows = shopItems().map(it => `<div class="row">${shopIcon(it) ? icon(shopIcon(it)) : ''}<div class="name" style="flex:1">${it.name}<small>${it.sub}</small></div><div style="display:grid;gap:4px;justify-items:end"><div class="price">${money(it.price)}</div>${it.stock ? `<div class="stock ${it.soldOut ? 'out' : ''}">${it.stock}</div>` : ''}<button class="buy" data-act="buy" data-k="${it.k}" ${it.locked || it.soldOut || S.money < it.price ? 'disabled' : ''}>${it.locked ? 'LOCKED' : it.soldOut ? 'SOLD OUT' : 'BUY'}</button></div></div>`).join('');
+    const shopIcon = it => it.made ? it.k + ':' + it.made.grade : it.k.startsWith('bait:') || it.k.startsWith('shot:') || it.k.startsWith('call:') || it.k.startsWith('charge:') || it.k.startsWith('aid:') ? it.k : it.k === 'boat' ? 'boat:' + (loc().spaceport ? 'starship' : BOATS[BOATS.findIndex(b => b.id === S.boat) + 1].id) : it.k === 'slot' ? 'rig:set' : it.k === 'trig' ? 'rig:trophy' : null;
+    const rows = shopItems().map(it => `<div class="row ${it.verdict ? 'g-' + it.verdict.v : ''}">${shopIcon(it) ? icon(shopIcon(it)) : ''}<div class="name" style="flex:1">${it.name}${it.verdict ? ` <span class="gtag ${it.verdict.v}">${GEAR_TAG[it.verdict.v]}</span>` : ''}<small>${it.html || it.sub}</small></div><div style="display:grid;gap:4px;justify-items:end"><div class="price">${money(it.price)}</div>${it.stock ? `<div class="stock ${it.soldOut ? 'out' : ''}">${it.stock}</div>` : ''}<button class="buy" data-act="buy" data-k="${it.k}" ${it.locked || it.soldOut || it.owned || S.money < it.price ? 'disabled' : ''}>${it.locked ? 'LOCKED' : it.soldOut ? 'SOLD OUT' : it.owned ? 'YOURS' : 'BUY'}</button></div></div>`).join('');
     const kp = loc().keeper, said = talkLine;
     const board = loc().spaceport ? '' : boardOf(loc()).list.map(b => { const sp = SP[b.id], j = bestInBucket(b.id), have = j >= 0;
       return `<div class="poster ${b.done ? 'done' : ''}"><div class="nail"></div><div class="wanted">WANTED</div><canvas class="mini" width="64" height="36" data-fish="${b.id}" data-known="1"></canvas><div class="pname">${sp.name}</div><div class="pays">Pays ×${b.mult}</div>${b.done ? '<div class="stamp">PAID</div>' : have ? `<button class="buy" data-act="bounty" data-k="${b.id}">TURN IN · ${money(Math.round(S.bucket[j].value * b.mult))}</button>` : '<div class="pays dim">Bring one in</div>'}</div>`; }).join('');
     const tt = tutHere() ? tutShopText() : '';
-    const stock = shopStock(loc()), shelves = Object.keys(SHOP_SHELVES), here = shelves.filter(k => stock.has(k)).map(k => SHOP_SHELVES[k]), away = shelves.filter(k => !stock.has(k)).map(k => SHOP_SHELVES[k]);
-    el.innerHTML = `<div class="head"><h2>Shop · ${loc().name}</h2><button class="x" data-act="close">✕</button></div><div class="note">You have ${money(S.money)}.${loc().spaceport ? '' : ` On the shelves here beside the rods, lines, weapons, picks, bait and shot: ${here.join(', ')}. For ${away.join(', ')}, another port.`}</div>
+    const stock = shopStock(loc()), shelves = Object.keys(SHOP_SHELVES), here = shelves.filter(k => stock.has(k)).map(k => SHOP_SHELVES[k]), away = shelves.filter(k => !stock.has(k)).map(k => SHOP_SHELVES[k]), ups = shopUpgrades(loc());
+    el.innerHTML = `<div class="head"><h2>Shop · ${loc().name}</h2><button class="x" data-act="close">✕</button></div><div class="note">You have ${money(S.money)}.${loc().spaceport ? '' : ` Every rod, line, weapon and tool here is made here and sold nowhere else. ${ups ? `<b class="upsay">${ups} of them would better what you carry</b>` : 'None of them betters what you carry'}; each says how it measures against yours. On the shelves beside the rods, lines, weapons, picks, bait and shot: ${here.join(', ')}. For ${away.join(', ')}, another port.`}</div>
       ${tt ? `<div class="tide tut">${tt}</div>` : ''}
       ${keeperBox(loc(), said)}
       ${loc().sell && !loc().spaceport ? `<button class="cta ${haulCount() ? '' : 'alt'}" data-act="sell" ${haulCount() ? '' : 'disabled'}>Sell the haul · ${money(haulTotal())}</button>` : ''}
@@ -14642,6 +14751,7 @@ const ICON_PAL = {
   'boat:trawler': ['boat', { a: '#3e4a5a', b: '#1a2230', c: '#2a3440', d: '#c0c8d0' }], 'boat:clipper': ['boat', { a: '#2a2a3a', b: '#101018', c: '#4a3a2a', d: '#ffffff' }], 'boat:ironclad': ['boat', { a: '#5a5a66', b: '#2a2a30', c: '#3a3a44', d: '#8a8a96' }], 'boat:starship': ['boat', { a: '#e8e8f0', b: '#4a4a58', c: '#c03030', d: '#a0c0ff' }],
 };
 function iconC(key, sc, sil) { // sil: a dark silhouette, for things you have never had
+  key = String(key).split('@')[0]; // a piece made on an island wears its grade's icon
   const k = 'icon:' + key + ':' + sc + (sil ? ':s' : ''); let c = CACHE.get(k); if (c) return c;
   const [mask, pal] = ICON_PAL[key] || ICON_PAL['rig:hand'], m = ICON_MASKS[mask];
   c = document.createElement('canvas'); c.width = 20 * sc; c.height = 20 * sc; const x = c.getContext('2d');
@@ -24529,7 +24639,7 @@ function loose(shaky) {
   if (HU.shot !== 'stones') S.shot[HU.shot] = Math.max(0, (S.shot[HU.shot] || 0) - 1); // the shot is spent, hit or miss
   if (WEAPON().loud) S.scattered = now() + 60000; // a loud shot clears the ground for a while
   const hit = Math.abs(aim - HU.tx) <= band;
-  HU.proj = { t0: now(), dur: T_HUNT.flightMs, hit, aim, cls: (ICON_PAL['weapon:' + S.weapon] || ['sling'])[0] }; HU.hold = false; renderHunt(); // the shot flies first
+  HU.proj = { t0: now(), dur: T_HUNT.flightMs, hit, aim, cls: (ICON_PAL['weapon:' + (WEAPON().grade || WEAPON().id)] || ['sling'])[0] }; HU.hold = false; renderHunt(); // the shot flies first
   setTimeout(() => { if (!HU || !HU.proj) return; HU.proj = null; if (hit) take(); else missed(shaky); }, T_HUNT.flightMs);
 }
 function missed(shaky) { const fl = HU.flock; HU.flock = 0; HU.phase = 'miss'; tutFinishHunt(); $('#hbar').classList.add('miss'); toast(fl ? 'Wide. The whole flock is up and gone.' : shaky ? 'Your arm shook. It bolted.' : 'Wide. It bolted.'); setTimeout(() => { if (HU) { HU.phase = 'idle'; $('#hbar').classList.remove('miss'); renderHunt(); } }, 900); renderHunt(); }
@@ -24558,8 +24668,8 @@ function showTaken(c, kg, value, tags, line) {
   $('#card').innerHTML = `<div class="head">${head}</div>${pills.length ? `<div class="pills">${pills.map(t => `<div class="pill">${t.toUpperCase()}</div>`).join('')}</div>` : ''}
     <canvas class="art" id="ccv" width="192" height="112"></canvas><div class="fish">${c.name}</div>
     <div class="rar"><span class="badge" style="color:${RARITY[gr].col}">${RARITY[gr].name.toUpperCase()}</span>${c.legend ? '<span class="badge" style="color:' + RARITY.fabled.col + '">ONCE EVER</span>' : ''}</div>
-    <div class="size"><span>${fmtKg(kg)}</span></div><div class="sub">${WEAPON().name.toLowerCase()} · from ${DIST_NAME[HU ? HU.steps : 0]} · wind ${WIND_NAME[HU ? HU.wind : 'cross']} · ${PHASE_NAME[phaseAt(now())].toLowerCase()}</div>
-    <div class="stats"><div class="stat"><div class="n">WORTH</div><div class="v">${money(value)}</div></div><div class="stat"><div class="n">WEAPON</div><div class="v">${WEAPON().name}</div></div><div class="stat"><div class="n">GROUND</div><div class="v">${loc().hunt.name.replace(/^the /, '')}</div></div></div>
+    <div class="size"><span>${fmtKg(kg)}</span></div><div class="sub">${gearShort(WEAPON()).toLowerCase()} · from ${DIST_NAME[HU ? HU.steps : 0]} · wind ${WIND_NAME[HU ? HU.wind : 'cross']} · ${PHASE_NAME[phaseAt(now())].toLowerCase()}</div>
+    <div class="stats"><div class="stat"><div class="n">WORTH</div><div class="v">${money(value)}</div></div><div class="stat"><div class="n">WEAPON</div><div class="v">${gearShort(WEAPON())}</div></div><div class="stat"><div class="n">GROUND</div><div class="v">${loc().hunt.name.replace(/^the /, '')}</div></div></div>
     ${c.legend ? `<div class="note">${BEAST_LORE[c.id]} There is only one. The ground will not show it again.</div>` : ''}<div class="note">${line}</div><div class="acts"><button class="cta" data-act="closecard">Bag it</button></div>`;
   $('#cardWrap').hidden = false;
   const x = $('#ccv').getContext('2d'); x.imageSmoothingEnabled = false;
@@ -24573,7 +24683,7 @@ function renderHunt() {
   const tt = tutHere() ? tutHuntText(ph) : ''; $('#hNote').classList.toggle('tut', !!tt);
   $('#hbar').classList.toggle('flock', !!(HU && HU.flock && ph === 'seen'));
   if (ph === 'idle') { const sh = SHOT[shotOf()], ca = CALLS[callOf()], pw = pressWord(S.loc); $('#hNote').innerHTML = tt || `<b>${w.name}</b> · wait, creep, draw, loose${pw ? ` · <span class="look">${pw}</span>` : ''}`;
-    box.innerHTML = `<div class="rigrow"><div class="rigsum"><div class="l1">${w.name} · ${sh.short}${shotOf() !== 'stones' ? ' ×' + S.shot[shotOf()] : ''}${callOf() !== 'none' ? ` · ${ca.short} ×${S.calls[callOf()]}` : ''}</div><div class="l2">Takes game to ${fmtKg(w.power)} · ${maxSteps()} steps${CLOAK().id !== 'none' ? ' · ' + CLOAK().name.toLowerCase() : ''} · bag ${S.pack.length}/${packCap()}</div></div><button class="rigbtn" data-act="open" data-k="kit">Change kit</button></div><div class="note">${loc().hunt.name ? 'Quiet. Something is out there. The wind will tell you how close you can get.' : ''}</div><button class="cta" data-act="stalk">Wait for a sign</button>`; $('#hband').style.width = '0'; }
+    box.innerHTML = `<div class="rigrow"><div class="rigsum"><div class="l1">${gearShort(w)} · ${sh.short}${shotOf() !== 'stones' ? ' ×' + S.shot[shotOf()] : ''}${callOf() !== 'none' ? ` · ${ca.short} ×${S.calls[callOf()]}` : ''}</div><div class="l2">Takes game to ${fmtKg(w.power)} · ${maxSteps()} steps${CLOAK().id !== 'none' ? ' · ' + CLOAK().name.toLowerCase() : ''} · bag ${S.pack.length}/${packCap()}</div></div><button class="rigbtn" data-act="open" data-k="kit">Change kit</button></div><div class="note">${loc().hunt.name ? 'Quiet. Something is out there. The wind will tell you how close you can get.' : ''}</div><button class="cta" data-act="stalk">Wait for a sign</button>`; $('#hband').style.width = '0'; }
   else if (ph === 'wait') { $('#hNote').innerHTML = tt || `<b>Still.</b> Wind ${WIND_NAME[HU.wind]}.`; box.innerHTML = `<div class="note">Keep low. Something will show.</div><button class="cta alt" data-act="leavehunt">Give up</button>`; }
   else if (ph === 'seen') { const c = HU.roll.c, far = HU.steps < maxSteps();
     $('#hNote').innerHTML = (tt ? tt + '<br>' : '') + (HU.flock ? `<b class="gold">A FLOCK · ${HU.flock} left</b> · ` : '') + `<b>${c.name}</b> · ${fmtKg(HU.roll.kg)} · ${tempoWord()} · <span class="${HU.look ? 'look' : ''}">${HU.look ? 'head up!' : distName(HU.steps)}</span> · wind ${WIND_NAME[HU.wind]}`;
@@ -24620,7 +24730,7 @@ function drawShot(P, t, gy, cx, ah, ax) {
   if (p > 0.82) { const b = (p - 0.82) / 0.18; g.fillStyle = P.hit ? `rgba(255,240,180,${(0.9 - b * 0.9).toFixed(2)})` : `rgba(200,190,170,${(0.5 - b * 0.5).toFixed(2)})`; const r = 1 + (b * 3) | 0; g.fillRect(x1 - r, y1, r * 2 + 1, 1); g.fillRect(x1, y1 - r, 1, r * 2 + 1); }
 }
 function drawHunter(gy, t) {
-  const c = hunterC(S.weapon, !!(HU && HU.hold)), sc = 2, bob = HU && HU.hold ? 0 : Math.sin(t / 900) > 0.5 ? 1 : 0;
+  const c = hunterC(WEAPON().grade || WEAPON().id, !!(HU && HU.hold)), sc = 2, bob = HU && HU.hold ? 0 : Math.sin(t / 900) > 0.5 ? 1 : 0;
   const X = 4, Y = gy + 46 + bob; // the foreground band, bottom left, facing the ground to the right
   g.save(); g.translate(X + c.width * sc, Y); g.scale(-sc, sc); g.imageSmoothingEnabled = false; g.drawImage(c, 0, 0); g.restore();
   g.fillStyle = 'rgba(0,0,0,0.22)'; g.fillRect(X + 8, Y + c.height * sc - 2, c.width * sc - 16, 2); // a shadow under him
@@ -24721,7 +24831,7 @@ function pryBand(m) {
 }
 function startPry(i) {
   const tl = MI.tiles[i], m = MM[tl.m]; MI.sel = i;
-  if (m.hard > PICK().hard) { toast(`${m.name}: too hard for your ${PICK().name.toLowerCase()}. It stays in the wall.`); renderMine(); return; }
+  if (m.hard > PICK().hard) { toast(`${m.name}: too hard for your ${gearShort(PICK()).toLowerCase()}. It stays in the wall.`); renderMine(); return; }
   MI.pry = { i, p: 0, hold: false }; renderMine();
 }
 function stepMine(dt) {
@@ -24762,7 +24872,7 @@ function showFound(m, find, tags, line) {
   $('#card').innerHTML = `<div class="head" ${V && find.v !== 'chipped' ? `style="color:${V.col}"` : ''}>${head}</div>${pills.length ? `<div class="pills">${pills.map(t => `<div class="pill">${t.toUpperCase()}</div>`).join('')}</div>` : ''}
     <canvas class="art" id="ccv" width="192" height="112"></canvas><div class="fish">${V ? `<span style="color:${V.col}">${V.name}</span> ` : ''}${m.name}</div>
     <div class="rar"><span class="badge" style="color:${RARITY[mr].col}">${RARITY[mr].name.toUpperCase()}</span>${V ? `<span class="badge" style="color:${V.col}">${V.name.toUpperCase()}${V.mult < 1 ? ' · HALF WORTH' : ' · ×' + V.mult + ' WORTH'}</span>` : ''}${m.relic ? '<span class="badge" style="color:' + RARITY.relic.col + '">ONCE EVER</span>' : ''}</div>
-    <div class="size"><span>${fmtKg(find.kg)}</span></div><div class="sub">${PICK().name.toLowerCase()} · level ${find.level} · ${HARD_NAME[m.hard]}</div>
+    <div class="size"><span>${fmtKg(find.kg)}</span></div><div class="sub">${gearShort(PICK()).toLowerCase()} · level ${find.level} · ${HARD_NAME[m.hard]}</div>
     <div class="stats"><div class="stat"><div class="n">WORTH</div><div class="v">${money(find.value)}</div></div><div class="stat"><div class="n">HARDNESS</div><div class="v">${m.hard} of 10</div></div><div class="stat"><div class="n">MINE</div><div class="v">${cap1(loc().mine.name.replace(/^the /, ''))}</div></div></div>
     ${m.relic ? `<div class="note">${RELIC_LORE[m.id]} There is only one. The rock will not give it twice.</div>` : ''}<div class="note">${line}</div>
     <div class="acts">${full ? '<button class="cta" data-act="open" data-k="inv">Make room</button><button class="cta alt" data-act="leavefind">Leave it</button>' : '<button class="cta" data-act="closecard">Sack it</button>'}</div>`;
