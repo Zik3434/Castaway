@@ -102,6 +102,9 @@ html.hudfold #hud,html.hudfold .ihud{gap:0;padding-bottom:6px}
 .tabs button{flex:1;font-family:var(--display);font-size:9px;padding:9px 4px;background:rgba(11,17,34,.72);border:2px solid var(--edge);color:var(--text)}
 .tabs button.pulse{border-color:var(--brass);color:var(--brass);animation:beacon 1.1s ease-in-out infinite alternate}
 @keyframes beacon{from{box-shadow:0 0 0 0 rgba(240,192,80,0);background:rgba(11,17,34,.72)}to{box-shadow:0 0 14px 4px rgba(240,192,80,.85);background:rgba(60,46,14,.9)}}
+#iAct.shut{border-color:var(--bad);color:var(--bad);background:rgba(60,16,14,.6)}
+.shuttag{font-family:var(--display);font-size:7px;margin-left:6px;padding:2px 4px;border:1px solid var(--bad);color:var(--bad);vertical-align:middle;white-space:nowrap}
+.shutsay{color:var(--bad)}
 .tabs button.exit{flex:0 0 auto;min-width:50px;margin-left:auto;background:#1f7a3a;border-color:#3fc46a;color:#fff}
 .tabs button.exit.pulse{border-color:#7fe59a;color:#fff;animation:beaconG 1.1s ease-in-out infinite alternate}
 @keyframes beaconG{from{box-shadow:0 0 0 0 rgba(63,196,106,0);background:#1f7a3a}to{box-shadow:0 0 14px 4px rgba(63,196,106,.85);background:#2a9a4a}}
@@ -11195,7 +11198,8 @@ function renderSheet() {
     drawIcons(el);
   } else if (sheetKind === 'spots') {
     const l = loc();
-    const rows = l.spots.map(sp => { const locked = sp.boat && S.boat === 'none'; return `<button class="row ${sp.id === S.spot ? 'sel' : ''} ${locked ? 'dim' : ''}" data-act="spot" data-k="${sp.id}"><div class="name">${sp.name}<small><b class="kind">${(KIND_NAME[sp.kind] || 'Shore').toUpperCase()}${sp.boat ? ' · FROM THE BOAT' : ''}</b> · ${locked ? 'Needs a boat. ' : ''}${sp.known}${sp.boat ? ' <i class="offnote">Slower bites, rarer and bigger fish.</i>' : ''}</small></div>${sp.id === S.spot ? '<div class="here">fishing here</div>' : ''}</button>`; }).join('');
+    const shut = spotClosed(l);
+    const rows = l.spots.map(sp => { const locked = sp.boat && S.boat === 'none', cl = shut && shut.spot.id === sp.id && sp.id !== S.spot ? shut : null; return `<button class="row ${sp.id === S.spot ? 'sel' : ''} ${locked || cl ? 'dim' : ''}" data-act="spot" data-k="${sp.id}"><div class="name">${sp.name}${cl ? ' <span class="shuttag">CLOSED</span>' : ''}<small><b class="kind">${(KIND_NAME[sp.kind] || 'Shore').toUpperCase()}${sp.boat ? ' · FROM THE BOAT' : ''}</b> · ${cl ? `<span class="shutsay">${closedSay(cl)}</span> ` : ''}${locked ? 'Needs a boat. ' : ''}${sp.known}${sp.boat ? ' <i class="offnote">Slower bites, rarer and bigger fish.</i>' : ''}</small></div>${sp.id === S.spot ? '<div class="here">fishing here</div>' : ''}</button>`; }).join('');
     el.innerHTML = `<div class="head"><h2>Spots · ${l.name}</h2><button class="x" data-act="close">✕</button></div><div class="note">${l.spots.length} places to fish here. Offshore is fished from your own boat: every line waits longer out there, and rare fish come far more often. Moving pulls in your lines.</div><div class="legend">${rows}</div>`;
   } else if (sheetKind === 'index') {
     // Thousands of entries: one record at a time (fish, game, minerals), filtered (this island, caught, everything), a screenful at
@@ -15949,6 +15953,45 @@ function drawGame(t) {
   g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, 0, W, 1);
 }
 
+// ---------- closed for a while ----------
+// Once in a long while a place is shut: the roof came down in the mine, a slide is across the way into the ground, a net has fouled
+// a fishing spot. Which, when and why is a fixed hash of the island, the place and the slot of real time it falls in (T_CLOSE: so
+// many minutes a slot, such odds a slot), so nothing is saved, a reload keeps it, and it opens again by itself when its slot ends.
+// Never while the first lesson runs on its island, never in the prologue, never the mine you are already down, never an island's
+// first fishing spot or the water off its shore, and at most one of its spots at a time. The shop and the market are never shut:
+// selling is how everything else is paid for.
+const T_CLOSE = {
+  mine: { odds: 0.04, ms: 40 * 60000 },  // a mine: one slot in twenty-five, forty minutes to open it again
+  hunt: { odds: 0.03, ms: 25 * 60000 },  // a hunting ground
+  spot: { odds: 0.05, ms: 15 * 60000 },  // an island's fishing spots as one: at these odds one of them is fouled for a quarter of an hour
+  told: 2600,                            // ms after a landfall before the word of it goes round
+};
+const CLOSE_WHY = { // what happened, and what is being done about it
+  mine: [['The roof came down', 'They are digging it out.'], ['It has flooded', 'The pumps are going.'], ['Bad air below', 'Nobody goes down until it clears.'], ['The ladder went', 'A new one is being let down.']],
+  hunt: [['A slide is across the way in', 'It is being cleared.'], ['The ground is being rested', 'Nobody is let through.'], ['The way in has washed out', 'It is being made good.'], ['Something big came through', 'Everything has gone to ground.']],
+  spot: [['A net has fouled it', 'It is being cleared.'], ['The water has turned', 'Nothing will bite until it clears.'], ['Wreckage has drifted in', 'It is being hauled out.']],
+};
+function closedAt(l, kind, key, t) {
+  if (!l || S.prologue || l.id === 'sea' || l.noFish || tutHere()) return null;
+  const C = T_CLOSE[kind], tt = t == null ? now() : t, slot = Math.floor(tt / C.ms), seed = strSeed(l.id + '|' + kind + '|' + (key || ''));
+  if (hash32(seed + slot * 7919) / 4294967296 >= C.odds) return null;
+  const Y = CLOSE_WHY[kind], w = Y[hash32(seed * 3 + slot * 104729) % Y.length];
+  return { kind, why: w[0], more: w[1], until: (slot + 1) * C.ms, mins: Math.max(1, Math.ceil(((slot + 1) * C.ms - tt) / 60000)), slot };
+}
+const mineClosed = l => (l.mine && !(S.mine && S.mine.loc === l.id)) ? closedAt(l, 'mine') : null; // a descent already begun is not shut out of its own mine
+const huntClosed = l => l.hunt ? closedAt(l, 'hunt') : null;
+function spotClosed(l, id) { // the one spot of this island that is fouled now, if any: never its first, never offshore
+  const c = closedAt(l, 'spot'); if (!c) return null; const cands = l.spots.filter((sp, i) => i > 0 && !sp.boat); if (!cands.length) return null;
+  const sp = cands[hash32(strSeed(l.id + '|which') + c.slot * 31337) % cands.length]; return id == null || sp.id === id ? Object.assign({ spot: sp }, c) : null;
+}
+const closedSay = c => `${c.why}. ${c.more} Open again in about ${c.mins} min.`;
+// the word of it on landing: once an island and a slot, so a long stay hears of each closing once
+const CLOSE_TOLD = new Set();
+function closedTell(l) {
+  const say = [], add = (c, what) => { if (!c) return; const k = l.id + '|' + c.kind + '|' + c.slot; if (CLOSE_TOLD.has(k)) return; CLOSE_TOLD.add(k); say.push(`${cap1(what)}: closed. ${c.why}.`); };
+  add(mineClosed(l), l.mine && l.mine.name || 'the mine'); add(huntClosed(l), l.hunt && l.hunt.name || 'the hunting ground'); const sc = spotClosed(l); if (sc) add(sc, sc.spot.name);
+  say.forEach((m, i) => setTimeout(() => toast(m), T_CLOSE.told + i * 1800));
+}
 // ---------- the island: walk between the shaft head, the hunting ground, the village and the fishing spot ----------
 // The strip is four screens wide on an island with a mine: [shaft head][hunting gate][village][fishing shore] (three
 // without one). The fishing shore is the normal scene, so walking left from your seat takes you through the village to
@@ -15957,8 +16000,9 @@ let ISL = null;
 const isleScreens = l => l.noFish ? 1 : l.mine ? 3 : 2; // screens of land to the left of the shore
 function isleSpots(l) { if (l.noFish) return [{ id: 'shop', x: W + 0.5 * W + 14, label: 'Into the spaceport', hint: l.keeper ? l.keeper.name + ' runs the gantry.' : 'The spaceport.' }];
   const o = l.mine ? W : 0, sp = [];
-  if (l.mine) sp.push({ id: 'mine', x: 0.5 * W, label: S.mine && S.mine.loc === l.id ? `Back down (level ${S.mine.level})` : 'Down ' + (l.mine.name || 'the shaft'), hint: l.mine.gate });
-  sp.push({ id: 'hunt', x: o + 0.5 * W, label: 'Into ' + (l.hunt.name || 'the wild'), hint: l.hunt.gate },
+  const mc = mineClosed(l), hc = huntClosed(l);
+  if (l.mine) sp.push({ id: 'mine', x: 0.5 * W, label: mc ? 'Closed' : S.mine && S.mine.loc === l.id ? `Back down (level ${S.mine.level})` : 'Down ' + (l.mine.name || 'the shaft'), hint: mc ? `${cap1(l.mine.name || 'the mine')}: closed. ${closedSay(mc)}` : l.mine.gate, closed: mc });
+  sp.push({ id: 'hunt', x: o + 0.5 * W, label: hc ? 'Closed' : 'Into ' + (l.hunt.name || 'the wild'), hint: hc ? `${cap1(l.hunt.name || 'the ground')}: closed. ${closedSay(hc)}` : l.hunt.gate, closed: hc },
     { id: 'shop', x: o + W + 0.5 * W + 14, label: l.shop ? 'Into the shop' : l.sell ? 'Sell to the traders' : 'The camp', hint: l.shop ? (l.keeper ? l.keeper.name + ' keeps the shop.' : 'The shop.') : l.sell ? (l.keeper ? l.keeper.name + ' buys the whole haul.' : 'They buy the whole haul.') : 'Your bucket and your bag.' },
     { id: 'fish', x: o + 2 * W + shoreW - 16, label: 'Fishing spots', hint: l.spots.length + ' places to fish. Pick one.' });
   return sp; }
@@ -16013,6 +16057,7 @@ function enterFishing() { MODE = 'game'; $('#isle').hidden = true; $('#hunt').hi
 // adit at a shaft head, in through the door at a shop), then the cut. ISL.auto carries the walk; input waits for it.
 function startEntry(sp) {
   const l = loc(); let fn;
+  if (sp.closed) { toast(sp.hint); return; } // shut for now: the hint says why and for how long
   if (sp.id === 'hunt') fn = () => { if (tutAt('gate')) tutSet('hunt'); enterHunt(); };
   else if (sp.id === 'mine') fn = enterMine;
   else fn = () => { if (tutAt('village')) tutSet(l.keeper ? 'talk' : haulCount() ? 'sell' : 'gate'); openSheet(l.shop ? 'shop' : 'inv'); };
@@ -16039,7 +16084,7 @@ function renderIsle() {
   const hint = tt || (sp ? `<b>${sp.hint}</b>` : scr < huntScr ? `${cap1(l.mine.name || 'the shaft')} lies this way.` : scr === huntScr ? `${l.hunt.name ? cap1(l.hunt.name) : 'The wild'} lies this way.` : scr === villScr ? (l.shop ? 'The village. Walk up to the door.' : l.sell ? 'The traders\' camp.' : 'Your camp.') : 'The shore. Your lines are to the right.');
   const key = [S.money, clockText(now()), sp ? sp.id + sp.label : '', hint, wantsBeacon()].join('|'); if (key === isleUI) return; isleUI = key; // nothing it shows has changed: leave the page alone (this runs on every frame of a walk)
   mapBeacon(); $('#iMoney').textContent = money(S.money); $('#iClock').textContent = clockText(now());
-  const b = $('#iAct'); b.classList.toggle('ghost', !sp); b.textContent = sp ? sp.label : '·'; b.dataset.k = sp ? sp.id : '';
+  const b = $('#iAct'); b.classList.toggle('ghost', !sp); b.classList.toggle('shut', !!(sp && sp.closed)); b.textContent = sp ? sp.label : '·'; b.dataset.k = sp ? sp.id : '';
   $('#iHint').classList.toggle('tut', !!tt); $('#iHint').innerHTML = hint;
 }
 let isleUI = '';
@@ -16056,6 +16101,14 @@ function stepIsle(dt) {
     const over = A.en ? (A.arr && now() - A.arr >= A.after) || now() - A.t0 > 7000 : now() - A.t0 >= A.dur;
     if (!A.done && over) { A.done = true; const fn = A.fn; fadeTo(() => { if (ISL) ISL.auto = null; fn(); if (MODE === 'island') renderIsle(); }); } return; }
   if (ISL.walk) { ISL.px = clamp(ISL.px + ISL.walk * T.walkSpeed * dt, minX, maxX); ISL.dir = ISL.walk; ISL.anim += dt * T.walkFps; renderIsle(); }
+}
+// A closed place: two posts and crossed boards across the way in, a red rag on them, and a red cross where the brass mark would be.
+function drawClosed(x, gy, yy) {
+  const px = (X, Y, w, h, c) => { g.fillStyle = c; g.fillRect(X, Y, w, h); };
+  px(x - 13, gy - 19, 3, 19, '#3a2a1a'); px(x + 10, gy - 19, 3, 19, '#3a2a1a'); px(x - 12, gy - 19, 1, 19, '#6a5236'); px(x + 11, gy - 19, 1, 19, '#6a5236'); // the posts
+  for (let k = 0; k <= 22; k++) { const X = x - 11 + k, y1 = gy - 17 + Math.round(k * 12 / 22), y2 = gy - 5 - Math.round(k * 12 / 22); px(X, y1, 1, 3, '#8a6a44'); px(X, y1, 1, 1, '#b08a5a'); px(X, y2, 1, 3, '#7a5c3a'); px(X, y2, 1, 1, '#a07a4a'); } // the boards, crossed
+  px(x - 2, gy - 14, 5, 6, '#c8362a'); px(x - 2, gy - 14, 5, 1, '#f06a5a'); px(x - 1, gy - 8, 2, 2, '#a02a20'); // the rag
+  for (let k = 0; k < 7; k++) { px(x - 3 + k, yy - 1 + k, 1, 2, '#e26b5a'); px(x + 3 - k, yy - 1 + k, 1, 2, '#e26b5a'); } // the cross
 }
 function isleFrame() { const k = Math.floor(ISL.anim) & 3; return ISL.walk || (ISL.auto && ISL.auto.moving) ? { spr: sprite(['walkA', 'stand', 'walkC', 'stand'][k]), bob: k & 1 ? -1 : 0 } : { spr: sprite('stand'), bob: 0 };
 }
@@ -16086,7 +16139,9 @@ function drawIsland(t) {
   drawVillage(l, isleSpots(l).find(sp => sp.id === 'shop').x, gy, t, nt); // the village building, at the walker's own scale, its smoke and lamps live
   sceneFx(l, t, nt);
   // the things you can press: a bobbing brass mark above each
-  { for (const sp of isleSpots(l)) { const up = sp.id === 'fish' ? 38 : sp.id === 'shop' ? villageSprite(l).doorH + 30 : Math.min(sp.id === 'mine' ? pitSprite(l, W).G.mark : wildSprite(l, W).mark + 14, gy - 70), yy = (gy - up + Math.sin(t / 300 + sp.x) * 1.5) | 0; g.fillStyle = '#f0c050'; g.fillRect(sp.x - 3 | 0, yy, 7, 2); g.fillRect(sp.x - 2 | 0, yy + 2, 5, 1); g.fillRect(sp.x - 1 | 0, yy + 3, 3, 1); g.fillRect(sp.x | 0, yy + 4, 1, 1); } }
+  { for (const sp of isleSpots(l)) { const up = sp.id === 'fish' ? 38 : sp.id === 'shop' ? villageSprite(l).doorH + 30 : Math.min(sp.id === 'mine' ? pitSprite(l, W).G.mark : wildSprite(l, W).mark + 14, gy - 70), yy = (gy - up + Math.sin(t / 300 + sp.x) * 1.5) | 0;
+      if (sp.closed) { drawClosed(sp.x | 0, gy, yy); continue; }
+      g.fillStyle = '#f0c050'; g.fillRect(sp.x - 3 | 0, yy, 7, 2); g.fillRect(sp.x - 2 | 0, yy + 2, 5, 1); g.fillRect(sp.x - 1 | 0, yy + 3, 3, 1); g.fillRect(sp.x | 0, yy + 4, 1, 1); } }
   // the fisherman
   const { spr, bob } = isleFrame();
   let fy = (ISL.px >= SX ? shoreTop(l, Math.min(shoreW - 1, Math.max(0, ISL.px - SX | 0))) : gy) - spr.height + 1 + bob, alpha = 1;
@@ -24707,7 +24762,8 @@ shopSay({
 // and it bolts. Band width is the weapon, less the animal's skittishness; swing speed is the animal.
 let HU = null;
 function enterHunt() {
-  const l = loc(); MODE = 'hunt'; $('#isle').hidden = true; $('#game').hidden = true; $('#hunt').hidden = false; HU = { phase: 'idle' };
+  const l = loc(), hcl = huntClosed(l); if (hcl) { toast(`${cap1(l.hunt.name || 'the ground')}: closed. ${closedSay(hcl)}`); if (MODE !== 'island') enterIsland('hunt'); return; }
+  MODE = 'hunt'; $('#isle').hidden = true; $('#game').hidden = true; $('#hunt').hidden = false; HU = { phase: 'idle' };
   $('#hName').textContent = l.hunt.name ? l.hunt.name[0].toUpperCase() + l.hunt.name.slice(1) : 'The wild'; $('#hSub').textContent = `${islandLabel(l)} · ${locTitle(l)}`;
   renderHunt(); window.scrollTo(0, 0);
 }
@@ -24955,7 +25011,8 @@ function startDescent() {
   S.mine = MI; save();
 }
 function enterMine() {
-  const l = loc(); if (!l.mine) return; MODE = 'mine'; $('#isle').hidden = true; $('#game').hidden = true; $('#hunt').hidden = true; $('#mine').hidden = false;
+  const l = loc(); if (!l.mine) return; const mcl = mineClosed(l); if (mcl) { toast(`${cap1(l.mine.name || 'the mine')}: closed. ${closedSay(mcl)}`); if (MODE !== 'island') enterIsland('mine'); return; }
+  MODE = 'mine'; $('#isle').hidden = true; $('#game').hidden = true; $('#hunt').hidden = true; $('#mine').hidden = false;
   if (S.mine && S.mine.loc === l.id) { MI = S.mine; MI.pry = null; MI.blast = false; MI.going = null; } else startDescent();
   $('#mName').textContent = cap1(l.mine.name); renderMine(); window.scrollTo(0, 0);
 }
@@ -25506,7 +25563,7 @@ function finishSail() {
   if (first && !L.noFish && S.order.filter(id => id !== 'shoal').length === 1) tutStart(to); // the first island after the shoal teaches the village and the wild
   save();
   fadeTo(() => { $('#cut').hidden = true; if (L.noFish) { ISL = null; enterIsland('shop'); } else enterFishing();
-    toast(`${first ? 'Landfall: ' : 'Sailed to '}${L.name}.` + (pulled ? ` Pulled in ${pulled} line${pulled > 1 ? 's' : ''}.` : '') + (first && L.vibe ? ' ' + L.vibe : '')); });
+    toast(`${first ? 'Landfall: ' : 'Sailed to '}${L.name}.` + (pulled ? ` Pulled in ${pulled} line${pulled > 1 ? 's' : ''}.` : '') + (first && L.vibe ? ' ' + L.vibe : '')); closedTell(L); });
 }
 // The wake: every passage made, as a pair of islands (each pair once, whichever way it was sailed). The chart draws it in gold.
 function wakeAdd(a, b) { if (!a || !b || a === b || !LOC[a] || !LOC[b] || a === 'sea' || b === 'sea') return; S.wake = S.wake || []; if (!S.wake.some(w => (w[0] === a && w[1] === b) || (w[0] === b && w[1] === a))) S.wake.push([a, b]); }
@@ -25831,7 +25888,7 @@ document.addEventListener('click', e => {
   else if (a === 'change') { rigOpen = !rigOpen; render(); }
   else if (a === 'catch') resolveCatch(k);
   else if (a === 'talk') talk();
-  else if (a === 'spot') { const spx = spotOf(S.loc, k); if (spx.boat && S.boat === 'none') { toast('You need a boat to fish out there.'); return; } if (k !== S.spot) { let pulled = 0; S.lines.forEach(L => { if (L && L.phase !== 'idle') { L.phase = 'idle'; L.c = null; pulled++; } }); if (spx.boat && !spot().boat) S.shoreSpot = S.spot; S.spot = k; reseedFish(); save(); toast(`${spot().name}.` + (spx.boat ? ' Offshore: slower bites, rarer fish.' : '') + (pulled ? ` Pulled in ${pulled} line${pulled > 1 ? 's' : ''}.` : '')); } closeSheet(); if (MODE !== 'game') fadeTo(enterFishing); else render(); }
+  else if (a === 'spot') { const spx = spotOf(S.loc, k); if (spx.boat && S.boat === 'none') { toast('You need a boat to fish out there.'); return; } const shutc = k !== S.spot ? spotClosed(loc(), k) : null; if (shutc) { toast(`${spx.name}: closed. ${closedSay(shutc)}`); return; } if (k !== S.spot) { let pulled = 0; S.lines.forEach(L => { if (L && L.phase !== 'idle') { L.phase = 'idle'; L.c = null; pulled++; } }); if (spx.boat && !spot().boat) S.shoreSpot = S.spot; S.spot = k; reseedFish(); save(); toast(`${spot().name}.` + (spx.boat ? ' Offshore: slower bites, rarer fish.' : '') + (pulled ? ` Pulled in ${pulled} line${pulled > 1 ? 's' : ''}.` : '')); } closeSheet(); if (MODE !== 'game') fadeTo(enterFishing); else render(); }
   else if (a === 'walk') { if (!S.prologue) { if (tutAt('exit')) tutSet('village'); fadeTo(() => enterIsland('fish')); } }
   else if (a === 'enter') { const sp = nearSpot(); if (!sp || (ISL && ISL.auto)) return; if (sp.id === 'fish') openSheet('spots'); else startEntry(sp); }
   else if (a === 'leavehunt') { closeSheet(); fadeTo(() => enterIsland('hunt')); }
