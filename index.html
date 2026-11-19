@@ -259,6 +259,23 @@ canvas.icon{width:40px;height:40px;image-rendering:pixelated;flex:none}
 .legend button{width:100%;text-align:left;background:none;border:2px solid transparent;padding:6px 6px;color:inherit}
 .legend button.sel{border-color:var(--brass);background:var(--panel-2)}
 .legend button.dim{opacity:.55}
+.legend button{padding-left:10px}
+.legend button.st-visited{box-shadow:inset 4px 0 0 var(--good)}
+.legend button.st-known{box-shadow:inset 4px 0 0 var(--brass-2)}
+.legend button.st-fog{box-shadow:inset 4px 0 0 #46557a}
+.legend button.st-fog .nm{color:var(--muted)}
+.legend button.far small{opacity:.6}
+.legend .name{flex:1}
+.legend .mk,.mapkey .mk{flex:none;width:26px;height:28px;background:center/100% 100% no-repeat;image-rendering:pixelated;image-rendering:crisp-edges}
+.mk.visited{background-image:var(--mk-visited)}.mk.known{background-image:var(--mk-known)}.mk.fog{background-image:var(--mk-fog)}
+.legend .mk{align-self:flex-start;margin-top:1px}
+.legend .vtag{font-family:var(--display);font-size:7px;margin-left:6px;padding:2px 4px;border:1px solid currentColor;vertical-align:middle;white-space:nowrap}
+.legend .vtag.visited{background:var(--good);border-color:var(--good);color:#0c2412}
+.legend .vtag.not{color:var(--muted)}
+.mapkey{display:flex;flex-wrap:wrap;gap:2px 16px;align-items:center;font-size:18px;color:var(--muted);margin:6px 0 4px}
+.mapkey span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.mapkey b{color:var(--text);font-weight:normal}
+.mapkey .v b{color:var(--good)}
 .stock{font-family:var(--display);font-size:7px;color:var(--good);white-space:nowrap}
 .stock.out{color:var(--bad)}
 .legend .tierhead{font-family:var(--display);font-size:8px;color:var(--brass);letter-spacing:1px;padding:10px 6px 2px;border-top:1px solid var(--edge);margin-top:4px}
@@ -266,7 +283,7 @@ canvas.icon{width:40px;height:40px;image-rendering:pixelated;flex:none}
 .legend .mtag.shop{color:var(--good)}
 .legend .mtag.sell{color:var(--brass)}
 .legend .mtag.none{color:var(--muted)}
-.legend .ttag{font-family:var(--display);font-size:7px;color:var(--brass);opacity:.8;vertical-align:middle;margin-left:4px}
+.legend .ttag{font-family:var(--display);font-size:7px;color:var(--brass);opacity:.8;vertical-align:middle;margin-left:4px;white-space:nowrap}
 .legend .here{color:var(--good);font-size:17px;white-space:nowrap}
 #isle,#hunt,#mine{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;width:100%;max-width:520px;margin:0 auto}
 #ipanel,#hpanel,#mpanel{background:var(--panel);border:2px solid var(--edge);border-bottom:0;border-top-color:rgba(240,192,80,.55);padding:9px 10px calc(14px + env(safe-area-inset-bottom,0px));display:grid;gap:8px}
@@ -10884,15 +10901,18 @@ function renderSheet() {
   const el = $('#sheet');
   if (sheetKind === 'map') {
     const R = boatRange(), boat = BOATS.find(b => b.id === S.boat);
-    const rows = LOCS.filter(l => mapState(l) !== 'hidden').sort((a, b) => a.range - b.range).map(l => {
+    const rankOf = l => l.id === S.loc ? 0 : ({ visited: 1, known: 2, fog: 3 })[mapState(l)] || 4, landed = id => { const i = S.order.indexOf(id); return i < 0 ? 1e9 : i; }; // within a tier: where you are, then where you have been (in the order you landed), then what you have heard of, then land only sighted
+    const shown = LOCS.filter(l => mapState(l) !== 'hidden'), tally = { visited: 0, known: 0, fog: 0 }; for (const l of shown) if (l.id !== 'stars') tally[mapState(l)]++;
+    const rows = shown.sort((a, b) => a.range - b.range || rankOf(a) - rankOf(b) || landed(a.id) - landed(b.id)).map(l => {
       const st = mapState(l), need = BOATS.find(b => b.range === l.range);
       const name = st === 'fog' ? '???' : l.name;
       const far = l.id !== S.loc && !withinReach(l), days = l.id === S.loc ? 0 : sailDays(l), dayTxt = days === 1 ? 'a day out' : days + ' days out';
-      const sub = st === 'fog' ? (l.range > R ? 'Land, by the gulls. Needs a ' + (need ? need.name.toLowerCase() : 'bigger boat') + '.' : far ? `Land, by the gulls, ${dayTxt}. Too far for your ${boat.name.toLowerCase()}.` : `Land, by the gulls, ${dayTxt}. Nobody you know has been.`)
-        : st === 'known' ? (l.range > R ? 'Rumored. Needs a ' + (need ? need.name.toLowerCase() : 'bigger boat') + '.' : far ? `Rumored, ${dayTxt}. Too far for your ${boat.name.toLowerCase()}.` : 'Rumored: ' + l.rumor) : (far ? `${dayTxt}: too far for your ${boat.name.toLowerCase()}. ` : '') + l.blurb;
-      return { range: l.range, html: `<button class="row ${l.id === mapSel ? 'sel' : ''} ${st === 'fog' || l.range > R || far ? 'dim' : ''}" data-act="node" data-k="${l.id}"><div class="name">${name} <span class="ttag">tier ${l.range}</span>${st === 'visited' ? (l.shop ? '<span class="mtag shop">shop</span>' : l.sell ? '<span class="mtag sell">traders only · no shop</span>' : '<span class="mtag none">no market</span>') : ''}<small>${sub}</small></div>${l.id === S.loc ? '<div class="here">you are here</div>' : ''}</button>` };
+      const sub = st === 'fog' ? (l.range > R ? 'Land, by the gulls. Needs ' + anA(need ? need.name.toLowerCase() : 'bigger boat') + '.' : far ? `Land, by the gulls, ${dayTxt}. Too far for your ${boat.name.toLowerCase()}.` : `Land, by the gulls, ${dayTxt}. Nobody you know has been.`)
+        : st === 'known' ? (l.range > R ? 'Rumored. Needs ' + anA(need ? need.name.toLowerCase() : 'bigger boat') + '.' : far ? `Rumored, ${dayTxt}. Too far for your ${boat.name.toLowerCase()}.` : 'Rumored: ' + l.rumor) : (far ? `${dayTxt}: too far for your ${boat.name.toLowerCase()}. ` : '') + l.blurb;
+      const out = l.range > R || far; // not to be sailed to from here with this boat: an island you have landed on keeps its name and its flag at full strength all the same
+      return { range: l.range, html: `<button class="row st-${st} ${l.id === mapSel ? 'sel' : ''} ${st !== 'visited' && (st === 'fog' || out) ? 'dim' : ''} ${st === 'visited' && out ? 'far' : ''}" data-act="node" data-k="${l.id}"><span class="mk ${st}"></span><div class="name"><span class="nm">${name}</span> <span class="ttag">tier ${l.range}</span>${st === 'visited' ? '<span class="vtag visited">visited</span>' : st === 'known' ? '<span class="vtag not">not visited</span>' : ''}${st === 'visited' ? (l.shop ? '<span class="mtag shop">shop</span>' : l.sell ? '<span class="mtag sell">traders only · no shop</span>' : '<span class="mtag none">no market</span>') : ''}<small>${sub}</small></div>${l.id === S.loc ? '<div class="here">you are here</div>' : ''}</button>` };
     }).reduce((acc, row) => { // the legend is grouped by tier, each group headed by the boat that reaches it
-      if (row.range !== acc.last) { const b = BOATS.find(x => x.range === row.range); acc.out.push(`<div class="tierhead">Tier ${row.range}${row.range === 0 ? ' · where you washed up' : b ? ' · ' + (row.range <= R ? 'your boat reaches it' : 'needs a ' + b.name.toLowerCase()) : ''}</div>`); acc.last = row.range; }
+      if (row.range !== acc.last) { const b = BOATS.find(x => x.range === row.range); acc.out.push(`<div class="tierhead">Tier ${row.range}${row.range === 0 ? ' · where you washed up' : b ? ' · ' + (row.range <= R ? 'your boat reaches it' : 'needs ' + anA(b.name.toLowerCase())) : ''}</div>`); acc.last = row.range; }
       acc.out.push(row.html); return acc; }, { out: [], last: -1 }).out.join('');
     const sel = LOC[mapSel];
     const tooFar = sel && sel.id !== S.loc && !withinReach(sel);
@@ -10900,9 +10920,10 @@ function renderSheet() {
     el.innerHTML = `<div class="head"><h2>Chart</h2><button class="x" data-act="close">✕</button></div>
       <div class="note">Boat: ${boat.name.toLowerCase()}${boat.reach ? ` · the ring is how far it can take you in one voyage (about ${Math.max(1, Math.round(boat.reach / 30))} day${Math.round(boat.reach / 30) > 1 ? 's' : ''} of sailing)` : ''}. The world is dark until you sail it. Neighbours of places you have been show as ???; a shopkeeper's rumor lights an island from afar.</div>
       <canvas id="mapcv" width="${MW}" height="${MH}"></canvas>
+      <div class="mapkey"><span class="v"><span class="mk visited"></span><b>${tally.visited}</b> visited</span><span><span class="mk known"></span><b>${tally.known}</b> rumored</span><span><span class="mk fog"></span><b>${tally.fog}</b> land sighted</span></div>
       <div class="legend">${rows}</div>
       <button class="cta" data-act="sail" ${canSail ? '' : 'disabled'}>${canSail ? 'Sail to ' + (mapState(sel) === 'fog' ? 'the unknown' : sel.name) : sel && sel.id === S.loc ? 'You are here' : sel && mapState(sel) !== 'hidden' && sel.range <= R && tooFar ? 'Too far for your ' + boat.name.toLowerCase() : sel && mapState(sel) !== 'hidden' && sel.range > R ? 'Needs a bigger boat' : 'Pick a port'}</button>`;
-    drawMap();
+    drawMap(); mapMarkCSS();
     $('#mapcv').addEventListener('click', mapClick);
   } else if (sheetKind === 'rig') { // everything you fish with: this line's rig and bait, and every rod, line and bucket you own
     const L = S.lines[S.sel], busy = !L || L.phase !== 'idle', rigs = [['hand', 'Rod'], ['set', 'Set line'], ['trophy', 'Trophy line']];
@@ -25381,6 +25402,18 @@ function fogLayer() {
   }
   m.putImageData(img, 0, 0); FOG_C = c; return c;
 }
+// The chart's marks, and its list's: a green flag where you have landed, a brass star where a keeper has told you of, a question
+// where there is only land in sight. One drawing for both, so the list is the key to the chart. (x, y): the island's centre.
+const MAP_STAR = ['...#...', '...#...', '#######', '.#####.', '..###..', '.##.##.', '.#...#.'], MAP_WHAT = ['.###.', '#...#', '....#', '..##.', '..#..', '.....', '..#..'];
+function mapMark(m, kind, x, y) {
+  const edge = '#101c2c', inked = (mask, mx, my, col) => { for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) drawMaskRaw(m, mask, mx + ox, my + oy, edge, 1); drawMaskRaw(m, mask, mx, my, col, 1); };
+  if (kind === 'visited') { m.fillStyle = edge; m.fillRect(x - 1, y - 13, 3, 12); m.fillRect(x, y - 13, 8, 6); m.fillStyle = '#f4ecd0'; m.fillRect(x, y - 12, 1, 10); m.fillStyle = '#4fc65a'; m.fillRect(x + 1, y - 12, 6, 4); m.fillStyle = '#a8f0a0'; m.fillRect(x + 1, y - 12, 6, 1); m.fillStyle = '#2f9a44'; m.fillRect(x + 1, y - 9, 6, 1); }
+  else if (kind === 'known') inked(MAP_STAR, x - 3, y - 13, '#f0c050');
+  else if (kind === 'fog') inked(MAP_WHAT, x - 2, y - 14, '#f4ecd0');
+}
+let mapMarksMade = false; // the three marks as pictures for the list's rows, made once: a canvas a row made the chart slow to open late in a voyage
+function mapMarkCSS() { if (mapMarksMade) return; mapMarksMade = true; for (const k of ['visited', 'known', 'fog']) { const c = document.createElement('canvas'); c.width = 13; c.height = 14; const m = c.getContext('2d'); mapMark(m, k, k === 'visited' ? 3 : 6, k === 'visited' ? 14 : k === 'known' ? 16 : 17); try { document.documentElement.style.setProperty('--mk-' + k, `url(${c.toDataURL()})`); } catch (e) {} } }
+const anA = w => (/^[aeiou]/i.test(w) ? 'an ' : 'a ') + w; // "an ironclad"
 function drawMap() {
   const c = $('#mapcv'); if (!c) return; const m = c.getContext('2d'); m.imageSmoothingEnabled = false;
   m.drawImage(worldLayer(), 0, 0);
@@ -25393,9 +25426,7 @@ function drawMap() {
   for (const l of LOCS) {
     const st = seen[l.id]; if (!st) continue; const x = l.x, y = l.y;
     if (l.id === 'stars') { m.fillStyle = '#f4ecd0'; m.fillRect(x - 1, y - 4, 2, 9); m.fillRect(x - 4, y - 1, 8, 2); m.fillRect(x - 2, y - 2, 4, 4); }
-    if (st === 'fog') { m.fillStyle = '#f4ecd0'; m.fillRect(x - 2, y - 13, 5, 1); m.fillRect(x + 2, y - 12, 1, 2); m.fillRect(x, y - 10, 2, 1); m.fillRect(x, y - 9, 1, 1); m.fillRect(x, y - 7, 1, 1); }
-    if (st === 'known') { m.fillStyle = '#f0c050'; m.fillRect(x - 1, y - 11, 3, 1); m.fillRect(x, y - 12, 1, 1); m.fillRect(x, y - 10, 1, 1); m.fillRect(x - 2, y - 11, 1, 1); m.fillRect(x + 2, y - 11, 1, 1); }
-    if (st === 'visited' && l.id !== S.loc) { m.fillStyle = '#2a1a0e'; m.fillRect(x, y - 9, 1, 7); m.fillStyle = '#f0c050'; m.fillRect(x + 1, y - 9, 4, 3); }
+    if (l.id !== 'stars') mapMark(m, st, x, y); // a flag on every island you have landed on (the one you are on too), a star on a rumor, a question on land only sighted
     if (l.id === mapSel) drawMaskRaw(m, MASKS.ring, x - 6, y - 4, '#f0c050', 1);
     if (l.id === S.loc) { m.fillStyle = '#2a1a0e'; m.fillRect(x - 4, y + 7, 9, 2); m.fillRect(x, y + 3, 1, 4); m.fillRect(x + 1, y + 4, 3, 2); m.fillStyle = '#f4ecd0'; m.fillRect(x - 3, y + 7, 7, 1); }
   }
