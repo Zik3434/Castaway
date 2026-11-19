@@ -15308,7 +15308,6 @@ function nightness(h) { if (h >= 21 || h < 4.5) return 1; if (h < 6) return 1 - 
 const BAYER = [0.2, 0.7, 0.95, 0.45];
 let seed = 7;
 const prand = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
-const STARS = Array.from({ length: 70 }, () => [prand(), prand() * 0.9, prand() < 0.3 ? 0 : 1]);
 const RAIN = Array.from({ length: 110 }, (_, i) => ({ x: prand(), y: prand(), s: 0.75 + (i % 3) * 0.25 }));
 const MOTES = Array.from({ length: 14 }, () => ({ x: prand(), y: prand(), s: 2 + prand() * 4 }));
 const SNOW = Array.from({ length: 50 }, () => ({ x: prand(), y: prand(), s: 0.5 + prand() * 0.8 }));
@@ -15332,7 +15331,7 @@ function layer(name, w, h, key, draw) {
 }
 let ISLE_LAYOUT = false;
 let W = 195, H = 375, SURF = 150, scale = 2, shoreW = 66, SW = 195, PANEL_W = 0; // SW: the scene width beside the panel column on a phone held sideways (W otherwise)
-let skyKey = '', skyC = null, seaKey = '', seaC = null, curSky = null, lightX = -1, lightY = -1;
+let skyKey = '', skyC = null, seaKey = '', seaC = null, curSky = null, lightX = -1, lightY = -1, lightK = 1;
 function layout() {
   const cw = Math.max(200, window.innerWidth), ch = Math.max(300, window.innerHeight);
   scale = Math.max(2, Math.round(Math.min(cw / 180, ch / 320)));
@@ -15386,30 +15385,24 @@ function shaftLayer() {
 function drawSkyBase(h, t, o) {
   o = o || {}; curSky = skyAt(h); const nt = nightness(h);
   g.drawImage(skyLayer(h), 0, 0);
-  if (nt > 0 && !o.noStars) for (const [sx, sy, k] of STARS) {
-    const tw = k === 0 ? 0.5 + 0.5 * Math.abs(Math.sin(t / 900 + sx * 40)) : 1;
-    g.fillStyle = `rgba(230,236,255,${(0.9 * nt * tw).toFixed(2)})`; g.fillRect((sx * W) | 0, (sy * SURF) | 0, 1, 1);
-  }
-  lightX = -1;
+  if (nt > 0 && !o.noStars) drawSkyStars(o.l || null, t, nt); // the island's own stars, and the river of them where its nights are clear
+  lightX = -1; lightK = 1;
   if (!o.noSun) {
     if (h > 5.3 && h < 20.2) {
       const f = (h - 5.3) / 14.9, sx = (W - 14 - f * (W - 28)) | 0, sy = (SURF - 3 - Math.sin(f * Math.PI) * SURF * 0.85) | 0;
-      for (let r = 9; r > 3; r -= 2) { g.fillStyle = `rgba(255,220,130,${(0.06 * (10 - r)).toFixed(2)})`; g.fillRect(sx - r, sy - r + 3, 2 * r + 1, 2 * r - 5); g.fillRect(sx - r + 3, sy - r, 2 * r - 5, 2 * r + 1); }
-      blit(g, maskC('sun', '#ffe08a', 1), sx - 3, sy - 3);
-      g.fillStyle = '#fff4cc'; g.fillRect(sx - 1, sy - 2, 3, 3);
+      const lowS = Math.pow(1 - Math.sin(f * Math.PI), 3), sunC = lerpC([255, 224, 138], [255, 150, 92], lowS), sunH = lerpC([255, 220, 130], [255, 140, 90], lowS); // it reddens as it nears the sea
+      for (let r = 9; r > 3; r -= 2) { g.fillStyle = rgba(sunH, 0.06 * (10 - r)); g.fillRect(sx - r, sy - r + 3, 2 * r + 1, 2 * r - 5); g.fillRect(sx - r + 3, sy - r, 2 * r - 5, 2 * r + 1); }
+      blit(g, maskC('sun', css(lerpC(sunC, [255, 255, 255], 0)), 1), sx - 3, sy - 3);
+      g.fillStyle = css(lerpC([255, 244, 204], [255, 210, 150], lowS)); g.fillRect(sx - 1, sy - 2, 3, 3);
       lightX = sx; lightY = sy;
     } else {
       const nh = h >= 20.2 ? h - 20.2 : h + 3.8, f = nh / 9.1, mx = (14 + f * (W - 28)) | 0, my = (SURF - 6 - Math.sin(f * Math.PI) * SURF * 0.8) | 0;
-      blit(g, maskC('sun', '#e8ecf4', 1), mx - 3, my - 3);
-      g.fillStyle = css(curSky.top); g.fillRect(mx - 1, my - 3, 5, 5);
-      lightX = mx; lightY = my;
+      lightK = drawSkyMoon(mx, my, t, nt); // in its phase, which goes round with the days
+      if (lightK > 0.12) { lightX = mx; lightY = my; }
     }
   }
   if (!o.noClouds) drawSkyClouds(o.l || null, h, o.cloudT == null ? t : o.cloudT, nt); // the clouds of the island whose sky this is (o.l), or the open sea's; o.cloudT: their own clock, where days go by in a moment
-  if (!o.noBirds && nt < 0.6) for (let k = 0; k < 2; k++) {
-    const x = (((t / 1000) * 6 + k * W * 0.55) % (W + 24) - 12) | 0, y = (SURF * (0.28 + k * 0.12) + Math.sin(t / 700 + k) * 2) | 0;
-    blit(g, maskC(Math.floor(t / 260 + k) % 2 ? 'gullA' : 'gullB', rgba(lerpC([40, 50, 70], curSky.top, 0.2), 1), 1), x, y);
-  }
+  if (!o.noBirds && nt < 0.6) drawSkyBirds(o.l || null, t); // as many as the island has, each its own way
   return nt;
 }
 function drawSeaBase(h, t, nt, o) {
@@ -15425,8 +15418,8 @@ function drawSeaBase(h, t, nt, o) {
   rows.forEach(([dy, len, gap], r) => { if (r >= Math.ceil(rows.length * sf[0])) return; const y = SURF + dy, off = (((t * sf[1] / (150 + r * 40)) + r * 7) % gap) | 0, ln = Math.max(1, Math.round(len * sf[2])); g.fillStyle = wave; for (let x = -gap + off; x < W; x += gap) g.fillRect(x, y, ln, 1); });
   if (sf[0] > 1.3) { g.fillStyle = 'rgba(255,255,255,0.7)'; for (const [dy, len, gap] of [[1, 5, 11], [3, 7, 17]]) { const off = ((t * sf[1] / 120 + dy * 5) % gap) | 0; for (let x = -gap + off; x < W; x += gap) g.fillRect(x, SURF + dy, len, 1); } } // fast water runs white
   if (lightX >= 0 && lightY > SURF - SURF * 0.45) {
-    const a = nt > 0.5 ? 0.12 : 0.22;
-    for (let y = SURF + 1; y < SURF + 44; y += 2) { const f = (y - SURF) / 44, w = (9 * (1 - f) + 2) | 0, j = Math.sin(t / 300 + y) * 3 * f; g.fillStyle = `rgba(255,224,150,${(a * (1 - f)).toFixed(3)})`; g.fillRect((lightX - w / 2 + j) | 0, y, w, 1); }
+    const a = (nt > 0.5 ? 0.14 : 0.22) * lightK, lc = nt > 0.5 ? '214,224,250' : '255,224,150'; // the moon's is paler, and only as bright as the moon is full
+    for (let y = SURF + 1; y < SURF + 44; y += 2) { const f = (y - SURF) / 44, w = (9 * (1 - f) + 2) | 0, j = Math.sin(t / 300 + y) * 3 * f; g.fillStyle = `rgba(${lc},${(a * (1 - f)).toFixed(3)})`; g.fillRect((lightX - w / 2 + j) | 0, y, w, 1); }
   }
   if (nt < 0.75 && !o.noShafts && !(wt && wt.shafts === false)) {
     const sh = shaftLayer(); g.globalAlpha = (1 - nt) * 0.9;
@@ -19683,6 +19676,8 @@ const T_SKY = {
   low: [1.7, 2.2],                             // hours either side of sunrise and of sunset that the light on a cloud is warm
   warm: [255, 190, 122], moon: [150, 162, 205], grey: [128, 136, 150],
   veil: [0.52, 0.26],                          // how solid tones 6 and 7 are
+  stars: 2.2, milky: 1.25,                      // stars to a thousand square pixels of sky (times the island's own), and from how clear a sky the river of stars shows
+  moonR: 4, moon0: 3, month: 8,                 // the moon: its radius, where in its month the calendar starts, and the days in that month
   keep: 5, idle: 120000,                      // skies kept (an island has one a screen layout), and how long a weather's coloured strips outlive it (ms)
 };
 function CloudB(w, h, seed) { this.w = w; this.h = h; this.t = new Uint8Array(w * h); this.s = seed | 0; this.k = 0; }
@@ -19829,6 +19824,7 @@ const SKY_BY = {
 };
 const SKYS = {};
 function skySay(o) { for (const k in o) SKYS[k] = o[k]; }
+function skyAlso(o) { for (const k in o) SKYS[k] = Object.assign(SKYS[k] || {}, o[k]); } // more said of a sky already written
 function skyOf(l) {
   if (!l) return { k: 'fair', d: 1, z: 1, wind: 1, seed: 4242 };
   const s = groundSeed(l) % 65521, sc = l.scene || {}, cl = climateOf(l), said = SKYS[l.id] || {}, list = SKY_BY[sc.palms && cl === 'mild' ? 'warm' : cl] || SKY_BY.mild;
@@ -19918,6 +19914,59 @@ function drawSkyClouds(l, h, t, nt) {
 function drawSkyDeck(l, kind, t, nt, alpha, base) {
   const K = skyScape(l), B = skyDeck(K, base || T_SKY.deck), nm = 'deck' + (base || T_SKY.deck) + kind, c = skyStrip(K, nm, B, deckPal(kind, nt), kind + '|' + ((nt * 8) | 0), false);
   skyBlit(c, -(t / 1000) * (kind === 'storm' ? T_SKY.speed.storm : T_SKY.speed.deck) * clamp(K.q.wind, -1.6, 1.6) + K.q.seed * 5, alpha); // it goes with the island's own wind, and where there is none it stands
+}
+
+// --- the night, and what flies by day: the island's own stars, the river of them where the air is clear, the moon in its phase, the birds ---
+// how clear a night each kind of sky leaves (an island may say its own: stars)
+const SKY_STARS = { clear: 1.5, none: 1.4, wisps: 1.4, lens: 1.3, threads: 1.2, streaky: 1.1, wall: 1.1, fair: 1, trade: 1, rows: 1, grid: 1, heaped: 0.9, mackerel: 0.9, flecks: 0.9, banked: 0.7, veil: 0.55, smoke: 0.45 };
+function skyStars(K) {
+  if (K.st) return K.st; const q = K.q, w = W, h = K.H, c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'), img = x.createImageData(w, h), d = new Uint32Array(img.data.buffer), s = q.seed + 71;
+  const dens = q.stars == null ? SKY_STARS[q.k] || 1 : q.stars, tw = [];
+  const put = (X, Y, col, a) => { if (X < 0 || X >= w || Y < 0 || Y >= h) return; const k = Y * w + X; if (a > (d[k] >>> 24)) d[k] = ((a << 24) | (col[2] << 16) | (col[1] << 8) | col[0]) >>> 0; };
+  const dim = y => clamp(1.25 - y / h, 0.3, 1); // they go out toward the horizon
+  if (dens >= T_SKY.milky) { // the river of stars: a band across the sky with a dark lane down it, more faint stars than can be counted and a glow behind them
+    const a = (0.35 + 0.5 * nH(1, 1, s)) * (nH(1, 2, s) < 0.5 ? -1 : 1), ca = Math.cos(a), sa = Math.sin(a), cx = w * (0.3 + 0.4 * nH(1, 3, s)), cy = h * 0.42, wB = h * 0.15, faint = [214, 222, 250], glow = [150, 164, 214];
+    for (let Y = 0; Y < h; Y++) for (let X = 0; X < w; X++) { const ds = -(X - cx) * sa + (Y - cy) * ca; if (ds > wB * 2.8 || ds < -wB * 2.8) continue; const al = (X - cx) * ca + (Y - cy) * sa, wb = wB * (0.75 + 0.5 * n1(al * 0.025, s)); if (Math.abs(ds) > wb * 2.2) continue;
+      const lane = Math.exp(-Math.pow((ds - wb * 0.2 * Math.sin(al * 0.04)) / (wb * 0.24), 2)) * n1(al * 0.05, s + 9), I = Math.exp(-(ds / wb) * (ds / wb)) * (0.5 + 0.5 * n2(X * 0.07, Y * 0.07, s + 2)) * (1 - 0.75 * lane) * dim(Y) * Math.min(1.3, dens / 1.5); if (I < 0.06) continue;
+      if (nH(X, Y, s + 5) < I * 0.16) put(X, Y, faint, Math.round(70 + 120 * nH(X, Y, s + 6))); else if (bay(X, Y) < I * 0.55) put(X, Y, glow, Math.round(26 + 34 * I)); }
+  }
+  const n = Math.round(w * h / 1000 * T_SKY.stars * dens), grid = q.stargrid ? Math.max(6, Math.round(Math.sqrt(1000 / (T_SKY.stars * Math.max(0.3, dens))) * 0.8)) : 0, seen = {};
+  for (let i = 0; i < n; i++) {
+    let X = (nH(i, 11, s) * w) | 0, Y = (nH(i, 12, s) * h * 0.94) | 0; const m = nH(i, 13, s), cc = nH(i, 14, s), col = cc < 0.1 ? [255, 226, 190] : cc < 0.2 ? [190, 210, 255] : [230, 236, 255];
+    if (grid) { X = Math.floor(X / grid) * grid + (grid >> 1); Y = Math.floor(Y / grid) * grid + (grid >> 1); put(X, Y, col, Math.round(215 * dim(Y))); continue; } // counted, and each in its square
+    const k = dim(Y);
+    if (m > 0.6 && nH(i, 15, s) < 0.28) { tw.push({ x: X, y: Y, c: `rgb(${col[0]},${col[1]},${col[2]})`, a: (m > 0.9 ? 1 : 0.8) * k, ph: nH(i, 16, s) * 40 }); continue; } // these few are drawn live: they twinkle
+    if (m > 0.9) { put(X, Y, col, Math.round(255 * k)); for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) put(X + ax, Y + ay, col, Math.round(70 * k)); } // a bright one, with its glint
+    else put(X, Y, col, Math.round((m > 0.6 ? 200 : 110 + 60 * m) * k));
+  }
+  x.putImageData(img, 0, 0); return K.st = { c, tw, n, river: dens >= T_SKY.milky };
+}
+function drawSkyStars(l, t, nt) {
+  if (l && l.scene && l.scene.weather === 'cave') return; const K = skyScape(l), S = skyStars(K), a = nt * (1 - 0.9 * skyGrey(l, t)); if (a <= 0.02) return;
+  g.globalAlpha = a; g.drawImage(S.c, 0, 0);
+  for (const s of S.tw) { g.globalAlpha = a * s.a * (0.45 + 0.55 * Math.abs(Math.sin(t / 900 + s.ph))); g.fillStyle = s.c; g.fillRect(s.x, s.y, 1, 1); }
+  g.globalAlpha = 1;
+}
+// The moon, in one of the eight phases of its month: 0 new, 2 the first quarter (lit on the right), 4 full, 6 the last. Its dark side is only earthshine.
+const MOON_MARE = ['.........', '....##...', '..#.###..', '.##..#...', '.###.....', '..#...##.', '......#..', '...#.....', '.........'].join(''), MOON_C = {};
+function moonC(ph) {
+  let c = MOON_C[ph]; if (c) return c; const r = T_SKY.moonR, n = r * 2 + 1, p = ph / T_SKY.month, ct = Math.cos(2 * Math.PI * p); c = MOON_C[ph] = document.createElement('canvas'); c.width = c.height = n; const x = c.getContext('2d');
+  for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const u = dx / (r + 0.35), v = dy / (r + 0.35), rr = u * u + v * v; if (rr > 1) continue; const e = Math.sqrt(1 - v * v), lit = p === 0 ? false : p === 0.5 ? true : p < 0.5 ? u > ct * e : u < -ct * e;
+    x.fillStyle = !lit ? 'rgba(126,138,180,0.2)' : MOON_MARE[(dy + r) * 9 + dx + r] === '#' && r === 4 ? '#c4c9d8' : rr > 0.7 ? '#dde1ec' : '#f2f4fa'; x.fillRect(dx + r, dy + r, 1, 1); }
+  return c;
+}
+const moonPhase = t => (Math.floor(t / (24 * T.hourMs)) + T_SKY.moon0) % T_SKY.month;
+// draws it and says how much of it is lit (0..1), which is how much light it puts on the sea
+function drawSkyMoon(mx, my, t, nt) {
+  const ph = moonPhase(t), f = (1 - Math.cos(2 * Math.PI * ph / T_SKY.month)) / 2, r = T_SKY.moonR;
+  if (f > 0.1) halo(mx, my, 10, '200,214,255', 0.05 + 0.1 * f);
+  g.drawImage(moonC(ph), mx - r, my - r); return f;
+}
+// what flies over by day: as many as the island has (birds), each its own way and height
+function drawSkyBirds(l, t) {
+  if (l && l.scene && l.scene.weather === 'cave') return; const q = skyScape(l).q, n = q.birds == null ? 1 + ((nH(5, 1, q.seed) * 2.6) | 0) : q.birds; if (!n) return; const col = rgba(lerpC([40, 50, 70], curSky.top, 0.2), 1), span = W + 24;
+  for (let k = 0; k < n; k++) { const dir = nH(k, 21, q.seed) < 0.5 ? -1 : 1, sp = 4.5 + 4 * nH(k, 22, q.seed), u = ((t / 1000) * sp + nH(k, 23, q.seed) * span) % span, x = (dir > 0 ? u - 12 : W + 12 - u) | 0, y = (SURF * (0.2 + 0.3 * nH(k, 24, q.seed)) + Math.sin(t / 700 + k * 2) * 2) | 0;
+    blit(g, maskC(Math.floor(t / 260 + k) % 2 ? 'gullA' : 'gullB', col, 1), x, y); }
 }
 // --- the runtime: build an island's layers once, relight them with the hour, blit them ---
 const LANDS = {}; // island id -> s => { ... } : the island's own landscape, written against the layer API above
@@ -21318,6 +21367,22 @@ skySay({
   redwood: { k: 'veil', d: 1, wind: 0.3 }, // fog among the trunks, under the fog that hides their tops
   kelpotters: { k: 'veil', d: 0.8, wind: 0.4 },
   fallingsky: { k: 'streaky', d: 0.8, wind: 0.5 },
+});
+// --- more of every sky: the night over it and what flies in it by day ---
+// stars: how clear its night is (1 the usual; from 1.25 the river of stars shows). stargrid: the stars each in a square. birds: how many cross it by day.
+skyAlso({
+  wellofstars: { stars: 2.6 }, starfall: { stars: 2.2 }, starlines: { stars: 2 }, reedislands: { stars: 2 }, eclipse: { stars: 2 }, thirst: { stars: 1.9, birds: 0 }, steppe: { stars: 1.9 },
+  glass: { stars: 1.8 }, singingsand: { stars: 1.8 }, lookout: { stars: 1.8 }, biolum: { stars: 1.7 }, deadsea: { stars: 1.6, birds: 0 }, silence: { stars: 1.6, birds: 0 }, brine: { stars: 1.6 }, saltmine: { stars: 1.6 }, door: { stars: 1.6, birds: 0 },
+  hermit: { stars: 1.5 }, holywell: { stars: 1.5 }, monastery: { stars: 1.5 }, fjord: { stars: 1.5 }, beachedmoon: { stars: 1.5 }, twomoons: { stars: 1.5 }, wordisle: { stars: 1.5 }, lastlighthouse: { stars: 1.4 }, narwhal: { stars: 1.3 },
+  harbor: { stars: 0.85, birds: 4 }, city: { stars: 0.5 }, firstmorning: { stars: 0.5 }, drownedsun: { stars: 0.5 }, fogbank: { stars: 0.3 }, deadstar: { stars: 0.3, birds: 0 }, midnightsun: { stars: 0.25 },
+  nameless: { stars: 0, birds: 0 }, // nothing in it, by night either
+  counting: { stargrid: true, stars: 1.2 }, chessboard: { stargrid: true }, mapisland: { stargrid: true, stars: 0.8 }, clockwork: { stargrid: true },
+  // where the birds are the island
+  gannet: { birds: 5 }, eggcliff: { birds: 5 }, birdringers: { birds: 5 }, puffins: { birds: 5 }, albatross: { birds: 5 }, guanofort: { birds: 5 }, rookery: { birds: 4 }, heronry: { birds: 4 }, ternstrand: { birds: 5 }, eiderisle: { birds: 4 },
+  cormorants: { birds: 4 }, iguanas: { birds: 4 }, whaling: { birds: 4 }, codflakes: { birds: 4 }, kipper: { birds: 4 }, cannery: { birds: 4 }, pilchard: { birds: 4 }, creel: { birds: 3 }, flamingo: { birds: 3 }, turtlebeach: { birds: 3 }, fishnursery: { birds: 3 }, waveshepherd: { birds: 3 },
+  // and where nothing flies
+  saltstatues: { birds: 0 }, heldbreath: { birds: 0 }, barrow: { birds: 0 }, ferry: { birds: 0 }, closedeyes: { birds: 0 }, slackwater: { birds: 0 }, frozenmusic: { birds: 0 }, coalsea: { birds: 0 }, ink: { birds: 0 }, blackglass: { birds: 0 },
+  runoff: { birds: 0 }, hourglass: { birds: 0 }, cinder: { birds: 0 }, furnace: { birds: 0 }, glassfisherman: { birds: 0 }, sleeper: { birds: 0 }, bonesleep: { birds: 0 }, milk: { birds: 0 }, tarpits: { birds: 0 }, lazaret: { birds: 0 }, mirrorprison: { birds: 0 }, throat: { birds: 0 },
 });
 // --- the islands' landscapes: tiers 0 and 1, the home waters ---
 // In every one: F the far layer, M the middle, N the near. s.strip is true on the island strip (where the village building
