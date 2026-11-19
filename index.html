@@ -219,6 +219,7 @@ canvas.icon{width:40px;height:40px;image-rendering:pixelated;flex:none}
 .catch .pill.far{background:#5a3a74}
 .catch .pill.off{background:#12406a;border:1px solid #4aa0d8;color:#bfe4ff}
 .catch .pill.hid{background:#153a2c;border:1px solid #4fc08a;color:#c6f6dc}
+.catch .pill.won,.pill.won{background:#2e1f4a;border:1px solid #b48cf0;color:#e6d8ff}
 .freshw{color:#7fe0b0}
 .hidtag{display:inline-block;font-size:9px;letter-spacing:.08em;padding:1px 5px;border-radius:3px;background:#153a2c;border:1px solid #4fc08a;color:#c6f6dc;vertical-align:1px}
 .chip.static{opacity:.75}
@@ -327,10 +328,13 @@ html.land #newbuild:not(.hard){left:calc((100vw - 360px) / 2);max-width:calc(100
 .list .row.g-owned,.list .row.g-inuse{box-shadow:inset 4px 0 0 #5a78c0;padding-left:10px}
 .legend .mtag.up{color:var(--good);border-style:dashed}
 .legend .mtag.hid{color:#7fe0b0;border-color:#3f9a70}
+.legend .mtag.wonder{color:#d9c2ff;border-color:#8a63c8;background:#2a1b44}
+.mapkey .wn{color:#d9c2ff}
 .legend .ttag.sz{color:#cfd6dd}
 .legend .vtag,.legend .mtag,.legend .ttag{display:inline-block;margin-top:3px}
 .stock.out{color:var(--bad)}
 .legend .tierhead{font-family:var(--display);font-size:8px;color:var(--brass);letter-spacing:1px;padding:10px 6px 2px;border-top:1px solid var(--edge);margin-top:4px}
+.legend .tierhead .more{display:block;margin-top:5px;color:var(--muted);letter-spacing:.5px}
 .legend .mtag{font-family:var(--display);font-size:7px;margin-left:6px;padding:2px 4px;border:1px solid currentColor;vertical-align:middle;white-space:nowrap}
 .legend .mtag.shop{color:var(--good)}
 .legend .mtag.sell{color:var(--brass)}
@@ -657,22 +661,57 @@ const BUCKETS = [
   { id: 'hold',   name: 'Fish hold',    cap: 100, price: 10000, tier: 5 },
 ];
 const BOATS = [
-  // range: the island tier the boat can take you to. reach: how far one voyage can go, in chart pixels from where you are
-  // (the world is 400x300, about 30 px to a day's sail), so the farther islands of a tier need the next boat even when the
-  // tier allows them. Every island of tier t is reachable by hopping on boat t (checked headlessly: 42 px is the minimum).
+  // range: the island tier the boat can take you to. reach: how far one voyage can go, in chart pixels from where you are (the world
+  // is 400x300, about 30 px to a day's sail). sight: how far off her lookout sights land (it goes on the chart as ??? for good).
+  // luck: what she adds to the rod's and the bait's offshore. hold: fish she carries beside your bucket. Every tier has three classes:
+  // `all` (the boat the tier always had, and its numbers), `fish` (steadier over the fish and roomier, shorter legs) and `far` (longer
+  // legs and a taller mast, no boat to fish from). Any of them reaches every island of its tier by hopping: 24 px is the least that
+  // connects the world (checked headlessly), and the shortest-legged boat goes 52.
   { id: 'none',     name: 'No boat',        range: 0, reach: 0,   price: 0 },
-  { id: 'raft',     name: 'Driftwood raft', range: 1, reach: 45,  price: 0 },
-  { id: 'skiff',    name: 'Skiff',          range: 2, reach: 60,  price: 800 },
-  { id: 'cutter',   name: 'Cutter',         range: 3, reach: 80,  price: 3500 },
-  { id: 'trawler',  name: 'Trawler',        range: 4, reach: 105, price: 12000 },
-  { id: 'clipper',  name: 'Clipper',        range: 5, reach: 135, price: 40000 },
-  { id: 'ironclad', name: 'Ironclad',       range: 6, reach: 175, price: 120000 },
-  { id: 'starship', name: 'Starship',       range: 7, reach: 999, price: 500000, spaceport: true }, // sold at the spaceport only
+  { id: 'raft',     name: 'Driftwood raft', range: 1, reach: 45,  sight: 40, luck: 0,    hold: 0,  price: 0, cls: 'all' },
+  { id: 'skiff',    name: 'Skiff',          range: 2, reach: 60,  sight: 48, luck: 0.12, hold: 0,  price: 800,    cls: 'all',  say: 'An open boat under one lugsail. She does everything a little.' },
+  { id: 'dory',     name: 'Dory',           range: 2, reach: 52,  sight: 44, luck: 0.3,  hold: 4,  price: 900,    cls: 'fish', say: 'Flat in the floor and deep in the waist: she sits steady over the fish and carries more of them, and does not go as far.' },
+  { id: 'wherry',   name: 'Wherry',         range: 2, reach: 72,  sight: 58, luck: 0.04, hold: 0,  price: 1000,   cls: 'far',  say: 'Long, light and narrow under one black sail. She goes further and sees further; she is no boat to fish from.' },
+  { id: 'cutter',   name: 'Cutter',         range: 3, reach: 80,  sight: 52, luck: 0.24, hold: 0,  price: 3500,   cls: 'all',  say: 'Decked, with a cuddy, a gaff main and a jib. The boat most ports would build you.' },
+  { id: 'smack',    name: 'Smack',          range: 3, reach: 70,  sight: 48, luck: 0.45, hold: 6,  price: 3900,   cls: 'fish', say: 'Tanned sails and a well in her waist. Built to lie over the fish for days, not to go anywhere fast.' },
+  { id: 'sloop',    name: 'Sloop',          range: 3, reach: 94,  sight: 62, luck: 0.14, hold: 0,  price: 4200,   cls: 'far',  say: 'One tall mast and a white hull. She eats distance; there is nowhere on her to work a line in comfort.' },
+  { id: 'trawler',  name: 'Trawler',        range: 4, reach: 105, sight: 56, luck: 0.36, hold: 0,  price: 12000,  cls: 'all',  say: 'Steam, a wheelhouse and a derrick. She goes out in weather that keeps the sailing boats in.' },
+  { id: 'drifter',  name: 'Drifter',        range: 4, reach: 92,  sight: 52, luck: 0.6,  hold: 8,  price: 13500,  cls: 'fish', say: 'A tall thin funnel and a mizzen to hold her head to the wind while she lies to her nets. The fish hold is most of her.' },
+  { id: 'ketch',    name: 'Ketch',          range: 4, reach: 122, sight: 68, luck: 0.24, hold: 0,  price: 14500,  cls: 'far',  say: 'Two masts and a long keel. She will stand out for a week and raise land a long way off.' },
+  { id: 'clipper',  name: 'Clipper',        range: 5, reach: 135, sight: 60, luck: 0.48, hold: 0,  price: 40000,  cls: 'all',  say: 'Three masts of square sail on a hull like a knife. Fast, and handy enough to fish from.' },
+  { id: 'whaler',   name: 'Whaler',         range: 5, reach: 118, sight: 56, luck: 0.75, hold: 10, price: 45000,  cls: 'fish', say: 'Bluff, slow and deep, her boats on their davits. She was built to stay out until she was full, and she holds a great deal.' },
+  { id: 'schooner', name: 'Schooner',       range: 5, reach: 156, sight: 74, luck: 0.34, hold: 0,  price: 48000,  cls: 'far',  say: 'Two raked masts and a white hull. Nothing under sail goes further on a voyage or sees land sooner.' },
+  { id: 'ironclad', name: 'Ironclad',       range: 6, reach: 175, sight: 64, luck: 0.6,  hold: 0,  price: 120000, cls: 'all',  say: 'Iron plate, a ram and a turret nobody has fired. She goes where she likes.' },
+  { id: 'seiner',   name: 'Seiner',         range: 6, reach: 152, sight: 60, luck: 0.9,  hold: 12, price: 135000, cls: 'fish', say: 'A steel hull round a hold, a power boom over the net. The best thing afloat to fish from, and the slowest to get anywhere.' },
+  { id: 'packet',   name: 'Packet steamer', range: 6, reach: 200, sight: 80, luck: 0.44, hold: 0,  price: 145000, cls: 'far',  say: 'Two funnels and a schedule. She crosses the whole chart in a few passages, and her lookout stands very high.' },
+  { id: 'starship', name: 'Starship',       range: 7, reach: 999, sight: 80, luck: 0.6,  hold: 0,  price: 500000, spaceport: true }, // sold at the spaceport only
 ];
+const TOP_TIER = 6; // the last tier a yard's boat reaches (the starship is another matter)
+const boatNow = () => BOATS.find(b => b.id === S.boat) || BOATS[0];
+const YARD = ['all', 'all', 'all', 'fish', 'fish', 'far', 'far']; // what class a port's yard builds, by a fixed hash of the port
+const yardClass = l => YARD[strHash(l.id + '|yard') % YARD.length];
+const boatOfClass = (tier, cls) => BOATS.find(b => b.range === tier && b.cls === cls) || BOATS.find(b => b.range === tier && !b.spaceport);
+// What this port's yard has on the slip for you: its own class of the tier above yours, and of your own tier if you have not got her.
+function yardBoats(l) { const R = BOATS.find(b => b.id === S.boat).range, cls = yardClass(l), out = []; if (R < 1) return out;
+  if (R < TOP_TIER) out.push(boatOfClass(R + 1, cls)); if (R >= 2 && R <= TOP_TIER) { const same = boatOfClass(R, cls); if (same && !(S.boatsOwned || []).includes(same.id)) out.push(same); } return out.filter(Boolean); }
+// how a boat measures against the one you sail: each thing she is measured by, better, worse or the same
+const BOAT_STATS = [['range', 1], ['reach', 1], ['sight', 1], ['luck', 1], ['hold', 1]];
+const dayStr = px => { const d = Math.round(px / 30 * 10) / 10; return d + (d === 1 ? ' day' : ' days'); };
+const BOAT_SAY = { range: v => `Sails to islands of tier ${v}`, reach: v => `Goes ${dayStr(v)} on a voyage`, sight: v => `Sights land ${dayStr(v)} off`, luck: v => `Offshore luck +${v}`, hold: v => v ? `Hold for ${v} more fish` : 'No hold' };
+const BOAT_BRIEF = { range: v => 'tier ' + v, reach: v => dayStr(v), sight: v => dayStr(v), luck: v => '+' + v, hold: v => v ? '+' + v : 'none' };
+function boatVerdict(b) { const cur = boatNow(), c = BOAT_STATS.map(([key, dir]) => ({ key, va: b[key] || 0, vb: cur[key] || 0, d: Math.sign(((b[key] || 0) - (cur[key] || 0)) * dir) })), up = c.some(x => x.d > 0), dn = c.some(x => x.d < 0);
+  return { v: b.id === cur.id ? 'inuse' : (S.boatsOwned || []).includes(b.id) ? 'owned' : up && !dn ? 'up' : up ? 'trade' : 'nobetter', c, than: cur }; }
+function boatSub(b, V) { const mine = V.v === 'inuse', nm = V.than.name.replace(/^Driftwood /, '').toLowerCase();
+  const lines = V.c.map(c => `<span class="cmp ${mine ? '' : c.d > 0 ? 'up' : c.d < 0 ? 'down' : 'same'}">${BOAT_SAY[c.key](c.va)}${mine ? '' : ` <b>${c.d > 0 ? '▲' : c.d < 0 ? '▼' : '='}</b> <i>${c.d === 0 ? 'same as yours' : 'yours ' + BOAT_BRIEF[c.key](c.vb)}</i>`}</span>`).join('');
+  const head = V.v === 'up' ? `Better than your ${nm}.` : V.v === 'trade' ? `Against your ${nm}: better one way, worse another.` : V.v === 'nobetter' ? `No better than the ${nm} you sail.` : V.v === 'owned' ? 'You own her: change boats from the rig sheet.' : 'This is the boat you sail.';
+  return `<span class="gsay ${V.v}">${head}</span>${b.say ? `<span class="gmade">${b.say}</span>` : ''}${lines}`; }
 const SLOT_PRICES = [0, 60, 150, 450]; // you start with one line; the rest are sold in shops
 // The far end of the world. A keeper on a tier-5+ island mentions the starship at these odds per talk; the chart that finds the
 // spaceport is in stock at a tier-5+ shop on a given real day at these odds (percent), at this price.
-const T_WORLD = { shopShelves: 5, stock: { bait: [4, 9], shot: [3, 6], call: [2, 4], charge: [2, 4], aid: [2, 4] }, starRumor: 0.07, chartOdds: 12, chartPrice: 150000 };
+const T_WORLD = { shopShelves: 5, stock: { bait: [4, 9], shot: [3, 6], call: [2, 4], charge: [2, 4], aid: [2, 4] }, starRumor: 0.07, chartOdds: 12, chartPrice: 150000,
+  sight: 48,     // land is sighted at this distance where a boat does not say her own (an old save's landfalls): chart px, a day and a half's sail
+  boatChart: 5,  // a boat comes with a chart of its own waters: this many of the nearest islands of its tier, named
+};
 // The sky is a bite gate. Every island rolls its own weather every T.weatherMs from a fixed hash of the slot and the island (so it never
 // flickers, every island differs, and a reload keeps it with nothing saved), at the odds its climate gives (CLIMATE, picked by climateOf
 // from the island's scene: a fixed sky like the thunderhead's storm or a cave is always that). A species with `weather: ['storm']` bites
@@ -5271,6 +5310,7 @@ const SPECIES = [
   { id: 'thegrit', name: 'The Grit', loc: { greatpearl: 0.4 }, size: [200, 270], rate: 1900, beh: 'sinker', diff: 0.97, shape: 'big', time: ['night'], rare: true, legend: true, minBait: 2, big: true, k: .018 },
   { id: 'wood',       name: 'Driftwood',             loc: { shoal: 48 },             size: [0, 0],     rate: 0,    kind: 'wood', shape: 'wood' },
   { id: 'boot',       name: 'Old Boot',              loc: { harbor: 6, reach: 5 },   size: [0, 0],     rate: 0,    kind: 'junk', shape: 'boot' },
+  { id: 'bottle',     name: 'A Stoppered Bottle',    loc: {},                        size: [0, 0],     rate: 0,    kind: 'bottle', shape: 'boot' }, // in any pool while there is a wonder left to name (pool, T_WONDER.bottle): the chart in it names one
   // --- the wider roster: real fish by region and kind of water, every real island's spots three or four more (seventh pass)
   { id: 'transparentgoby', name: 'Transparent Goby', loc: { shoal: 42, lazaret: 42, dyers: 40, pilchard: 32, crabpots: 35, dam: 32, puffins: 42, eggcliff: 37, kipper: 32, pilots: 37, cockle: 36, netmenders: 36, lifeboat: 39, limekiln: 39, birdringers: 34, ferrysteps: 39, flaxisle: 39, skeps: 36, potters: 36, sailloft: 36, sealpool: 41, vineyard: 43, garum: 34, arena: 29, boomtown: 34, weatherstation: 39 }, size: [3, 5], rate: 8, beh: 'dart', diff: 0.08, shape: 'fry' },
   { id: 'gudgeon', name: 'Gudgeon', loc: { harbor: 39, tidal: 29, fen: 40, tidemill: 30, quarry: 32, dam: 35, samphire: 30, whelk: 39, flaxisle: 38, copperisle: 28, flourmill: 33, floatglass: 40, heronry: 40, powdermill: 30 }, size: [8, 15], rate: 8, beh: 'smooth', diff: 0.10, shape: 'fry' },
@@ -8699,7 +8739,7 @@ const spotOf = (locId, spotId) => { const l = LOC[locId]; return l.spots.find(sp
 const spot = () => spotOf(S.loc, S.spot);
 // Offshore: the island's open-water spot, fished from your own boat. Slower bites, rarer fish (T.offshore).
 const offshore = (locId, spotId) => { const sp = spotOf(locId || S.loc, spotId === undefined ? S.spot : spotId); return !!(sp && sp.boat) && !S.prologue; };
-const offshoreLuck = () => T.offshore.luck + T.offshore.boatLuck * Math.max(0, Math.min(6, boatRange()) - 1);
+const offshoreLuck = () => T.offshore.luck + (boatNow().luck || 0); // the boat's own: a boat built to fish from adds the most
 const boatName = () => (BOATS.find(b => b.id === S.boat) || BOATS[0]).name.replace(/^Driftwood /, '');
 const offSpot = l => (l.spots || []).find(sp => sp.boat), shoreSpot = l => l.spots.find(sp => sp.id === S.shoreSpot && !sp.boat) || l.spots.find(sp => !sp.boat) || l.spots[0];
 // Weight from length: kg = k × cm³ / 1000, with k a condition factor by body shape (a species can override with `k`).
@@ -8761,6 +8801,30 @@ const VARIANTS = {
 // Strays: a fish can turn up an island from home (tier within one, same side of the exotic line) at a sliver of weight, rod and trophy line only.
 const STRAY = { share: 0.04, tiers: 1 }; // strays together take this share of a spot's resident weight, split among them
 const LOC = Object.fromEntries(LOCS.map(l => [l.id, l]));
+// Wonders. An island that is a made thing or an idea and not a place in nature (a library of paper fish, a chessboard, a door, the hats
+// the sea has taken, a ferry for the dead) is a wonder: it is on no ordinary chart, it is not sighted from a deck and no route shows
+// it, and what comes out of its water, its wild and its rock is worth more and runs rarer. A wonder is found by a chart in a bottle
+// fished up somewhere else, by a keeper who lowers their voice, by a strange chart on a far shelf, or from the heights of a larger
+// island that stands near one. The far sea was all such islands; now most of what a far voyage meets is weather and rock, and these
+// are the days it remembers.
+const T_WONDER = {
+  worth: 1.5,                       // what a fish, a creature or a stone taken on a wonder sells for, against the same thing anywhere else
+  luck: 0.6,                        // added to the rod's and the bait's luck there, and to the shot's and the call's
+  rank: [1, 1.2, 1.6, 2],           // what a wonder does to its stone by rarity, common to epic
+  ahead: 2,                         // a bottle, a whisper or a chart names the nearest wonder no more than this many tiers past your boat (a wonder two boats off is something to sail toward; one five boats off is noise)
+  bottle: 0.006,                    // a bottle's share of a pool, wherever there is a wonder left to name: about one cast in a hundred and seventy
+  whisper: 0.07, whisperTier: 3,    // a keeper names one at these odds a TALK, from this tier of island out
+  chartOdds: 25, chartTier: 3, chartPrice: [0, 0, 0, 6000, 12000, 30000, 60000], // a strange chart is on a shelf this many days in a hundred, from this tier out, at this price by the port's tier
+  heights: 80,                      // from the heights of a larger island a wonder is sighted this far off, chart px
+};
+const WONDER_IDS = ('lookingglass bonesleep chord orchard barrow echoes octopus beachedmoon crabcity losthats rainingfish reefofteeth mapisland feast glassfisherman upsidesky puppets uphilltide frozenmusic carousel chessboard deadletters saltstatues lakeoftears twomoons staircases birthdays longshadow tideofhands inwardlights sleepwalkers knots onewave bottles counting '
+  + 'hanging folio belly ferry hourglass heldbreath mirrorprison door godsfishhook backwards wellofstars boneorchard followsyou nameless painters masks greatnet giantshand deadstar firstmorning thebalance wordisle onloan tomorrowisle smallgods lastwords worldanchor skippedstones promises sewnsea ninthwave drownedking heartofthesea closedeyes slackwater greatdrum frozenlightning returning maperror worldkeel spentwishes firstcastaway serpentcoil fallingsky starlines shedskins clockwork sleeper ghostfleet').split(' ');
+for (const id of WONDER_IDS) { if (LOC[id]) LOC[id].wonder = true; else console.warn('no such island to be a wonder:', id); }
+const wonderK = locId => LOC[locId] && LOC[locId].wonder ? T_WONDER.worth : 1;
+// the wonder a bottle, a whisper or a strange chart would name: the nearest that is on no chart of yours yet and not too far past your boat
+function wonderNext() { const here = LOC[S.loc], R = boatNow().range + T_WONDER.ahead; if (!here || here.id === 'sea') return null;
+  let best = null, bd = 1e9; for (const l of LOCS) { if (!l.wonder || l.range > R || S.visited[l.id] || S.known[l.id] || (S.sighted && S.sighted[l.id])) continue; const d = Math.hypot(l.x - here.x, l.y - here.y); if (d < bd) { bd = d; best = l; } } return best; }
+const wondersFound = () => LOCS.filter(l => l.wonder && S.visited[l.id]).length;
 const PHASE_NAME = { dawn: 'Dawn', day: 'Day', dusk: 'Dusk', night: 'Night' };
 
 // ---------- mining ----------
@@ -10414,7 +10478,7 @@ const HARD_NAME = ['', 'soft as talc', 'soft', 'soft', 'firm', 'firm', 'hard', '
 // if the server's copy is later, a bar says so and RELOAD fetches it, the voyage saved first. A build that meets a save made by a
 // later build (on the cloud, or under a code) is behind too, and that is the dangerous case: it cannot read the save and would
 // write its own older copy over it. It stops saving, keeps the newer save where the next build will find it, and offers only RELOAD.
-const SAVE_V = 20; // the save's version: bump it and write a migration in load() when the shape changes
+const SAVE_V = 21; // the save's version: bump it and write a migration in load() when the shape changes
 const T_BUILD = { everyMs: 300000, frontMs: 30000, firstMs: 15000, slackMs: 3000, laterMs: 600000, reloadMs: 2000 }; // ask every five minutes in front, at once on coming back to the front if half a minute has passed, first a quarter of a minute after the page opens; the server's copy must be this much later; LATER hides the bar for ten minutes; RELOAD waits this long at most for the cloud to take the save
 const BUILD = { own: 0, dated: null, t0: Date.parse(document.lastModified) || 0, at0: Date.now(), etag: '', asked: 0, checked: 0, newer: false, frozen: false, later: 0, on: '' }; // own: when the running page was last changed on the server; dated: whether it has such a date at all (null until known)
 BUILD.asked = BUILD.at0 - T_BUILD.everyMs + T_BUILD.firstMs;
@@ -10460,7 +10524,7 @@ function newerSave(d) {
 const buildDate = () => BUILD.own ? new Date(BUILD.own).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
 function freshState() {
   return {
-    v: SAVE_V, started: false, loc: 'shoal', shoreSpot: null, tally: false, wake: [], once: {}, found: {}, fished: {}, hunted: {}, stock: {}, broke: null, money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 1, trophyRig: false,
+    v: SAVE_V, started: false, loc: 'shoal', shoreSpot: null, tally: false, wake: [], once: {}, found: {}, fished: {}, sighted: {}, boatsOwned: [], wbought: {}, hunted: {}, stock: {}, broke: null, money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 1, trophyRig: false,
     line: 'l10', pail: 'pail', // the line's test weight and the bucket in use (both bought in the shop)
     rodsOwned: ['stick'], linesOwned: ['l10'], pailsOwned: ['pail'], // everything bought stays in the rig sheet and can be put back on
     heldRod: true, // the storm's one question; let go and the sea takes you, and the voyage starts over
@@ -10565,13 +10629,17 @@ function load(seed) {
     for (const f of (d.sack || []).concat(d.mpending ? [d.mpending] : [])) if (MM[f.id] && MM[f.id].relic) d.once[f.id] = 'held';
     d.v = 19; }
   if (d && d.v === 19) { d.found = {}; d.fished = {}; d.v = 20; } // v19 -> v20: the levels reached and the hidden places found on the larger islands, and how far each hidden water is fished down
+  if (d && d.v === 20) { // v20 -> v21: the boats owned (every boat of its own class below the one it sails, as the ladder was) and the land sighted (from everywhere it has landed, at the old distance)
+    const cur = BOATS.find(b => b.id === d.boat) || BOATS[0]; d.boatsOwned = BOATS.filter(b => b.range >= 1 && !b.spaceport && b.cls === 'all' && b.range <= Math.min(cur.range, TOP_TIER)).map(b => b.id); if (cur.range >= 1 && !d.boatsOwned.includes(cur.id)) d.boatsOwned.push(cur.id);
+    d.sighted = {}; for (const id in d.visited || {}) { const a = LOC[id]; if (!a || id === 'sea') continue; for (const o of LOCS) if (o.id !== 'sea' && o.id !== 'stars' && !o.spaceport && !o.wonder && o.id !== id && Math.hypot(o.x - a.x, o.y - a.y) <= T_WORLD.sight) d.sighted[o.id] = 1; }
+    d.v = 21; }
   if (d && d.v > SAVE_V) { newerSave(d); return; } // saved by a later build than this one: not ours to open, and not ours to overwrite
   if (d && d.v === SAVE_V) S = Object.assign(freshState(), d);
   S.seen = S.seen || {}; for (const k in S.bait) if (S.bait[k] > 0) S.seen['bait:' + k] = true; for (const k in S.shot) if (S.shot[k] > 0) S.seen['shot:' + k] = true; for (const k in S.calls) if (S.calls[k] > 0) S.seen['call:' + k] = true; for (const k in S.charges || {}) if (S.charges[k] > 0) S.seen['charge:' + k] = true; for (const k in S.aids || {}) if (S.aids[k] > 0) S.seen['aid:' + k] = true; if (S.trophyRig) S.seen['rig:trophy'] = true; // things you hold now, you have seen
 }
 
 const loc = () => LOC[S.loc];
-const locTitle = l => l.title || l.name; // what kind of island this is; the name is a placeholder until the world is named
+const locTitle = l => (l.wonder ? '✦ ' : '') + (l.title || l.name); // what kind of island this is; the name is a placeholder until the world is named
 function islandNo(id) { if (id === 'sea') return 0; if (!S.order.includes(id)) S.order.push(id); return S.order.indexOf(id) + 1; }
 const islandLabel = l => l.id === 'sea' ? 'Open sea' : `Island ${islandNo(l.id)}`;
 const boatRange = () => BOATS.find(b => b.id === S.boat).range;
@@ -10589,7 +10657,7 @@ const rodBar = () => rodOf().bar;
 const lineOf = () => gearUsed('line');
 const lineKg = () => lbKg(lineOf().lb);
 const bucketOf = () => gearUsed('pail');
-const bucketCap = () => bucketOf().cap;
+const bucketCap = () => bucketOf().cap + (boatNow().hold || 0); // the bucket, and what the boat's hold takes beside it
 const RARITY_RANK = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 1 };
 // the longest this species can be and still weigh no more than kg
 const cmFor = (sp, kg) => Math.floor(Math.cbrt(kg * 1000 / (sp.k || K_SHAPE[sp.shape] || 0.01)));
@@ -10746,7 +10814,7 @@ function pool(locId, rig, baitId, t, spotId) {
   if (LOC[locId].noFish) return [];
   const ph = phaseAt(t), wx = weatherAt(t, locId), bt = BAITS[baitId].tier, out = [], sp = spotOf(locId, spotId === undefined ? S.spot : spotId);
   if (sp.boat && S.boat === 'none') return []; // open water: you need something that floats
-  const strays = rig === 'set' ? null : straysTo(locId), far = [], off = sp.boat && !S.prologue ? T.offshore : null, fresh = sp.hidden ? waterFresh(locId, sp.id) : 0, offLuck = (off ? offshoreLuck() : 0) + fresh * T_SIZE.water.luck, visit = off ? offVisitors(locId) : null;
+  const strays = rig === 'set' ? null : straysTo(locId), far = [], off = sp.boat && !S.prologue ? T.offshore : null, fresh = sp.hidden ? waterFresh(locId, sp.id) : 0, offLuck = (off ? offshoreLuck() : 0) + fresh * T_SIZE.water.luck + (LOC[locId].wonder ? T_WONDER.luck : 0), visit = off ? offVisitors(locId) : null;
   for (const s of SPECIES) {
     let mult = sp.fish[s.id] || (visit && visit[s.id]), stray = false; // a spot's own roster: overlapping, but each spot has fish the others lack
     if (!mult) { if (!strays || !strays.has(s)) continue; stray = true; } // ...or a stray, far from its own waters
@@ -10788,6 +10856,7 @@ function pool(locId, rig, baitId, t, spotId) {
     for (const x of fishy) { const r = RARITY_RANK[rarityOf(x[0])] || 0; x[1] *= SPT[r] + (RK[r] - SPT[r]) * fresh; }
     const T1 = sum(fishy); if (T1 > 0) for (const x of fishy) x[1] *= T0 / T1;
   }
+  if (rig !== 'trophy' && !S.prologue && locId === S.loc && wonderNext()) { const tot = out.reduce((a, x) => a + x[1], 0); if (tot > 0) out.push([SP.bottle, tot * T_WONDER.bottle, false]); } // a bottle: now and then, wherever there is a wonder left to name
   if (far.length) { // far-from-home fish share a fixed sliver of the pool between them, however many islands feed it
     const R = out.reduce((a, x) => a + x[1], 0), SW = far.reduce((a, x) => a + x[1], 0), k = STRAY.share * R / SW;
     for (const x of far) { x[1] *= k; out.push(x); }
@@ -10824,7 +10893,7 @@ function rollCatch(locId, rig, baitId, t, waitMs) {
   const kg = s.kind ? 0 : kgOf(s, cm, rnd(-0.08, 0.08));
   const mult = v && !s.mutant ? VARIANTS[v].mult : 1;
   const bw = s.kind ? 1 : (BAITS[baitId].worth || 1); // a fish taken on better bait sells for more
-  return { id: s.id, cm, kg, value: Math.round(valueOf(s, f, trophy, rnd(-T_VALUE.jit, T_VALUE.jit)) * mult * bw), trophy, v, stray, capped, off: offS || undefined, hid: spotOf(locId, S.spot).hidden ? 1 : undefined, wx: weatherAt(t, locId) };
+  return { id: s.id, cm, kg, value: Math.round(valueOf(s, f, trophy, rnd(-T_VALUE.jit, T_VALUE.jit)) * mult * bw * (s.kind ? 1 : wonderK(locId))), trophy, v, stray, capped, won: !s.kind && LOC[locId].wonder ? 1 : undefined, off: offS || undefined, hid: spotOf(locId, S.spot).hidden ? 1 : undefined, wx: weatherAt(t, locId) };
 }
 // The rod bites within a few seconds. A passive line soaks: a small chance every second, so the wait is exponential (memoryless), sampled
 // once at cast time so it survives closing the game. Nothing waits longer than soakCap means.
@@ -10863,6 +10932,7 @@ function land(i) {
   const p = { id: c.id, cm: c.cm, kg: c.kg, value: c.value, trophy: c.trophy, v: c.v || null, stray: !!c.stray, capped: !!c.capped, bait: L.bait, rig: L.rig, phase: phaseAt(L.at || now()), wx: c.wx || weatherAt(L.at || now(), S.loc), wait: L.t0 ? Math.max(0, (L.at || now()) - L.t0) : 0, tags: [] };
   if (s.kind) {
     if (s.kind === 'wood' && !S.raft) { S.wood++; if (S.wood >= T.raftWood) p.tags.push('Enough for a raft'); }
+    if (s.kind === 'bottle') { const w = wonderNext(); if (w) { S.known[w.id] = true; p.wonder = w.id; } } // the chart in it: one wonder, on yours from now
   } else {
     const ix = S.index[c.id] || (S.index[c.id] = { n: 0, best: 0, trophies: 0 });
     if (ix.n === 0) p.tags.push('New species');
@@ -10873,6 +10943,7 @@ function land(i) {
     if (c.v) { ix.v = ix.v || {}; ix.v[c.v] = (ix.v[c.v] || 0) + 1; }
     if (c.stray) p.tags.push('Far from home');
     if (c.off) p.tags.push('Offshore');
+    if (c.won) p.tags.push('Wonder');
     if (c.hid) { p.tags.push('Hidden water'); if (spot().hidden) { const wk = waterKey(S.loc, S.spot); S.fished = S.fished || {}; S.fished[wk] = { n: waterPress(wk) + 1, t: now() }; } } // one more out of a small water
     if (c.capped) p.tags.push('Line held');
     if (s.weather) p.tags.push(WEATHER[p.wx].name + ' fish'); // it only shows under this sky
@@ -10927,7 +10998,7 @@ function claimBounty(id) {
 }
 function buildRaft() {
   if (S.raft || S.wood < T.raftWood) return;
-  S.raft = true; S.boat = 'raft'; save(); render();
+  S.raft = true; S.boat = 'raft'; S.boatsOwned = ['raft']; seeFrom(loc()); save(); render();
   showCard(`<h2>Raft built</h2><div class="big">Six planks and some rope.</div><div class="note">Gull Harbor is within reach. Open the map and sail. They buy fish there.</div><div class="note">tap to close</div>`);
 }
 const boatReach = () => (BOATS.find(b => b.id === S.boat) || BOATS[0]).reach;
@@ -11058,7 +11129,7 @@ const baitClass = b => b.tier >= 2 ? '' : b.tier === 1 ? ' Takes what shrimp tak
 // what a shop stocks of the ten kinds: the four it always has, and the shelves its island keeps
 const shopKinds = l => { const stock = shopStock(l); return GEAR_KINDS.filter(k => !(k in SHOP_SHELVES) || stock.has(k)); };
 // how many pieces on this island's shelves would better what you use now (for the chart's list)
-function shopUpgrades(l) { if (!l.shop || l.spaceport) return 0; let n = 0; for (const k of shopKinds(l)) if (gearVerdict(k, madeHere(l, k)).v === 'up') n++; return n; }
+function shopUpgrades(l) { if (!l.shop || l.spaceport) return 0; let n = 0; for (const k of shopKinds(l)) if (gearVerdict(k, madeHere(l, k)).v === 'up') n++; for (const b of yardBoats(l)) if (boatVerdict(b).v === 'up') n++; return n; } // its gear and what its yard has on the slip
 // every piece of a kind you own, weakest first, for the rig and kit sheets
 function gearRowsOf(kind, sub, busy) {
   const G = GEAR[kind], cur = S[G.use], [mk, md] = G.stats[0];
@@ -11068,6 +11139,7 @@ function gearRowsOf(kind, sub, busy) {
 
 // ---------- shop ----------
 // Is the mysterious chart on this shop's shelf today? Fixed per island per real day, so it does not flicker.
+function wonderChartInStock(l) { const day = Math.floor(now() / 864e5); return l.range >= T_WONDER.chartTier && (S.wbought || {})[l.id] !== day && hash32(strSeed(l.id + '|wchart') + day * 7919) % 100 < T_WONDER.chartOdds; } // a strange chart: some days, on some far shelves, and gone for the day once bought
 function chartInStock(l) { const day = Math.floor(now() / 864e5), h = (day * 7919 + l.x * 31 + l.y * 17 + l.id.length * 131) % 100; return h < T_WORLD.chartOdds; }
 const SHOP_SHELVES = { pail: 'buckets', cloak: 'cloaks', boots: 'boots', gamepack: 'game bags', lamp: 'lamps', sack: 'ore sacks', charges: 'charges', aids: 'mine aids', calls: 'calls' };
 function shopStock(l) { // what this shop keeps beside the basics: a fixed hash of the island picks five of the nine optional shelves, so ports differ
@@ -11081,17 +11153,18 @@ function shopSold(l) { const day = stockDay(); S.stock = S.stock || {}; let st =
 function shopLeft(l, k) { const r = T_WORLD.stock[k.split(':')[0]]; if (!r) return null; let seed = 13; const key = l.id + '|' + k; for (let i = 0; i < key.length; i++) seed = (seed * 31 + key.charCodeAt(i)) | 0;
   return Math.max(0, r[0] + hash32(seed + stockDay() * 7919) % (r[1] - r[0] + 1) - (shopSold(l)[k] || 0)); }
 function shopItems() { const l = loc(), items = shopItemsRaw();
-  for (const it of items) { const left = shopLeft(l, it.k); if (left == null) { if (!it.locked) it.stock = it.owned ? '' : it.made ? 'the only one' : '1 on the shelf'; continue; }
+  for (const it of items) { const left = shopLeft(l, it.k); if (left == null) { if (!it.locked) it.stock = it.owned ? '' : it.boat ? 'on the slip' : it.made ? 'the only one' : '1 on the shelf'; continue; }
     it.left = left; it.stock = left > 0 ? `${left} pack${left === 1 ? '' : 's'} left` : 'sold out'; if (left <= 0) it.soldOut = true;
     it.sub = (left > 0 ? `${left} pack${left === 1 ? '' : 's'} left on the shelf today. ` : 'Sold out today: more comes with the morning boat. ') + it.sub; }
   return items; }
 function shopItemsRaw() {
   const items = [], l = loc(), stock = shopStock(l);
   if (l.spaceport) {
-    const b = BOATS.find(b => b.id === 'starship'); if (S.boat === 'starship') return [];
-    return [{ k: 'boat', name: b.name, sub: S.boat === 'ironclad' ? 'Range 7. The stars. Nobody knows what bites up there.' : 'Come back with an ironclad under you. The gantry only takes one ship at a time.', price: b.price, locked: S.boat !== 'ironclad' }];
+    const b = BOATS.find(b => b.spaceport), deep = boatNow().range >= TOP_TIER; if (S.boat === b.id) return [];
+    return [{ k: 'boat:' + b.id, name: b.name, boat: b, sub: deep ? `Range ${b.range}. The stars. Nobody knows what bites up there.` : 'Come back with a ship of the sixth tier under you. The gantry only takes one ship at a time.', price: b.price, locked: !deep }];
   }
   if (l.range >= 5 && !S.known.spaceport && !S.visited.spaceport && chartInStock(l)) items.push({ k: 'chart', name: 'A mysterious chart', sub: 'Oilcloth, salt-stiff, one island on it at the far edge of the world. The keeper will not say where it came from.', price: T_WORLD.chartPrice });
+  if (wonderChartInStock(l) && wonderNext()) items.push({ k: 'wchart', name: 'A strange chart', sub: 'One island on it, drawn by somebody who had been there and did not expect to be believed. The keeper will not vouch for it, and has only the one.', price: T_WONDER.chartPrice[Math.min(6, l.range)] });
   if (S.slots < 4) items.push({ k: 'slot', name: `Line ${S.slots + 1}`, sub: 'One more line in the water.', price: SLOT_PRICES[S.slots] });
   // the gear: this island's own make of each kind it stocks, whatever you carry. gearVerdict says whether it betters it.
   const kinds = shopKinds(l), gear = kind => { if (!kinds.includes(kind)) return; const it = madeHere(l, kind), V = gearVerdict(kind, it); items.push({ k: kind, name: it.name, made: it, verdict: V, html: gearSub(kind, it, V), sub: '', price: it.price, owned: V.v === 'owned' || V.v === 'inuse' }); };
@@ -11106,11 +11179,9 @@ function shopItemsRaw() {
   for (const [id, sh] of Object.entries(SHOT)) if (sh.qty && sh.tier <= tier) items.push({ k: 'shot:' + id, name: `${sh.name} ×${sh.qty}`, sub: `Have ${S.shot[id] || 0}. ${sh.shun ? 'The common game keeps back and the rarer game shows far more often. ' : sh.luck ? 'Rarer game shows more often. ' : ''}${sh.worth ? `A clean kill pays ×${sh.worth}. ` : ''}${sh.calm ? 'The animal takes alarm slower and the mark swings slower. ' : ''}Spent per shot.`, price: sh.price });
   if (stock.has('calls')) for (const [id, ca] of Object.entries(CALLS)) if (ca.qty && ca.tier <= tier) items.push({ k: 'call:' + id, name: `${ca.name} ×${ca.qty}`, sub: `Have ${S.calls[id] || 0}. ${ca.wait ? 'Something shows in half the time. ' : ''}${ca.luck ? 'The common game stays away and the rarer game answers it. ' : ''}${ca.near ? 'It comes to you: the stalk starts a step nearer. ' : ''}Spent per stalk.`, price: ca.price });
   for (const id of shopBaits(l)) { const b = BAITS[id]; items.push({ k: 'bait:' + id, name: `${b.name} ×${b.qty}`, sub: `Have ${S.bait[id] || 0}. ${b.say}${baitClass(b)}`, price: b.price }); }
-  const bi = BOATS.findIndex(b => b.id === S.boat);
-  if (bi >= 1 && bi < BOATS.length - 1) {
-    const b = BOATS[bi + 1];
-    items.push({ k: 'boat', name: b.name, sub: b.spaceport ? 'Not sold here.' : `Range ${b.range}: reveals the next stretch of the chart.`, price: b.price, locked: !!b.spaceport, away: !!b.spaceport }); // away: not sold at this port, so the shelf shows only that there is such a thing
-  }
+  // the yard: this port's own class of boat, of the tier above yours and of your own; what a boat does is weighed against the one you sail
+  for (const b of yardBoats(l)) { const V = boatVerdict(b); items.push({ k: 'boat:' + b.id, name: b.name, boat: b, verdict: V, html: boatSub(b, V), sub: '', price: b.price, owned: V.v === 'owned' || V.v === 'inuse' }); }
+  if (boatNow().range >= TOP_TIER && !boatNow().spaceport) { const b = BOATS.find(x => x.spaceport); items.push({ k: 'boat:' + b.id, name: b.name, sub: 'Not sold here.', price: b.price, locked: true, away: true }); } // away: not sold at this port, so the shelf shows only that there is such a thing
   return items;
 }
 function buy(k) {
@@ -11128,7 +11199,9 @@ function buy(k) {
   else if (k.startsWith('shot:')) { const b = k.slice(5); S.shot[b] = (S.shot[b] || 0) + SHOT[b].qty; S.seen[k] = true; if (S.shotSel === 'stones') S.shotSel = b; }
   else if (k.startsWith('call:')) { const b = k.slice(5); S.calls[b] = (S.calls[b] || 0) + CALLS[b].qty; S.seen[k] = true; if (S.callSel === 'none') S.callSel = b; }
   else if (k.startsWith('bait:')) { const b = k.slice(5); S.bait[b] = (S.bait[b] || 0) + BAITS[b].qty; S.seen[k] = true; }
-  else if (k === 'boat') { const bi = BOATS.findIndex(b => b.id === S.boat); S.boat = BOATS[bi + 1].id; }
+  else if (it.boat) { const b = it.boat, was = boatNow().range; S.boatsOwned = S.boatsOwned || []; if (!S.boatsOwned.includes(b.id)) S.boatsOwned.push(b.id); S.boat = b.id; seeFrom(loc()); // she is yours and under you; her lookout goes up at once
+    const got = b.range > was && !b.spaceport ? boatChart(b) : []; if (got.length) setTimeout(() => toast(`Her chart goes with her: ${got.length} island${got.length > 1 ? 's' : ''} of tier ${b.range} ${got.length > 1 ? 'are' : 'is'} marked on yours.`), 900); }
+  else if (k === 'wchart') { const w = wonderNext(); S.wbought = S.wbought || {}; S.wbought[loc().id] = Math.floor(now() / 864e5); if (w) { S.known[w.id] = true; setTimeout(() => toast(`${w.name}. It is on your chart now, and on very few others.`), 900); } }
   else if (k === 'chart') { S.known.spaceport = true; setTimeout(() => toast('One island on it, at the far edge of the world. It is on your chart now.'), 900); }
   save(); render(); renderSheet(); toast(`Bought ${it.name}.` + (it.made ? (worn ? ' It is in use.' : ' It is in your kit; what you use is better.') : ''));
 }
@@ -11293,7 +11366,9 @@ function talk() {
     const lines = ['"There is a ship that sails up. Not north. Up. The dock for it is at the far edge of everything, and no chart I sell shows it."', '"A sailor paid me in a coin I did not know. Said it came from a port where the boats leave the water. Said the chart to it costs more than the boat."', '"Keep your money. Past the last island there is a gantry and a ship that does not float. People who find it do not come back to fish."'];
     talkN++; S.heardStars = true; save(); talkLine = `${kp.name} lowers their voice. ${lines[Math.floor(Math.random() * lines.length)]}`; talkExpr = 'sly'; renderSheet(); animateTalk(talkExpr); return;
   }
-  const unknown = LOCS.filter(l => !S.visited[l.id] && !S.known[l.id] && l.id !== 'sea' && !l.spaceport);
+  if (loc().range >= T_WONDER.whisperTier && Math.random() < T_WONDER.whisper) { const w = wonderNext(); // now and then, from the third tier out: a wonder
+    if (w) { talkN++; S.known[w.id] = true; save(); talkLine = `${kp.name} lowers their voice. "${w.rumor}" <b>${w.name}</b> is on your chart now. It is on very few.`; talkExpr = 'sly'; renderSheet(); animateTalk(talkExpr); return; } }
+  const unknown = LOCS.filter(l => !S.visited[l.id] && !S.known[l.id] && l.id !== 'sea' && !l.spaceport && !l.wonder);
   const exoticFirst = kp.exotic ? unknown.filter(l => l.range >= 5) : [];
   const cands = (exoticFirst.length ? exoticFirst : unknown).sort((a, b) => a.range - b.range).slice(0, 3);
   talkN++;
@@ -11310,6 +11385,7 @@ function renderSheet() {
     const R = boatRange(), boat = BOATS.find(b => b.id === S.boat);
     const rankOf = l => l.id === S.loc ? 0 : ({ visited: 1, known: 2, fog: 3 })[mapState(l)] || 4, landed = id => { const i = S.order.indexOf(id); return i < 0 ? 1e9 : i; }; // within a tier: where you are, then where you have been (in the order you landed), then what you have heard of, then land only sighted
     const shown = LOCS.filter(l => mapState(l) !== 'hidden'), tally = { visited: 0, known: 0, fog: 0 }; for (const l of shown) if (l.id !== 'stars') tally[mapState(l)]++;
+    const tierAll = {}, tierOn = {}; for (const l of LOCS) { if (l.id === 'sea' || l.id === 'stars' || l.spaceport) continue; tierAll[l.range] = (tierAll[l.range] || 0) + 1; if (mapState(l) !== 'hidden') tierOn[l.range] = (tierOn[l.range] || 0) + 1; } // how much of each tier is on the chart: the head says there is more, never how many
     const rows = shown.sort((a, b) => a.range - b.range || rankOf(a) - rankOf(b) || landed(a.id) - landed(b.id)).map(l => {
       const st = mapState(l), need = BOATS.find(b => b.range === l.range);
       const name = st === 'fog' ? '???' : l.name;
@@ -11318,17 +11394,17 @@ function renderSheet() {
         : st === 'known' ? (l.range > R ? 'Rumored. Needs ' + anA(need ? need.name.toLowerCase() : 'bigger boat') + '.' : far ? `Rumored, ${dayTxt}. Too far for your ${boat.name.toLowerCase()}.` : 'Rumored: ' + l.rumor) : (far ? `${dayTxt}: too far for your ${boat.name.toLowerCase()}. ` : '') + l.blurb;
       const ups = st === 'visited' ? shopUpgrades(l) : 0; // what its shop holds that would better what you carry now
       const out = l.range > R || far; // not to be sailed to from here with this boat: an island you have landed on keeps its name and its flag at full strength all the same
-      return { range: l.range, html: `<button class="row st-${st} ${l.id === mapSel ? 'sel' : ''} ${st !== 'visited' && (st === 'fog' || out) ? 'dim' : ''} ${st === 'visited' && out ? 'far' : ''}" data-act="node" data-k="${l.id}"><span class="mk ${st}"></span><div class="name"><span class="nm">${name}</span> <span class="ttag">tier ${l.range}</span>${l.id !== 'stars' && !l.noFish && isleSize(l) ? `<span class="ttag sz">${SIZE_NAME[isleSize(l)]} island</span>` : ''}${st === 'visited' ? '<span class="vtag visited">visited</span>' : st === 'known' ? '<span class="vtag not">not visited</span>' : ''}${st === 'visited' ? (l.shop ? '<span class="mtag shop">shop</span>' : l.sell ? '<span class="mtag sell">traders only · no shop</span>' : '<span class="mtag none">no market</span>') : ''}${st === 'visited' && ups ? `<span class="mtag up">▲ ${ups} upgrade${ups > 1 ? 's' : ''} for you</span>` : ''}${st === 'visited' && hidN(l) ? `<span class="mtag hid">◆ ${hidN(l)} hidden place${hidN(l) > 1 ? 's' : ''} found</span>` : ''}<small>${sub}</small></div>${l.id === S.loc ? '<div class="here">you are here</div>' : ''}</button>` };
+      return { range: l.range, html: `<button class="row st-${st} ${l.id === mapSel ? 'sel' : ''} ${st !== 'visited' && (st === 'fog' || out) ? 'dim' : ''} ${st === 'visited' && out ? 'far' : ''}" data-act="node" data-k="${l.id}"><span class="mk ${st}"></span><div class="name"><span class="nm">${name}</span> <span class="ttag">tier ${l.range}</span>${l.id !== 'stars' && !l.noFish && isleSize(l) ? `<span class="ttag sz">${SIZE_NAME[isleSize(l)]} island</span>` : ''}${l.wonder && st !== 'fog' ? '<span class="mtag wonder">✦ wonder</span>' : ''}${st === 'visited' ? '<span class="vtag visited">visited</span>' : st === 'known' ? '<span class="vtag not">not visited</span>' : ''}${st === 'visited' ? (l.shop ? '<span class="mtag shop">shop</span>' : l.sell ? '<span class="mtag sell">traders only · no shop</span>' : '<span class="mtag none">no market</span>') : ''}${st === 'visited' && ups ? `<span class="mtag up">▲ ${ups} upgrade${ups > 1 ? 's' : ''} for you</span>` : ''}${st === 'visited' && hidN(l) ? `<span class="mtag hid">◆ ${hidN(l)} hidden place${hidN(l) > 1 ? 's' : ''} found</span>` : ''}<small>${sub}</small></div>${l.id === S.loc ? '<div class="here">you are here</div>' : ''}</button>` };
     }).reduce((acc, row) => { // the legend is grouped by tier, each group headed by the boat that reaches it
-      if (row.range !== acc.last) { const b = BOATS.find(x => x.range === row.range); acc.out.push(`<div class="tierhead">Tier ${row.range}${row.range === 0 ? ' · where you washed up' : b ? ' · ' + (row.range <= R ? 'your boat reaches it' : 'needs ' + anA(b.name.toLowerCase())) : ''}</div>`); acc.last = row.range; }
+      if (row.range !== acc.last) { const b = BOATS.find(x => x.range === row.range); acc.out.push(`<div class="tierhead">Tier ${row.range}${row.range === 0 ? ' · where you washed up' : b ? ' · ' + (row.range <= R ? 'your boat reaches it' : 'needs ' + anA(b.name.toLowerCase())) : ''}${row.range > 0 && tierAll[row.range] ? `<span class="more">${(tierOn[row.range] || 0) < tierAll[row.range] ? `${tierOn[row.range]} on your chart · more beyond` : 'every island of it is on your chart'}</span>` : ''}</div>`); acc.last = row.range; }
       acc.out.push(row.html); return acc; }, { out: [], last: -1 }).out.join('');
     const sel = LOC[mapSel];
     const tooFar = sel && sel.id !== S.loc && !withinReach(sel);
     const canSail = sel && !sel.locked && sel.range <= R && !tooFar && sel.id !== S.loc && mapState(sel) !== 'hidden';
     el.innerHTML = `<div class="head"><h2>Chart</h2><button class="x" data-act="close">✕</button></div>
-      <div class="note">Boat: ${boat.name.toLowerCase()}${boat.reach ? ` · the ring is how far it can take you in one voyage (about ${Math.max(1, Math.round(boat.reach / 30))} day${Math.round(boat.reach / 30) > 1 ? 's' : ''} of sailing)` : ''}. The world is dark until you sail it. Neighbours of places you have been show as ???; a shopkeeper's rumor lights an island from afar.</div>
+      <div class="note">Boat: ${boat.name.toLowerCase()}${boat.reach ? ` · the ring is how far it can take you in one voyage (about ${Math.max(1, Math.round(boat.reach / 30))} day${Math.round(boat.reach / 30) > 1 ? 's' : ''} of sailing)` : ''}. The world is dark until you sail it. Land within sight of a place you have been shows as ???; a shopkeeper's rumor, or the chart that comes with a boat, names an island from afar.</div>
       <canvas id="mapcv" width="${MW}" height="${MH}"></canvas>
-      <div class="mapkey"><span class="v"><span class="mk visited"></span><b>${tally.visited}</b> visited</span><span><span class="mk known"></span><b>${tally.known}</b> rumored</span><span><span class="mk fog"></span><b>${tally.fog}</b> land sighted</span>${(S.wake || []).length ? '<span><span class="wk"></span>your wake</span>' : ''}</div>
+      <div class="mapkey"><span class="v"><span class="mk visited"></span><b>${tally.visited}</b> visited</span><span><span class="mk known"></span><b>${tally.known}</b> rumored</span><span><span class="mk fog"></span><b>${tally.fog}</b> land sighted</span>${(S.wake || []).length ? '<span><span class="wk"></span>your wake</span>' : ''}${wondersFound() ? `<span class="wn">✦ <b>${wondersFound()}</b> wonder${wondersFound() > 1 ? 's' : ''} found</span>` : ''}</div>
       <div class="legend">${rows}</div>
       <button class="cta" data-act="sail" ${canSail ? '' : 'disabled'}>${canSail ? 'Sail to ' + (mapState(sel) === 'fog' ? 'the unknown' : sel.name) : sel && sel.id === S.loc ? 'You are here' : sel && mapState(sel) !== 'hidden' && sel.range <= R && tooFar ? 'Too far for your ' + boat.name.toLowerCase() : sel && mapState(sel) !== 'hidden' && sel.range > R ? 'Needs a bigger boat' : 'Pick a port'}</button>`;
     drawMap(); mapMarkCSS();
@@ -11345,6 +11421,7 @@ function renderSheet() {
       <div class="box"><h3>RODS</h3><div class="list">${gearRows(RODS, S.rodsOwned, S.rod, 'rod', r => `Net ${Math.round(r.bar * 100)}% of the track${r.luck ? ` · luck ${r.luck}` : ''}.`)}</div></div>
       <div class="box"><h3>LINE</h3><div class="list">${gearRows(LINE_TEST, S.linesOwned, S.line, 'line', x => `Holds fish to ${fmtKg(lbKg(x.lb))}. Heavier ones will not bite.`)}</div></div>
       <div class="box"><h3>BUCKET</h3><div class="list">${gearRows(BUCKETS, S.pailsOwned, S.pail, 'pail', x => `Room for ${x.cap} fish.`)}</div></div>
+      ${(S.boatsOwned || []).length > 1 ? `<div class="box"><h3>BOATS</h3><div class="list">${BOATS.filter(b => S.boatsOwned.includes(b.id)).map(b => `<div class="row ${b.id === S.boat ? 'sel' : ''}">${icon('boat:' + b.id)}<div class="name" style="flex:1">${b.name}<small>Tier ${b.range} · ${dayStr(b.reach)} a voyage · sights land ${dayStr(b.sight)} off${b.luck ? ` · offshore luck +${b.luck}` : ''}${b.hold ? ` · hold for ${b.hold} fish` : ''}.</small></div>${b.id === S.boat ? '<div class="here">in use</div>' : `<button class="buy" data-act="equip" data-k="boat:${b.id}">USE</button>`}</div>`).join('')}</div></div>` : ''}
       <div class="box"><h3>ALSO</h3><div class="list"><div class="row"><div class="name">${S.slots} line${S.slots > 1 ? 's' : ''}${S.trophyRig ? ' · trophy rig' : ''}<small>${S.slots < 4 ? 'More lines are sold in the shops.' : 'Every line you can run.'}</small></div></div><div class="row">${icon('weapon:' + S.weapon)}<div class="name" style="flex:1">${WEAPON().name}<small>For the hunt. The kit sheet on the hunting ground has the rest.</small></div><button class="buy" data-act="open" data-k="kit">KIT</button></div><div class="row">${icon('boat:' + S.boat)}<div class="name" style="flex:1">${BOATS.find(b => b.id === S.boat).name}<small>${boatReach() ? `Reaches tier ${boatRange()} islands within about ${Math.max(1, Math.round(boatReach() / 30))} day${Math.round(boatReach() / 30) > 1 ? 's' : ''} of sailing.` : 'No boat yet.'}</small></div></div></div></div>`;
     drawIcons(el);
   } else if (sheetKind === 'kit') { // everything you hunt with: weapon, shot, call, cloak, boots, bag
@@ -11413,7 +11490,7 @@ function renderSheet() {
         <div class="row">${icon('rod:' + S.rod)}<div class="name" style="flex:1">${rod.name}<small>Net ${Math.round(rod.bar * 100)}% of the track${rod.luck ? `, luck ${rod.luck}` : ''}.</small></div></div>
         <div class="row">${icon('line:' + S.line)}<div class="name" style="flex:1">${lineOf().name}<small>Holds fish to ${fmtKg(lineKg())}. Heavier ones will not bite.</small></div></div>
         <div class="row">${icon('pail:' + S.pail)}<div class="name" style="flex:1">${bucketOf().name}<small>Room for ${bucketCap()} fish.</small></div></div>
-        <div class="row">${icon('boat:' + S.boat)}<div class="name" style="flex:1">${boat.name}<small>Range ${boat.range}.</small></div></div>
+        <div class="row">${icon('boat:' + S.boat)}<div class="name" style="flex:1">${boat.name}<small>Tier ${boat.range}${boat.reach ? ` · ${dayStr(boat.reach)} a voyage · sights land ${dayStr(boat.sight || T_WORLD.sight)} off${boat.luck ? ` · offshore luck +${boat.luck}` : ''}${boat.hold ? ` · hold for ${boat.hold} fish` : ''}` : ''}.${(S.boatsOwned || []).length > 1 ? ` You own ${S.boatsOwned.length}: change boats from the rig sheet.` : ''}</small></div></div>
         <div class="row"><div class="name">${S.slots} line${S.slots > 1 ? 's' : ''}${S.trophyRig ? ' · trophy rig' : ''}<small>${S.trophyRig ? 'Any line can run as a trophy line.' : 'The trophy rig is sold at the harbor.'}</small></div></div>
         <div class="row">${icon('weapon:' + S.weapon)}<div class="name" style="flex:1">${WEAPON().name}<small>Takes game to ${fmtKg(WEAPON().power)}. ${SHOT[shotOf()].name}${shotOf() !== 'stones' ? ' ×' + S.shot[shotOf()] : ''}${callOf() !== 'none' ? ', ' + CALLS[callOf()].name.toLowerCase() + ' ×' + S.calls[callOf()] : ''}.</small></div></div>
         <div class="row">${icon('cloak:' + S.cloak)}<div class="name" style="flex:1">${CLOAK().name}<small>${CLOAK().calm < 1 ? `Game takes alarm ${Math.round((1 - CLOAK().calm) * 100)}% slower.` : 'No cloak.'}</small></div></div>
@@ -11428,7 +11505,7 @@ function renderSheet() {
     drawIcons(el);
     drawMinis(el); drawFaces(el);
   } else if (sheetKind === 'shop') {
-    const shopIcon = it => it.made ? it.k + ':' + it.made.grade : it.k.startsWith('bait:') || it.k.startsWith('shot:') || it.k.startsWith('call:') || it.k.startsWith('charge:') || it.k.startsWith('aid:') ? it.k : it.k === 'boat' ? 'boat:' + (loc().spaceport ? 'starship' : BOATS[BOATS.findIndex(b => b.id === S.boat) + 1].id) : it.k === 'slot' ? 'rig:set' : it.k === 'trig' ? 'rig:trophy' : it.k === 'tally' ? 'tool:tally' : null;
+    const shopIcon = it => it.made ? it.k + ':' + it.made.grade : it.k.startsWith('bait:') || it.k.startsWith('shot:') || it.k.startsWith('call:') || it.k.startsWith('charge:') || it.k.startsWith('aid:') ? it.k : it.k.startsWith('boat:') ? it.k : it.k === 'boat' ? 'boat:' + (loc().spaceport ? 'starship' : BOATS[BOATS.findIndex(b => b.id === S.boat) + 1].id) : it.k === 'slot' ? 'rig:set' : it.k === 'trig' ? 'rig:trophy' : it.k === 'tally' ? 'tool:tally' : null;
     // a thing this port does not sell is a row of question marks: no name, no picture, nothing about it but what it costs
     const awayRow = it => `<div class="row away">${icon('unknown')}<div class="name" style="flex:1">???<small>Not sold here.</small></div><div style="display:grid;gap:4px;justify-items:end"><div class="price">${money(it.price)}</div><button class="buy" disabled>LOCKED</button></div></div>`;
     const rows = shopItems().map(it => it.away ? awayRow(it) : `<div class="row ${it.verdict ? 'g-' + it.verdict.v : ''}">${shopIcon(it) ? icon(shopIcon(it)) : ''}<div class="name" style="flex:1">${it.name}${it.verdict ? ` <span class="gtag ${it.verdict.v}">${GEAR_TAG[it.verdict.v]}</span>` : ''}<small>${it.html || it.sub}</small></div><div style="display:grid;gap:4px;justify-items:end"><div class="price">${money(it.price)}</div>${it.stock ? `<div class="stock ${it.soldOut ? 'out' : ''}">${it.stock}</div>` : ''}<button class="buy" data-act="buy" data-k="${it.k}" ${it.locked || it.soldOut || it.owned || S.money < it.price ? 'disabled' : ''}>${it.locked ? 'LOCKED' : it.soldOut ? 'SOLD OUT' : it.owned ? 'YOURS' : 'BUY'}</button></div></div>`).join('');
@@ -11498,12 +11575,26 @@ function drawMinis(el) {
   el.querySelectorAll('canvas.mini:not(.game):not(.ore)').forEach(c => { const x = c.getContext('2d'); x.fillStyle = '#0f2238'; x.fillRect(0, 0, 64, 36); x.fillStyle = '#152638'; x.fillRect(0, 34, 64, 2); blitFishCentered(x, c.dataset.fish, 32, 17, 1, c.dataset.known === '1' ? (c.dataset.v || 'color') : 'dim'); });
 }
 // visited: full ink. known: named by rumor. fog: next to somewhere visited, drawn as ???. hidden: not on the chart yet.
+// Land sighted: every island a route runs to from somewhere you have landed, and every island that has been within sight of your boat
+// at a landfall (her `sight`: a taller mast sees further), route or no route. It was routes only, and a player six tiers out had one
+// island of tier five on the chart and took the tier to be one island. Never the spaceport. What is sighted stays sighted (S.sighted).
+function seeFrom(l, far) { // the lookout: land within the boat's sight of where you lie goes on the chart for good (far: from an island's heights, this many px off, and a wonder too)
+  if (!l || l.id === 'sea') return 0; const R = far || boatNow().sight || T_WORLD.sight; let n = 0; S.sighted = S.sighted || {};
+  for (const o of LOCS) { if (o.id === 'sea' || o.id === 'stars' || o.spaceport || o.id === l.id || S.sighted[o.id] || o.wonder) continue; if (Math.hypot(o.x - l.x, o.y - l.y) <= R) { S.sighted[o.id] = 1; if (!far) n++; } }
+  if (far) { let best = null, bd = far; for (const o of LOCS) { if (!o.wonder || S.sighted[o.id] || S.known[o.id] || S.visited[o.id]) continue; const d = Math.hypot(o.x - l.x, o.y - l.y); if (d <= bd) { bd = d; best = o; } } if (best) { S.sighted[best.id] = 1; n++; } } // and from the heights the nearest wonder, if one stands that near: one, not all of them
+  return n;
+}
 function mapState(l) {
   if (l.id === 'sea') return 'hidden';
   if (S.visited[l.id]) return 'visited';
   if (S.known[l.id]) return 'known';
-  if (l.links.some(k => S.visited[k])) return 'fog';
+  if ((S.sighted && S.sighted[l.id] && !l.spaceport) || (!l.wonder && l.links.some(k => S.visited[k]))) return 'fog';
   return 'hidden';
+}
+// A boat comes with a chart of the waters it was built for: the nearest islands of its tier that are not on yours yet, named.
+function boatChart(b) {
+  const here = loc(), c = LOCS.filter(l => l.range === b.range && l.id !== 'sea' && l.id !== 'stars' && !l.spaceport && !l.wonder && !l.locked && !S.visited[l.id] && !S.known[l.id]).sort((p, q2) => Math.hypot(p.x - here.x, p.y - here.y) - Math.hypot(q2.x - here.x, q2.y - here.y)).slice(0, T_WORLD.boatChart);
+  for (const l of c) S.known[l.id] = true; return c;
 }
 function mapClick(e) {
   const c = e.currentTarget, r = c.getBoundingClientRect(), sc = Math.min(r.width / MW, r.height / MH), ox = (r.width - MW * sc) / 2, oy = (r.height - MH * sc) / 2; // object-fit: contain letterboxes the chart inside its box
@@ -12106,6 +12197,7 @@ function showCatch() {
   const s = SP[p.id], full = S.bucket.length >= bucketCap(), canSell = loc().sell;
   let head, pills = p.tags.slice(), acts, warn = '';
   if (s.kind === 'wood') { head = S.raft ? 'DRIFTWOOD' : 'A GOOD PLANK'; acts = `<button class="cta" data-act="catch" data-k="ok">${S.raft ? 'Toss it' : 'Take it'}</button>`; }
+  else if (s.kind === 'bottle') { head = p.wonder ? 'A CHART IN A BOTTLE' : 'A BOTTLE'; acts = `<button class="cta" data-act="catch" data-k="ok">${p.wonder ? 'Keep the chart' : 'Toss it back'}</button>`; }
   else if (s.kind) { head = 'JUNK'; acts = '<button class="cta alt" data-act="catch" data-k="ok">Toss it back</button>'; }
   else {
     head = s.legend ? 'LEGENDARY!' : p.v === 'gigantic' ? 'GIGANTIC!' : p.v === 'albino' ? 'ALBINO!' : p.trophy ? 'TROPHY!' : pills.includes('New record') ? 'NEW RECORD!' : pills.includes('New species') ? 'NEW SPECIES!' : 'LANDED!';
@@ -12120,7 +12212,7 @@ function showCatch() {
     if (canSell && full) acts += '<button class="cta alt" data-act="catch" data-k="release">Release</button>';
     if (full) acts += '<button class="cta alt" data-act="open" data-k="inv">Make room</button>'; // the inventory opens over the card; Let go on a fish frees the slot
   }
-  const sub = s.kind ? (s.kind === 'wood' ? (S.raft ? 'You already have a raft.' : `Driftwood ${S.wood}/${T.raftWood} for the raft.`) : 'Not a fish.')
+  const sub = s.kind ? (s.kind === 'wood' ? (S.raft ? 'You already have a raft.' : `Driftwood ${S.wood}/${T.raftWood} for the raft.`) : s.kind === 'bottle' ? (p.wonder && LOC[p.wonder] ? `Oilcloth, rolled tight and dry. One island on it that is on no chart you have seen: <b>${LOC[p.wonder].name}</b>. It is on yours now.` : 'Empty. Whatever was in it went a long time ago.') : 'Not a fish.')
     : `${RIG_LABEL[p.rig].toLowerCase()}${p.wait ? ' · after ' + fmtDur(p.wait) : ''}`;
   const stats = s.kind ? '' : `<div class="stats">
       <div class="stat"><div class="n">WORTH</div><div class="v">${money(p.value)}</div></div>
@@ -12130,7 +12222,7 @@ function showCatch() {
   const rarLine = rar ? `<div class="rar"><span class="badge" style="color:${RARITY[rar].col}">${RARITY[rar].name.toUpperCase()}</span>${V ? `<span class="badge" style="color:${V.col}">${V.name.toUpperCase()}${s.mutant ? '' : V.mult < 1 ? ' · HALF WORTH' : ' · ×' + V.mult + ' WORTH'}</span>` : ''}</div>` : '';
   $('#card').className = 'card catch';
   $('#card').innerHTML = `<div class="head" ${headCol}>${head}</div>
-    ${pills.length ? `<div class="pills">${pills.map(t => `<div class="pill ${t === 'Trophy size' || t === 'Legend' || t === 'Wanted' ? 'gold' : t === 'Far from home' ? 'far' : t === 'Offshore' ? 'off' : t === 'Hidden water' ? 'hid' : ''}">${t.toUpperCase()}</div>`).join('')}</div>` : ''}
+    ${pills.length ? `<div class="pills">${pills.map(t => `<div class="pill ${t === 'Trophy size' || t === 'Legend' || t === 'Wanted' ? 'gold' : t === 'Far from home' ? 'far' : t === 'Offshore' ? 'off' : t === 'Hidden water' ? 'hid' : t === 'Wonder' ? 'won' : ''}">${t.toUpperCase()}</div>`).join('')}</div>` : ''}
     <canvas class="art" id="ccv" width="192" height="96"></canvas>
     <div class="fish">${V ? `<span style="color:${V.col}">${V.name}</span> ` : ''}${s.name}</div>
     ${rarLine}
@@ -14354,6 +14446,8 @@ const FISH_ART = {
     '.oooooooooooooooooooooo.', 'obbbbbbbbbbbbbbbbbbbbbbo', 'obddbbbbbbddddbbbbbbbddo', 'obbbbbbdbbbbbbbbbbmbbbbo', 'obbbbbbbbbbbddbbbmmbbbbo', 'obddddbbbbbbbbbbbbmbbddo', 'obbbbbbbbbbbbbbbbbbbbbbo', '.oooooooooooooooooooooo.'] },
   boot: { pal: { o: '#2a1a10', b: '#6a4a30', m: '#1a1008', d: '#4a3220' }, map: [
     '....oooooo......', '...obbbbbbo.....', '...obmbbmbo.....', '...obbbbbbo.....', '...obmbbmbo.....', '...obbbbbbo.....', '...obmbbmbo.....', '...obbbbbbo.....', '...obbbbbboooo..', '..obbbbbbbbbbbo.', '.obbbbbbbbbbbbbo', 'obbbbbbbbbbbbbbo', 'oddddddddddddddo', '.oooooooooooooo.'] },
+  bottle: { pal: { o: '#12301f', b: '#3f9a70', d: '#2a6a50', m: '#efe6c4', c: '#9a6a3c' }, map: [
+    '......oooo......', '......occo......', '......occo......', '......obbo......', '.....oobboo.....', '....obbbbbbo....', '...obbddbbbbo...', '...obmmmmmmbo...', '...obmmmmmmbo...', '...obbmmmmbbo...', '...obbbbbbdbo...', '...obbbbbbdbo...', '....obbbbbbo....', '.....oooooo.....'] },
   // --- the wider roster (seventh pass)
   transparentgoby: { gen: { w: 12, h: 5, bodyH: .5, ped: .18, snout: .22, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .6, h: 2 }, anal: { type: 'soft', from: .5, to: .62, h: 1 } }, col: { base: '#e8e8e0', belly: '#ffffff', fin: '#f0f0e8', mark: '#8a8a80' } },
   gudgeon: { gen: { w: 22, h: 7, bodyH: .4, ped: .18, snout: .22, tail: 'fork', dorsal: { type: 'soft', from: .45, to: .6, h: 2 }, anal: { type: 'soft', from: .5, to: .62, h: 1 }, barbel: true, pat: 'spots' }, col: { base: '#8a8a70', belly: '#e8e8d8', fin: '#9a9a80', mark: '#3a3a28' } },
@@ -15083,6 +15177,9 @@ const ICON_PAL = {
   'aid:none': ['twig', { a: '#5a5a60', b: '#2a2a30' }], 'aid:canary': ['bird', { a: '#f0d040', b: '#6a4a10', c: '#e08030' }], 'aid:twig': ['twig', { a: '#a07a4a', b: '#4a3222' }], 'aid:props': ['timber', { a: '#8a6a44', b: '#4a3222', c: '#5a3a22' }],
   'boat:none': ['boat', { a: '#5a3a22', b: '#2a1a0e', c: '#3e2816', d: '#5a3a22' }], 'boat:raft': ['boat', { a: '#8a6a44', b: '#4a3222', c: '#6a4a2c', d: '#8a6a44' }], 'boat:skiff': ['boat', { a: '#6a4a2c', b: '#2a1a0e', c: '#4a3222', d: '#f0ece0' }], 'boat:cutter': ['boat', { a: '#5a3a22', b: '#2a1a0e', c: '#3e2816', d: '#e8e0c8' }],
   'boat:trawler': ['boat', { a: '#3e4a5a', b: '#1a2230', c: '#2a3440', d: '#c0c8d0' }], 'boat:clipper': ['boat', { a: '#2a2a3a', b: '#101018', c: '#4a3a2a', d: '#ffffff' }], 'boat:ironclad': ['boat', { a: '#5a5a66', b: '#2a2a30', c: '#3a3a44', d: '#8a8a96' }], 'boat:starship': ['boat', { a: '#e8e8f0', b: '#4a4a58', c: '#c03030', d: '#a0c0ff' }],
+  'boat:dory': ['boat', { a: '#c8a24a', b: '#5a4a1e', c: '#2e5a48', d: '#c89a68' }], 'boat:wherry': ['boat', { a: '#2a2a30', b: '#0c0c10', c: '#c03030', d: '#3a2e2a' }], 'boat:smack': ['boat', { a: '#26262e', b: '#0c0c10', c: '#d8b040', d: '#a8523a' }], 'boat:sloop': ['boat', { a: '#f0ece0', b: '#8a8a80', c: '#2a4a7a', d: '#ffffff' }],
+  'boat:drifter': ['boat', { a: '#1e2a24', b: '#0a100c', c: '#e8e0c8', d: '#a8523a' }], 'boat:ketch': ['boat', { a: '#2a4a3a', b: '#10201a', c: '#f0ece0', d: '#eee4cc' }], 'boat:whaler': ['boat', { a: '#2a241e', b: '#0c0a08', c: '#e8e0c8', d: '#e8dcc0' }], 'boat:schooner': ['boat', { a: '#e8e4d8', b: '#7a7a70', c: '#1e3a5a', d: '#ffffff' }],
+  'boat:seiner': ['boat', { a: '#2a4a6a', b: '#10202e', c: '#8a2a2a', d: '#e8e4d8' }], 'boat:packet': ['boat', { a: '#1a1a22', b: '#08080c', c: '#a02a2a', d: '#c8a040' }],
 };
 function iconC(key, sc, sil) { // sil: a dark silhouette, for things you have never had
   key = String(key).split('@')[0]; // a piece made on an island wears its grade's icon
@@ -16000,10 +16097,9 @@ function drawShoreGeneric(l, t, nt) { // the bed and what stands in the water at
 function drawOpenWater(l, t, nt) {
   drawSpotOpen(l, t, nt); // nothing under the boat, and what the open sea off this island shows: a shadow, a fin, birds over a shoal, a blow far off
   const bw = shoreW + 10, by = (SURF + 1 + Math.sin(t / 900)) | 0;
-  drawBoat(-8, by, bw, S.boat === 'none' ? 'raft' : S.boat, t, false);
-  if (S.boat === 'raft') { crateSeat(bw - 36, by - 30, by); return [bw - 36, by - 30]; } // a raft has no bench: he sits on a crate
-  thwart(bw - 38, by - 31, by - 2);
-  return [bw - 38, by - 31];
+  const ex = boatExtra(boatKind(), bw), deck = drawBoat(-8 - ex, by, bw + ex, boatKind(), t, false);
+  if (boatKind() === 'raft') { crateSeat(bw - 36, by - 30, by); return [bw - 36, by - 30]; } // a raft has no bench: he sits on a crate
+  return [bw - 38, boatSeat(bw - 38, by, deck)];
 }
 function drawShoreAny(id, t, nt) { const l = LOC[id]; return l.scene ? drawShoreGeneric(l, t, nt) : drawShore(id, t, nt, {}); }
 // the island's seed: every painted thing of an island is seeded from it, so two islands of one kind are two places
@@ -16034,19 +16130,8 @@ function farIsland(x, w, withPalm) {
 // a crate under the seated fisherman (sx, sy = sprite top-left), from under his seat down to the deck
 function crateSeat(sx, sy, deckY) { const h = Math.max(3, deckY - (sy + 24)); g.fillStyle = '#5a3a22'; g.fillRect(sx + 3, sy + 24, 14, h); g.fillStyle = '#8a6a44'; g.fillRect(sx + 4, sy + 25, 12, h - 2); g.fillStyle = '#a88458'; g.fillRect(sx + 4, sy + 25, 12, 1); g.fillStyle = '#5a3a22'; g.fillRect(sx + 9, sy + 25, 1, h - 2); }
 function thwart(sx, sy, deckY) { g.fillStyle = '#5a3a22'; g.fillRect(sx + 5, sy + 26, 2, Math.max(1, deckY - sy - 26)); g.fillRect(sx + 13, sy + 26, 2, Math.max(1, deckY - sy - 26)); g.fillStyle = '#8a6a44'; g.fillRect(sx + 3, sy + 24, 14, 2); g.fillStyle = '#a88458'; g.fillRect(sx + 3, sy + 24, 14, 1); g.fillStyle = '#5a3a22'; g.fillRect(sx + 3, sy + 25, 14, 1); } // the plank meets the bottom of his seat (sprite row 23); the legs reach the deck
-function drawBoat(x, y, w, kind, t, storm) {
-  g.fillStyle = '#5a3a22'; g.fillRect(x, y - 2, w, 2);
-  g.fillStyle = '#3e2816'; g.fillRect(x + 2, y, w - 4, 3);
-  g.fillStyle = '#2a1a0e'; g.fillRect(x + 6, y + 3, w - 12, 2);
-  g.fillStyle = '#8a6a44'; g.fillRect(x + 1, y - 2, w - 2, 1);
-  if (kind === 'raft') { g.fillStyle = '#7a5230'; for (let k = 0; k < w; k += 5) g.fillRect(x + k, y - 2, 1, 3); return; }
-  const mx = x + (w * 0.36 | 0), mh = kind === 'skiff' ? 24 : kind === 'cutter' ? 32 : 38;
-  g.fillStyle = '#6a4a2a'; g.fillRect(mx, y - mh - 2, 2, mh);
-  if (storm) { for (let k = 0; k < 6; k++) { g.fillStyle = '#d8ccb0'; g.fillRect(mx + 2 + k * 2 + (Math.sin(t / 90 + k) * 2 | 0), y - mh + 2 + k * 3, 3, 1); } }
-  else { for (let k = 0; k < mh - 8; k++) { g.fillStyle = k % 6 === 0 ? '#d9cdb2' : '#eee4cc'; g.fillRect(mx + 2, y - mh + k, (k * 0.55) | 0, 1); } }
-  if (kind === 'cutter' || kind === 'trawler') { g.fillStyle = '#4a3220'; g.fillRect(x + (w * 0.55 | 0), y - 10, w * 0.3 | 0, 8); g.fillStyle = '#ffd27a'; g.fillRect(x + (w * 0.62 | 0), y - 8, 3, 3); }
-  g.fillStyle = '#f0c050'; g.fillRect(x + w - 6, y - 7, 2, 3); g.fillStyle = '#3a2816'; g.fillRect(x + w - 6, y - 9, 2, 2);
-}
+// where he sits in a boat whose rail stands `deck` px over the water at her bow: on a thwart in a low open boat, on the rail of a higher one
+function boatSeat(sx, by, deck) { const sy = Math.min(by - 31, by - 1 - deck - 24); if (deck <= 6) thwart(sx, sy, by - 2); return sy; }
 function hull(x, y, w) { g.fillStyle = '#4a3220'; g.fillRect(x, y, w, 3); g.fillStyle = '#2e1f12'; g.fillRect(x + 3, y + 3, w - 6, 2); g.fillStyle = '#6a4a2a'; g.fillRect(x, y, w, 1); }
 
 // per-location shore: draws the land, the seat and the far horizon. Returns the fisherman's spot.
@@ -16055,18 +16140,15 @@ function drawShore(id, t, nt, o) {
   if (id === 'sea') { // the prologue: the skiff alone on deep water, no land anywhere
     g.drawImage(floorLayer('sea'), 0, SURF);
     const bw = shoreW + 10, by = (SURF + 1 + Math.sin(t / 900)) | 0;
-    drawBoat(-8, by, bw, 'skiff', t, false);
-    thwart(bw - 38, by - 31, by - 2);
-    return [bw - 38, by - 31];
+    const deck = drawBoat(-8, by, bw, 'skiff', t, false);
+    return [bw - 38, boatSeat(bw - 38, by, deck)];
   }
   if (id === 'trench') {
     drawSpot(LOC.trench, t, nt); // the wall going down under the buyer boat, and whatever passes below
     const bw = shoreW + 16, by = SURF + 1;
-    drawBoat(-6, by, bw, S.boat === 'raft' ? 'raft' : S.boat, t, false);
-    g.fillStyle = '#5a3a22'; g.fillRect(-6, by - 3, bw, 2);
-    const px = bw - 36, py = by - 6;
-    g.fillStyle = '#7a5230'; g.fillRect(px, py, 18, 3);
-    return [px - 2, py - 24];
+    const ex = boatExtra(boatKind(), bw), deck = drawBoat(-6 - ex, by, bw + ex, boatKind(), t, false);
+    if (boatKind() === 'raft') { crateSeat(bw - 36, by - 30, by); return [bw - 36, by - 30]; }
+    return [bw - 38, boatSeat(bw - 38, by, deck)];
   }
   // the first islands' banks are painted like every other island's now; what moved on them still moves
   if (id === 'fjord' && nt > 0.35) for (let k = 0; k < 4; k++) { g.fillStyle = `rgba(90,220,160,${(0.09 * nt).toFixed(3)})`; for (let x = 0; x < W; x += 6) g.fillRect(x, (8 + k * 7 + Math.sin(x / 22 + t / 1300 + k) * 5) | 0, 5, 3); }
@@ -16239,7 +16321,8 @@ function isleHead() { const l = loc(), lv = ISL && ISL.lv; $('#iName').textConte
 function lvFound(l, lv, P) { const F = S.found[l.id] = S.found[l.id] || {}; let ch = false; if (lv && !F[lv]) { F[lv] = 1; ch = true; } if (P && !F[P.id]) { F[P.id] = 1; ch = true; } if (ch) save(); return ch; }
 function enterLevel(lv, from) { // up or down a ladder: onto a level at its landing, or (lv '') back to the island where that ladder stands
   const l = loc(); ISL.lv = lv; ISL.walk = 0;
-  if (lv) { ISL.px = lvGeo(l, lv).ladder; ISL.dir = -1; if (lvFound(l, lv)) setTimeout(() => toast(`${cap1(levelName(l, lv))}. ${lv === 'up' ? 'Nobody comes up here.' : 'Nobody comes down here.'}`), 350); }
+  if (lv) { ISL.px = lvGeo(l, lv).ladder; ISL.dir = -1; if (lvFound(l, lv)) { setTimeout(() => toast(`${cap1(levelName(l, lv))}. ${lv === 'up' ? 'Nobody comes up here.' : 'Nobody comes down here.'}`), 350);
+      if (lv === 'up' && !isUnder(l, lv) && seeFrom(l, T_WONDER.heights)) { save(); setTimeout(() => toast('From up here there is land on the horizon that is on no chart.'), 2600); } } } // the heights see further than any mast, and see what a deck does not
   else { ISL.px = backX(l, from); ISL.dir = 1; }
   isleHead(); isleUI = ''; renderIsle();
 }
@@ -20810,6 +20893,116 @@ function hidBank(l) {
     strew: nat === 'cold' ? ['snow', 'pebbles'] : nat === 'fire' ? ['cracks', 'pebbles'] : nat === 'dry' ? ['pebbles', 'tufts'] : nat === 'wet' ? ['moss', 'tufts', 'leaves'] : ['tufts', 'flowers', 'pebbles'], edge: nat === 'cold' ? ['icicles'] : nat === 'fire' ? ['stones'] : ['reeds', 'stones'],
     things: nat === 'cold' ? [['tipup', {}], ['boulder', { c: rc }], ['cairn', { c: rc }]] : [['boulder', { c: rc }], ['cairn', { c: rc }], ['rushes', {}], ['boulder', { c: rc, w: 1.5 }]] };
 }
+// --- every boat her own ---
+// A boat was a brown bar with a pole and a white triangle on it, whichever boat it was. Now each is painted once from a line of
+// description (BOAT_LOOK): how much side she shows, what she is planked or plated in and what colour her top strake is, whether she
+// is decked, what stands on her deck (a cuddy, a wheelhouse, a bridge, a funnel or two, a net, floats, whaleboats on their davits, a
+// turret), and her masts, each with the sail she sets on it (lug, sprit, gaff, a tall three-cornered main, square sails in tiers, or
+// none) and a jib if she carries one. The bow is to the right, where he sits to fish. In a storm she is under bare poles.
+const T_BOAT = { ref: 84, under: 4, clear: 46, mast: 112, longer: [0, 0, 0, 0.2, 0.45, 0.75, 1.1] }; // the width her numbers are given at; how much of her is under the water at that width; how much of her bow end is kept clear of masts for the man who fishes from it; the longest hull her masts are measured against (a wider screen does not make them taller); how much longer than the place he fishes from a boat of each tier is (her stern is off the picture)
+const BOAT_LOOK = {
+  raft:     { raft: true },
+  skiff:    { free: 5, hull: '#6a4a2c', strake: '#f0ece0', masts: [{ at: 0.5, h: 0.62, sail: 'lug', c: '#eee4cc' }] },
+  dory:     { free: 6, hull: '#c8a24a', strake: '#2e5a48', flat: true, masts: [{ at: 0.4, h: 0.5, sail: 'sprit', c: '#c89a68' }], gear: ['tubs'] },
+  wherry:   { free: 4, hull: '#1e1e24', strake: '#c03030', masts: [{ at: 0.34, h: 0.84, sail: 'gaff', c: '#3a2e2a' }] },
+  cutter:   { free: 6, hull: '#5a3a22', strake: '#e8e0c8', deck: true, house: 'cuddy', masts: [{ at: 0.6, h: 0.76, sail: 'gaff', c: '#eee4cc', jib: true }] },
+  smack:    { free: 6, hull: '#26262e', strake: '#d8b040', deck: true, house: 'cuddy', masts: [{ at: 0.62, h: 0.72, sail: 'gaff', c: '#a8523a', jib: true }, { at: 0.1, h: 0.44, sail: 'lug', c: '#a8523a' }], gear: ['net'] },
+  sloop:    { free: 5, hull: '#f0ece0', strake: '#2a4a7a', deck: true, masts: [{ at: 0.6, h: 0.96, sail: 'tall', c: '#ffffff', jib: true }] },
+  trawler:  { free: 8, hull: '#3e4a5a', strake: '#c0c8d0', deck: true, house: 'wheel', funnel: { at: 0.34, c: '#26262c', band: '#c03030' }, masts: [{ at: 0.74, h: 0.5, sail: 'none', boom: true }], gear: ['net'] },
+  drifter:  { free: 8, hull: '#1e2a24', strake: '#e8e0c8', deck: true, house: 'wheel', funnel: { at: 0.4, c: '#1a1a1e', band: '#e8e0c8', tall: true }, masts: [{ at: 0.78, h: 0.56, sail: 'none' }, { at: 0.08, h: 0.44, sail: 'lug', c: '#a8523a' }], gear: ['floats'] },
+  ketch:    { free: 7, hull: '#2a4a3a', strake: '#f0ece0', deck: true, house: 'cuddy', masts: [{ at: 0.64, h: 0.86, sail: 'gaff', c: '#eee4cc', jib: true }, { at: 0.2, h: 0.62, sail: 'gaff', c: '#eee4cc' }] },
+  clipper:  { free: 9, hull: '#14141c', strake: '#e8e0c8', deck: true, sprit: true, masts: [{ at: 0.8, h: 0.84, sail: 'square', c: '#f4eedc' }, { at: 0.47, h: 0.96, sail: 'square', c: '#f4eedc' }, { at: 0.14, h: 0.78, sail: 'square', c: '#f4eedc' }] },
+  whaler:   { free: 10, hull: '#1e1a16', strake: '#e8e0c8', deck: true, ports: true, masts: [{ at: 0.74, h: 0.74, sail: 'square', c: '#e8dcc0' }, { at: 0.36, h: 0.82, sail: 'square', c: '#e8dcc0' }], gear: ['boats'] },
+  schooner: { free: 8, hull: '#e8e4d8', strake: '#1e3a5a', deck: true, sprit: true, masts: [{ at: 0.7, h: 0.84, sail: 'gaff', c: '#ffffff', jib: true }, { at: 0.32, h: 0.94, sail: 'gaff', c: '#ffffff' }] },
+  ironclad: { free: 10, steel: true, hull: '#5a5a66', boot: '#8a2a2a', deck: true, ram: true, house: 'tower', funnel: { at: 0.4, c: '#3a3a44', band: '#8a8a96' }, masts: [{ at: 0.7, h: 0.5, sail: 'none' }], gear: ['turret'] },
+  seiner:   { free: 10, steel: true, hull: '#2a4a6a', boot: '#8a2a2a', deck: true, house: 'bridge', funnel: { at: 0.5, c: '#e8e4d8', band: '#2a4a6a' }, masts: [{ at: 0.2, h: 0.6, sail: 'none', boom: true }], gear: ['net', 'floats'] },
+  packet:   { free: 9, steel: true, hull: '#14141c', boot: '#a02a2a', deck: true, house: 'long', funnel: { at: 0.5, n: 2, c: '#c8a040', band: '#14141c', tall: true }, masts: [{ at: 0.86, h: 0.6, sail: 'none' }, { at: 0.08, h: 0.56, sail: 'none' }] },
+};
+// a four-sided shape filled row by row; tone(u, v) says how light each pixel is, u along it, v down it
+function boatQuad(P, a, b, c, d, R, tone) { // a top-left, b top-right, c bottom-right, d bottom-left
+  const y0 = Math.floor(Math.min(a[1], b[1])), y1 = Math.ceil(Math.max(c[1], d[1]));
+  for (let y = y0; y <= y1; y++) { const xs = []; for (const [p, q] of [[a, b], [b, c], [c, d], [d, a]]) { if ((p[1] <= y && q[1] > y) || (q[1] <= y && p[1] > y)) xs.push(p[0] + (q[0] - p[0]) * (y - p[1]) / (q[1] - p[1])); } if (xs.length < 2) continue; const xa = Math.round(Math.min(...xs)), xb = Math.round(Math.max(...xs)), v = (y - y0) / Math.max(1, y1 - y0);
+    for (let x = xa; x <= xb; x++) P.px(x, y, R[clamp(tone((x - xa) / Math.max(1, xb - xa), v, x, y), 0, 4) | 0]); }
+}
+const BOAT_C = new Map();
+function boatSprite(kind, w, bare) {
+  w = Math.max(20, w | 0); const key = kind + '|' + w + '|' + (bare ? 1 : 0); let C = BOAT_C.get(key); if (C) return C; if (BOAT_C.size > 9) BOAT_C.delete(BOAT_C.keys().next().value);
+  const L = BOAT_LOOK[kind] || BOAT_LOOK.skiff, k = clamp(w / T_BOAT.ref, 0.4, 2.3), free = L.raft ? 2 : Math.max(3, Math.round((L.free || 5) * k)), under = Math.max(3, Math.round(T_BOAT.under * k * (L.steel ? 1.3 : 1))), mb = Math.min(w, T_BOAT.mast), mh = Math.max(0, ...(L.masts || []).map(m => m.h)) * mb, top = Math.round(mh) + Math.round(16 * k) + 8, padR = L.sprit ? Math.round(w * 0.16) : L.ram ? Math.round(6 * k) : 3, padL = 3;
+  const P = new Paint(w + padL + padR, top + free + under + 3), wl = top + free, x0 = padL, s = strHash(kind) % 9973, HR = kRamp(L.hull || '#6a4a2c'), SR = kRamp(L.strake || '#e8e0c8'), dk = kHex('#0c1622'), mastW = Math.max(1, Math.round(1.4 * k)), spanW = Math.max(12, w - Math.round(T_BOAT.clear * Math.min(1, k * 1.15)));
+  const deckAt = new Int16Array(P.w).fill(wl); // the row of her rail at each column
+  try {
+    if (L.raft) { // logs lashed side by side, their ends uneven, a steering oar
+      for (let i = 0; i < w; i++) { const x = x0 + i, lg = Math.floor(i / Math.max(4, Math.round(6 * k))), e = (nH(lg, 1, s) * 2) | 0; for (let j = -2; j < under; j++) { const y = wl + j; let t = j === -2 ? 4 : j === -1 ? 3 : j < 1 ? 2 : 1; if (i % Math.max(4, Math.round(6 * k)) === 0) t = 0; P.px(x, y, j > 0 ? kMix(kRamp('#8a6a44')[t], dk, 0.35) : kRamp('#8a6a44')[t]); } deckAt[x] = wl - 2; }
+      for (const u of [0.22, 0.7]) { const x = x0 + Math.round(u * w); P.rect(x, wl - 3, 2, 4, kHex('#c8b888')); P.px(x, wl - 3, kHex('#e8dcb0')); }
+      P.line(x0 + 3, wl - 3, x0 - 2 + Math.round(9 * k), wl - Math.round(11 * k), kHex('#6a4a2c'));
+    } else {
+      // the hull: her sheer rises to the bow (right) and a little to the stern; the stem rakes, the keel comes up to meet it
+      const rise = Math.round((L.steel ? 2 : 4) * k), sternUp = Math.round(1.5 * k), rake = Math.round((L.ram ? -5 : L.steel ? 4 : 6) * k);
+      for (let i = -2; i < w + Math.max(0, rake) + 2; i++) { const u = i / (w - 1), ub = clamp((u - 0.62) / 0.38, 0, 1), us = clamp((0.2 - u) / 0.2, 0, 1), topY = wl - free - Math.round(rise * ub * ub) - Math.round(sternUp * us * us);
+        const keel = u < 0.1 ? under * (0.55 + 4.5 * Math.max(0, u)) : u > 0.74 ? under * Math.max(0, 1 - Math.pow((u - 0.74) / 0.26, 1.6)) : under, stemX = w - 1 + (L.ram ? 0 : Math.max(0, rake)), x = x0 + i;
+        if (i < 0 || x >= P.w) continue; const over = i - (w - 1); // past her length: only the raked stem above the water (or, on a ram, only under it)
+        for (let y = topY; y <= wl + Math.round(keel); y++) { const d = y - topY, below = y - wl;
+          if (over > 0) { if (L.ram) { if (below < 1 || below > 3 || over > -rake) continue; } else { if (below >= 0 || over > rake * (1 - d / Math.max(1, wl - topY))) continue; } }
+          let c; if (below > 0) c = kMix(L.boot && below <= Math.max(1, Math.round(1.6 * k)) ? kHex(L.boot) : HR[1], dk, 0.3 + 0.4 * below / Math.max(1, under));
+          else if (d === 0) c = SR[4]; else if (d <= Math.max(1, Math.round(1.4 * k))) c = SR[d === 1 ? 3 : 2];
+          else if (L.steel) c = HR[(nH(i >> 3, y >> 2, s) > 0.82 ? 1 : 2) + (u > 0.7 ? 1 : 0)]; else c = HR[(d % Math.max(2, Math.round(2.6 * k)) === 0 ? 1 : 2) + (u > 0.7 && d < free * 0.6 ? 1 : 0)];
+          if (!L.steel && below <= 0 && d > 2 && nH(i, d, s) > 0.93) c = HR[1]; if (L.steel && below <= 0 && d > 2 && i % Math.max(5, Math.round(7 * k)) === 0 && (d & 1)) c = HR[3]; // plank ends; rivets
+          P.px(x, y, c); }
+        if (over <= 0) deckAt[x] = topY; }
+      if (L.ports) for (let i = Math.round(w * 0.12); i < w * 0.8; i += Math.max(6, Math.round(9 * k))) P.rect(x0 + i, wl - Math.round(free * 0.55), Math.max(2, Math.round(2.4 * k)), Math.max(2, Math.round(2 * k)), kHex('#e8dcc0'));
+      if (L.steel) for (let i = Math.round(w * 0.2); i < w * 0.86; i += Math.max(8, Math.round(11 * k))) { P.ell(x0 + i, wl - Math.round(free * 0.5), 1.4, 1.4, kHex('#c8a850')); P.px(x0 + i, wl - Math.round(free * 0.5), kHex('#1a2430')); }
+      const dy = x => deckAt[clamp(x, 0, P.w - 1)];
+      // what stands on her deck
+      if (L.house) { const H = L.house, hx = x0 + Math.round((H === 'long' ? 0.24 : H === 'bridge' ? 0.56 : H === 'tower' ? 0.5 : 0.16) * spanW), hw = Math.max(8, Math.round((H === 'long' ? 34 : H === 'cuddy' ? 16 : H === 'tower' ? 12 : 15) * k)), hh = Math.max(4, Math.round((H === 'cuddy' ? 5 : H === 'long' ? 7 : H === 'tower' ? 15 : 11) * k)), y1 = dy(hx + (hw >> 1)), WR = kRamp(L.steel ? '#c8ccd4' : H === 'cuddy' ? '#8a6a44' : '#e8e0c8'), RR = kRamp(L.steel ? '#5a5a66' : '#5a3a22');
+        wbox(P, hx, y1 - hh, hw, hh, WR); P.rect(hx - 1, y1 - hh - 1, hw + 2, 2, RR[2]); P.rect(hx - 1, y1 - hh - 1, hw + 2, 1, RR[4]);
+        for (let i = 3; i < hw - 3; i += Math.max(4, Math.round(5 * k))) { const wy = y1 - hh + Math.max(1, Math.round(hh * 0.25)), ww = Math.max(2, Math.round(2.4 * k)); P.rect(hx + i, wy, ww, ww, kHex('#ffd27a')); P.px(hx + i, wy, kHex('#fff0c0')); P.lit(hx + i, wy, kHex('#ffd27a'), 230); }
+        if (H === 'tower') { P.rect(hx + (hw >> 1) - 1, y1 - hh - Math.round(7 * k), 2, Math.round(7 * k), RR[2]); P.rect(hx + (hw >> 1) - 3, y1 - hh - Math.round(5 * k), 7, 1, RR[3]); } }
+      if (L.funnel) { const F = L.funnel, n = F.n || 1, fw = Math.max(3, Math.round(5 * k)), fh = Math.round((F.tall ? 17 : 12) * k), FR = kRamp(F.c || '#26262c');
+        for (let q = 0; q < n; q++) { const fx = x0 + Math.round((F.at + q * 0.16) * spanW), y1 = dy(fx) - (L.house ? Math.round(3 * k) : 0); for (let j = 0; j < fh; j++) for (let i = 0; i < fw; i++) P.px(fx + i + Math.round(j * 0.12), y1 - 1 - j, j > fh * 0.62 && j < fh * 0.82 && F.band ? kHex(F.band) : FR[i === 0 ? 1 : i >= fw - 1 ? 3 : 2]); P.rect(fx + Math.round(fh * 0.12) - 1, y1 - fh - 1, fw + 2, 1, FR[0]);
+          P.em.push({ k: 'smoke', x: fx + (fw >> 1) + Math.round(fh * 0.12), y: y1 - fh - 2, n: 5, rise: Math.round(26 * k), c: '60,60,66', a: 0.5, ms: 2600, ph: q * 0.4, grow: 4, drift: -9 }); } }
+      for (const gr of L.gear || []) {
+        if (gr === 'net') { const nx = x0 + Math.round(0.02 * spanW), nw = Math.max(8, Math.round(15 * k)), nh = Math.max(3, Math.round(5 * k)), y1 = dy(nx + (nw >> 1)); for (let i = 0; i < nw; i++) { const hh = Math.round(nh * Math.sin(Math.PI * (i + 0.5) / nw)); for (let j = 0; j < hh; j++) P.px(nx + i, y1 - 1 - j, kHex((i + j) & 1 ? '#6a5a3a' : '#3e4a36')); } for (let i = 1; i < nw; i += 4) P.px(nx + i, y1 - 1 - Math.round(nh * Math.sin(Math.PI * (i + 0.5) / nw)), kHex('#e07030')); }
+        else if (gr === 'floats') { for (let q = 0; q < 5; q++) { const fx = x0 + Math.round((0.5 + q * 0.07) * spanW); P.ell(fx, dy(fx) - 2, 1.5, 1.5, kHex(q & 1 ? '#e07030' : '#e8d040')); } }
+        else if (gr === 'tubs') { for (const u of [0.12, 0.26]) { const tx = x0 + Math.round(u * spanW); wbox(P, tx, dy(tx) - Math.round(4 * k), Math.max(4, Math.round(6 * k)), Math.round(4 * k), kRamp('#8a6a44')); } }
+        else if (gr === 'boats') { for (const u of [0.1, 0.52]) { const bx = x0 + Math.round(u * spanW), by = dy(bx) - Math.round(5 * k), bw = Math.max(8, Math.round(15 * k)); P.rect(bx, by - Math.round(5 * k), 1, Math.round(5 * k), kHex('#3a3a42')); P.rect(bx + bw - 1, by - Math.round(5 * k), 1, Math.round(5 * k), kHex('#3a3a42')); for (let i = 0; i < bw; i++) { const hh = Math.max(1, Math.round(3 * k * Math.sin(Math.PI * (i + 0.5) / bw))); for (let j = 0; j < hh; j++) P.px(bx + i, by + j, kHex(j === 0 ? '#f4f0e4' : '#c8c4b8')); } } }
+        else if (gr === 'turret') { const tx = x0 + Math.round(0.86 * spanW), tw = Math.max(7, Math.round(11 * k)), th = Math.max(4, Math.round(6 * k)), y1 = dy(tx), TR = kRamp('#6a6a76'); wbox(P, tx, y1 - th, tw, th, TR); P.rect(tx + tw, y1 - th + 1, Math.round(9 * k), Math.max(1, Math.round(1.6 * k)), TR[1]); } }
+      if (L.sprit) P.line(x0 + w - 3, wl - free - rise + 1, x0 + w - 1 + padR - 2, wl - free - rise - Math.round(5 * k), kHex('#6a4a2c'), mastW);
+      // masts, spars and sails (aft of the mast, toward the stern; a jib forward of it)
+      for (const m of L.masts || []) { const mx = x0 + Math.round(m.at * spanW), y1 = dy(mx), H = Math.round(m.h * mb), MR = kRamp(L.steel ? '#8a8a92' : '#6a4a2a'), SL = kRamp(m.c || '#eee4cc'), seam = Math.max(3, Math.round(4 * k));
+        const tone = (u, v, x, y) => (x % seam === 0 ? 1 : 2) + (u > 0.72 ? 1 : 0) - (v > 0.9 ? 1 : 0) + (u > 0.9 && v < 0.5 ? 1 : 0);
+        if (m.sail && m.sail !== 'none' && !bare) {
+          if (m.sail === 'square') { const n = H > 60 ? 3 : 2, yw = H * 0.34; for (let q = 0; q < n; q++) { const yt = y1 - H + 3 + q * (H - 10) / n, sh = (H - 10) / n - 3, hw = yw * (0.72 + 0.28 * (q + 1) / n); boatQuad(P, [mx - hw, yt], [mx + hw, yt], [mx + hw * 1.06, yt + sh], [mx - hw * 1.06, yt + sh], SL, tone); P.rect(Math.round(mx - hw - 1), Math.round(yt) - 1, Math.round(hw * 2 + 3), 1, MR[1]); } }
+          else { const foot = H * (m.sail === 'tall' ? 0.5 : m.sail === 'sprit' ? 0.42 : m.sail === 'lug' ? 0.56 : 0.62), peak = m.sail === 'tall' ? 0 : H * (m.sail === 'lug' ? 0.34 : 0.3), headY = y1 - H + 3 + (m.sail === 'tall' ? 0 : H * (m.sail === 'gaff' ? 0.2 : m.sail === 'sprit' ? 0.3 : 0.14)), bx = mx - foot, by = y1 - Math.round(4 * k) - 2, fwd = m.sail === 'lug' ? H * 0.14 : 0;
+            boatQuad(P, [mx - peak, headY - (m.sail === 'tall' ? 0 : H * 0.12)], [mx + fwd, headY + (m.sail === 'lug' ? H * 0.1 : 0)], [mx + fwd * 0.5, by], [bx, by], SL, tone);
+            if (m.sail !== 'tall') P.line(mx - peak - 1, headY - H * 0.12 - 1, mx + fwd + 1, headY + (m.sail === 'lug' ? H * 0.1 : 0) - 1, MR[1], mastW); P.line(bx - 1, by + 1, mx, by + 1, MR[1], mastW);
+            if (m.sail === 'sprit') P.line(mx, by - 2, mx - peak, headY - H * 0.12, MR[1]); }
+          if (m.jib) boatQuad(P, [mx + 2, y1 - H * 0.86], [mx + 3, y1 - H * 0.86], [x0 + w - 2 + (L.sprit ? padR - 4 : 0), dy(x0 + w - 3) - 2], [mx + Math.round(5 * k), y1 - Math.round(5 * k)], SL, (u, v, x, y) => (x % seam === 0 ? 1 : 2) + (u > 0.5 ? 1 : 0));
+        } else if (m.sail && m.sail !== 'none') { for (let q = 0; q < 7; q++) P.rect(mx - Math.round((3 + q * 2.2) * k), y1 - Math.round(H * (0.42 + ((q * 7) % 5) * 0.09)), Math.max(2, Math.round(3 * k)), 1, SL[2]); } // bare poles: rags and furled canvas
+        if (m.boom) { P.line(mx, y1 - Math.round(H * 0.5), mx - Math.round(H * 0.5), y1 - Math.round(H * 0.82), MR[1], mastW); P.line(mx - Math.round(H * 0.5), y1 - Math.round(H * 0.82), mx - Math.round(H * 0.5), y1 - Math.round(H * 0.5), kHex('#2a2a30')); wbox(P, mx - Math.round(H * 0.5) - 2, y1 - Math.round(H * 0.5), 4, 4, kRamp('#8a8a80')); }
+        P.rect(mx, y1 - H, mastW, H, MR[2]); P.rect(mx, y1 - H, 1, H, MR[3]); P.rect(mx - 1, y1 - H - 1, mastW + 2, 1, MR[1]);
+        P.em.push({ k: 'flag', x: mx + mastW, y: y1 - H - 1, w: Math.max(3, Math.round(5 * k)), h: Math.max(2, Math.round(2.4 * k)), c: L.strake === '#f0ece0' || L.strake === '#e8e0c8' ? '#c03030' : L.strake || '#c03030' }); }
+      // the lantern at her bow
+      { const lx = x0 + w - Math.max(5, Math.round(6 * k)), ly = dy(lx) - Math.max(5, Math.round(7 * k)); P.rect(lx, ly + 2, 1, Math.max(3, Math.round(5 * k)), kHex('#3a2816')); P.rect(lx - 1, ly, 3, 3, kHex('#f0c050')); P.px(lx, ly + 1, kHex('#fff0c0')); P.lit(lx, ly + 1, kHex('#ffd070'), 255); P.halo(lx, ly + 1, 5, kHex('#ffb040'), 80); }
+    }
+  } catch (e) { console.error('boat', kind, e); }
+  const bowX = x0 + w - Math.round(38 * Math.min(1, k * 1.15)) + 10; C = { cv: P.canvas(), glow: P.glowCanvas(), em: P.em, ox: x0, wl, w, deck: wl - deckAt[clamp(bowX, 0, P.w - 1)] }; BOAT_C.set(key, C); return C;
+}
+// a boat with her stern at x, her waterline a row above y, w px long; returns how high her rail stands at the bow, where he sits
+function drawBoat(x, y, w, kind, t, storm) {
+  const V = boatSprite(BOAT_LOOK[kind] ? kind : 'skiff', w, !!storm), sx = (x | 0) - V.ox, sy = (y | 0) - 1 - V.wl; g.drawImage(V.cv, sx, sy);
+  if (V.glow) { g.globalAlpha = 0.85; g.drawImage(V.glow, sx, sy); g.globalAlpha = 1; }
+  for (const e of V.em) EMIT[e.k](e, e.x + sx, e.y + sy, t, 1, V);
+  return V.deck;
+}
+// the same boat seen from far off: a few pixels of hull, her masts and what she sets on them, a funnel's smoke
+function farBoat(x, y, kind, t) {
+  const L = BOAT_LOOK[kind] || BOAT_LOOK.skiff, tier = L.raft ? 0 : L.steel ? 5 : (L.masts || []).length + (L.deck ? 1 : 0), w = L.raft ? 8 : 10 + tier * 2;
+  g.fillStyle = L.raft ? '#6a4a2c' : L.hull || '#3e2816'; g.fillRect(x, y - 2, w, 3); g.fillStyle = L.strake || '#8a6a44'; g.fillRect(x, y - 3, w, 1);
+  for (const m of L.masts || []) { const mx = x + Math.round(m.at * (w - 2)), mh = Math.max(4, Math.round(m.h * 15)); g.fillStyle = '#4a3220'; g.fillRect(mx, y - 3 - mh, 1, mh); if (m.sail && m.sail !== 'none') { g.fillStyle = m.c || '#eee4cc'; if (m.sail === 'square') { for (let q = 0; q < 2; q++) g.fillRect(mx - 2, y - 2 - mh + q * (mh >> 1), 5, (mh >> 1) - 1); } else for (let j = 1; j < mh - 1; j++) g.fillRect(mx - Math.max(1, (j * 0.5) | 0), y - 3 - mh + j, Math.max(1, (j * 0.5) | 0), 1); } }
+  if (L.funnel) { const fx = x + Math.round(L.funnel.at * (w - 2)); g.fillStyle = L.funnel.c || '#26262c'; g.fillRect(fx, y - 7, 2, 4); g.fillStyle = 'rgba(200,200,210,0.5)'; g.fillRect(fx - 2 - ((t / 300) % 4 | 0), y - 10, 3, 2); }
+}
+// how much longer than the place he fishes from she is drawn: a boat of a higher tier is a bigger boat, and only her bow is in the picture
+const boatExtra = (kind, w) => { const b = BOATS.find(x => x.id === kind); return Math.round(w * (T_BOAT.longer[b ? Math.min(6, b.range) : 0] || 0)); };
 // --- the runtime: build an island's layers once, relight them with the hour, blit them ---
 const LANDS = {}; // island id -> s => { ... } : the island's own landscape, written against the layer API above
 let LAND_C = {};
@@ -25313,7 +25506,7 @@ function thinBarUpdate() {
   const G = groundThin(huntKey()); box.className = 'meter game l' + G.lvl; $('#hgame').style.width = (G.left * 100).toFixed(1) + '%'; $('#hgameWord').textContent = THIN_WORD[G.lvl]; $('#hgameTxt').innerHTML = thinText(G);
 }
 function gamePool(locId, t, P) { // what is out there at this hour that your weapon can bring down; shot and calls tilt it toward the rarer, and overhunting thins it; P: a hidden ground, where the rare are more than doubled
-  const key = P ? locId + '/' + P.id : locId, RK = P ? T_SIZE.rank.hunt : null, ph = phaseAt(t), power = WEAPON().power, luck = (SHOT[shotOf()].luck || 0) + (CALLS[callOf()].luck || 0), shun = (SHOT[shotOf()].shun || 1) * (CALLS[callOf()].shun || 1);
+  const key = P ? locId + '/' + P.id : locId, RK = P ? T_SIZE.rank.hunt : null, ph = phaseAt(t), power = WEAPON().power, luck = (SHOT[shotOf()].luck || 0) + (CALLS[callOf()].luck || 0) + (LOC[locId].wonder ? T_WONDER.luck : 0), shun = (SHOT[shotOf()].shun || 1) * (CALLS[callOf()].shun || 1);
   const fits = !P ? null : P.lv === 'down' || isUnder(LOC[locId], P.lv) ? c => T_SIZE.under.includes(c.sil) : c => !T_SIZE.notUp.includes(c.sil); // a hidden ground has what would live there: no deer in a cave, no seal on a moor
   let list = GAME.filter(c => c.loc[locId] && (!c.time || c.time.includes(ph)) && c.kg[0] <= power && !(c.legend && onceGone(c.id)));
   if (fits) { const f = list.filter(c => c.legend || fits(c)); if (f.filter(c => !c.legend).length >= 2) list = f; } // (where that would leave next to nothing, the island's game as it is)
@@ -25325,7 +25518,7 @@ function rollGame() {
   for (const [cc, w] of p) { r -= w; if (r <= 0) { c = cc; break; } }
   return rollSize(c);
 }
-function rollSize(c) { const f = Math.pow(Math.random(), 1.3), kg = Math.round((c.kg[0] + (c.kg[1] - c.kg[0]) * f) * 1000) / 1000; return { c, kg, value: gameValue(c, kg, rnd(-T_VALUE.jit, T_VALUE.jit)) }; }
+function rollSize(c) { const f = Math.pow(Math.random(), 1.3), kg = Math.round((c.kg[0] + (c.kg[1] - c.kg[0]) * f) * 1000) / 1000; return { c, kg, value: Math.round(gameValue(c, kg, rnd(-T_VALUE.jit, T_VALUE.jit)) * wonderK(S.loc)) }; }
 function startStalk() {
   if (HU && HU.phase !== 'idle') return;
   const roll = rollGame(); if (!roll) { toast('Nothing stirs here at this hour.'); return; }
@@ -25386,6 +25579,7 @@ function take() {
   const gx = S.gindex[c.id] || (S.gindex[c.id] = { n: 0, best: 0 });
   if (gx.n === 0) tags.push('New species'); if (kg > gx.best) { if (gx.n > 0) tags.push('New record'); gx.best = kg; } gx.n++;
   if (GRD) tags.push('Hidden ground');
+  if (loc().wonder) tags.push('Wonder');
   if (!c.legend) { const hk = huntKey(), hd = S.hunted[hk] = S.hunted[hk] || {}; hd[c.id] = { n: pressOf(hk, c.id) + 1, t: now() }; } // one more taken from this ground
   let line = '';
   if (S.pack.length < packCap()) { S.pack.push({ id: c.id, kg, value }); if (c.legend) onceHold(c.id); line = `Into the bag. ${S.pack.length}/${packCap()}.`; }
@@ -25401,7 +25595,7 @@ function showTaken(c, kg, value, tags, line) {
   const head = c.legend ? 'FABLED!' : tags.includes('New record') ? 'NEW RECORD!' : tags.includes('New species') ? 'NEW SPECIES!' : 'TAKEN!';
   const pills = tags.filter(t => t.toUpperCase() + '!' !== head && !(c.legend && t === 'New species')), gr = gameRarityOf(c);
   $('#card').className = 'card catch';
-  $('#card').innerHTML = `<div class="head">${head}</div>${pills.length ? `<div class="pills">${pills.map(t => `<div class="pill">${t.toUpperCase()}</div>`).join('')}</div>` : ''}
+  $('#card').innerHTML = `<div class="head">${head}</div>${pills.length ? `<div class="pills">${pills.map(t => `<div class="pill ${t === 'Wonder' ? 'won' : ''}">${t.toUpperCase()}</div>`).join('')}</div>` : ''}
     <canvas class="art" id="ccv" width="192" height="112"></canvas><div class="fish">${c.name}</div>
     <div class="rar"><span class="badge" style="color:${RARITY[gr].col}">${RARITY[gr].name.toUpperCase()}</span>${c.legend ? '<span class="badge" style="color:' + RARITY.fabled.col + '">ONCE EVER</span>' : ''}</div>
     <div class="size"><span>${fmtKg(kg)}</span></div><div class="sub">${gearShort(WEAPON()).toLowerCase()} · from ${DIST_NAME[HU ? HU.steps : 0]} · wind ${WIND_NAME[HU ? HU.wind : 'cross']} · ${PHASE_NAME[phaseAt(now())].toLowerCase()}</div>
@@ -25503,7 +25697,7 @@ function drawHunt(t) {
 // and the decision every face asks is the stalk's: push your luck or go up with what you have.
 let MI = null;
 const theOre = m => /^the /i.test(m.name) ? m.name.replace(/^The /, 'the ') : 'the ' + m.name.toLowerCase(); // "the First Folio", "the quartz": never "the the"
-function minePool(locId, level, P) { const RK = P ? T_SIZE.rank.mine : null; return MINERALS.filter(m => m.loc[locId] && level >= m.depth[0] && level <= m.depth[1] && !(m.relic && onceGone(m.id))).map(m => [m, m.loc[locId] * (RK ? (m.relic ? T_SIZE.fabled : RK[RARITY_RANK[mineralRarityOf(m)] || 0]) : 1)]); } // P: a hidden working, richer in the rare
+function minePool(locId, level, P) { const RK = P ? T_SIZE.rank.mine : null, WK = LOC[locId].wonder ? T_WONDER.rank : null; return MINERALS.filter(m => m.loc[locId] && level >= m.depth[0] && level <= m.depth[1] && !(m.relic && onceGone(m.id))).map(m => { const r = RARITY_RANK[mineralRarityOf(m)] || 0; return [m, m.loc[locId] * (RK ? (m.relic ? T_SIZE.fabled : RK[r]) : 1) * (WK && !m.relic ? WK[r] : 1)]; }); } // P: a hidden working, richer in the rare
 const minePlace = () => MI && MI.place ? placeOf(LOC[MI.loc], MI.place) : null;
 function rollMineral(locId, level, P) {
   let p = minePool(locId, level, P);
@@ -25592,7 +25786,7 @@ function found(m, how) {
   if (how === 'chipped') v = 'chipped';
   else if (!m.relic) { const r = Math.random(); if (r < T_MINE.flawless) v = 'flawless'; else if (r < T_MINE.flawless + T_MINE.giant) { v = 'giant'; kg = m.kg[1] * (1.1 + Math.random() * 0.4); } }
   kg = Math.round(kg * 10000) / 10000;
-  const value = Math.round(mineralValue(m, kg, rnd(-T_VALUE.jit, T_VALUE.jit)) * (v ? MINERAL_VARIANTS[v].mult : 1)), tags = [];
+  const value = Math.round(mineralValue(m, kg, rnd(-T_VALUE.jit, T_VALUE.jit)) * (v ? MINERAL_VARIANTS[v].mult : 1) * wonderK(S.loc)), tags = []; if (loc().wonder) tags.push('Wonder');
   const mx = S.mindex[m.id] || (S.mindex[m.id] = { n: 0, best: 0 });
   if (mx.n === 0) tags.push('New find'); if (kg > mx.best) { if (mx.n > 0) tags.push('New record'); mx.best = kg; } mx.n++;
   if (v) { mx.v = mx.v || {}; mx.v[v] = (mx.v[v] || 0) + 1; }
@@ -26061,7 +26255,7 @@ const SAIL_DUR = [3600, 4200, 4600];
 const T_SAIL = { gone: 0.8, rise: 0.25, behind: 0.04, slide: 0.8, ahead: 0.2, boat: [0.16, 0.6], clouds: 110000 }; // the passage: by when the island behind is under the horizon and from when the one ahead shows; how far the island behind stands off the screen's edge at the start and how far it slides (of its width); how much of the one ahead is in view at first (at last all of it but its tapered inland end); where the boat starts and ends (of the screen); how much of the clouds' own time goes by in the beat (ms)
 const NUMWORD = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight'];
 const boatKind = () => S.boat === 'none' ? 'raft' : S.boat === 'starship' ? 'ironclad' : S.boat;
-const boatW = k => ({ raft: 30, skiff: 36, cutter: 44, trawler: 50, clipper: 56, ironclad: 62 })[k] || 40;
+const boatW = k => { const b = BOATS.find(x => x.id === k); return [30, 30, 40, 52, 64, 78, 92][b ? Math.min(6, b.range) : 2] + (b && b.cls === 'far' ? 6 : 0); }; // how long she is drawn in the sailing beats: a boat of a higher tier is a bigger boat
 const easeIn = p => p * p, easeOut = p => 1 - (1 - p) * (1 - p);
 function sailCap() {
   const c = $('#cap'), i = SAIL.i; clearTimeout(capT); c.classList.remove('show');
@@ -26076,12 +26270,13 @@ function startSail(from, to, pulled, first) {
 function sailAdvance() { if (!SAIL) return; SAIL.i++; if (SAIL.i >= 3) { finishSail(); return; } SAIL.t0 = performance.now(); sailCap(); }
 function finishSail() {
   if (!SAIL) return; const { from, to, pulled, first } = SAIL, L = LOC[to]; SAIL = null;
-  wakeAdd(from, to); S.loc = to; S.visited[to] = true; if (!S.order.includes(to)) S.order.push(to); S.spot = L.spots[0].id; S.shoreSpot = null; reseedFish();
+  wakeAdd(from, to); S.loc = to; S.visited[to] = true; if (!S.order.includes(to)) S.order.push(to); S.spot = L.spots[0].id; S.shoreSpot = null; reseedFish(); seeFrom(L);
   if (S.tut && S.tut !== 'done' && S.tutIsland !== to) S.tut = 'done'; // left the tutorial island: the lesson is over
   if (first && !L.noFish && S.order.filter(id => id !== 'shoal').length === 1) tutStart(to); // the first island after the shoal teaches the village and the wild
   save();
   fadeTo(() => { $('#cut').hidden = true; if (L.noFish) { ISL = null; enterIsland('shop'); } else enterFishing();
     toast(`${first ? 'Landfall: ' : 'Sailed to '}${L.name}.` + (pulled ? ` Pulled in ${pulled} line${pulled > 1 ? 's' : ''}.` : '') + (first && L.vibe ? ' ' + L.vibe : '')); closedTell(L);
+    if (first && L.wonder) setTimeout(() => { if (S.loc === to) toast('A wonder. What comes out of its water, its wild and its rock is worth half as much again, and runs rarer.'); }, 3400);
     if (first && !L.noFish && isleSize(L)) setTimeout(() => { if (S.loc === to) toast(`${anA(SIZE_NAME[isleSize(L)])} island. There is more of it than the shore shows.`.replace(/^./, c => c.toUpperCase())); }, 5200); }); // a larger island says so, once: what is at the back of it is for the player to find
 }
 // The wake: every passage made, as a pair of islands (each pair once, whichever way it was sailed). The chart draws it in gold.
@@ -26095,9 +26290,9 @@ const tintOf = l => l.id === 'trench' ? 'rgba(0,0,12,0.32)' : l.id === 'fjord' ?
 function drawApron(l, t, nt) { g.drawImage(floorLayer(l.id), 0, SURF); drawBank(l, t, nt, true); } // the spaceport has no shore to fish from: its apron is its bank, with nobody sitting on it
 function drawShoreFor(l, t, nt) { if (l.noFish) drawApron(l, t, nt); else drawShoreAny(l.id, t, nt); }
 function drawCrew(bx, by, bw, t) { // the boat with the fisherman seated in it
-  drawBoat(bx, by, bw, SAIL.kind, t, false);
+  const deck = drawBoat(bx, by, bw, SAIL.kind, t, false);
   if (SAIL.kind === 'raft') { crateSeat(bx + bw - 36, by - 30, by); drawFisherman(bx + bw - 36, by - 30, false, null, t); }
-  else { thwart(bx + bw - 38, by - 31, by - 2); drawFisherman(bx + bw - 38, by - 31, false, null, t); }
+  else drawFisherman(bx + bw - 38, boatSeat(bx + bw - 38, by, deck), false, null, t);
 }
 function wake(x0, x1, y, t) { g.fillStyle = rgba(lerpC(curSky.sea, [255, 255, 255], 0.55), 0.8); for (let x = Math.min(x0, x1); x < Math.max(x0, x1); x += 3) g.fillRect(x + ((t / 120 + x) % 3 | 0), y + ((x >> 3) % 2), 2, 1); }
 function drawDepart(p, t) {
@@ -26107,13 +26302,6 @@ function drawDepart(p, t) {
   if (p > 0.05) wake(shoreW - 6, bx, by + 2, t);
   drawCrew(bx, by, bw, t);
   sceneFx(l, t, nt); drawWeatherFx(l, t, nt);
-}
-function farBoat(x, y, k, t) { // the boat seen from far off: a hull, a mast, a sail, a few pixels tall
-  const w = k === 'raft' ? 8 : k === 'skiff' ? 10 : k === 'cutter' ? 13 : 16, mh = k === 'raft' ? 0 : k === 'skiff' ? 8 : k === 'cutter' ? 11 : 14;
-  g.fillStyle = '#3e2816'; g.fillRect(x, y - 1, w, 2); g.fillStyle = '#5a3a22'; g.fillRect(x + 1, y - 2, w - 2, 1);
-  if (mh) { g.fillStyle = '#6a4a2a'; g.fillRect(x + (w * 0.4 | 0), y - mh - 2, 1, mh); for (let k2 = 0; k2 < mh - 3; k2++) { g.fillStyle = k2 % 4 === 0 ? '#d9cdb2' : '#eee4cc'; g.fillRect(x + (w * 0.4 | 0) + 1, y - mh + k2, Math.max(1, k2 * 0.5 | 0), 1); } }
-  if (k === 'ironclad' || k === 'clipper') { g.fillStyle = '#9a9a9a'; g.fillRect(x + w - 4, y - 5, 2, 4); g.fillStyle = 'rgba(200,200,210,0.5)'; g.fillRect(x + w - 6 - ((t / 300) % 4 | 0), y - 8, 3, 2); }
-  g.fillStyle = '#f0c050'; g.fillRect(x + (w * 0.4 | 0) + 1, y - 3, 1, 1);
 }
 function drawPassage(p, t) {
   const from = LOC[SAIL.from], to = LOC[SAIL.to], h = (SAIL.h0 + p * 7) % 24, nt = drawSkyBase(h, t, { cloudT: t + p * T_SAIL.clouds }); drawSeaBase(h, t, nt, { noShafts: true }); // the clouds go over as the days do
@@ -26320,7 +26508,8 @@ function drawMap() {
   for (const l of LOCS) {
     const st = seen[l.id]; if (!st) continue; const x = l.x, y = l.y;
     if (l.id === 'stars') { m.fillStyle = '#f4ecd0'; m.fillRect(x - 1, y - 4, 2, 9); m.fillRect(x - 4, y - 1, 8, 2); m.fillRect(x - 2, y - 2, 4, 4); }
-    if (l.id !== 'stars') mapMark(m, st, x, y); // a flag on every island you have landed on (the one you are on too), a star on a rumor, a question on land only sighted
+    if (l.id !== 'stars') mapMark(m, st, x, y);
+    if (l.wonder && st !== 'fog') { m.fillStyle = '#1c1030'; m.fillRect(x + 4, y - 12, 5, 5); m.fillStyle = '#c79bff'; m.fillRect(x + 6, y - 12, 1, 5); m.fillRect(x + 4, y - 10, 5, 1); m.fillStyle = '#ffffff'; m.fillRect(x + 6, y - 10, 1, 1); } // a wonder: a violet star beside its mark // a flag on every island you have landed on (the one you are on too), a star on a rumor, a question on land only sighted
     if (l.id === mapSel) drawMaskRaw(m, MASKS.ring, x - 6, y - 4, '#f0c050', 1);
     if (l.id === S.loc) { m.fillStyle = '#2a1a0e'; m.fillRect(x - 4, y + 7, 9, 2); m.fillRect(x, y + 3, 1, 4); m.fillRect(x + 1, y + 4, 3, 2); m.fillStyle = '#f4ecd0'; m.fillRect(x - 3, y + 7, 7, 1); }
   }
@@ -26408,7 +26597,8 @@ document.addEventListener('click', e => {
   else if (a === 'sel') { S.sel = i; save(); render(); }
   else if (a === 'rig') { const L = S.lines[S.sel]; L.rig = k; if (k === 'trophy' && BAITS[L.bait].tier < 1) L.bait = trophyBait(); save(); render(); renderSheet(); }
   else if (a === 'bait') { S.lines[S.sel].bait = k; save(); render(); renderSheet(); }
-  else if (a === 'equip') { const [kind, id] = k.split(':'); if (kind === 'rod' && S.rodsOwned.includes(id)) S.rod = id; else if (kind === 'line' && S.linesOwned.includes(id)) S.line = id; else if (kind === 'pail' && S.pailsOwned.includes(id)) { if (S.bucket.length > (BUCKETS.find(b => b.id === id) || {}).cap) { toast('Too many fish in the bucket for that one.'); return; } S.pail = id; } else if (kind === 'weapon' && S.weaponsOwned.includes(id)) S.weapon = id; else if (kind === 'cloak' && S.cloaksOwned.includes(id)) S.cloak = id; else if (kind === 'boots' && S.bootsOwned.includes(id)) S.boots = id; else if (kind === 'pick' && S.picksOwned.includes(id)) S.pick = id; else if (kind === 'lamp' && S.lampsOwned.includes(id)) S.lamp = id; else if (kind === 'sack' && S.sacksOwned.includes(id)) { if (S.sack.length > (SACKS.find(b => b.id === id) || {}).cap) { toast('Too much in the sack for that one.'); return; } S.sack_ = id; } else if (kind === 'gamepack' && S.packsOwned.includes(id)) { if (S.pack.length > (PACKS.find(b => b.id === id) || {}).cap) { toast('Too much in the bag for that one.'); return; } S.pack_ = id; } save(); render(); renderSheet(); if (MODE === 'hunt') renderHunt(); }
+  else if (a === 'equip') { const [kind, id] = k.split(':'); if (kind === 'boat') { const b = BOATS.find(x => x.id === id); if (!b || !(S.boatsOwned || []).includes(id)) return; if (S.bucket.length > bucketOf().cap + (b.hold || 0)) { toast('Too many fish aboard for her: sell some, or let some go.'); return; } if (spot().boat && MODE === 'game') { S.lines.forEach(L => { if (L && L.phase !== 'idle') { L.phase = 'idle'; L.c = null; } }); } S.boat = id; seeFrom(loc()); save(); render(); renderSheet(); toast(`${b.name}: she is the boat you sail now.`); return; }
+    if (kind === 'rod' && S.rodsOwned.includes(id)) S.rod = id; else if (kind === 'line' && S.linesOwned.includes(id)) S.line = id; else if (kind === 'pail' && S.pailsOwned.includes(id)) { if (S.bucket.length > (BUCKETS.find(b => b.id === id) || {}).cap) { toast('Too many fish in the bucket for that one.'); return; } S.pail = id; } else if (kind === 'weapon' && S.weaponsOwned.includes(id)) S.weapon = id; else if (kind === 'cloak' && S.cloaksOwned.includes(id)) S.cloak = id; else if (kind === 'boots' && S.bootsOwned.includes(id)) S.boots = id; else if (kind === 'pick' && S.picksOwned.includes(id)) S.pick = id; else if (kind === 'lamp' && S.lampsOwned.includes(id)) S.lamp = id; else if (kind === 'sack' && S.sacksOwned.includes(id)) { if (S.sack.length > (SACKS.find(b => b.id === id) || {}).cap) { toast('Too much in the sack for that one.'); return; } S.sack_ = id; } else if (kind === 'gamepack' && S.packsOwned.includes(id)) { if (S.pack.length > (PACKS.find(b => b.id === id) || {}).cap) { toast('Too much in the bag for that one.'); return; } S.pack_ = id; } save(); render(); renderSheet(); if (MODE === 'hunt') renderHunt(); }
   else if (a === 'cyclerig') { const L = S.lines[S.sel]; if (L && L.phase === 'idle') { cycleRig(L); save(); render(); } }
   else if (a === 'cyclebait') { const L = S.lines[S.sel]; if (L && L.phase === 'idle') { cycleBait(L); save(); render(); } }
   else if (a === 'change') { rigOpen = !rigOpen; render(); }
