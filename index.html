@@ -90,7 +90,11 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 #hud,.ihud{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;display:grid;gap:8px;padding:12px 0 14px;
   background:linear-gradient(rgba(10,16,32,.82),rgba(10,16,32,.5) 65%,rgba(10,16,32,0))}
 #hud .top,.ihud .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
-#hud .loc,.ihud .loc{font-family:var(--display);font-size:12px;color:var(--brass);text-wrap:balance;text-shadow:2px 2px 0 #0a1020}
+#hud .loc,.ihud .loc{font-family:var(--display);font-size:12px;color:var(--brass);text-wrap:balance;text-shadow:2px 2px 0 #0a1020;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+#hud .loc::after,.ihud .loc::after{content:'';display:inline-block;margin-left:7px;border:4px solid transparent;border-top:5px solid var(--brass);border-bottom-width:0;vertical-align:middle;opacity:.75;filter:drop-shadow(1px 1px 0 #0a1020)}
+html.hudfold #hud .loc::after,html.hudfold .ihud .loc::after{border:4px solid transparent;border-left:5px solid var(--brass);border-right-width:0}
+html.hudfold #hud .sub,html.hudfold .ihud .sub,html.hudfold #hud .tabs,html.hudfold .ihud .tabs{display:none}
+html.hudfold #hud,html.hudfold .ihud{gap:0;padding-bottom:6px}
 #hud .sub,.ihud .sub{color:var(--text);font-size:18px;margin-top:5px;font-variant-numeric:tabular-nums;text-shadow:1px 1px 0 #0a1020}
 #hud .right,.ihud .right{text-align:right}
 #hud .money,.ihud .money{font-family:var(--display);font-size:12px;font-variant-numeric:tabular-nums;text-shadow:2px 2px 0 #0a1020}
@@ -180,6 +184,9 @@ canvas.icon{width:40px;height:40px;image-rendering:pixelated;flex:none}
 .row .price{font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--brass)}
 .buy{font-family:var(--display);font-size:9px;padding:8px 10px;background:var(--panel-2);border:2px solid var(--edge);white-space:nowrap}
 .buy[disabled]{opacity:.4;cursor:default}
+.list .row.away .name{color:var(--muted);letter-spacing:2px}
+.list .row.away .name small{letter-spacing:0}
+.list .row.away .price{opacity:.7}
 .list{display:grid;gap:2px}
 .seg.ix{margin:0 0 6px}.seg.ix button{display:grid;gap:2px;justify-items:center}.seg.ix small{font-size:14px;color:var(--muted)}
 .buy.more{display:block;width:100%;margin:10px 0 4px;padding:10px}
@@ -288,6 +295,7 @@ html.land #newbuild:not(.hard){left:calc((100vw - 360px) / 2);max-width:calc(100
 .mapkey span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .mapkey b{color:var(--text);font-weight:normal}
 .mapkey .v b{color:var(--good)}
+.mapkey .wk{width:22px;height:2px;background:var(--brass);box-shadow:0 0 0 1px #101c2c;margin:0 2px}
 .stock{font-family:var(--display);font-size:7px;color:var(--good);white-space:nowrap}
 .gtag{font-family:var(--display);font-size:7px;margin-left:6px;padding:2px 4px;border:1px solid currentColor;vertical-align:middle;white-space:nowrap}
 .gtag.up{background:var(--good);border-color:var(--good);color:#0c2412}
@@ -376,6 +384,8 @@ html.land .toasts{right:360px}
 .acts2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 #hNote .look{color:#e26b5a;font-weight:bold}
 .hband.lamp{background:var(--brass)}
+#mface{transition:opacity .3s}
+#mface.going{opacity:.1}
 .hband.lamp.low{background:var(--bad)}
 .hband.roof{background:#b89060}
 .hband.roof.hot{background:var(--bad)}
@@ -417,7 +427,7 @@ html.land .toasts{right:360px}
 <div id="game" hidden>
   <header id="hud">
     <div class="top">
-      <div><div class="loc" id="hLoc">Wreck Shoal</div><div class="sub" id="hClock">06:00 · Dawn</div></div>
+      <div><div class="loc" id="hLoc" data-act="hud" role="button" aria-label="Show or hide the buttons under the title">Wreck Shoal</div><div class="sub" id="hClock">06:00 · Dawn</div></div>
       <div class="right"><div class="money" id="hMoney">$0</div><div class="sub" id="hBucket">Bucket 0/20</div></div>
     </div>
     <nav class="tabs">
@@ -442,7 +452,7 @@ html.land .toasts{right:360px}
 <div id="isle" hidden>
   <header class="ihud">
     <div class="top">
-      <div><div class="loc" id="iName"></div><div class="sub" id="iVibe"></div></div>
+      <div><div class="loc" id="iName" data-act="hud" role="button" aria-label="Show or hide the buttons under the title"></div><div class="sub" id="iVibe"></div></div>
       <div class="right"><div class="money" id="iMoney"></div><div class="sub" id="iClock"></div></div>
     </div>
     <nav class="tabs">
@@ -461,7 +471,7 @@ html.land .toasts{right:360px}
 <div id="hunt" hidden>
   <header class="ihud">
     <div class="top">
-      <div><div class="loc" id="hName"></div><div class="sub" id="hSub"></div></div>
+      <div><div class="loc" id="hName" data-act="hud" role="button" aria-label="Show or hide the buttons under the title"></div><div class="sub" id="hSub"></div></div>
       <div class="right"><div class="money" id="hMoney"></div><div class="sub" id="hBag"></div></div>
     </div>
     <nav class="tabs"><button data-act="leavehunt">Back to the village</button><button data-act="open" data-k="kit">Kit</button><button data-act="open" data-k="inv">Bag</button></nav>
@@ -476,7 +486,7 @@ html.land .toasts{right:360px}
 <div id="mine" hidden>
   <header class="ihud">
     <div class="top">
-      <div><div class="loc" id="mName"></div><div class="sub" id="mSub"></div></div>
+      <div><div class="loc" id="mName" data-act="hud" role="button" aria-label="Show or hide the buttons under the title"></div><div class="sub" id="mSub"></div></div>
       <div class="right"><div class="money" id="mMoney"></div><div class="sub" id="mSack"></div></div>
     </div>
     <nav class="tabs"><button data-act="climb">Climb out</button><button data-act="open" data-k="minekit">Kit</button><button data-act="open" data-k="inv">Sack</button></nav>
@@ -8647,8 +8657,8 @@ const fmtKg = kg => kg < 1 ? Math.round(kg * 1000) + ' g' : kg < 10 ? kg.toFixed
 // bottom of its size range to × size[1] at the top, ±jit rolled at catch time, × trophy at trophy size, never under floor.
 const T_VALUE = {
   unit: { fish: [22, 24, 30, 34, 38, 62, 105], game: [14, 32, 62, 140, 240, 340, 480], ore: [9, 11, 16, 26, 44, 75, 130] }, // the worth of a middling common thing, by the island tier it comes from
-  mid: { common: 1, uncommon: 4, rare: 16, epic: 80, legendary: 560, fabled: 380, relic: 380 }, // × the unit: the middle of each rarity's band
-  spread: { common: 2, uncommon: 2.5, rare: 3.5, epic: 4, legendary: 10, fabled: 5, relic: 5 }, // hi/lo across the species of one tier and rarity: 0.7–1.4, 2.5–6.3, 8.6–30 and 40–160 units, then 177–1,771 for a legend fish and 170–850 for a fabled creature or a relic
+  mid: { common: 1, uncommon: 4, rare: 16, epic: 80, legendary: 1400, fabled: 570, relic: 950 }, // × the unit: the middle of each rarity's band (the once-evers were 560, 380 and 380 until they were asked to be worth more: a legend and a relic two and a half times that now, a fabled creature half as much again, since game is dear already)
+  spread: { common: 2, uncommon: 2.5, rare: 3.5, epic: 4, legendary: 10, fabled: 5, relic: 5 }, // hi/lo across the species of one tier and rarity: 0.7–1.4, 2.5–6.3, 8.6–30 and 40–160 units, then 443–4,427 for a legend fish, 255–1,275 for a fabled creature and 425–2,124 for a relic
   size: [0.7, 1.4], trophy: 1.5, jit: 0.15, floor: 3,
 };
 const WORTH = { fish: null, game: null, ore: null }; // typical worth by id, built once from the tables above
@@ -8719,6 +8729,7 @@ const T_MINE = {
   chipped: 0.5,                  // a chipped find is worth this much
   flawless: 0.03, giant: 0.04,   // the finds' variants: flawless ×3, a giant ×2.5
   maxLevel: 8,
+  descendMs: 1100,               // going down a level: the gallery you leave slides up, the one below comes up under it, the miner on the ladder between
 };
 const PICKS = [
   { id: 'maul',     name: 'Stone maul',      hard: 3,  price: 0,      tier: 0 },
@@ -8738,12 +8749,12 @@ const LAMPS = [
   { id: 'arc',      name: 'Arc lamp',        oil: 64, price: 12000, tier: 4 },
   { id: 'starlamp', name: 'Star lamp',       oil: 90, price: 50000, tier: 6 },
 ];
-const SACKS = [
-  { id: 'oresack',   name: 'Ore sack',    cap: 8,   price: 0,     tier: 0 },
-  { id: 'haversack', name: 'Haversack',   cap: 15,  price: 350,   tier: 1 },
-  { id: 'orecart',   name: 'Ore cart',    cap: 30,  price: 1500,  tier: 2 },
-  { id: 'minewagon', name: 'Mine wagon',  cap: 60,  price: 6000,  tier: 4 },
-  { id: 'orehold',   name: 'Ore hold',    cap: 100, price: 25000, tier: 6 },
+const SACKS = [ // cap: how many finds it holds. drop: the odds that the heaviest find of the descent slips from it when the lamp dies on the ladder (the plain sack always loses one)
+  { id: 'oresack',   name: 'Ore sack',    cap: 8,   drop: 1,    price: 0,     tier: 0 },
+  { id: 'haversack', name: 'Haversack',   cap: 15,  drop: 0.75, price: 350,   tier: 1 },
+  { id: 'orecart',   name: 'Ore cart',    cap: 30,  drop: 0.55, price: 1500,  tier: 2 },
+  { id: 'minewagon', name: 'Mine wagon',  cap: 60,  drop: 0.35, price: 6000,  tier: 4 },
+  { id: 'orehold',   name: 'Ore hold',    cap: 100, drop: 0.15, price: 25000, tier: 6 },
 ];
 const CHARGES = { // spent per blast: the next strike opens a block of tiles around the one you hit
   none:     { name: 'Bare pick',       short: 'None',     price: 0,   qty: 0, tier: 0 },
@@ -10343,7 +10354,7 @@ const HARD_NAME = ['', 'soft as talc', 'soft', 'soft', 'firm', 'firm', 'hard', '
 // if the server's copy is later, a bar says so and RELOAD fetches it, the voyage saved first. A build that meets a save made by a
 // later build (on the cloud, or under a code) is behind too, and that is the dangerous case: it cannot read the save and would
 // write its own older copy over it. It stops saving, keeps the newer save where the next build will find it, and offers only RELOAD.
-const SAVE_V = 18; // the save's version: bump it and write a migration in load() when the shape changes
+const SAVE_V = 19; // the save's version: bump it and write a migration in load() when the shape changes
 const T_BUILD = { everyMs: 300000, frontMs: 30000, firstMs: 15000, slackMs: 3000, laterMs: 600000, reloadMs: 2000 }; // ask every five minutes in front, at once on coming back to the front if half a minute has passed, first a quarter of a minute after the page opens; the server's copy must be this much later; LATER hides the bar for ten minutes; RELOAD waits this long at most for the cloud to take the save
 const BUILD = { own: 0, dated: null, t0: Date.parse(document.lastModified) || 0, at0: Date.now(), etag: '', asked: 0, checked: 0, newer: false, frozen: false, later: 0, on: '' }; // own: when the running page was last changed on the server; dated: whether it has such a date at all (null until known)
 BUILD.asked = BUILD.at0 - T_BUILD.everyMs + T_BUILD.firstMs;
@@ -10389,7 +10400,7 @@ function newerSave(d) {
 const buildDate = () => BUILD.own ? new Date(BUILD.own).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
 function freshState() {
   return {
-    v: SAVE_V, started: false, loc: 'shoal', shoreSpot: null, tally: false, hunted: {}, stock: {}, broke: null, money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 1, trophyRig: false,
+    v: SAVE_V, started: false, loc: 'shoal', shoreSpot: null, tally: false, wake: [], once: {}, hunted: {}, stock: {}, broke: null, money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 1, trophyRig: false,
     line: 'l10', pail: 'pail', // the line's test weight and the bucket in use (both bought in the shop)
     rodsOwned: ['stick'], linesOwned: ['l10'], pailsOwned: ['pail'], // everything bought stays in the rig sheet and can be put back on
     heldRod: true, // the storm's one question; let go and the sea takes you, and the voyage starts over
@@ -10486,6 +10497,13 @@ function load(seed) {
   if (d && d.v === 15) { d.stock = {}; d.broke = null; d.v = 16; } // v15 -> v16: shop stock by the day, and the count of fish that broke the line
   if (d && d.v === 16) { d.shoreSpot = null; d.v = 17; } // v16 -> v17: the shore spot you left to go offshore
   if (d && d.v === 17) { d.tally = false; d.v = 18; } // v17 -> v18: the tracker's tally, a tool you buy
+  if (d && d.v === 18) { // v18 -> v19: the wake (every passage made: an old save gets the order it landed in, joined up) and the once-evers in hand
+    const o = (d.order || []).filter(id => id !== 'sea' && LOC[id]); d.wake = []; for (let i = 1; i < o.length; i++) d.wake.push([o[i - 1], o[i]]);
+    d.once = {}; // only what is held now is spoken for: whether an old save sold a once-ever or dropped it cannot be told, so each may be found once more
+    for (const f of (d.bucket || []).concat(d.pending ? [d.pending] : [])) if (SP[f.id] && SP[f.id].legend) d.once[f.id] = 'held';
+    for (const f of d.pack || []) if (GM[f.id] && GM[f.id].legend) d.once[f.id] = 'held';
+    for (const f of (d.sack || []).concat(d.mpending ? [d.mpending] : [])) if (MM[f.id] && MM[f.id].relic) d.once[f.id] = 'held';
+    d.v = 19; }
   if (d && d.v > SAVE_V) { newerSave(d); return; } // saved by a later build than this one: not ours to open, and not ours to overwrite
   if (d && d.v === SAVE_V) S = Object.assign(freshState(), d);
   S.seen = S.seen || {}; for (const k in S.bait) if (S.bait[k] > 0) S.seen['bait:' + k] = true; for (const k in S.shot) if (S.shot[k] > 0) S.seen['shot:' + k] = true; for (const k in S.calls) if (S.calls[k] > 0) S.seen['call:' + k] = true; for (const k in S.charges || {}) if (S.charges[k] > 0) S.seen['charge:' + k] = true; for (const k in S.aids || {}) if (S.aids[k] > 0) S.seen['aid:' + k] = true; if (S.trophyRig) S.seen['rig:trophy'] = true; // things you hold now, you have seen
@@ -10496,6 +10514,15 @@ const locTitle = l => l.title || l.name; // what kind of island this is; the nam
 function islandNo(id) { if (id === 'sea') return 0; if (!S.order.includes(id)) S.order.push(id); return S.order.indexOf(id) + 1; }
 const islandLabel = l => l.id === 'sea' ? 'Open sea' : `Island ${islandNo(l.id)}`;
 const boatRange = () => BOATS.find(b => b.id === S.boat).range;
+// Once-evers: a legend fish, a fabled creature, a relic. There is one of each. It is out of its water, its ground or its rock only
+// while you hold it, and for good once it is sold: dropped in the dark, left for want of room or let go, it is where it was and can be
+// taken again. S.once[id] is 'held' or 'sold'; nothing there means it is still to be had. (Until v19 the record of ever having taken it
+// was what removed it, so a relic dropped on the ladder was gone for good.)
+const onceGone = id => !!(S.once && S.once[id]);
+function onceHold(id) { S.once = S.once || {}; if (S.once[id] !== 'sold') S.once[id] = 'held'; }
+function onceFree(id) { if (S.once && S.once[id] === 'held') delete S.once[id]; }
+function onceSold(id) { S.once = S.once || {}; S.once[id] = 'sold'; }
+const isOnceFish = id => !!(SP[id] && SP[id].legend), isOnceGame = id => !!(GM[id] && GM[id].legend), isOnceOre = id => !!(MM[id] && MM[id].relic);
 const rodOf = () => gearUsed('rod');
 const rodBar = () => rodOf().bar;
 const lineOf = () => gearUsed('line');
@@ -10565,7 +10592,7 @@ function pool(locId, rig, baitId, t, spotId) {
     if (s.weather && !s.weather.includes(wx)) continue; // some fish only show under one sky
     if ((s.minBait || 0) > bt) continue;
     if (s.rare && rig === 'set') continue;
-    if (s.legend && (rig !== 'hand' || S.index[s.id])) continue; // legends: rod only, and only until someone lands it
+    if (s.legend && (rig !== 'hand' || onceGone(s.id))) continue; // legends: rod only, and not while you hold it or once it is sold
     let w = w0;
     if (s.kind === 'wood' && S.raft) w = 6;
     if (s.rare && !s.legend && rig === 'trophy') w *= 4;
@@ -10678,7 +10705,7 @@ function land(i) {
     if (c.off) p.tags.push('Offshore');
     if (c.capped) p.tags.push('Line held');
     if (s.weather) p.tags.push(WEATHER[p.wx].name + ' fish'); // it only shows under this sky
-    if (s.legend) p.tags.push('Legend');
+    if (s.legend) { p.tags.push('Legend'); onceHold(c.id); } // in hand from the moment it is landed
   }
   S.pending = p; save(); render(); showCatch();
 }
@@ -10689,22 +10716,23 @@ function resolveCatch(how) {
   if (!s.kind) {
     if (how === 'sell' && loc().sell) {
       const b = loc().shop ? openBounty(loc(), p.id) : null, pay = Math.round(p.value * (b ? b.mult : sellMultOf(loc())));
-      if (b) b.done = true;
+      if (b) b.done = true; if (s.legend) onceSold(p.id);
       S.money += pay; S.sold += pay; toast(b ? `Bounty paid: ${money(pay)} for the ${s.name.toLowerCase()}.` : `Sold the ${s.name.toLowerCase()} for ${money(pay)}.`);
     }
     else if (how === 'keep' && S.bucket.length < bucketCap()) { S.bucket.push({ id: p.id, cm: p.cm, kg: p.kg, value: p.value, trophy: p.trophy, v: p.v || null }); toast(`Into the bucket. ${S.bucket.length}/${bucketCap()}.`); }
-    else toast('Released.');
+    else { if (s.legend) onceFree(p.id); toast(s.legend ? `Released. ${s.name} is out there again.` : 'Released.'); }
   } else if (s.kind === 'junk') toast('Tossed back.');
   if (S.prologue && !s.kind) { S.proCaught++; if (S.proCaught >= 2) { save(); render(); toast('The light is going.'); setTimeout(startStorm, 1400); return; } }
   save(); render();
 }
-function releaseFish(j) { if (!S.bucket[j]) return; S.bucket.splice(j, 1); save(); render(); if (S.pending && S.bucket.length < bucketCap()) { closeSheet(); showCatch(); toast('Room in the bucket. Keep it?'); return; } renderSheet(); toast('Released.'); } // freeing a slot for a landed fish hands you back to its card with Keep lit
+function releaseFish(j) { if (!S.bucket[j]) return; onceFree(S.bucket[j].id); S.bucket.splice(j, 1); save(); render(); if (S.pending && S.bucket.length < bucketCap()) { closeSheet(); showCatch(); toast('Room in the bucket. Keep it?'); return; } renderSheet(); toast('Released.'); } // freeing a slot for a landed fish hands you back to its card with Keep lit
 const sellMultOf = l => l.sellMult || 1; // Gallows Cove pays double
 function haulTotal() { return Math.round((bucketTotal() + S.pack.reduce((a, b) => a + b.value, 0) + S.sack.reduce((a, b) => a + b.value, 0)) * sellMultOf(loc())); }
 const haulCount = () => S.bucket.length + S.pack.length + S.sack.length;
 function sellHaul() {
   if (!loc().sell || !haulCount()) return;
   const total = haulTotal(), n = S.bucket.length, m = S.pack.length, o = S.sack.length;
+  for (const f of S.bucket) if (isOnceFish(f.id)) onceSold(f.id); for (const f of S.pack) if (isOnceGame(f.id)) onceSold(f.id); for (const f of S.sack) if (isOnceOre(f.id)) onceSold(f.id); // a once-ever sold is gone for good
   S.money += total; S.sold += total; S.bucket = []; S.pack = []; S.sack = []; if (S.mine) S.mine.finds = [];
   if (tutAt('sell')) tutSet(loc().shop ? 'buy' : 'gate');
   save(); render(); toast(`Sold ${[n ? n + ' fish' : '', m ? m + ' game' : '', o ? o + ' ore' : ''].filter(Boolean).join(', ').replace(/, ([^,]*)$/, ' and $1')} for ${money(total)}.`);
@@ -10723,7 +10751,7 @@ function openBounty(l, id) { if (!l.shop) return null; const b = S.bounties[l.id
 function bestInBucket(id) { let best = -1; S.bucket.forEach((f, j) => { if (f.id === id && (best < 0 || f.value > S.bucket[best].value)) best = j; }); return best; }
 function claimBounty(id) {
   const l = loc(), b = openBounty(l, id), j = bestInBucket(id); if (!b || j < 0) return;
-  const f = S.bucket[j], pay = Math.round(f.value * b.mult); S.bucket.splice(j, 1); b.done = true; S.money += pay; S.sold += pay;
+  const f = S.bucket[j], pay = Math.round(f.value * b.mult); if (isOnceFish(f.id)) onceSold(f.id); S.bucket.splice(j, 1); b.done = true; S.money += pay; S.sold += pay;
   save(); render(); renderSheet(); toast(`Bounty paid: ${money(pay)} for the ${SP[id].name.toLowerCase()}.`);
 }
 function buildRaft() {
@@ -10759,7 +10787,7 @@ const GEAR = { // the ten kinds: the ladder its grades come from, where the save
   gamepack: { list: PACKS,     owned: 'packsOwned',   use: 'pack_',  stats: [['cap', 1]] },
   pick:     { list: PICKS,     owned: 'picksOwned',   use: 'pick',   stats: [['hard', 1]] },
   lamp:     { list: LAMPS,     owned: 'lampsOwned',   use: 'lamp',   stats: [['oil', 1]] },
-  sack:     { list: SACKS,     owned: 'sacksOwned',   use: 'sack_',  stats: [['cap', 1]] },
+  sack:     { list: SACKS,     owned: 'sacksOwned',   use: 'sack_',  stats: [['cap', 1], ['drop', -1]] },
 };
 const GEAR_KINDS = ['rod', 'line', 'pail', 'weapon', 'cloak', 'boots', 'gamepack', 'pick', 'lamp', 'sack']; // the order a shop lays them out in
 // grade: the odds that an island makes a thing in the grade below its tier's, and in the one above (otherwise its tier's own; where a
@@ -10772,7 +10800,7 @@ const T_MADE = {
   grade: [0.22, 0.18],
   rod: { lean: [0.38, 0.38], net: { bar: [0.008, 0.02], luck: [0.72, 0.9] }, luck: { bar: [-0.014, -0.004], luck: [1.15, 1.4] }, even: { bar: [-0.004, 0.008], luck: [0.95, 1.1] } },
   weapon: { lean: [0.36, 0.36], true: { acc: [1.06, 1.14], power: [0.8, 0.95] }, heavy: { acc: [0.92, 0.98], power: [1.15, 1.4] }, even: { acc: [0.97, 1.04], power: [0.95, 1.08] } },
-  line: [0.8, 1.3], cap: [0.85, 1.3], cloak: [-0.05, 0.03], lamp: [0.9, 1.25], pick: 0.35, price: [0.8, 1.35],
+  line: [0.8, 1.3], cap: [0.85, 1.3], drop: [-0.1, 0.08], cloak: [-0.05, 0.03], lamp: [0.9, 1.25], pick: 0.35, price: [0.8, 1.35], // drop: how far a sack's odds of losing a find stray from its grade's
 };
 const strSeed = str => { let h = 7; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0; return h; };
 const madeRnd = (l, kind, n) => hash32(strSeed(l.id + '|' + kind) + n * 7919) / 4294967296; // the same number for this island, this kind and this question, always
@@ -10796,7 +10824,8 @@ function madeAt(l, kind, gi) { // the piece of this kind made on this island in 
   it = Object.assign({}, base, { id: base.id + '@' + l.id, grade: base.id, loc: l.id, made: true, short: base.name });
   if (kind === 'rod') { const r = u(3), lean = r < M.rod.lean[0] ? 'net' : r < M.rod.lean[0] + M.rod.lean[1] ? 'luck' : 'even', R = M.rod[lean]; it.lean = lean; it.bar = Math.round((base.bar + between(R.bar, u(4))) * 100) / 100; it.luck = Math.round(base.luck * between(R.luck, u(5)) * 20) / 20; q = 0.5 + (it.bar - base.bar) * 12 + (it.luck / base.luck - 1) * 0.8; it.note = lean === 'net' ? 'Built wide in the net.' : lean === 'luck' ? 'The rarer fish come to it.' : ''; }
   else if (kind === 'line') { let f = between(M.line, u(3)); if (top) f = Math.max(1, f); it.lb = niceLb(base.lb * f); q = (it.lb / base.lb - M.line[0]) / (M.line[1] - M.line[0]); it.short = `${it.lb} lb ${it.lb >= 1500 ? 'cable' : it.lb >= 500 ? 'cable' : it.lb >= 250 ? 'braid' : 'line'}`; }
-  else if (kind === 'pail' || kind === 'gamepack' || kind === 'sack') { it.cap = Math.max(base.cap - 2, Math.round(base.cap * between(M.cap, u(3)))); q = (it.cap / base.cap - M.cap[0]) / (M.cap[1] - M.cap[0]); }
+  else if (kind === 'pail' || kind === 'gamepack' || kind === 'sack') { it.cap = Math.max(base.cap - 2, Math.round(base.cap * between(M.cap, u(3)))); q = (it.cap / base.cap - M.cap[0]) / (M.cap[1] - M.cap[0]);
+    if (kind === 'sack') { it.drop = clamp(Math.round((base.drop + between(M.drop, u(4))) * 20) / 20, 0.05, 0.95); q = q * 0.6 + clamp(0.5 - (it.drop - base.drop) * 5, 0, 1) * 0.4; it.note = it.drop <= base.drop - 0.05 ? 'Laced tight: it keeps hold of what is in it.' : it.drop >= base.drop + 0.05 ? 'Loose at the mouth.' : ''; } }
   else if (kind === 'weapon') { const r = u(3), lean = r < M.weapon.lean[0] ? 'true' : r < M.weapon.lean[0] + M.weapon.lean[1] ? 'heavy' : 'even', R = M.weapon[lean]; it.lean = lean; it.acc = Math.round(base.acc * between(R.acc, u(4)) * 200) / 200; let pf = between(R.power, u(5)); if (top) pf = Math.max(1, pf); it.power = niceKg(base.power * pf); q = 0.5 + (it.acc / base.acc - 1) * 3 + (it.power / base.power - 1) * 1.2; it.note = lean === 'true' ? 'Shoots true.' : lean === 'heavy' ? 'Hits heavy.' : ''; }
   else if (kind === 'cloak') { it.calm = clamp(Math.round((base.calm + between(M.cloak, u(3))) * 100) / 100, 0.3, 0.95); q = 0.5 - (it.calm - base.calm) * 8; }
   else if (kind === 'pick') { if (!top && u(3) < M.pick) { it.hard = base.hard + 0.5; q = 0.9; it.note = 'Tempered half a point harder than its kind.'; } else q = 0.35; }
@@ -10825,7 +10854,8 @@ const GEAR_SAY = {
   cap: (v, kind) => `Room for ${v} ${kind === 'pail' ? 'fish' : kind === 'gamepack' ? 'game' : 'finds'}`, acc: v => `Band ${Math.round(v * 200)}% of the bar`, power: v => `Takes game to ${fmtKg(v)}`,
   quiet: v => v < 1 ? 'Quiet: creeping costs less' : 'Not a quiet one', loud: v => v > 1 ? 'Loud: scatters the ground' : 'Not loud',
   calm: v => v < 1 ? `Game takes alarm ${Math.round((1 - v) * 100)}% slower` : 'No cover at all', steps: v => `${v} steps of creeping`, hard: v => `Pries stone to hardness ${v} of 10`, oil: v => `${v} oil a descent`,
-}, GEAR_BRIEF = { bar: v => Math.round(v * 100) + '%', luck: v => +v.toFixed(2), lb: v => v + ' lb', cap: v => v, acc: v => Math.round(v * 200) + '%', power: v => fmtKg(v), quiet: v => v < 1 ? 'quiet' : 'not quiet', loud: v => v > 1 ? 'loud' : 'not loud', calm: v => Math.round((1 - v) * 100) + '%', steps: v => v, hard: v => v, oil: v => v };
+  drop: v => v >= 1 ? 'Always loses a find on a dark ladder' : `Loses a find on a dark ladder ${Math.round(v * 100)}% of the time`,
+}, GEAR_BRIEF = { drop: v => Math.round(v * 100) + '%', bar: v => Math.round(v * 100) + '%', luck: v => +v.toFixed(2), lb: v => v + ' lb', cap: v => v, acc: v => Math.round(v * 200) + '%', power: v => fmtKg(v), quiet: v => v < 1 ? 'quiet' : 'not quiet', loud: v => v > 1 ? 'loud' : 'not loud', calm: v => Math.round((1 - v) * 100) + '%', steps: v => v, hard: v => v, oil: v => v };
 // how a piece measures against another of its kind, stat by stat: d is +1 where it is better, -1 where it is worse
 function gearCmp(kind, a, b) { return GEAR[kind].stats.map(([key, dir]) => { const va = statOf(a, key), vb = statOf(b, key), diff = (va - vb) * dir; return { key, va, vb, d: diff > 1e-9 ? 1 : diff < -1e-9 ? -1 : 0 }; }).filter(c => !((c.key === 'quiet' || c.key === 'loud') && c.va === 1 && c.vb === 1)); }
 // Is it an upgrade? `inuse` or `owned`: you have it. `nobetter`: something you own is at least as good in every way. `up`: better than
@@ -10899,7 +10929,7 @@ function shopItemsRaw() {
   const bi = BOATS.findIndex(b => b.id === S.boat);
   if (bi >= 1 && bi < BOATS.length - 1) {
     const b = BOATS[bi + 1];
-    items.push({ k: 'boat', name: b.name, sub: b.spaceport ? 'Not sold here. Somewhere at the far edge of the world there is a dock for it.' : `Range ${b.range}: reveals the next stretch of the chart.`, price: b.price, locked: !!b.spaceport });
+    items.push({ k: 'boat', name: b.name, sub: b.spaceport ? 'Not sold here.' : `Range ${b.range}: reveals the next stretch of the chart.`, price: b.price, locked: !!b.spaceport, away: !!b.spaceport }); // away: not sold at this port, so the shelf shows only that there is such a thing
   }
   return items;
 }
@@ -10969,7 +10999,7 @@ function renderHUD() {
   $('#hBucket').textContent = `Bucket ${S.bucket.length}/${bucketCap()}`;
   $('#tShop').hidden = true; $('#tWalk').hidden = !!S.prologue; $('#tSpots').hidden = !!S.prologue;
   $('#tMap').hidden = S.prologue; $('#hMoney').hidden = S.prologue; // money does not exist yet
-  mapBeacon(); $('#tWalk').classList.toggle('pulse', tutAt('exit'));
+  mapBeacon(); $('#tWalk').classList.toggle('pulse', tutAt('exit')); if (tutAt('exit')) hudShow();
 }
 // The prologue is the tutorial. Each line answers "what does the game want from me right now?"
 function tutorialText() {
@@ -11116,7 +11146,7 @@ function renderSheet() {
     el.innerHTML = `<div class="head"><h2>Chart</h2><button class="x" data-act="close">✕</button></div>
       <div class="note">Boat: ${boat.name.toLowerCase()}${boat.reach ? ` · the ring is how far it can take you in one voyage (about ${Math.max(1, Math.round(boat.reach / 30))} day${Math.round(boat.reach / 30) > 1 ? 's' : ''} of sailing)` : ''}. The world is dark until you sail it. Neighbours of places you have been show as ???; a shopkeeper's rumor lights an island from afar.</div>
       <canvas id="mapcv" width="${MW}" height="${MH}"></canvas>
-      <div class="mapkey"><span class="v"><span class="mk visited"></span><b>${tally.visited}</b> visited</span><span><span class="mk known"></span><b>${tally.known}</b> rumored</span><span><span class="mk fog"></span><b>${tally.fog}</b> land sighted</span></div>
+      <div class="mapkey"><span class="v"><span class="mk visited"></span><b>${tally.visited}</b> visited</span><span><span class="mk known"></span><b>${tally.known}</b> rumored</span><span><span class="mk fog"></span><b>${tally.fog}</b> land sighted</span>${(S.wake || []).length ? '<span><span class="wk"></span>your wake</span>' : ''}</div>
       <div class="legend">${rows}</div>
       <button class="cta" data-act="sail" ${canSail ? '' : 'disabled'}>${canSail ? 'Sail to ' + (mapState(sel) === 'fog' ? 'the unknown' : sel.name) : sel && sel.id === S.loc ? 'You are here' : sel && mapState(sel) !== 'hidden' && sel.range <= R && tooFar ? 'Too far for your ' + boat.name.toLowerCase() : sel && mapState(sel) !== 'hidden' && sel.range > R ? 'Needs a bigger boat' : 'Pick a port'}</button>`;
     drawMap(); mapMarkCSS();
@@ -11161,7 +11191,7 @@ function renderSheet() {
       <div class="box"><h3>AID</h3>${seg(Object.entries(AIDS).map(([k, b]) => [k, k === 'none' ? 'None' : b.short + ' ×' + (S.aids[k] || 0)]), aidOf(), 'aid', k => k !== 'none' && !(S.aids[k] > 0))}<div class="note">Taken down with you, one per descent: a canary shows the gas, a dowsing twig makes every glint plain and far-reaching, pit props halve what each strike does to the roof.</div></div>
       <div class="box"><h3>PICKS</h3><div class="list">${gearRows(PICKS, S.picksOwned, S.pick, 'pick', x => `Pries stone to hardness ${x.hard} of 10${x.hard >= 10 ? ': everything' : ''}.`)}</div><div class="note">A stone harder than your pick shows itself and stays in the wall. The shops sell the next rung.</div></div>
       <div class="box"><h3>LAMPS</h3><div class="list">${gearRows(LAMPS, S.lampsOwned, S.lamp, 'lamp', x => `${x.oil} oil a descent: strikes, pries, the ladder down and the climb back.`)}</div></div>
-      <div class="box"><h3>SACK</h3><div class="list">${gearRows(SACKS, S.sacksOwned, S.sack_, 'sack', x => `Room for ${x.cap} finds.`)}</div></div>`;
+      <div class="box"><h3>SACK</h3><div class="list">${gearRows(SACKS, S.sacksOwned, S.sack_, 'sack', x => `Room for ${x.cap} finds. ${GEAR_SAY.drop(x.drop)}.`)}</div><div class="note">If the lamp dies before you are up the ladder, the heaviest find of the descent may slip in the dark. A better sack holds on to it.</div></div>`;
     drawIcons(el);
   } else if (sheetKind === 'spots') {
     const l = loc();
@@ -11189,7 +11219,7 @@ function renderSheet() {
       ${landed ? `<div class="warn">The bucket is full and the ${landed.name.toLowerCase()} is waiting. <b>Let go</b> of a fish to make room for it${loc().sell ? ', sell the haul' : ''}, or close this and release it.</div>` : ''}
       <div class="box"><h3>BUCKET ${S.bucket.length}/${bucketCap()}</h3>${S.bucket.length ? `<div class="list">${rows}</div>` : '<div class="note">Empty. Fish you keep land here.</div>'}</div>
       <div class="box"><h3>GAME BAG ${S.pack.length}/${packCap()}</h3>${S.pack.length ? `<div class="list">${S.pack.map((f, j) => { const c = GM[f.id], gr = gameRarityOf(c); return `<div class="row"><canvas class="mini game" width="80" height="48" data-game="${f.id}"></canvas><div class="name" style="flex:1">${c.name}<small><span style="color:${RARITY[gr].col}">${RARITY[gr].name}</span> · ${fmtKg(f.kg)}</small></div><div class="price">${money(f.value)}</div></div>`; }).join('')}</div>` : `<div class="note">Empty. ${WEAPON().name} in hand. The hunting ground is past the village.</div>`}</div>
-      <div class="box"><h3>ORE SACK ${S.sack.length}/${sackCap()}</h3>${S.mpending ? `<div class="warn">The sack is full and the ${MM[S.mpending.id].name.toLowerCase()} is waiting. <b>Drop</b> a find to make room for it${loc().sell ? ', sell the haul' : ''}, or close this and leave it.</div>` : ''}${S.sack.length ? `<div class="list">${S.sack.map((f, j) => { const m = MM[f.id], mr = mineralRarityOf(m), V = f.v ? MINERAL_VARIANTS[f.v] : null; return `<div class="row"><canvas class="mini ore" width="64" height="48" data-ore="${f.id}"></canvas><div class="name" style="flex:1">${V ? `<span style="color:${V.col}">${V.name}</span> ` : ''}${m.name}<small><span style="color:${RARITY[mr].col}">${RARITY[mr].name}</span> · ${fmtKg(f.kg)} · level ${f.level}</small></div><div class="price">${money(f.value)}</div><button class="buy" data-act="drop" data-i="${j}">DROP</button></div>`; }).join('')}</div>` : `<div class="note">Empty. ${PICK().name} in hand. The shaft head is past the gate${loc().mine ? '' : ', on islands that have one'}.</div>`}</div>
+      <div class="box"><h3>ORE SACK ${S.sack.length}/${sackCap()}</h3>${S.mpending ? `<div class="warn">The sack is full and ${theOre(MM[S.mpending.id])} is waiting. <b>Drop</b> a find to make room for it${loc().sell ? ', sell the haul' : ''}, or close this and leave it.</div>` : ''}${S.sack.length ? `<div class="list">${S.sack.map((f, j) => { const m = MM[f.id], mr = mineralRarityOf(m), V = f.v ? MINERAL_VARIANTS[f.v] : null; return `<div class="row"><canvas class="mini ore" width="64" height="48" data-ore="${f.id}"></canvas><div class="name" style="flex:1">${V ? `<span style="color:${V.col}">${V.name}</span> ` : ''}${m.name}<small><span style="color:${RARITY[mr].col}">${RARITY[mr].name}</span> · ${fmtKg(f.kg)} · level ${f.level}</small></div><div class="price">${money(f.value)}</div><button class="buy" data-act="drop" data-i="${j}">DROP</button></div>`; }).join('')}</div>` : `<div class="note">Empty. ${PICK().name} in hand. The shaft head is past the gate${loc().mine ? '' : ', on islands that have one'}.</div>`}</div>
       <div class="box"><div class="row"><div>Whole haul</div><div class="price">${money(haulTotal())}</div></div>${market.replace('Sell the haul · ' + money(total), 'Sell the haul · ' + money(haulTotal()))}</div>
       <div class="box"><h3>BAIT</h3><div class="list">
         <div class="row"><div class="name">Shell scraps<small>Free. Picked off the rocks.</small></div><div class="price">∞</div></div>
@@ -11209,14 +11239,16 @@ function renderSheet() {
         ${S.tally ? `<div class="row">${icon('tool:tally')}<div class="name" style="flex:1">${TALLY.name}<small>Shows how thin the game is on a hunting ground.</small></div></div>` : ''}
         <div class="row">${icon('pick:' + S.pick)}<div class="name" style="flex:1">${PICK().name}<small>Pries stone to hardness ${PICK().hard}. ${chargeOf() !== 'none' ? CHARGES[chargeOf()].name + ' ×' + S.charges[chargeOf()] + '. ' : ''}${aidOf() !== 'none' ? AIDS[aidOf()].name + ' ×' + S.aids[aidOf()] + '.' : ''}</small></div></div>
         <div class="row">${icon('lamp:' + S.lamp)}<div class="name" style="flex:1">${LAMP().name}<small>${LAMP().oil} oil a descent.</small></div></div>
-        <div class="row">${icon('sack:' + S.sack_)}<div class="name" style="flex:1">${SACK().name}<small>Room for ${sackCap()} finds.</small></div></div>
+        <div class="row">${icon('sack:' + S.sack_)}<div class="name" style="flex:1">${SACK().name}<small>Room for ${sackCap()} finds. ${GEAR_SAY.drop(sackDrop())}.</small></div></div>
         ${S.raft ? '' : `<div class="row"><div class="name">Driftwood<small>${T.raftWood} pieces build a raft.</small></div><div class="price">${S.wood}/${T.raftWood}</div></div>`}
       </div></div>`;
     drawIcons(el);
     drawMinis(el); drawFaces(el);
   } else if (sheetKind === 'shop') {
     const shopIcon = it => it.made ? it.k + ':' + it.made.grade : it.k.startsWith('bait:') || it.k.startsWith('shot:') || it.k.startsWith('call:') || it.k.startsWith('charge:') || it.k.startsWith('aid:') ? it.k : it.k === 'boat' ? 'boat:' + (loc().spaceport ? 'starship' : BOATS[BOATS.findIndex(b => b.id === S.boat) + 1].id) : it.k === 'slot' ? 'rig:set' : it.k === 'trig' ? 'rig:trophy' : it.k === 'tally' ? 'tool:tally' : null;
-    const rows = shopItems().map(it => `<div class="row ${it.verdict ? 'g-' + it.verdict.v : ''}">${shopIcon(it) ? icon(shopIcon(it)) : ''}<div class="name" style="flex:1">${it.name}${it.verdict ? ` <span class="gtag ${it.verdict.v}">${GEAR_TAG[it.verdict.v]}</span>` : ''}<small>${it.html || it.sub}</small></div><div style="display:grid;gap:4px;justify-items:end"><div class="price">${money(it.price)}</div>${it.stock ? `<div class="stock ${it.soldOut ? 'out' : ''}">${it.stock}</div>` : ''}<button class="buy" data-act="buy" data-k="${it.k}" ${it.locked || it.soldOut || it.owned || S.money < it.price ? 'disabled' : ''}>${it.locked ? 'LOCKED' : it.soldOut ? 'SOLD OUT' : it.owned ? 'YOURS' : 'BUY'}</button></div></div>`).join('');
+    // a thing this port does not sell is a row of question marks: no name, no picture, nothing about it but what it costs
+    const awayRow = it => `<div class="row away">${icon('unknown')}<div class="name" style="flex:1">???<small>Not sold here.</small></div><div style="display:grid;gap:4px;justify-items:end"><div class="price">${money(it.price)}</div><button class="buy" disabled>LOCKED</button></div></div>`;
+    const rows = shopItems().map(it => it.away ? awayRow(it) : `<div class="row ${it.verdict ? 'g-' + it.verdict.v : ''}">${shopIcon(it) ? icon(shopIcon(it)) : ''}<div class="name" style="flex:1">${it.name}${it.verdict ? ` <span class="gtag ${it.verdict.v}">${GEAR_TAG[it.verdict.v]}</span>` : ''}<small>${it.html || it.sub}</small></div><div style="display:grid;gap:4px;justify-items:end"><div class="price">${money(it.price)}</div>${it.stock ? `<div class="stock ${it.soldOut ? 'out' : ''}">${it.stock}</div>` : ''}<button class="buy" data-act="buy" data-k="${it.k}" ${it.locked || it.soldOut || it.owned || S.money < it.price ? 'disabled' : ''}>${it.locked ? 'LOCKED' : it.soldOut ? 'SOLD OUT' : it.owned ? 'YOURS' : 'BUY'}</button></div></div>`).join('');
     const kp = loc().keeper, said = talkLine;
     const board = loc().spaceport ? '' : boardOf(loc()).list.map(b => { const sp = SP[b.id], j = bestInBucket(b.id), have = j >= 0;
       return `<div class="poster ${b.done ? 'done' : ''}"><div class="nail"></div><div class="wanted">WANTED</div><canvas class="mini" width="64" height="36" data-fish="${b.id}" data-known="1"></canvas><div class="pname">${sp.name}</div><div class="pays">Pays ×${b.mult}</div>${b.done ? '<div class="stamp">PAID</div>' : have ? `<button class="buy" data-act="bounty" data-k="${b.id}">TURN IN · ${money(Math.round(S.bucket[j].value * b.mult))}</button>` : '<div class="pays dim">Bring one in</div>'}</div>`; }).join('');
@@ -11255,18 +11287,18 @@ function indexRowFish(s) {
       const homeT = homesText(homes);
       const mini = `<canvas class="mini" width="64" height="36" data-fish="${s.id}" data-known="${ix ? 1 : 0}" data-v="${s.mutant ? 'mutated' : ''}"></canvas>`;
       const vT = ix && ix.v ? ' · ' + Object.entries(ix.v).map(([k, n]) => `<span style="color:${VARIANTS[k].col}">${VARIANTS[k].name.toLowerCase()}${n > 1 ? ' ×' + n : ''}</span>`).join(', ') : '';
-      if (ix) return `<div class="row">${mini}<div class="name" style="flex:1">${s.name}<small>${rarT} · ${s.legend ? home.name + ' · legend, landed' : homeT + (s.time ? ' · ' + s.time.join('/') : '') + (weatherText(s) ? ' · ' + weatherText(s) : '') + (ix.bestKg ? ' · best ' + fmtKg(ix.bestKg) : '') + vT}</small></div><div class="price">×${ix.n} · ${ix.best} cm${ix.trophies ? ' · ★' + ix.trophies : ''}</div></div>`;
+      if (ix) return `<div class="row">${mini}<div class="name" style="flex:1">${s.name}<small>${rarT} · ${s.legend ? home.name + ' · legend, ' + (S.once[s.id] === 'sold' ? 'landed and sold' : S.once[s.id] ? 'in your bucket' : 'landed and let go: still out there') : homeT + (s.time ? ' · ' + s.time.join('/') : '') + (weatherText(s) ? ' · ' + weatherText(s) : '') + (ix.bestKg ? ' · best ' + fmtKg(ix.bestKg) : '') + vT}</small></div><div class="price">×${ix.n} · ${ix.best} cm${ix.trophies ? ' · ★' + ix.trophies : ''}</div></div>`;
       return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${rarT} · ${S.visited[home.id] ? homeT : 'somewhere out there'}${s.legend ? ' · legend: rod, squid, ' + s.time.join('/') : s.rare ? ' · rod or trophy line' : ''}${!s.legend && weatherText(s) ? ' · ' + weatherText(s) : ''}</small></div><div class="price">—</div></div>`;
 }
 function indexRowGame(c) { const gx = S.gindex[c.id], home = LOCS.find(l => c.loc[l.id]);
       const mini = `<canvas class="mini game" width="80" height="48" data-game="${c.id}" data-known="${gx ? 1 : 0}"></canvas>`;
       const gr = gameRarityOf(c), grT = `<span style="color:${RARITY[gr].col}">${RARITY[gr].name}</span>`;
-      if (gx) return `<div class="row">${mini}<div class="name" style="flex:1">${c.name}<small>${grT} · ${home.name}${c.legend ? ' · taken, once ever' : ''}${c.time ? ' · ' + c.time.join('/') : ''}</small></div><div class="price">×${gx.n} · ${fmtKg(gx.best)}</div></div>`;
+      if (gx) return `<div class="row">${mini}<div class="name" style="flex:1">${c.name}<small>${grT} · ${home.name}${c.legend ? (S.once[c.id] === 'sold' ? ' · taken and sold, once ever' : S.once[c.id] ? ' · in your bag, once ever' : ' · seen, and still out there') : ''}${c.time ? ' · ' + c.time.join('/') : ''}</small></div><div class="price">×${gx.n} · ${fmtKg(gx.best)}</div></div>`;
       return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${grT} · ${S.visited[home.id] ? home.name : 'somewhere out there'}${c.legend ? ' · once ever, ' + c.time.join('/') : ''}</small></div><div class="price">—</div></div>`; }
 function indexRowOre(m) { const mx = S.mindex[m.id], homes = LOCS.filter(l => m.loc[l.id]), home = homes[0], mr = mineralRarityOf(m), mrT = `<span style="color:${RARITY[mr].col}">${RARITY[mr].name}</span>`, homeT = homesText(homes);
       const mini = `<canvas class="mini ore" width="64" height="48" data-ore="${m.id}" data-known="${mx ? 1 : 0}"></canvas>`, depthT = m.depth[0] === m.depth[1] ? 'level ' + m.depth[0] : 'levels ' + m.depth[0] + '–' + m.depth[1];
       const vT = mx && mx.v ? ' · ' + Object.entries(mx.v).map(([k, n]) => `<span style="color:${MINERAL_VARIANTS[k].col}">${MINERAL_VARIANTS[k].name.toLowerCase()}${n > 1 ? ' ×' + n : ''}</span>`).join(', ') : '';
-      if (mx) return `<div class="row">${mini}<div class="name" style="flex:1">${m.name}<small>${mrT} · ${homeT} · ${depthT} · hardness ${m.hard}${m.relic ? ' · relic, taken once ever' : ''}${vT}</small></div><div class="price">×${mx.n} · ${fmtKg(mx.best)}</div></div>`;
+      if (mx) return `<div class="row">${mini}<div class="name" style="flex:1">${m.name}<small>${mrT} · ${homeT} · ${depthT} · hardness ${m.hard}${m.relic ? (S.once[m.id] === 'sold' ? ' · relic, taken and sold' : S.once[m.id] ? ' · relic, in your sack' : ' · relic, found and lost: still down there') : ''}${vT}</small></div><div class="price">×${mx.n} · ${fmtKg(mx.best)}</div></div>`;
       return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${mrT} · ${S.visited[home.id] ? homeT : 'somewhere out there'} · ${depthT}${m.relic ? ' · once ever' : ''}</small></div><div class="price">—</div></div>`; }
 function indexMore() { // the next screenful of rows, and only their sprites
   const box = $('#ixRows'); if (!box || sheetKind !== 'index') return;
@@ -11922,7 +11954,7 @@ function showCatch() {
     ${s.kind ? '' : `<div class="size"><span>${p.trophy ? '★ ' : ''}${p.cm} cm</span><span class="sep">·</span><span>${fmtKg(fishKg(p))}</span></div>`}
     <div class="sub">${sub}</div>
     ${stats}${warn ? `<div class="warn">${warn}</div>` : ''}
-    ${s.legend ? `<div class="note">${LEGEND_LORE[p.id]} There is only one. It will never bite again.</div>` : p.capped ? `<div class="note">Your ${lineOf().lb} lb line held it to this size. Heavier line lands heavier fish.</div>` : ''}
+    ${s.legend ? `<div class="note">${LEGEND_LORE[p.id]} There is only one. Sell it and it is gone for good; let it go and it is out there again.</div>` : p.capped ? `<div class="note">Your ${lineOf().lb} lb line held it to this size. Heavier line lands heavier fish.</div>` : ''}
     ${canSell && !s.kind ? '<div class="note">Keep it to sell the whole haul later, or take the money now.</div>' : !s.kind && S.prologue ? '<div class="note">One for the pan.</div>' : !s.kind && !S.raft ? '<div class="note">No market on the shoal. Keep it for the first port.</div>' : ''}
     <div class="acts">${acts}</div>`;
   $('#cardWrap').hidden = false;
@@ -14747,6 +14779,8 @@ const FISH_ART = {
 
 // ---------- gear icons: 20x20 masks (a main, b dark, c accent, d highlight, e extra), a palette per item, cached per key/scale ----------
 const ICON_MASKS = {
+  unknown: ['....................', '....................', '....................', '......bbbbbbbb......', '.....baaaaaaaab.....', '.....baabbbbaab.....', '.....bbb....baab....', '............baab....', '...........baab.....', '..........baab......',
+            '.........baab.......', '.........baab.......', '.........bbbb.......', '....................', '.........bbbb.......', '.........baab.......', '.........baab.......', '.........bbbb.......', '....................', '....................'],
   tally: ['....................', '....................', '................cc..', '...............c..c.', '..............c...c.', '............bbb..c..', '...........bdab.c...', '..........bbbab..c..', '.........bdaab..ccc.', '........bbbab.....c.',
           '.......bdaab......c.', '......bbbab......c..', '.....bdaab......ccc.', '....bbbab.........c.', '...bdaab..........c.', '..bbbab.............', '.bdaab..............', '.baab...............', '.bbb................', '....................'],
   rod: ['..................dc', '.................add.', '................a..d.', '...............a...d.', '..............a....d.', '.............a.....d.', '............a......d.', '...........a.......e.', '..........a........e.', '.........a..........',
@@ -14816,6 +14850,7 @@ const ICON_MASKS = {
 };
 // which mask an item uses, and its colours
 const ICON_PAL = {
+  unknown: ['unknown', { a: '#5a6a8e', b: '#1a2234' }],
   'tool:tally': ['tally', { a: '#b8905a', b: '#4a3222', c: '#d8d0c0', d: '#d8b47a' }],
   'rig:hand': ['rod', { a: '#8a6a44', b: '#5a3a22', c: '#d8d0c0', d: '#e8e8e8', e: '#d7362a' }], 'rig:set': ['rigset', { a: '#8a6a44', b: '#4a3222', c: '#e0e0e0' }], 'rig:trophy': ['rigtrophy', { a: '#d7362a', b: '#5a1a12', c: '#e0e0e0', d: '#ffffff' }],
   'bait:scraps': ['scraps', { a: '#e8dcc8', b: '#8a7a60', c: '#f0a0a0' }], 'bait:shrimp': ['shrimp', { a: '#f08070', b: '#8a3020', c: '#ffffff' }], 'bait:squid': ['squid', { a: '#b070c0', b: '#4a2060', c: '#f0e0ff' }],
@@ -15990,7 +16025,14 @@ function startEntry(sp) {
 function nearSpot() { if (!ISL) return null; const l = loc(); let best = null, bd = 18; for (const sp of isleSpots(l)) { const d = Math.abs(sp.x - ISL.px); if (d < bd) { bd = d; best = sp; } } return best; }
 // The Map buttons glow from the moment the raft is built until the player has sailed somewhere: the first voyage is the one thing to do.
 const wantsBeacon = () => S.raft && !S.prologue && S.order.filter(id => id !== 'shoal').length === 0;
-function mapBeacon() { const on = wantsBeacon(); document.querySelectorAll('.tabs [data-k="map"]').forEach(b => b.classList.toggle('pulse', on)); }
+function mapBeacon() { const on = wantsBeacon(); if (on) hudShow(); document.querySelectorAll('.tabs [data-k="map"]').forEach(b => b.classList.toggle('pulse', on)); }
+// The island's title folds the HUD: press it and the lines under it and the row of buttons go, so the whole scene shows; press it again
+// and they are back. It is kept on the device, not in the voyage. A button that is asking to be pressed (the first voyage's Map, the
+// lesson's EXIT) brings the row back for as long as it asks.
+const HUD_KEY = 'castaway-hud';
+function hudFold(set) { const el = document.documentElement, on = set == null ? !el.classList.contains('hudfold') : !!set; el.classList.toggle('hudfold', on); try { localStorage.setItem(HUD_KEY, on ? '1' : ''); } catch (e) {} }
+function hudShow() { document.documentElement.classList.remove('hudfold'); } // for now: the choice on the device stands
+try { if (localStorage.getItem(HUD_KEY)) document.documentElement.classList.add('hudfold'); } catch (e) {}
 function renderIsle() {
   if (MODE !== 'island') return;
   const sp = nearSpot(), l = loc(), tt = tutHere() ? tutStripText() : '', scr = Math.floor(ISL.px / W), nL = isleScreens(l), huntScr = nL - 2, villScr = nL - 1;
@@ -24703,7 +24745,7 @@ function thinBarUpdate() {
 }
 function gamePool(locId, t) { // what is out there at this hour that your weapon can bring down; shot and calls tilt it toward the rarer, and overhunting thins it
   const ph = phaseAt(t), power = WEAPON().power, luck = (SHOT[shotOf()].luck || 0) + (CALLS[callOf()].luck || 0), shun = (SHOT[shotOf()].shun || 1) * (CALLS[callOf()].shun || 1);
-  return GAME.filter(c => c.loc[locId] && (!c.time || c.time.includes(ph)) && c.kg[0] <= power && !(c.legend && S.gindex[c.id])).map(c => { const rk = gameRank(c, locId); return [c, c.loc[locId] * (1 + rk * luck * 0.5) * (rk === 0 ? shun : 1) * Math.pow(T_HUNT.pressDrop, pressOf(locId, c.id))]; });
+  return GAME.filter(c => c.loc[locId] && (!c.time || c.time.includes(ph)) && c.kg[0] <= power && !(c.legend && onceGone(c.id))).map(c => { const rk = gameRank(c, locId); return [c, c.loc[locId] * (1 + rk * luck * 0.5) * (rk === 0 ? shun : 1) * Math.pow(T_HUNT.pressDrop, pressOf(locId, c.id))]; });
 }
 function rollGame() {
   const p = gamePool(S.loc, now()); if (!p.length) return null;
@@ -24773,7 +24815,8 @@ function take() {
   if (gx.n === 0) tags.push('New species'); if (kg > gx.best) { if (gx.n > 0) tags.push('New record'); gx.best = kg; } gx.n++;
   if (!c.legend) { const hd = S.hunted[S.loc] = S.hunted[S.loc] || {}; hd[c.id] = { n: pressOf(S.loc, c.id) + 1, t: now() }; } // one more taken from this ground
   let line = '';
-  if (S.pack.length < packCap()) { S.pack.push({ id: c.id, kg, value }); line = `Into the bag. ${S.pack.length}/${packCap()}.`; } else line = 'The bag is full. You leave it for the gulls.';
+  if (S.pack.length < packCap()) { S.pack.push({ id: c.id, kg, value }); if (c.legend) onceHold(c.id); line = `Into the bag. ${S.pack.length}/${packCap()}.`; }
+  else line = c.legend ? 'The bag is full. It gets up and is gone: it will be back another day.' : 'The bag is full. You leave it for the gulls.';
   HU.phase = 'taken'; $('#hbar').classList.add('hit'); tutFinishHunt(); save(); renderHunt();
   showTaken(c, kg, value, tags, line);
   setTimeout(() => { if (!HU) return; $('#hbar').classList.remove('hit');
@@ -24790,7 +24833,7 @@ function showTaken(c, kg, value, tags, line) {
     <div class="rar"><span class="badge" style="color:${RARITY[gr].col}">${RARITY[gr].name.toUpperCase()}</span>${c.legend ? '<span class="badge" style="color:' + RARITY.fabled.col + '">ONCE EVER</span>' : ''}</div>
     <div class="size"><span>${fmtKg(kg)}</span></div><div class="sub">${gearShort(WEAPON()).toLowerCase()} · from ${DIST_NAME[HU ? HU.steps : 0]} · wind ${WIND_NAME[HU ? HU.wind : 'cross']} · ${PHASE_NAME[phaseAt(now())].toLowerCase()}</div>
     <div class="stats"><div class="stat"><div class="n">WORTH</div><div class="v">${money(value)}</div></div><div class="stat"><div class="n">WEAPON</div><div class="v">${gearShort(WEAPON())}</div></div><div class="stat"><div class="n">GROUND</div><div class="v">${loc().hunt.name.replace(/^the /, '')}</div></div></div>
-    ${c.legend ? `<div class="note">${BEAST_LORE[c.id]} There is only one. The ground will not show it again.</div>` : ''}<div class="note">${line}</div><div class="acts"><button class="cta" data-act="closecard">Bag it</button></div>`;
+    ${c.legend ? `<div class="note">${BEAST_LORE[c.id]} There is only one${onceGone(c.id) ? ', and it is in your bag' : ''}.</div>` : ''}<div class="note">${line}</div><div class="acts"><button class="cta" data-act="closecard">Bag it</button></div>`;
   $('#cardWrap').hidden = false;
   const x = $('#ccv').getContext('2d'); x.imageSmoothingEnabled = false;
   const fR = kRamp(huntDesc(loc()).c), st = [kCss(fR[2]), kCss(fR[1]), kCss(fR[0]), kCss(fR[4])]; x.fillStyle = '#1a2838'; x.fillRect(0, 0, 192, 112); x.fillStyle = st[0]; x.fillRect(0, 98, 192, 14); x.fillStyle = st[1]; x.fillRect(0, 106, 192, 6); x.fillStyle = st[3]; x.fillRect(0, 98, 192, 1); // the island's own ground under it
@@ -24887,7 +24930,8 @@ function drawHunt(t) {
 // and the decision every face asks is the stalk's: push your luck or go up with what you have.
 let MI = null;
 const cap1 = s => s ? s[0].toUpperCase() + s.slice(1) : s;
-function minePool(locId, level) { return MINERALS.filter(m => m.loc[locId] && level >= m.depth[0] && level <= m.depth[1] && !(m.relic && S.mindex[m.id])).map(m => [m, m.loc[locId]]); }
+const theOre = m => /^the /i.test(m.name) ? m.name.replace(/^The /, 'the ') : 'the ' + m.name.toLowerCase(); // "the First Folio", "the quartz": never "the the"
+function minePool(locId, level) { return MINERALS.filter(m => m.loc[locId] && level >= m.depth[0] && level <= m.depth[1] && !(m.relic && onceGone(m.id))).map(m => [m, m.loc[locId]]); }
 function rollMineral(locId, level) {
   let p = minePool(locId, level);
   for (let d = 1; d <= T_MINE.maxLevel && !p.length; d++) p = minePool(locId, Math.max(1, level - d)).concat(minePool(locId, level + d)); // a thin level borrows from its neighbours
@@ -24912,11 +24956,11 @@ function startDescent() {
 }
 function enterMine() {
   const l = loc(); if (!l.mine) return; MODE = 'mine'; $('#isle').hidden = true; $('#game').hidden = true; $('#hunt').hidden = true; $('#mine').hidden = false;
-  if (S.mine && S.mine.loc === l.id) { MI = S.mine; MI.pry = null; MI.blast = false; } else startDescent();
+  if (S.mine && S.mine.loc === l.id) { MI = S.mine; MI.pry = null; MI.blast = false; MI.going = null; } else startDescent();
   $('#mName').textContent = cap1(l.mine.name); renderMine(); window.scrollTo(0, 0);
 }
 function strike(i) {
-  if (!MI || MI.pry) return; const tl = MI.tiles[i]; if (!tl) return;
+  if (!MI || MI.pry || MI.going) return; const tl = MI.tiles[i]; if (!tl) return;
   if (tl.s === 'exposed') { startPry(i); return; }
   if (tl.s !== 'rock') { MI.sel = i; renderMine(); return; }
   const ch = MI.blast ? chargeOf() : 'none', rad = ch !== 'none' ? CHARGES[ch].radius : 0; MI.blast = false;
@@ -24963,7 +25007,7 @@ function pryRelease() {
   MI.pry = null; MI.oil -= T_MINE.strikeOil; MI.swing = now();
   if (d === 0) { tl.s = 'taken'; found(m, 'clean'); }
   else if (d <= band.w * T_MINE.shatterSlack * 0.5) { tl.s = 'taken'; found(m, 'chipped'); }
-  else { tl.s = 'broken'; tl.m = null; toast(P.p > band.hi ? `Too hard a swing. The ${m.name.toLowerCase()} came apart.` : `Too soft a swing. The ${m.name.toLowerCase()} crumbled in the wall.`); }
+  else { tl.s = 'broken'; tl.m = null; toast(P.p > band.hi ? `Too hard a swing. ${cap1(theOre(m))} came apart.` : `Too soft a swing. ${cap1(theOre(m))} crumbled in the wall.`); }
   S.mine = MI; save();
   if (MI.oil <= 0) { lampOut(); return; }
   renderMine();
@@ -24979,6 +25023,7 @@ function found(m, how) {
   if (v) { mx.v = mx.v || {}; mx.v[v] = (mx.v[v] || 0) + 1; }
   if (MI.level >= 4) tags.push(MI.level >= 7 ? 'The deep' : 'Deep');
   const find = { id: m.id, kg, value, v: v || null, level: MI.level }; let line;
+  if (m.relic) onceHold(m.id); // in hand (or waiting on room) from the moment it is out of the wall
   if (S.sack.length < sackCap()) { S.sack.push(find); MI.finds.push(find); line = `Into the sack. ${S.sack.length}/${sackCap()}.`; }
   else { S.mpending = find; line = 'The sack is full. Drop something to make room, or leave this one.'; }
   if (tutAt('mine')) tutFinishMine();
@@ -24994,7 +25039,7 @@ function showFound(m, find, tags, line) {
     <div class="rar"><span class="badge" style="color:${RARITY[mr].col}">${RARITY[mr].name.toUpperCase()}</span>${V ? `<span class="badge" style="color:${V.col}">${V.name.toUpperCase()}${V.mult < 1 ? ' · HALF WORTH' : ' · ×' + V.mult + ' WORTH'}</span>` : ''}${m.relic ? '<span class="badge" style="color:' + RARITY.relic.col + '">ONCE EVER</span>' : ''}</div>
     <div class="size"><span>${fmtKg(find.kg)}</span></div><div class="sub">${gearShort(PICK()).toLowerCase()} · level ${find.level} · ${HARD_NAME[m.hard]}</div>
     <div class="stats"><div class="stat"><div class="n">WORTH</div><div class="v">${money(find.value)}</div></div><div class="stat"><div class="n">HARDNESS</div><div class="v">${m.hard} of 10</div></div><div class="stat"><div class="n">MINE</div><div class="v">${cap1(loc().mine.name.replace(/^the /, ''))}</div></div></div>
-    ${m.relic ? `<div class="note">${RELIC_LORE[m.id]} There is only one. The rock will not give it twice.</div>` : ''}<div class="note">${line}</div>
+    ${m.relic ? `<div class="note">${RELIC_LORE[m.id]} There is only one. Sold, it is gone for good; dropped or left, it is still down here.</div>` : ''}<div class="note">${line}</div>
     <div class="acts">${full ? '<button class="cta" data-act="open" data-k="inv">Make room</button><button class="cta alt" data-act="leavefind">Leave it</button>' : '<button class="cta" data-act="closecard">Sack it</button>'}</div>`;
   $('#cardWrap').hidden = false;
   const x = $('#ccv').getContext('2d'); x.imageSmoothingEnabled = false; const kind = MINE_KIND[loc().mine.kind] || MINE_KIND.rock;
@@ -25003,20 +25048,25 @@ function showFound(m, find, tags, line) {
   x.fillStyle = '#2a2420'; x.fillRect(0, 98, 192, 14); x.fillStyle = '#4a4036'; x.fillRect(0, 98, 192, 1);
   const mm = mineralMap(m.id), msc = mm[0].length * 3 <= 180 && mm.length * 3 <= 90 ? 3 : 2, mc = mineralC(m.id, msc, 'color'); x.drawImage(mc, (192 - mc.width) >> 1, 98 - mc.height);
 }
-function dropFind(j) { if (!S.sack[j]) return; const f = S.sack.splice(j, 1)[0]; if (MI) { const k = MI.finds.indexOf(f); if (k >= 0) MI.finds.splice(k, 1); }
-  if (S.mpending && S.sack.length < sackCap()) { S.sack.push(S.mpending); if (MI) MI.finds.push(S.mpending); const nm = MM[S.mpending.id].name.toLowerCase(); S.mpending = null; save(); closeSheet(); closeCard(); toast(`Dropped the ${MM[f.id].name.toLowerCase()}. The ${nm} goes in the sack.`); if (MODE === 'mine') renderMine(); return; }
-  save(); renderSheet(); toast(`Dropped the ${MM[f.id].name.toLowerCase()}.`); if (MODE === 'mine') renderMine(); }
+function dropFind(j) { if (!S.sack[j]) return; const f = S.sack.splice(j, 1)[0]; onceFree(f.id); if (MI) { const k = MI.finds.indexOf(f); if (k >= 0) MI.finds.splice(k, 1); }
+  if (S.mpending && S.sack.length < sackCap()) { S.sack.push(S.mpending); if (MI) MI.finds.push(S.mpending); const nm = cap1(theOre(MM[S.mpending.id])); S.mpending = null; save(); closeSheet(); closeCard(); toast(`Dropped ${theOre(MM[f.id])}. ${nm} goes in the sack.`); if (MODE === 'mine') renderMine(); return; }
+  save(); renderSheet(); toast(`Dropped ${theOre(MM[f.id])}.`); if (MODE === 'mine') renderMine(); }
 const descendCost = () => T_MINE.descend[0] + T_MINE.descend[1] * MI.level, climbCost = () => Math.max(0, MI.level - 1) * T_MINE.climb;
 function descend() {
-  if (!MI || MI.pry) return; if (MI.level >= T_MINE.maxLevel) { toast('The shaft goes no deeper.'); return; }
+  if (!MI || MI.pry || MI.going) return; if (MI.level >= T_MINE.maxLevel) { toast('The shaft goes no deeper.'); return; }
   const cost = descendCost(); if (MI.oil < cost) { toast(`Not enough light to go down. The ladder takes ${cost}.`); return; }
-  MI.oil -= cost; MI.level++; MI.roof = 0; MI.tiles = genFace(MI.loc, MI.level); MI.sel = null; S.mine = MI; save(); toast(`Level ${MI.level}.` + (MI.level === 4 ? ' The deep begins here.' : '')); renderMine();
+  const from = MI.level; MI.oil -= cost; MI.level++; MI.roof = 0; MI.tiles = genFace(MI.loc, MI.level); MI.sel = null; MI.going = { from, t0: now() }; S.mine = MI; save(); renderMine(); // the new face is cut already: the ladder is only how you get to it
+  setTimeout(() => { if (!MI || !MI.going) return; MI.going = null; S.mine = MI; save(); toast(`Level ${MI.level}.` + (MI.level === 4 ? ' The deep begins here.' : '')); renderMine(); }, T_MINE.descendMs);
 }
+const sackDrop = () => { const d = SACK().drop; return d == null ? 1 : d; };
+const sackIndexOf = f => S.sack.findIndex(x => x === f || (x.id === f.id && x.kg === f.kg && x.value === f.value && x.level === f.level)); // a descent picked up again after a reload holds copies, not the sack's own
 function climbOut(why) {
-  if (!MI) return; const cost = climbCost(), dark = MI.oil < cost, lvl = MI.level; let dropped = null;
-  if (dark && MI.finds.length) { const best = MI.finds.reduce((a, b) => b.value > a.value ? b : a); const j = S.sack.indexOf(best); if (j >= 0) { S.sack.splice(j, 1); dropped = best; } } // the lamp dies on the ladder: the heaviest find goes in the dark
+  if (!MI) return; const cost = climbCost(), dark = MI.oil < cost, lvl = MI.level, had = MI.finds.length; let dropped = null;
+  // The lamp dies on the ladder: a find may go in the dark. The sack says how likely (its drop), and it is the heaviest that slips.
+  if (dark && had && Math.random() < sackDrop()) { const heavy = MI.finds.reduce((a, b) => b.kg > a.kg ? b : a), j = sackIndexOf(heavy); if (j >= 0) { dropped = S.sack.splice(j, 1)[0]; onceFree(dropped.id); } }
+  if (S.mpending) onceFree(S.mpending.id); // what was waiting on room stays in the rock
   MI = null; S.mine = null; S.mpending = null; save(); closeCard(); if (tutAt('mine')) tutFinishMine();
-  const msg = (why ? why + ' ' : '') + (dark ? (dropped ? `The lamp died on the ladder. You dropped the ${MM[dropped.id].name.toLowerCase()} in the dark.` : lvl > 1 ? 'The lamp died on the ladder. You felt your way up.' : 'Daylight.') : lvl > 1 ? `Up ${lvl - 1} level${lvl > 2 ? 's' : ''} and out. Daylight.` : 'Daylight.');
+  const msg = (why ? why + ' ' : '') + (dark ? (dropped ? `The lamp died on the ladder. You dropped ${theOre(MM[dropped.id])} in the dark.${isOnceOre(dropped.id) ? ' It is still down there.' : ''}` : had && lvl > 1 ? `The lamp died on the ladder. Your ${gearShort(SACK()).toLowerCase()} held: nothing was lost.` : lvl > 1 ? 'The lamp died on the ladder. You felt your way up.' : 'Daylight.') : lvl > 1 ? `Up ${lvl - 1} level${lvl > 2 ? 's' : ''} and out. Daylight.` : 'Daylight.');
   fadeTo(() => { enterIsland('mine'); setTimeout(() => toast(msg), 300); });
 }
 function caveIn() { toast('The roof comes down!'); MI.pry = null; renderMine(); $('#mface').classList.add('shake'); setTimeout(() => { $('#mface').classList.remove('shake'); climbOut('You got out ahead of it.'); }, 900); }
@@ -25028,6 +25078,8 @@ function renderMine() {
   $('#mlamp').classList.toggle('low', MI.oil / MI.oilMax < 0.25); $('#mroof').classList.toggle('hot', MI.roof > 0.7);
   const tt = tutHere() ? tutMineText() : ''; $('#mNote').classList.toggle('tut', !!tt);
   const box = $('#mbox'), P = MI.pry;
+  $('#mface').classList.toggle('going', !!MI.going);
+  if (MI.going) { $('#mNote').innerHTML = `<b>Down the ladder</b> · level ${MI.going.from} to level ${MI.level}`; box.innerHTML = `<div class="note">Hand under hand, the lamp swinging. ${MI.level >= 4 ? 'The air is closer down here.' : 'The rock is colder with every rung.'}</div>`; return; }
   if (P) {
     const m = MM[MI.tiles[P.i].m], band = pryBand(m);
     $('#mNote').innerHTML = tt || `<b>${m.name}</b> · ${HARD_NAME[m.hard]} (${m.hard}) · your ${pick.name.toLowerCase()} is ${pick.hard}`;
@@ -25092,8 +25144,31 @@ function drawMiner(X, gy, t) {
   g.save(); g.translate(X + c.width * sc, Y); g.scale(-sc, sc); g.imageSmoothingEnabled = false; g.drawImage(c, 0, 0); g.restore();
   g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(X + 24, gy, 36, 2);
 }
+// Going down a level: the gallery you leave slides up out of the picture and the one below comes up under it, a screen's height of
+// rock between them, with the miner on the ladder in the shaft that joins the two, his lamp going down with him. T_MINE.descendMs long.
+const MINER_CLIMB = [];
+function minerClimbC(k) {
+  if (MINER_CLIMB[k]) return MINER_CLIMB[k];
+  const c = document.createElement('canvas'); c.width = 34; c.height = 32; const x = c.getContext('2d'), px = (X, Y, col, w, h) => { x.fillStyle = col; x.fillRect(X, Y, w || 1, h || 1); };
+  x.drawImage(sprite(k ? 'walkC' : 'walkA'), 2, 4); const lx = 24, ly = 18 + k; // a hand on the rung above, the lantern hung from the other
+  px(lx, ly - 2, '#3a2816', 1, 3); px(lx - 2, ly + 1, '#3a2816', 5, 1); px(lx - 1, ly + 2, '#ffd27a', 3, 4); px(lx - 2, ly + 2, '#3a2816', 1, 4); px(lx + 2, ly + 2, '#3a2816', 1, 4); px(lx - 2, ly + 6, '#3a2816', 5, 1);
+  return (MINER_CLIMB[k] = c);
+}
+function drawMineGoing(l, t, G, top, gy, lx, ly) {
+  const p0 = clamp((now() - G.t0) / T_MINE.descendMs, 0, 1), p = p0 * p0 * (3 - 2 * p0), off = Math.round(p * H), a = Math.min(1, p0 * 6, (1 - p0) * 6);
+  for (const [lv, dy] of [[G.from, -off], [MI.level, H - off]]) { g.save(); g.translate(0, dy); drawMineArt(l, lv, t); g.drawImage(cartSprite(l)[0][0], 4, gy - T_PIT.cartTop); g.restore(); }
+  const sx = lx - 14, y0 = gy - off, y1 = top + H - off; // the shaft: from the floor he leaves to the roof he comes down through
+  if (y1 > y0) { g.fillStyle = `rgba(7,7,11,${(0.9 * a).toFixed(2)})`; g.fillRect(sx - 11, y0, 22, y1 - y0); g.fillStyle = `rgba(40,34,28,${a.toFixed(2)})`; g.fillRect(sx - 12, y0, 1, y1 - y0); g.fillRect(sx + 11, y0, 1, y1 - y0); }
+  g.globalAlpha = a; g.fillStyle = '#6a5236'; g.fillRect(sx - 7, y0 - 46, 2, y1 - y0 + 92); g.fillRect(sx + 5, y0 - 46, 2, y1 - y0 + 92); // the ladder: its rails stand a man's height into each gallery
+  g.fillStyle = '#8a6a44'; for (let y = y0 - 44; y < y1 + 46; y += 7) g.fillRect(sx - 6, y, 12, 2); g.globalAlpha = 1;
+  const c = minerClimbC(Math.floor(now() / 140) & 1), sc = 2, bob = p0 > 0.04 && p0 < 0.96 ? Math.floor(now() / 140) & 1 : 0;
+  g.save(); g.translate(sx - c.width * sc / 2 + 6, gy - c.height * sc + 2 + bob); g.scale(sc, sc); g.imageSmoothingEnabled = false; g.drawImage(c, 0, 0); g.restore();
+  const glow = clamp(MI.oil / MI.oilMax, 0.15, 1); for (let k = 4; k >= 1; k--) { g.fillStyle = `rgba(255,200,110,${(0.05 * glow).toFixed(3)})`; const rr = 13 * k; for (let y = -rr; y <= rr; y += 2) { const hw = Math.sqrt(rr * rr - y * y) | 0; g.fillRect(sx + 20 - hw, gy - 22 + y, hw * 2, 2); } }
+  g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, 0, W, 1);
+}
 function drawMine(t) {
   const l = loc(), top = SURF - 56, gy = SURF + 8, lx = galLampX(), ly = top + 22, lv = MI ? MI.level : 1;
+  if (MI && MI.going) { drawMineGoing(l, t, MI.going, top, gy, lx, ly); return; }
   g.drawImage(layer('mine', W, H, `${l.id}|${SURF}|${lv}`, () => drawMineArt(l, lv, t)), 0, 0); // the gallery at this level, painted for this island (mineSprite); a layer, so what moves in it is redrawn a few times a second
   g.drawImage(cartSprite(l)[0][0], 4, gy - T_PIT.cartTop); // the tub on the rail, and in it what has been found so far
   for (let k = 0; k < Math.min(12, S.sack.length); k++) { const mp = mineralPal(MM[S.sack[k].id]), bx = 8 + (k % 4) * 5 + (((k / 4) | 0) & 1) * 2, by = gy - T_PIT.cartTop + 6 - ((k / 4) | 0) * 3; g.fillStyle = mp.b; g.fillRect(bx, by, 4, 3); g.fillStyle = mp.h; g.fillRect(bx + 1, by, 2, 1); }
@@ -25425,14 +25500,16 @@ function startSail(from, to, pulled, first) {
 }
 function sailAdvance() { if (!SAIL) return; SAIL.i++; if (SAIL.i >= 3) { finishSail(); return; } SAIL.t0 = performance.now(); sailCap(); }
 function finishSail() {
-  if (!SAIL) return; const { to, pulled, first } = SAIL, L = LOC[to]; SAIL = null;
-  S.loc = to; S.visited[to] = true; if (!S.order.includes(to)) S.order.push(to); S.spot = L.spots[0].id; S.shoreSpot = null; reseedFish();
+  if (!SAIL) return; const { from, to, pulled, first } = SAIL, L = LOC[to]; SAIL = null;
+  wakeAdd(from, to); S.loc = to; S.visited[to] = true; if (!S.order.includes(to)) S.order.push(to); S.spot = L.spots[0].id; S.shoreSpot = null; reseedFish();
   if (S.tut && S.tut !== 'done' && S.tutIsland !== to) S.tut = 'done'; // left the tutorial island: the lesson is over
   if (first && !L.noFish && S.order.filter(id => id !== 'shoal').length === 1) tutStart(to); // the first island after the shoal teaches the village and the wild
   save();
   fadeTo(() => { $('#cut').hidden = true; if (L.noFish) { ISL = null; enterIsland('shop'); } else enterFishing();
     toast(`${first ? 'Landfall: ' : 'Sailed to '}${L.name}.` + (pulled ? ` Pulled in ${pulled} line${pulled > 1 ? 's' : ''}.` : '') + (first && L.vibe ? ' ' + L.vibe : '')); });
 }
+// The wake: every passage made, as a pair of islands (each pair once, whichever way it was sailed). The chart draws it in gold.
+function wakeAdd(a, b) { if (!a || !b || a === b || !LOC[a] || !LOC[b] || a === 'sea' || b === 'sea') return; S.wake = S.wake || []; if (!S.wake.some(w => (w[0] === a && w[1] === b) || (w[0] === b && w[1] === a))) S.wake.push([a, b]); }
 function drawSail(ts, t) {
   const p = Math.min(1, (ts - SAIL.t0) / SAIL_DUR[SAIL.i]);
   if (SAIL.i === 0) drawDepart(p, t); else if (SAIL.i === 1) drawPassage(p, t); else drawArrive(p, t);
@@ -25615,10 +25692,11 @@ function worldLayer() {
   WORLD_C = c; return c;
 }
 function fogLayer() {
-  const key = Object.keys(S.visited).sort().join(',') + '|' + Object.keys(S.known).sort().join(','); if (FOG_C && key === fogKey) return FOG_C; fogKey = key;
+  const key = Object.keys(S.visited).sort().join(',') + '|' + Object.keys(S.known).sort().join(',') + '|' + (S.wake || []).length; if (FOG_C && key === fogKey) return FOG_C; fogKey = key;
   const c = document.createElement('canvas'); c.width = MW; c.height = MH; const m = c.getContext('2d'), img = m.createImageData(MW, MH), d = img.data;
   const cents = []; for (const l of LOCS) { const st = mapState(l); if (st === 'hidden' || l.id === 'stars') continue; cents.push([l.x, l.y, st === 'visited' ? 24 : st === 'known' ? 12 : 7, st === 'visited' ? 9 : 5]); }
   const segs = []; for (const l of LOCS) for (const k of l.links) if (S.visited[l.id] && S.visited[k] && l.id < k) segs.push([l.x, l.y, LOC[k].x, LOC[k].y]);
+  for (const [a, b] of S.wake || []) if (LOC[a] && LOC[b]) segs.push([LOC[a].x, LOC[a].y, LOC[b].x, LOC[b].y]); // the sea is known along every passage made, charted route or not
   // how far each pixel is revealed: every island and every sailed route only touches the pixels inside its own reach, so this is a
   // few hundred small boxes and not the whole sea for every island (which froze the chart for seconds once many islands were known)
   const rv = new Float32Array(MW * MH);
@@ -25653,6 +25731,9 @@ function drawMap() {
   m.drawImage(fogLayer(), 0, 0);
   const here = LOC[S.loc], reach = boatReach(); // how far this boat goes from here: a dotted ring
   if (here && reach && reach < 400) { const n = (reach * 6.3) | 0; m.fillStyle = 'rgba(240,192,80,0.75)'; for (let i = 0; i < n; i++) { if (i % 8 >= 5) continue; const a = i / n * Math.PI * 2, x = (here.x + Math.cos(a) * reach) | 0, y = (here.y + Math.sin(a) * reach) | 0; if (x >= 2 && y >= 2 && x < MW - 2 && y < MH - 2) m.fillRect(x, y, 1, 1); } } // dashes of five on, three off, one pixel per step round the circle
+  // the wake: every passage you have made, in gold over a dark edge, so the way back to an old island is plain to see
+  for (const pass of [0, 1]) { m.fillStyle = pass ? '#f0c050' : 'rgba(16,28,44,0.6)'; for (const [a, b] of S.wake || []) { const A = LOC[a], B = LOC[b]; if (!A || !B) continue; const n = Math.max(1, Math.round(Math.hypot(B.x - A.x, B.y - A.y)));
+    for (let i = 0; i <= n; i++) { const x = Math.round(A.x + (B.x - A.x) * i / n), y = Math.round(A.y + (B.y - A.y) * i / n); if (pass) m.fillRect(x, y, 1, 1); else m.fillRect(x - 1, y - 1, 3, 3); } } }
   for (const l of LOCS) {
     const st = seen[l.id]; if (!st) continue; const x = l.x, y = l.y;
     if (l.id === 'stars') { m.fillStyle = '#f4ecd0'; m.fillRect(x - 1, y - 4, 2, 9); m.fillRect(x - 4, y - 1, 8, 2); m.fillRect(x - 2, y - 2, 4, 4); }
@@ -25738,7 +25819,8 @@ function endFight(win) {
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const a = b.dataset.act, i = +b.dataset.i, k = b.dataset.k;
-  if (a === 'reloadbuild') buildReload();
+  if (a === 'hud') hudFold();
+  else if (a === 'reloadbuild') buildReload();
   else if (a === 'laterbuild') { BUILD.later = Date.now() + T_BUILD.laterMs; buildShow(); }
   else if (a === 'sel') { S.sel = i; save(); render(); }
   else if (a === 'rig') { const L = S.lines[S.sel]; L.rig = k; if (k === 'trophy' && L.bait === 'scraps') L.bait = S.bait.shrimp > 0 ? 'shrimp' : S.bait.squid > 0 ? 'squid' : 'scraps'; save(); render(); renderSheet(); }
@@ -25753,12 +25835,12 @@ document.addEventListener('click', e => {
   else if (a === 'walk') { if (!S.prologue) { if (tutAt('exit')) tutSet('village'); fadeTo(() => enterIsland('fish')); } }
   else if (a === 'enter') { const sp = nearSpot(); if (!sp || (ISL && ISL.auto)) return; if (sp.id === 'fish') openSheet('spots'); else startEntry(sp); }
   else if (a === 'leavehunt') { closeSheet(); fadeTo(() => enterIsland('hunt')); }
-  else if (a === 'climb') { closeSheet(); climbOut(''); }
+  else if (a === 'climb') { if (MI && MI.going) return; closeSheet(); climbOut(''); }
   else if (a === 'deeper') descend();
   else if (a === 'blast') { if (MI && chargeOf() !== 'none') { MI.blast = !MI.blast; renderMine(); } }
   else if (a === 'prycancel') { if (MI) { MI.pry = null; renderMine(); } }
   else if (a === 'drop') dropFind(i);
-  else if (a === 'leavefind') { S.mpending = null; save(); closeCard(); toast('Left in the rock.'); if (MODE === 'mine') renderMine(); }
+  else if (a === 'leavefind') { const lf = S.mpending; if (lf) onceFree(lf.id); S.mpending = null; save(); closeCard(); toast(lf && isOnceOre(lf.id) ? 'Left in the rock. It will be here when you come back.' : 'Left in the rock.'); if (MODE === 'mine') renderMine(); }
   else if (a === 'charge') { if (k === 'none' || S.charges[k] > 0) { S.chargeSel = k; save(); renderSheet(); if (MODE === 'mine') renderMine(); } }
   else if (a === 'aid') { if (k === 'none' || S.aids[k] > 0) { S.aidSel = k; save(); renderSheet(); } }
   else if (a === 'stalk') startStalk();
