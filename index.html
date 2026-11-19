@@ -346,6 +346,21 @@ html.land .toasts{right:360px}
 .hband.fill{left:0;border:0}
 .hband.alert{background:#e26b5a}
 .hband.breath{background:var(--good)}
+.meter.game{margin:1px 0 2px}
+.gamehd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:3px}
+.gamehd .lbl{margin:0}
+.gamehd b{font-family:var(--display);font-size:8px;letter-spacing:.5px;text-transform:uppercase;color:var(--good);font-weight:normal;white-space:nowrap}
+.meter.game .hbar{height:12px;overflow:hidden}
+.hband.game{background:var(--good);transition:width .6s}
+.meter.game .tick{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:rgba(10,16,32,.85);box-shadow:1px 0 0 rgba(236,230,214,.28)}
+.gamesay{font-size:17px;color:var(--muted);margin-top:4px;line-height:1.2}
+.meter.game.l1 .gamehd b{color:var(--brass)}
+.meter.game.l1 .hband.game{background:var(--brass)}
+.meter.game.l2 .gamehd b{color:#e8a050}
+.meter.game.l2 .hband.game{background:#e8a050}
+.meter.game.l3 .gamehd b{color:var(--bad)}
+.meter.game.l3 .hband.game{background:var(--bad)}
+.note.tallyhint{opacity:.8}
 .acts2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 #hNote .look{color:#e26b5a;font-weight:bold}
 .hband.lamp{background:var(--brass)}
@@ -8577,7 +8592,9 @@ const gameValue = (c, kg, jit) => Math.round(Math.max(T_VALUE.floor, worthOf('ga
 // back) × 2 if it has its head up. Alertness also climbs on its own; at 1 it bolts. A closer shot is worth more (×(1 + nearWorth × steps)).
 const T_HUNT = { wait: [2500, 6000], breath: 3200, alertMs: [11000, 5000], creepCost: [0.13, 0.22], wind: { face: 0.6, cross: 1, back: 1.7 }, lookEvery: [2500, 5000], lookFor: 900, nearBand: 0.45, nearWorth: 0.1, maxSteps: 3, bandBase: 1.3, swing: [1.8, 1.0], holdSlow: 0.45,
   sizeBand: [0.65, 0.7], sizeSlow: [0.8, 0.5], valueQuick: [1.15, 0.45], flockOdds: 0.05, flockN: [3, 6], flockBand: 1.4, flockMaxKg: 60, flockAlert: 0.15,
-  flightMs: 380, recoverMs: 600000, pressDrop: 0.55, waitPress: 0.3, waitPressMax: 2.5 };
+  flightMs: 380, recoverMs: 600000, pressDrop: 0.55, waitPress: 0.3, waitPressMax: 2.5, thin: [0.5, 2.5, 5.5], scarce: 0.5, thinShow: 2 }; // thin: the pressure at which a ground has had something taken lately, is thinning, and is hunted out (one, three and six animals taken: half a point under, since a point starts fading the moment it is made); scarce: the pressure on one animal from which the tally names it; thinShow: how many it names
+// The tracker's tally: a tool, bought once, that puts a bar on the hunting ground showing how thin the game is. tier: the island tier whose shops sell it.
+const TALLY = { name: "Tracker's tally", price: 450, tier: 1, everyMs: 4000 };
 // flightMs: the shot's flight from the hunter to the animal before it tells. Overhunting: every animal taken puts one point of
 // pressure on its species on that island that fades over recoverMs (ten minutes real time, so six takes fade in an hour); a species'
 // weight is × pressDrop per point, and the ground's whole pressure stretches the wait by waitPress per point up to waitPressMax.
@@ -10308,7 +10325,7 @@ const HARD_NAME = ['', 'soft as talc', 'soft', 'soft', 'firm', 'firm', 'hard', '
 // ---------- state ----------
 function freshState() {
   return {
-    v: 17, started: false, loc: 'shoal', shoreSpot: null, hunted: {}, stock: {}, broke: null, money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 1, trophyRig: false,
+    v: 18, started: false, loc: 'shoal', shoreSpot: null, tally: false, hunted: {}, stock: {}, broke: null, money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 1, trophyRig: false,
     line: 'l10', pail: 'pail', // the line's test weight and the bucket in use (both bought in the shop)
     rodsOwned: ['stick'], linesOwned: ['l10'], pailsOwned: ['pail'], // everything bought stays in the rig sheet and can be put back on
     heldRod: true, // the storm's one question; let go and the sea takes you, and the voyage starts over
@@ -10403,7 +10420,8 @@ function load(seed) {
   if (d && d.v === 14) { d.hunted = {}; d.v = 15; } // v14 -> v15: overhunting pressure per island
   if (d && d.v === 15) { d.stock = {}; d.broke = null; d.v = 16; } // v15 -> v16: shop stock by the day, and the count of fish that broke the line
   if (d && d.v === 16) { d.shoreSpot = null; d.v = 17; } // v16 -> v17: the shore spot you left to go offshore
-  if (d && d.v === 17) S = Object.assign(freshState(), d);
+  if (d && d.v === 17) { d.tally = false; d.v = 18; } // v17 -> v18: the tracker's tally, a tool you buy
+  if (d && d.v === 18) S = Object.assign(freshState(), d);
   S.seen = S.seen || {}; for (const k in S.bait) if (S.bait[k] > 0) S.seen['bait:' + k] = true; for (const k in S.shot) if (S.shot[k] > 0) S.seen['shot:' + k] = true; for (const k in S.calls) if (S.calls[k] > 0) S.seen['call:' + k] = true; for (const k in S.charges || {}) if (S.charges[k] > 0) S.seen['charge:' + k] = true; for (const k in S.aids || {}) if (S.aids[k] > 0) S.seen['aid:' + k] = true; if (S.trophyRig) S.seen['rig:trophy'] = true; // things you hold now, you have seen
 }
 
@@ -10803,7 +10821,9 @@ function shopItemsRaw() {
   gear('rod'); gear('line'); gear('pail');
   if (!S.trophyRig) items.push({ k: 'trig', name: 'Trophy rig', sub: 'A long passive line. Needs shrimp or squid. Hooks big fish; you still land them yourself.', price: TROPHY_RIG_PRICE });
   // the hunting kit and the mining kit: the island's own weapon and pick, and what its shelves keep of cloaks, boots, bags, lamps and sacks; shot, calls, charges and aids by the pack
-  const tier = l.range; gear('weapon'); gear('cloak'); gear('boots'); gear('gamepack'); gear('pick'); gear('lamp'); gear('sack');
+  const tier = l.range; gear('weapon');
+  if (!S.tally && tier >= TALLY.tier) items.push({ k: 'tally', name: TALLY.name, sub: 'A notched stick on a knotted cord. On a hunting ground it shows a bar of the game that is left: how thin the ground is, what has grown scarce, and when it will be fresh again. Bought once.', price: TALLY.price });
+  gear('cloak'); gear('boots'); gear('gamepack'); gear('pick'); gear('lamp'); gear('sack');
   if (stock.has('charges')) for (const [id, ch] of Object.entries(CHARGES)) if (ch.qty && ch.tier <= tier) items.push({ k: 'charge:' + id, name: `${ch.name} ×${ch.qty}`, sub: `Have ${S.charges[id] || 0}. Opens a block ${ch.radius * 2 + 1} tiles across in one strike. Spent per blast.`, price: ch.price });
   if (stock.has('aids')) for (const [id, ad] of Object.entries(AIDS)) if (ad.qty && ad.tier <= tier) items.push({ k: 'aid:' + id, name: `${ad.name} ×${ad.qty}`, sub: `Have ${S.aids[id] || 0}. ${ad.gas ? 'Shows every pocket of gas in the face. ' : ''}${ad.tells ? 'Every glint plain and two tiles out. ' : ''}${ad.roof ? 'The roof takes half the strain. ' : ''}Spent per descent.`, price: ad.price });
   for (const [id, sh] of Object.entries(SHOT)) if (sh.qty && sh.tier <= tier) items.push({ k: 'shot:' + id, name: `${sh.name} ×${sh.qty}`, sub: `Have ${S.shot[id] || 0}. ${sh.shun ? 'The common game keeps back and the rarer game shows far more often. ' : sh.luck ? 'Rarer game shows more often. ' : ''}${sh.worth ? `A clean kill pays ×${sh.worth}. ` : ''}${sh.calm ? 'The animal takes alarm slower and the mark swings slower. ' : ''}Spent per shot.`, price: sh.price });
@@ -10825,6 +10845,7 @@ function buy(k) {
   let worn = true; S.money -= it.price; if (it.left != null) { const sold = shopSold(loc()); sold[k] = (sold[k] || 0) + 1; } if (tutAt('buy')) tutSet('gate');
   if (k === 'slot') { S.slots++; S.lines[S.slots - 1] = { rig: 'set', bait: 'scraps', phase: 'idle' }; }
   else if (k === 'trig') { S.trophyRig = true; S.seen['rig:trophy'] = true; }
+  else if (k === 'tally') S.tally = true;
   else if (GEAR[k]) { const G = GEAR[k], m = it.made; S[G.owned].push(m.id); if (it.verdict.v !== 'nobetter') S[G.use] = m.id; else worn = false; } // a piece made here: it is yours, and in use unless you own better
   else if (k.startsWith('charge:')) { const b = k.slice(7); S.charges[b] = (S.charges[b] || 0) + CHARGES[b].qty; S.seen[k] = true; if (S.chargeSel === 'none') S.chargeSel = b; }
   else if (k.startsWith('aid:')) { const b = k.slice(4); S.aids[b] = (S.aids[b] || 0) + AIDS[b].qty; S.seen[k] = true; if (S.aidSel === 'none') S.aidSel = b; }
@@ -11057,7 +11078,8 @@ function renderSheet() {
       ${busy ? '<div class="note">Mid-stalk. Finish or give up before changing your kit.</div>' : ''}
       <div class="box"><h3>SHOT</h3>${seg(Object.entries(SHOT).map(([k, b]) => [k, k === 'stones' ? 'Stones' : b.short + ' ×' + (S.shot[k] || 0)]), shotOf(), 'shot', k => k !== 'stones' && !(S.shot[k] > 0))}<div class="note">Stones are free. The shops sell better shot: some brings rarer game out, some pays better, some keeps the animal calm. One is spent per shot.</div></div>
       <div class="box"><h3>CALL</h3>${seg(Object.entries(CALLS).map(([k, b]) => [k, k === 'none' ? 'None' : b.short + ' ×' + (S.calls[k] || 0)]), callOf(), 'call', k => k !== 'none' && !(S.calls[k] > 0))}<div class="note">Calls are sold in the shops: one brings a sign sooner, one brings rarer game, one brings it closer. One is spent per stalk.</div></div>
-      <div class="box"><h3>WEAPONS</h3><div class="list">${gearRows(WEAPONS, S.weaponsOwned, S.weapon, 'weapon', w => `Band ${Math.round(w.acc * 200)}% of the bar · takes game to ${fmtKg(w.power)}${w.quiet ? ' · quiet' : w.loud ? ' · loud' : ''}.`)}</div><div class="note">Heavier game than your weapon can bring down never shows itself. The shops sell the next rung.</div></div>
+      <div class="box"><h3>WEAPONS</h3><div class="list">${gearRows(WEAPONS, S.weaponsOwned, S.weapon, 'weapon', w => `Band ${Math.round(w.acc * 200)}% of the bar · takes game to ${fmtKg(w.power)}${w.quiet ? ' · quiet' : w.loud ? ' · loud' : ''}.`)}</div><div class="note">Heavier game than your weapon can bring down never shows itself. Every port makes a weapon of its own; the further ports make the heavier ones.</div></div>
+      <div class="box"><h3>TOOLS</h3>${S.tally ? `<div class="list"><div class="row sel">${icon('tool:tally')}<div class="name" style="flex:1">${TALLY.name}<small>Shows how thin the game is on a ground: the GAME bar while you wait for a sign.</small></div><div class="here">yours</div></div></div>` : `<div class="note">A tracker's tally, sold in the shops, shows how thin the game is on a ground.</div>`}</div>
       <div class="box"><h3>CLOAK</h3><div class="list">${gearRows(CLOAKS, S.cloaksOwned, S.cloak, 'cloak', x => x.calm < 1 ? `Game takes alarm ${Math.round((1 - x.calm) * 100)}% slower.` : 'Nothing between you and the wind.')}</div></div>
       <div class="box"><h3>BOOTS</h3><div class="list">${gearRows(BOOTS, S.bootsOwned, S.boots, 'boots', x => `${x.steps} steps of creeping before point blank.`)}</div></div>
       <div class="box"><h3>GAME BAG</h3><div class="list">${gearRows(PACKS, S.packsOwned, S.pack_, 'gamepack', x => `Room for ${x.cap} game.`)}</div></div>`;
@@ -11118,6 +11140,7 @@ function renderSheet() {
         <div class="row">${icon('cloak:' + S.cloak)}<div class="name" style="flex:1">${CLOAK().name}<small>${CLOAK().calm < 1 ? `Game takes alarm ${Math.round((1 - CLOAK().calm) * 100)}% slower.` : 'No cloak.'}</small></div></div>
         <div class="row">${icon('boots:' + S.boots)}<div class="name" style="flex:1">${BOOT().name}<small>${maxSteps()} steps of creeping.</small></div></div>
         <div class="row">${icon('gamepack:' + S.pack_)}<div class="name" style="flex:1">${PACK().name}<small>Room for ${packCap()} game.</small></div></div>
+        ${S.tally ? `<div class="row">${icon('tool:tally')}<div class="name" style="flex:1">${TALLY.name}<small>Shows how thin the game is on a hunting ground.</small></div></div>` : ''}
         <div class="row">${icon('pick:' + S.pick)}<div class="name" style="flex:1">${PICK().name}<small>Pries stone to hardness ${PICK().hard}. ${chargeOf() !== 'none' ? CHARGES[chargeOf()].name + ' ×' + S.charges[chargeOf()] + '. ' : ''}${aidOf() !== 'none' ? AIDS[aidOf()].name + ' ×' + S.aids[aidOf()] + '.' : ''}</small></div></div>
         <div class="row">${icon('lamp:' + S.lamp)}<div class="name" style="flex:1">${LAMP().name}<small>${LAMP().oil} oil a descent.</small></div></div>
         <div class="row">${icon('sack:' + S.sack_)}<div class="name" style="flex:1">${SACK().name}<small>Room for ${sackCap()} finds.</small></div></div>
@@ -11126,7 +11149,7 @@ function renderSheet() {
     drawIcons(el);
     drawMinis(el); drawFaces(el);
   } else if (sheetKind === 'shop') {
-    const shopIcon = it => it.made ? it.k + ':' + it.made.grade : it.k.startsWith('bait:') || it.k.startsWith('shot:') || it.k.startsWith('call:') || it.k.startsWith('charge:') || it.k.startsWith('aid:') ? it.k : it.k === 'boat' ? 'boat:' + (loc().spaceport ? 'starship' : BOATS[BOATS.findIndex(b => b.id === S.boat) + 1].id) : it.k === 'slot' ? 'rig:set' : it.k === 'trig' ? 'rig:trophy' : null;
+    const shopIcon = it => it.made ? it.k + ':' + it.made.grade : it.k.startsWith('bait:') || it.k.startsWith('shot:') || it.k.startsWith('call:') || it.k.startsWith('charge:') || it.k.startsWith('aid:') ? it.k : it.k === 'boat' ? 'boat:' + (loc().spaceport ? 'starship' : BOATS[BOATS.findIndex(b => b.id === S.boat) + 1].id) : it.k === 'slot' ? 'rig:set' : it.k === 'trig' ? 'rig:trophy' : it.k === 'tally' ? 'tool:tally' : null;
     const rows = shopItems().map(it => `<div class="row ${it.verdict ? 'g-' + it.verdict.v : ''}">${shopIcon(it) ? icon(shopIcon(it)) : ''}<div class="name" style="flex:1">${it.name}${it.verdict ? ` <span class="gtag ${it.verdict.v}">${GEAR_TAG[it.verdict.v]}</span>` : ''}<small>${it.html || it.sub}</small></div><div style="display:grid;gap:4px;justify-items:end"><div class="price">${money(it.price)}</div>${it.stock ? `<div class="stock ${it.soldOut ? 'out' : ''}">${it.stock}</div>` : ''}<button class="buy" data-act="buy" data-k="${it.k}" ${it.locked || it.soldOut || it.owned || S.money < it.price ? 'disabled' : ''}>${it.locked ? 'LOCKED' : it.soldOut ? 'SOLD OUT' : it.owned ? 'YOURS' : 'BUY'}</button></div></div>`).join('');
     const kp = loc().keeper, said = talkLine;
     const board = loc().spaceport ? '' : boardOf(loc()).list.map(b => { const sp = SP[b.id], j = bestInBucket(b.id), have = j >= 0;
@@ -14657,6 +14680,8 @@ const FISH_ART = {
 
 // ---------- gear icons: 20x20 masks (a main, b dark, c accent, d highlight, e extra), a palette per item, cached per key/scale ----------
 const ICON_MASKS = {
+  tally: ['....................', '....................', '................cc..', '...............c..c.', '..............c...c.', '............bbb..c..', '...........bdab.c...', '..........bbbab..c..', '.........bdaab..ccc.', '........bbbab.....c.',
+          '.......bdaab......c.', '......bbbab......c..', '.....bdaab......ccc.', '....bbbab.........c.', '...bdaab..........c.', '..bbbab.............', '.bdaab..............', '.baab...............', '.bbb................', '....................'],
   rod: ['..................dc', '.................add.', '................a..d.', '...............a...d.', '..............a....d.', '.............a.....d.', '............a......d.', '...........a.......e.', '..........a........e.', '.........a..........',
         '........a...........', '.......a............', '......aa............', '.....aa.............', '....bb..............', '...bb...............', '..bb................', '.bb.................', 'bb..................', '....................'],
   spool: ['....bbbbbbbbbbbb....', '...baaaaaaaaaaaab...', '..baaaaaaaaaaaaaab..', '...baaaaaaaaaaaab...', '....bbbbbbbbbbbb....', '....b.cccccccc.b....', '....b.cccccccc.b....', '....b.cccccccc.b....', '....b.cccccccc.b....', '....b.cccccccc.b....',
@@ -14724,6 +14749,7 @@ const ICON_MASKS = {
 };
 // which mask an item uses, and its colours
 const ICON_PAL = {
+  'tool:tally': ['tally', { a: '#b8905a', b: '#4a3222', c: '#d8d0c0', d: '#d8b47a' }],
   'rig:hand': ['rod', { a: '#8a6a44', b: '#5a3a22', c: '#d8d0c0', d: '#e8e8e8', e: '#d7362a' }], 'rig:set': ['rigset', { a: '#8a6a44', b: '#4a3222', c: '#e0e0e0' }], 'rig:trophy': ['rigtrophy', { a: '#d7362a', b: '#5a1a12', c: '#e0e0e0', d: '#ffffff' }],
   'bait:scraps': ['scraps', { a: '#e8dcc8', b: '#8a7a60', c: '#f0a0a0' }], 'bait:shrimp': ['shrimp', { a: '#f08070', b: '#8a3020', c: '#ffffff' }], 'bait:squid': ['squid', { a: '#b070c0', b: '#4a2060', c: '#f0e0ff' }],
   'rod:stick': ['rod', { a: '#8a6a44', b: '#5a3a22', c: '#d8d0c0', d: '#e8e8e8', e: '#d7362a' }], 'rod:cane': ['rod', { a: '#d8b060', b: '#6a4a20', c: '#f0e0a0', d: '#e8e8e8', e: '#d7362a' }], 'rod:carbon': ['rod', { a: '#3a3a44', b: '#d7362a', c: '#a0a0a8', d: '#e8e8e8', e: '#f0c050' }],
@@ -22733,7 +22759,7 @@ LANDS.bathhouse = s => { const { far: F, mid: M, near: N } = s; // wooden bathho
   F.land([[-0.3, 0.5], [-0.1, 0.7, 'l'], [0.1, 0.56], [0.3, 0.8, 'l'], [0.5, 0.56], [0.7, 0.7, 'l'], [0.9, 0.5], [1.02, 0.56]], '#5a7068', { tex: 'rock', crag: 0.3, rough: 0.5 }).forest(-0.3, 1.02, { deep: 0.4, c: '#3a5a48' }); steam(F, 0.1, 0.9, 5, { up: 16, rise: 18, grow: 5, a: 0.4 });
   const m = M.land([[-0.7, 0.4], [-0.3, 0.5], [0, 0.4], [0.3, 0.3], [0.52, 0.16], [0.66, 0.06], [0.72, 0]], 'jungle', { rough: 0.4 });
   m.trees('bamboo', -0.7, 0.4, 30, { h: [5, 9] });
-  const mb = M.land([[0.34, 0, 'r'], [0.36, 0.06, 'l'], [0.86, 0.06, 'c'], [0.88, 0]], { c: '#6a4a30', tex: 'rock' }, { rough: 0.01, strata: 2 }); mb.put('bldg', 0.5, bath(11, 2)).put('bldg', 0.68, bath(8, 1)).put('bldg', 0.8, bath(6, 1)).put('torii', 0.4).row('figure', 0.4, 0.84, 6, { c: '#e8e0f0', jit: 0.9 }); // a boardwalk of them, out over the hot river steam(M, 0.36, 0.88, 9, { up: 10, jit: 16, rise: 10 });
+  const mb = M.land([[0.34, 0, 'r'], [0.36, 0.06, 'l'], [0.86, 0.06, 'c'], [0.88, 0]], { c: '#6a4a30', tex: 'rock' }, { rough: 0.01, strata: 2 }); mb.put('bldg', 0.5, bath(11, 2)).put('bldg', 0.68, bath(8, 1)).put('bldg', 0.8, bath(6, 1)).put('torii', 0.4).row('figure', 0.4, 0.84, 6, { c: '#e8e0f0', jit: 0.9 }); steam(M, 0.36, 0.88, 9, { up: 10, jit: 16, rise: 10 }); // a boardwalk of them, out over the hot river
   const n = N.land([[-1.3, 0.1], [-0.6, 0.12], [0, 0.1], [0.28, 0.05], [0.4, 0]], '#5a6a50', { rough: 0.3 });
   n.trees('bamboo', -1.3, 0.1, 9, { h: [7, 11] }).put('bldg', -0.7, bath(10, 2)).put('torii', -0.2).row('figure', -0.4, 0.2, 4, { c: '#e8e0f0', jit: 0.7 }); steam(N, -1.2, 0.3, 5, { up: 6, rise: 7 });
   N.land([[0.56, 0, 'r'], [0.6, 0.04], [0.68, 0.05], [0.74, 0.04, 'c'], [0.78, 0]], 'slate', { rough: 0.3 }); { const x = N.x(0.67), y = N.base - 6; N.P.rect(x, y - 12, 1, 12, kHex('#3a2e24')); N.P.rect(x - 2, y - 16, 5, 4, kHex('#e04a3a')); N.P.litRect(x - 2, y - 16, 5, 4, kHex('#ffb060'), 255); N.P.halo(x, y - 14, 8, kHex('#ff9050'), 110); } steam(N, 0.46, 0.98, 6, { up: 1, rise: 6, a: 0.45 }); // a lantern on a rock in the steam
@@ -24580,7 +24606,34 @@ function enterHunt() {
 // less often for it (× pressDrop a point) and the whole ground's pressure stretches the wait. Let it rest and it comes back.
 const pressOf = (locId, id) => { const h = S.hunted && S.hunted[locId] && S.hunted[locId][id]; return h ? Math.max(0, h.n - (now() - h.t) / T_HUNT.recoverMs) : 0; };
 const groundPress = locId => { const h = S.hunted && S.hunted[locId]; if (!h) return 0; let s = 0; for (const id in h) { const v = pressOf(locId, id); if (v <= 0) delete h[id]; else s += v; } return s; };
-const pressWord = locId => { const P = groundPress(locId); return P >= 6 ? 'hunted out: let it rest' : P >= 3 ? 'the ground is thinning' : P >= 1 ? 'something was taken here lately' : ''; };
+const pressWord = locId => { const P = groundPress(locId), th = T_HUNT.thin; return P >= th[2] ? 'hunted out: let it rest' : P >= th[1] ? 'the ground is thinning' : P >= th[0] ? 'something was taken here lately' : ''; };
+// What the tally reads off a ground: how much of its game is left (1 untouched, 0 where the wait stops growing), which of the four words
+// it has come to, how much slower the signs come, how long until it is fresh again (its most hunted animal's pressure, a point every
+// recoverMs), and the animals that are scarce for it, the scarcest first.
+function groundThin(locId) {
+  const P = groundPress(locId), full = T_HUNT.waitPressMax / T_HUNT.waitPress, th = T_HUNT.thin, h = (S.hunted && S.hunted[locId]) || {}, sc = []; let top = 0;
+  for (const id in h) { const v = pressOf(locId, id); top = Math.max(top, v); if (v >= T_HUNT.scarce && GM[id]) sc.push([v, GM[id].name]); } sc.sort((a, b) => b[0] - a[0]);
+  return { P, full, left: clamp(1 - P / full, 0, 1), lvl: P >= th[2] ? 3 : P >= th[1] ? 2 : P >= th[0] ? 1 : 0, waitX: 1 + Math.min(T_HUNT.waitPressMax, T_HUNT.waitPress * P), mins: Math.ceil(top * T_HUNT.recoverMs / 60000), scarce: sc.map(x => x[1]) };
+}
+const THIN_WORD = ['plenty', 'taken lately', 'thinning', 'hunted out']; // the bar's word, by level
+// the lines under the bar: what the pressure costs, when it is gone, and which animals it lies on
+function thinText(G) {
+  if (G.P < 0.05) return 'Nothing has been taken here lately.';
+  const a = []; if (G.waitX >= 1.05) a.push(`Signs come ×${G.waitX.toFixed(1)} slower`); a.push(`${a.length ? 'fresh' : 'Fresh'} again in ${G.mins} min`);
+  const n = G.scarce.length, show = G.scarce.slice(0, T_HUNT.thinShow);
+  return a.join(' · ') + (n ? `<br>Scarce: ${show.join(', ')}${n > show.length ? ` and ${n - show.length} more` : ''}` : '');
+}
+// the bar itself: how much game is left, with a notch where each word turns; and, for a hunter with no tally, a word that there is such a tool
+function thinBar(locId) {
+  if (!S.tally) return pressWord(locId) ? `<div class="note tallyhint">A tracker's tally would show how thin. The shops sell one.</div>` : '';
+  const G = groundThin(locId), tick = v => `<i class="tick" style="left:${((1 - v / G.full) * 100).toFixed(1)}%"></i>`;
+  return `<div class="meter game l${G.lvl}" id="hgameBox"><div class="gamehd"><span class="lbl">GAME ON THE GROUND</span><b id="hgameWord">${THIN_WORD[G.lvl]}</b></div><div class="hbar"><div class="hband fill game" id="hgame" style="width:${(G.left * 100).toFixed(1)}%"></div>${T_HUNT.thin.map(tick).join('')}</div><div class="gamesay" id="hgameTxt">${thinText(G)}</div></div>`;
+}
+// it comes back while you watch: a point every ten minutes
+function thinBarUpdate() {
+  const box = $('#hgameBox'); if (!box || MODE !== 'hunt') return;
+  const G = groundThin(S.loc); box.className = 'meter game l' + G.lvl; $('#hgame').style.width = (G.left * 100).toFixed(1) + '%'; $('#hgameWord').textContent = THIN_WORD[G.lvl]; $('#hgameTxt').innerHTML = thinText(G);
+}
 function gamePool(locId, t) { // what is out there at this hour that your weapon can bring down; shot and calls tilt it toward the rarer, and overhunting thins it
   const ph = phaseAt(t), power = WEAPON().power, luck = (SHOT[shotOf()].luck || 0) + (CALLS[callOf()].luck || 0), shun = (SHOT[shotOf()].shun || 1) * (CALLS[callOf()].shun || 1);
   return GAME.filter(c => c.loc[locId] && (!c.time || c.time.includes(ph)) && c.kg[0] <= power && !(c.legend && S.gindex[c.id])).map(c => { const rk = gameRank(c, locId); return [c, c.loc[locId] * (1 + rk * luck * 0.5) * (rk === 0 ? shun : 1) * Math.pow(T_HUNT.pressDrop, pressOf(locId, c.id))]; });
@@ -24673,7 +24726,7 @@ function showTaken(c, kg, value, tags, line) {
     ${c.legend ? `<div class="note">${BEAST_LORE[c.id]} There is only one. The ground will not show it again.</div>` : ''}<div class="note">${line}</div><div class="acts"><button class="cta" data-act="closecard">Bag it</button></div>`;
   $('#cardWrap').hidden = false;
   const x = $('#ccv').getContext('2d'); x.imageSmoothingEnabled = false;
-  const fR = kRamp(huntDesc(loc()).c), st = [kCss(fR[2]), kCss(fR[1]), kCss(fR[0]), kCss(fR[4])]; x.fillStyle = '#1a2838'; // the island's own ground under it x.fillRect(0, 0, 192, 112); x.fillStyle = st[0]; x.fillRect(0, 98, 192, 14); x.fillStyle = st[1]; x.fillRect(0, 106, 192, 6); x.fillStyle = st[3]; x.fillRect(0, 98, 192, 1);
+  const fR = kRamp(huntDesc(loc()).c), st = [kCss(fR[2]), kCss(fR[1]), kCss(fR[0]), kCss(fR[4])]; x.fillStyle = '#1a2838'; x.fillRect(0, 0, 192, 112); x.fillStyle = st[0]; x.fillRect(0, 98, 192, 14); x.fillStyle = st[1]; x.fillRect(0, 106, 192, 6); x.fillStyle = st[3]; x.fillRect(0, 98, 192, 1); // the island's own ground under it
   const bm = beastMap(c.id), bsc = bm[0].length * 2 <= 180 && bm.length * 2 <= 92 ? 2 : 1, bc = beastC(c.id, bsc, 'color'); x.drawImage(bc, (192 - bc.width) >> 1, 98 - bc.height);
 }
 function renderHunt() {
@@ -24682,9 +24735,9 @@ function renderHunt() {
   const box = $('#hbox'), ph = HU ? HU.phase : 'idle', w = WEAPON();
   const tt = tutHere() ? tutHuntText(ph) : ''; $('#hNote').classList.toggle('tut', !!tt);
   $('#hbar').classList.toggle('flock', !!(HU && HU.flock && ph === 'seen'));
-  if (ph === 'idle') { const sh = SHOT[shotOf()], ca = CALLS[callOf()], pw = pressWord(S.loc); $('#hNote').innerHTML = tt || `<b>${w.name}</b> · wait, creep, draw, loose${pw ? ` · <span class="look">${pw}</span>` : ''}`;
-    box.innerHTML = `<div class="rigrow"><div class="rigsum"><div class="l1">${gearShort(w)} · ${sh.short}${shotOf() !== 'stones' ? ' ×' + S.shot[shotOf()] : ''}${callOf() !== 'none' ? ` · ${ca.short} ×${S.calls[callOf()]}` : ''}</div><div class="l2">Takes game to ${fmtKg(w.power)} · ${maxSteps()} steps${CLOAK().id !== 'none' ? ' · ' + CLOAK().name.toLowerCase() : ''} · bag ${S.pack.length}/${packCap()}</div></div><button class="rigbtn" data-act="open" data-k="kit">Change kit</button></div><div class="note">${loc().hunt.name ? 'Quiet. Something is out there. The wind will tell you how close you can get.' : ''}</div><button class="cta" data-act="stalk">Wait for a sign</button>`; $('#hband').style.width = '0'; }
-  else if (ph === 'wait') { $('#hNote').innerHTML = tt || `<b>Still.</b> Wind ${WIND_NAME[HU.wind]}.`; box.innerHTML = `<div class="note">Keep low. Something will show.</div><button class="cta alt" data-act="leavehunt">Give up</button>`; }
+  if (ph === 'idle') { const sh = SHOT[shotOf()], ca = CALLS[callOf()], pw = S.tally ? '' : pressWord(S.loc); $('#hNote').innerHTML = tt || `<b>${w.name}</b> · wait, creep, draw, loose${pw ? ` · <span class="look">${pw}</span>` : ''}`;
+    box.innerHTML = `<div class="rigrow"><div class="rigsum"><div class="l1">${gearShort(w)} · ${sh.short}${shotOf() !== 'stones' ? ' ×' + S.shot[shotOf()] : ''}${callOf() !== 'none' ? ` · ${ca.short} ×${S.calls[callOf()]}` : ''}</div><div class="l2">Takes game to ${fmtKg(w.power)} · ${maxSteps()} steps${CLOAK().id !== 'none' ? ' · ' + CLOAK().name.toLowerCase() : ''} · bag ${S.pack.length}/${packCap()}</div></div><button class="rigbtn" data-act="open" data-k="kit">Change kit</button></div>${thinBar(S.loc)}${S.tally ? '' : `<div class="note">${loc().hunt.name ? 'Quiet. Something is out there. The wind will tell you how close you can get.' : ''}</div>`}<button class="cta" data-act="stalk">Wait for a sign</button>`; $('#hband').style.width = '0'; }
+  else if (ph === 'wait') { $('#hNote').innerHTML = tt || `<b>Still.</b> Wind ${WIND_NAME[HU.wind]}.`; box.innerHTML = `${S.tally ? thinBar(S.loc) : ''}<div class="note">Keep low. Something will show.</div><button class="cta alt" data-act="leavehunt">Give up</button>`; }
   else if (ph === 'seen') { const c = HU.roll.c, far = HU.steps < maxSteps();
     $('#hNote').innerHTML = (tt ? tt + '<br>' : '') + (HU.flock ? `<b class="gold">A FLOCK · ${HU.flock} left</b> · ` : '') + `<b>${c.name}</b> · ${fmtKg(HU.roll.kg)} · ${tempoWord()} · <span class="${HU.look ? 'look' : ''}">${HU.look ? 'head up!' : distName(HU.steps)}</span> · wind ${WIND_NAME[HU.wind]}`;
     $('#hbar').classList.toggle('flock', !!HU.flock);
@@ -25747,6 +25800,7 @@ function start(data) {
   // a newer copy of this voyage on the cloud (played on another device) replaces this one while the title is still up
   if (S.code && cloudOn()) cloudGet(S.code).then(d => { if (d && (d.saved || 0) > (S.saved || 0) && MODE === 'title') { load(d); settleLines(); try { localStorage.setItem(KEY, JSON.stringify(S)); localStorage.setItem(saveKey(S.code), JSON.stringify(S)); } catch (e) {} showTitle(); } }).catch(() => {});
   setInterval(tick, 500);
+  setInterval(thinBarUpdate, TALLY.everyMs); // the tally's bar creeps back up while you watch it
   $('#sheet').addEventListener('scroll', () => { const el = $('#sheet'); if (sheetKind === 'index' && ixShown < ixList.length && el.scrollTop + el.clientHeight > el.scrollHeight - 700) indexMore(); }, { passive: true }); // the index grows as it is scrolled
   requestAnimationFrame(frame);
   try { if (window.claude && window.claude.hot && window.claude.hot.snapshot) window.claude.hot.snapshot(() => S); } catch (e) {}
