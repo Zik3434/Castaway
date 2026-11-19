@@ -19476,6 +19476,175 @@ function drawSpot(l, t, nt) {
   const gn = Math.max(nt, V.lit); if (V.glow && gn > 0.05) { g.globalAlpha = clamp(gn * 1.25, 0, 1); g.drawImage(V.glow, 0, sy); g.globalAlpha = 1; }
   for (const e of V.em) EMIT[e.k](e, e.x, e.y + sy, t, gn, V);
 }
+// --- the mine's gallery: every island's own, in its own rock, painted once a level ---
+// The gallery was one drawing for every mine (a speckled band in the kind's colour, the same props, a flat dark above and below).
+// Now it is painted per island and per level (mineSprite): the island's own rock in section (the stuff its entrance is cut from),
+// its beds dipping their own way, the island's own minerals showing as veins and pockets at the levels they lie at, a lining taken
+// from how the island's entrance is built, the way back up at the left, lamps that thin out as you go down, and what a mine of that
+// name would have standing in it. Everything is lit from the miner's lamp outward and falls away into the dark.
+const T_GAL = {
+  set: 44,            // px between sets of timber (or piers, or ribs)
+  face: 30,           // px of working face at the right end of the gallery
+  amb: [0.24, 0.5],   // how much of its colour the rock keeps where no lamp reaches: in the solid, in the gallery
+  deeper: 0.035,      // each level down takes this much of that away
+  lamp: 0.62,         // the reach of the miner's own lamp, of the scene's width
+  fixed: 36,          // the reach of a lamp hung in the gallery, px
+  u: 32,              // px to the metre here: the miner is drawn at twice the strip's size
+  keep: 3,            // painted levels kept
+};
+const GAL_NUM = { 1: ['.#.', '##.', '.#.', '.#.', '###'], 2: ['##.', '..#', '.#.', '#..', '###'], 3: ['##.', '..#', '.#.', '..#', '##.'], 4: ['#.#', '#.#', '###', '..#', '..#'], 5: ['###', '#..', '##.', '..#', '##.'], 6: ['.##', '#..', '###', '#.#', '###'], 7: ['###', '..#', '.#.', '.#.', '.#.'], 8: ['###', '#.#', '###', '#.#', '###'] };
+// where the miner stands with his lamp: 36% along the scene, but clear of the panel where the panel sits in the middle of a wide screen
+function galLampX() { const pl = PANEL_W ? 0 : Math.round((W - 520 / scale) / 2); return Math.max(60, Math.min((SW * 0.36) | 0, pl > 120 ? pl - 44 : 1e9)); }
+function GalB(l, level) {
+  const pit = pitOf(l); this.l = l; this.level = level; this.pit = pit; this.w = W; this.h = H; this.top = SURF - 56; this.gy = SURF + 8; this.sw = SW; this.lx = galLampX(); this.ly = this.top + 22; this.fx = SW - T_GAL.face;
+  this.s0 = groundSeed(l) % 9973; this.s = (this.s0 + level * 131) % 9973; this.P = new Paint(W, H); this.P.seed = this.s; this.yo = level * 173;
+  this.K = stuffOf(pitRockOf(l), 'rock'); this.K.q = Object.assign({}, this.K.q); if (this.K.q.dip == null) this.K.q.dip = (nH(1, 2, this.s0) - 0.5) * 0.36; // the beds dip the island's own way
+  this.R = this.K.M.R; this.kind = MINE_KIND[l.mine.kind] ? l.mine.kind : 'rock'; this.deco = MINE_KIND[this.kind].deco; this.dark = kMix(this.R[0], 0xff000000, 0.55);
+  this.lamps = []; this.late = []; this.fossils = []; this.roof = new Int16Array(W); this.words = ((l.mine.name || '') + ' ' + (l.mine.gate || '')).toLowerCase(); this.glowC = pit.glow ? kHex(pit.glow) : 0;
+  const built = /\b(cellar|vault|crypt|undercroft|magazine|treasury|catacomb|casemate|icehouse)\b/.test(this.words) && /^(rock|chalk|sandstone|granite|slate|limestone|salt|coal|clay|coral|iron|sand|shell|lava|wood)$/.test(this.kind); // a built vault only where there is stone to build one of
+  const m = pit.form === 'shaft' ? (pit.lining || 'timber') : ({ timber: 'timber', arch: 'stone', raw: 'raw', door: pit.iron ? 'iron' : 'timber', slot: 'raw', megalith: 'megalith', ribs: 'ribs', roots: 'roots', ring: 'raw', ice: 'ice' })[pit.mouth || 'timber'] || 'timber';
+  this.lining = built && (m === 'timber' || m === 'raw') ? (this.s0 % 2 ? 'brick' : 'stone') : m; this.built = built;
+  this.wood = kRamp(pit.wood || '#6a5236'); this.stone = kRamp(pit.stone || pit.liningc || ({ brick: '#a8563a', ice: '#b8dcec', iron: '#5a5a64', ribs: '#e6e0cc', megalith: '#8a8a86' })[this.lining] || '#9a968a');
+  this.sets = []; for (let x0 = 14; x0 < this.fx - 12; x0 += T_GAL.set) this.sets.push(x0);
+}
+GalB.prototype = {
+  r(k) { return nH(k, 23, this.s); },
+  ri(k, a, b) { return a + Math.floor(this.r(k) * (b - a + 1)); },
+  // the rock in section at a place: the island's stuff, its own beds, another slice of them at every level
+  rockC(x, y) { const K = this.K; let t = (BTEX[K.tex] || BTEX.smooth)(x + 4096, y + this.yo, 30, this.s0, K.q), R = K.M.R; if (t > 255) return t >>> 0; if (t >= 8) { t -= 8; R = K.R2; } return R[t < 0 ? 0 : t > 4 ? 4 : t | 0]; },
+  jag(y) { return Math.round((n1(y * 0.19, this.s + 9) - 0.5) * 7); },
+  inGal(x, y) { return x >= 0 && x < this.w && x < this.fx + this.jag(y) && y >= this.roof[x] && y < this.gy; },
+  solid(x, y) { return x >= 0 && y >= 0 && x < this.w && y < this.h && !this.inGal(x, y); },
+  mix(x, y, c, a) { x |= 0; y |= 0; if (x < 0 || y < 0 || x >= this.w || y >= this.h) return; const i = y * this.w + x; this.P.d[i] = kMix(this.P.d[i], c, a); },
+  // the solid, the gallery cut through it with its far wall, and the floor
+  base() {
+    const P = this.P, w = this.w, h = this.h, R = this.R, set = T_GAL.set, ln = this.lining, rough = ln === 'raw' || ln === 'roots' || ln === 'ice' || ln === 'ribs', vault = ln === 'stone' || ln === 'brick';
+    for (let x = 0; x < w; x++) { let ry = this.top; if (rough) ry += Math.round((n1(x * 0.08, this.s0 + 3) - 0.5) * 8); else if (vault) { const f = ((((x - 14) % set) + set) % set) / set - 0.5; ry += Math.round(8 - 8 * Math.sqrt(Math.max(0, 1 - f * f * 4))); } this.roof[x] = ry; }
+    for (let y = 0; y < h; y++) { const fxe = this.fx + this.jag(y); for (let x = 0; x < w; x++) { let c = this.rockC(x, y);
+        if (y >= this.gy) { const j = y - this.gy; if (j === 0 && x < fxe) c = kMix(c, 0xffffffff, 0.14); else c = kMix(c, this.dark, j < 3 ? 0.18 : 0.3); }
+        else if (x < fxe && y >= this.roof[x]) { const d = y - this.roof[x]; c = kMix(this.rockC(x + 37, y + 11), R[1], 0.36); if (d < 3) c = kMix(c, this.dark, 0.5 - d * 0.12); else if (y > this.gy - 3) c = kMix(c, this.dark, 0.2); }
+        P.d[y * w + x] = c; } }
+    for (let x = 0; x < w; x++) { const ry = this.roof[x]; if (x < this.fx + this.jag(ry) && ry > 0) this.mix(x, ry - 1, R[4], 0.5); } // the cut edge of the roof catches the lamp
+    for (let y = 0; y < this.gy; y++) { const fxe = this.fx + this.jag(y); if (y >= this.roof[clamp(fxe, 0, w - 1)]) { this.mix(fxe, y, R[4], 0.6); this.mix(fxe + 1, y, R[3], 0.35); if (nH(fxe, y >> 1, this.s) > 0.6) this.mix(fxe + 2 + ((nH(y, 3, this.s) * 5) | 0), y, this.dark, 0.4); } } // the face, hewn: pick marks in it
+  },
+  // --- what lies in the rock ---
+  vein(x0, y0, cb, ch, k, len) { const P = this.P, dip = this.K.q.dip || 0; let x = x0, y = y0; for (let i = 0; i < len; i++) { const xx = Math.round(x), yy = Math.round(y); if (this.solid(xx, yy)) { P.px(xx, yy, i % 4 === 1 ? ch : cb); if (nH(i, k, this.s) > 0.55 && this.solid(xx, yy + 1)) P.px(xx, yy + 1, cb); } x += 1; y += -dip + (nH(i, k + 9, this.s) - 0.5) * 1.3; } P.em.push({ k: 'glint', x: Math.round(x0), y: Math.round(Math.min(y0, y)) - 1, w: Math.round(len), h: Math.max(3, Math.abs(Math.round(y - y0)) + 3), n: 2, ms: 760, s: k, c: kCssHex(ch) }); },
+  pocket(x0, y0, cb, ch, k) { const P = this.P; for (let i = 0; i < 5; i++) { const x = Math.round(x0 + (nH(i, k, this.s) - 0.5) * 10), y = Math.round(y0 + (nH(i, k + 3, this.s) - 0.5) * 6), hh = 2 + ((nH(i, k + 5, this.s) * 3) | 0); if (!this.solid(x, y) || !this.solid(x, y - hh)) continue; for (let j = 0; j < hh; j++) { P.px(x, y - j, cb); if (j < hh - 1) P.px(x + 1, y - j, ch); } P.px(x, y - hh, ch); } P.em.push({ k: 'glint', x: Math.round(x0) - 6, y: Math.round(y0) - 6, w: 12, h: 8, n: 2, ms: 620, s: k, c: kCssHex(ch) }); },
+  // the island's own minerals, where this level has them: ores and stones as veins, gems and crystals as pockets, fossils as themselves
+  veins() {
+    const l = this.l, lv = this.level, list = MINERALS.filter(m => m.loc && m.loc[l.id] != null && !m.relic); let k = 0;
+    for (const m of list) { const here = !m.depth || (lv >= m.depth[0] && lv <= m.depth[1]), n = here ? clamp(Math.round(m.loc[l.id] / 9), 1, 4) : (nH(k + 1, lv, this.s0) > 0.72 ? 1 : 0), pal = mineralPal(m), cb = kHex(pal.b), ch = kHex(pal.h);
+      for (let i = 0; i < n; i++) { k++; const above = nH(k, 1, this.s) > 0.4, y0 = above ? 62 + nH(k, 2, this.s) * Math.max(4, this.top - 74) : this.gy + 9 + nH(k, 3, this.s) * Math.min(70, this.h - this.gy - 16), x0 = nH(k, 4, this.s) * (this.w - 20);
+        if (m.kind === 'fossil') this.fossils.push([m.id, Math.round(x0), Math.round(y0)]); else if (m.kind === 'gem' || m.kind === 'crystal') this.pocket(x0 + 8, y0, cb, ch, k); else this.vein(x0, y0, cb, ch, k, 14 + nH(k, 5, this.s) * 26); } }
+  },
+  // --- how the gallery is held up, from how the island's own entrance is built ---
+  line() {
+    const P = this.P, gy = this.gy, RW = this.wood, RS = this.stone, ln = this.lining, set = T_GAL.set, s = this.s0;
+    for (const x0 of this.sets) { const ry = this.roof[x0];
+      if (ln === 'timber') { for (let y = ry + 4; y < gy; y++) for (let i = 0; i < 6; i++) P.px(x0 + i, y, RW[i === 0 ? 1 : i === 5 ? 3 : ((y + x0) % 11 === 3 ? 1 : 2)]); wbox(P, x0 - 7, ry, 20, 5, RW); for (let i = -6; i < 12; i += 4) P.px(x0 + i, ry + 2, RW[1]); P.rect(x0 - 2, ry + 5, 2, 3, RW[1]); P.rect(x0 + 6, ry + 5, 2, 3, RW[1]); // a post under its cap, wedged
+        for (let x = x0 + 15; x < Math.min(this.fx - 2, x0 + set - 8); x += 9) { P.rect(x, ry + 1, 7, 2, RW[nH(x, 1, s) > 0.5 ? 2 : 1]); P.px(x, ry + 1, RW[3]); } } // lagging over the roof
+      else if (ln === 'stone' || ln === 'brick') { const bh = ln === 'brick' ? 3 : 5; for (let y = ry; y < gy; y++) for (let i = 0; i < 8; i++) { const row = ((y - ry) / bh) | 0; let t = i === 0 ? 1 : i === 7 ? 3 : 2; if ((y - ry) % bh === 0 || (i + row * 3) % (ln === 'brick' ? 5 : 7) === 0) t = Math.max(1, t - 1); P.px(x0 - 1 + i, y, RS[t]); } wbox(P, x0 - 3, ry - 1, 12, 3, RS); wbox(P, x0 - 2, gy - 3, 10, 3, RS); }
+      else if (ln === 'ice') { for (let y = ry; y < gy; y++) { const hw = 3 + Math.round(n1(y * 0.2, s + x0) * 3 + Math.abs(y - (ry + gy) / 2) / (gy - ry) * 4); for (let i = -hw; i <= hw; i++) P.px(x0 + i, y, RS[i < -hw + 1 ? 1 : i > hw - 2 ? 4 : (i === -1 ? 4 : nH(x0 + i, y >> 2, s) > 0.7 ? 3 : 2)]); } }
+      else if (ln === 'iron') { for (let y = ry + 3; y < gy; y++) { P.px(x0, y, RS[1]); P.px(x0 + 1, y, RS[2]); P.px(x0 + 2, y, RS[3]); if (y % 7 === 2) P.px(x0 + 1, y, RS[4]); } for (let i = 0; i < 4; i++) { P.rect(x0 + i, ry + 3 - i, 3, 1, RS[2]); P.px(x0 + i + 2, ry + 3 - i, RS[3]); } }
+      else if (ln === 'ribs') { const hgt = gy - ry; for (let i = 0; i < hgt; i++) { const f = i / hgt, xx = x0 + Math.round(Math.pow(f, 2.2) * 16); for (let j = 0; j < 4; j++) P.px(xx + j, gy - 1 - i, RS[j === 0 ? 1 : j === 3 ? 4 : (i % 9 === 4 ? 1 : 2)]); } }
+      else if (ln === 'megalith') { for (let y = ry + 5; y < gy; y++) { const jl = (n1(y * 0.3, s + x0) * 2) | 0; for (let i = jl; i < 9; i++) P.px(x0 - 1 + i, y, RS[i <= jl ? 1 : i === 8 ? 3 : nH((x0 + i) >> 1, y >> 2, s) > 0.72 ? 1 : 2]); } }
+      else if (ln === 'roots') { let x = x0 + (nH(x0, 1, s) - 0.5) * 10; for (let y = ry; y < gy; y++) { x += (nH(y, x0, s) - 0.5) * 1.6; const wd = 2 + ((n1(y * 0.15, s + x0) * 3) | 0); for (let i = 0; i < wd; i++) P.px(x + i, y, RW[i === 0 ? 1 : i === wd - 1 ? 3 : 2]); if (nH(y, x0 + 5, s) > 0.86) { const dir = nH(y, 6, s) > 0.5 ? 1 : -1; for (let j = 1; j < 8; j++) P.px(x + dir * j + (dir > 0 ? wd : 0), y + (j >> 1), RW[1]); } } }
+    }
+    if (ln === 'raw') for (const x0 of this.sets) { if (nH(x0, 5, s) < 0.45) continue; const lean = nH(x0, 6, s) > 0.5 ? 1 : -1, ry = this.roof[x0], hgt = gy - ry; for (let i = 0; i < hgt; i++) { const xx = x0 + Math.round(lean * (i / hgt - 0.5) * 6); for (let j = 0; j < 4; j++) P.px(xx + j, gy - 1 - i, RW[j === 0 ? 1 : j === 3 ? 3 : ((i + x0) % 9 === 3 ? 1 : 2)]); } P.rect(x0 - 4, ry, 12, 2, RW[1]); } // bare rock: a stull set here and there where the roof wanted one
+    if (ln === 'megalith') for (let x = 6; x < this.fx - 6; x++) { const ry = this.roof[x], gap = ((x - 8) % (set + 6)) < 3; if (!gap) for (let j = 0; j < 6; j++) P.px(x, ry + j, RS[j === 0 ? 4 : j === 5 ? 1 : nH(x >> 2, j, s) > 0.7 ? 1 : 2]); } // capstones laid across
+    if (ln === 'stone' || ln === 'brick') for (let x = 0; x < this.fx - 2; x++) { const ry = this.roof[x]; for (let j = 0; j < 4; j++) P.px(x, ry + j, RS[j === 0 ? 3 : (x % (ln === 'brick' ? 4 : 6) === 0 ? 1 : j === 3 ? 1 : 2)]); } // the ring of the vault
+    if (ln === 'iron') { for (let x = 0; x < this.fx - 4; x++) { P.px(x, this.top + 6, RS[1]); P.px(x, this.top + 7, x % 9 === 0 ? RS[4] : RS[3]); } } // a pipe run along the roof
+    if (ln === 'ice') for (let x = 4; x < this.fx; x += 3) if (nH(x, 7, s) > 0.55) { const hh = 3 + ((nH(x, 8, s) * 10) | 0); for (let j = 0; j < hh; j++) P.px(x, this.roof[x] + j, RS[j < 2 ? 4 : 3]); }
+  },
+  // the floor: the rail, puddles where it is wet, the muck at the foot of the face
+  ground() {
+    const P = this.P, gy = this.gy, R = this.R, wet = Math.max(0, this.level - 2);
+    pitRails(P, 0, this.fx - 6, gy);
+    for (let k = 0; k < Math.min(4, wet); k++) { const x = Math.round(40 + this.r(40 + k) * (this.fx - 80)), wd = 8 + this.ri(50 + k, 0, 10); P.rect(x, gy + 1, wd, 1, kHex('#1a2a3a')); P.rect(x + 1, gy + 2, wd - 2, 1, kHex('#101a26')); P.px(x + 2, gy + 1, kHex('#6a8aa8')); P.px(x + wd - 3, gy + 1, kHex('#4a6a88')); }
+    for (let i = 0; i < 22; i++) { const x = this.fx - i, hh = Math.max(0, Math.round((1 - i / 22) * 9 * (0.7 + 0.5 * nH(i, 3, this.s)))); for (let j = 0; j < hh; j++) P.px(x, gy - 1 - j, R[j === hh - 1 ? 3 : nH(x, j, this.s) > 0.6 ? 1 : 2]); }
+  },
+  // the way back up, at the left: daylight on the first level, a ladderway below it
+  way() {
+    const P = this.P, top = this.top, gy = this.gy, pit = this.pit, RW = this.wood, w = this.words, lv = this.level, bl = kHex('#050508');
+    const ladder = (x, y0, y1, fade) => { const lc = RW[2]; for (let y = y0; y < y1; y++) { const c = fade ? kMix(lc, bl, clamp((y1 - y) / 90, 0, 0.85)) : lc; P.px(x, y, c); P.px(x + 7, y, c); if (y % 6 === 2) P.rect(x + 1, y, 6, 1, c); } };
+    if (lv > 1) { for (let y = 0; y < this.roof[14] + 2; y++) for (let x = 8; x < 26; x++) P.px(x, y, x < 10 || x > 23 ? kMix(RW[1], bl, 0.3) : kMix(kHex('#14141c'), bl, clamp((this.roof[14] - y) / 70, 0, 1))); ladder(13, 0, gy - 1, false); return; } // a ladderway up to the level above
+    if (/\b(quarry|cut|cutting|dig|diggings|bank|cliff|face|delph|scrape)\b/.test(w) && pit.form !== 'shaft') { // an open cut: the sky comes down to the floor at the left, the rock stepping back from it in benches
+      this.sky = (x, y) => { const edge = 30 - Math.floor((gy - y) / 22) * 7 - ((n1(y * 0.3, this.s0) * 3) | 0); return x < edge && y < gy; };
+      this.lamps.push([-6, top + 20, 110]); this.late.push(() => { const a = kHex('#cfe4f4'), b = kHex('#9cc4e8'); for (let y = 0; y < gy; y++) for (let x = 0; x < 34; x++) if (this.sky(x, y)) { P.px(x, y, kMix(a, b, clamp(1 - y / gy, 0, 1))); P.lit(x, y, a, 70); } }); return; }
+    if (pit.form === 'shaft' || /\b(shaft|well|hole|sink|sump)\b/.test(w)) { const well = /\bwell\b/.test(w) || pit.head === 'well', RL = well ? kRamp('#9a968a') : this.stone, tim = !well && this.lining === 'timber'; // the shaft you came down, its lining, the day at the top of it
+      for (let y = 0; y < this.roof[18] + 2; y++) { for (let x = 6; x < 30; x++) { const side = x < 10 || x > 25; P.px(x, y, side ? (tim ? RW[(y % 6) === 5 ? 0 : (y % 6) === 0 ? 3 : 2] : RL[((y >> 2) + (x > 20 ? 1 : 0)) & 1 ? 2 : 1]) : kMix(kHex('#1c1a24'), bl, clamp(y / 90, 0, 0.8))); } }
+      if (well) { for (let y = 0; y < gy - 14; y++) P.px(18, y, kHex('#c8b888')); wbox(P, 15, gy - 15, 7, 8, kRamp('#6a5236')); } else ladder(12, 0, gy - 1, false);
+      this.lamps.push([18, 20, 70]); this.late.push(() => { const a = kHex('#dcecf8'); for (let y = 0; y < 40; y++) for (let x = 10; x < 26; x++) if (bay(x, y) > y / 40) { P.px(x, y, kMix(a, P.get(x, y), y / 44)); P.lit(x, y, a, 120 * (1 - y / 40)); } }); return; }
+    if (this.built) { const RS = this.stone; for (let k = 0; k < 6; k++) { const sx = 2 + k * 5, sy = gy - 4 - k * 6; P.rect(0, sy, sx + 6, 6, RS[2]); P.rect(0, sy, sx + 6, 1, RS[4]); P.rect(sx + 5, sy + 1, 1, 5, RS[1]); } // a flight of steps up to the door, the light of the house in it
+      this.lamps.push([4, gy - 46, 60]); this.late.push(() => { const a = kHex('#ffd890'); for (let y = gy - 62; y < gy - 40; y++) for (let x = 0; x < 9; x++) { P.px(x, y, a); P.lit(x, y, a, 200); } P.rect(9, gy - 64, 2, 26, RW[1]); P.rect(0, gy - 64, 11, 2, RW[1]); P.halo(5, gy - 50, 22, a, 90); }); return; }
+    // an adit: the day at the mouth, seen from inside
+    this.lamps.push([-8, top + 30, 96]); this.late.push(() => { const a = kHex('#e4f0fa'), b = kHex('#a8cce8'); for (let y = this.roof[2] + 6; y < gy; y++) for (let x = 0; x < 13; x++) { const f = x / 13; if (bay(x, y) > f * 0.9) { P.px(x, y, kMix(a, b, (y - top) / 64)); P.lit(x, y, a, 150 * (1 - f)); } } P.rect(11, this.roof[11] + 2, 3, gy - this.roof[11] - 2, kTone(RW[1], -0.4)); P.rect(0, this.roof[4] + 2, 14, 4, kTone(RW[1], -0.4)); });
+  },
+  // what stands in a mine of this name, behind the miner
+  things() {
+    const w = this.words, k = this.kind, u = T_GAL.u, gy = this.gy, a = this.lx + 32, b = this.fx - 24, n = Math.max(1, Math.floor((b - a) / 46));
+    const pool = /\b(crypt|catacomb|grave|barrow|tomb|ossuary|burial)\b/.test(w) || k === 'bone' ? ['bones', 'skull', 'urn', 'candles', 'graves'] : /\b(cellar|store|undercroft|icehouse|larder)\b/.test(w) ? ['kegs', 'barrel', 'jars', 'bottles', 'sacks', 'baskets', 'amphorae'] : /\b(magazine|powder)\b/.test(w) ? ['kegs', 'barrel', 'crate', 'kegs'] : /\b(treasury|vault|hoard|coin|strongroom)\b/.test(w) ? ['chest', 'ingots', 'urn', 'chest'] : /\b(quarry|cut|cutting|delph)\b/.test(w) ? ['blocks', 'sawhorse', 'winch', 'blocks'] : /\b(well|sump|drain|sluice|pump)\b/.test(w) ? ['pump', 'barrel', 'coil'] : k === 'glass' || k === 'crystal' ? ['crystals', 'crate', 'coil'] : k === 'fungus' ? ['shrooms', 'baskets'] : k === 'gear' ? ['cog', 'anvil', 'crate'] : k === 'paper' ? ['books', 'crate'] : k === 'wax' ? ['candles', 'barrel'] : ['barrel', 'crate', 'coil', 'woodpile', 'sacks', 'cage', 'anvil', 'tins', 'fishbox', 'boulder'];
+    for (let i = 0; i < n; i++) { const nm = pool[(this.ri(60 + i, 0, 97) + i * 3 + this.level) % pool.length], x = Math.round(a + (b - a) * (i + 0.5) / n + (this.r(70 + i) - 0.5) * 10); if (VPROP[nm]) try { VPROP[nm](this.P, x, gy, u, { s: this.s + i }); } catch (e) {} }
+    const sx = this.sets[Math.min(1, this.sets.length - 1)]; if (sx != null) { const G = GAL_NUM[clamp(this.level, 1, 8)], bx = sx - 3, by = this.top + 18; wbox(this.P, bx, by, 11, 13, kRamp('#e8e0c8')); G.forEach((r, j) => [...r].forEach((ch, i) => { if (ch === '#') this.P.rect(bx + 2 + i * 2, by + 1 + j * 2, 2, 2, kHex('#1a1a1e')); })); } // the level, on a board
+    const tx = this.lx - 46; if (tx > 40) try { VPROP.tool(this.P, tx, gy, u, { kind: this.level % 2 ? 'shovel' : 'pick', s: this.s }); } catch (e) {}
+  },
+  // lamps hung in the gallery: three on the first level, one fewer each level down, none from the fourth
+  hang() { const n = Math.max(0, 4 - this.level), gc = kHex(this.pit.lamp || '#ffd27a'); for (let i = 0; i < n && i < this.sets.length; i++) { const x0 = this.sets[this.sets.length - 1 - i * (this.sets.length > 3 ? 2 : 1)]; if (x0 == null) break; const x = x0 + 10, y = this.roof[clamp(x, 0, this.w - 1)] + 7; this.lamps.push([x, y + 2, T_GAL.fixed]); this.late.push(() => { const P = this.P, d = kHex('#2a1e14'); P.rect(x, y - 5, 1, 4, d); P.rect(x - 2, y - 1, 5, 1, d); P.rect(x - 1, y, 3, 4, gc); P.px(x - 2, y, d); P.px(x + 2, y, d); P.px(x - 2, y + 3, d); P.px(x + 2, y + 3, d); P.rect(x - 2, y + 4, 5, 1, d); P.litRect(x - 1, y, 3, 4, gc, 255); P.halo(x, y + 2, 13, gc, 100); P.em.push({ k: 'pulse', x: x - 1, y, w: 3, h: 2, rgb: '255,240,190', a: 0.5, ms: 190 + i * 40, ph: i * 2 }); }); } },
+  // everything falls away from the lamps into the dark, in steps
+  light() {
+    const w = this.w, h = this.h, d = this.P.d, L = this.lamps.concat([[this.lx, this.ly, this.sw * T_GAL.lamp]]), a0 = Math.max(0.1, T_GAL.amb[0] - (this.level - 1) * T_GAL.deeper * 0.6), a1 = Math.max(0.24, T_GAL.amb[1] - (this.level - 1) * T_GAL.deeper), dk = this.dark, gy = this.gy, fxe = this.fx + 8;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let sh = 0; for (const q of L) { const dx = x - q[0], dy = (y - q[1]) * 1.25, v = 1 - Math.sqrt(dx * dx + dy * dy) / q[2]; if (v > sh) sh = v; }
+      const amb = y >= this.roof[x] && y <= gy + 10 && x < fxe ? a1 : a0; let f = amb + (1 - amb) * sh; f = Math.min(1, Math.floor(f * 7 + bay(x, y)) / 7); if (f < 1) d[y * w + x] = kMix(dk, d[y * w + x], f); }
+  },
+  finish() {
+    this.base(); this.veins(); (GALDECO[this.deco] || GALDECO.none)(this); this.line(); this.ground(); this.way(); this.things(); this.hang(); this.light(); for (const f of this.late) f();
+    const cv = this.P.canvas(), x = cv.getContext('2d'); x.imageSmoothingEnabled = false;
+    for (const [id, fx0, fy0] of this.fossils) { const c = mineralC(id, 1, 'color'); if (!this.solid(fx0 + (c.width >> 1), fy0 + (c.height >> 1)) || !this.solid(fx0, fy0) || !this.solid(fx0 + c.width, fy0 + c.height)) continue; x.globalAlpha = 0.5; x.drawImage(c, fx0, fy0); x.globalAlpha = 1; } // a fossil lying in the rock as it was laid down
+    return { cv, glow: this.P.glowCanvas(), em: this.P.em };
+  },
+};
+// what the rock of each kind has in it and on it (the old gallery's decorations, painted)
+const GALDECO = {
+  none(G) {},
+  flint(G) { const c = kHex('#2a2a30'), cw = kHex('#f4f4ec'); for (let k = 0; k < 16 * G.w / 195; k++) { const x = Math.round(G.r(k) * G.w), row = Math.round(G.r(k + 50) * (G.h / 22)), y = Math.round(row * 22 + 9 - x * (G.K.q.dip || 0)) % G.h; if (y < 4 || y > G.h - 4) continue; G.P.rect(x, y, 5, 3, c); G.P.rect(x + 1, y - 1, 3, 5, c); G.P.px(x + 1, y - 1, cw); G.P.px(x + 4, y + 1, cw); } },
+  layers(G) { const dip = G.K.q.dip || 0; for (let y0 = -40; y0 < G.h + 40; y0 += 9) for (let x = 0; x < G.w; x++) { const y = Math.round(y0 + ((y0 * 3) % 4) - x * dip + 20 * dip); G.mix(x, y, 0xff000000, 0.16); G.mix(x, y - 4, 0xffffffff, 0.06); } },
+  speckle(G) { const pk = kHex('#c8a09a'); for (let k = 0; k < 90 * G.w / 195; k++) { const x = Math.round(G.r(k) * G.w), y = Math.round(G.r(k + 300) * G.h); G.mix(x, y, k % 3 ? 0xffffffff : 0xff000000, k % 3 ? 0.2 : 0.3); G.mix(x + 1, y, k % 5 === 0 ? pk : 0xffffffff, k % 5 === 0 ? 0.5 : 0.1); } },
+  slant(G) { for (let x0 = -G.h; x0 < G.w; x0 += 11) for (let y = 0; y < G.h; y++) G.mix(x0 + Math.round((G.h - y) * 0.5), y, 0xff000000, 0.2); },
+  drip(G) { const R = G.R, s = G.s; for (let k = 0; k < 8 * G.w / 195; k++) { const x = Math.round(6 + G.r(k) * (G.fx - 12)), hh = 5 + G.ri(k + 30, 0, 11), ry = G.roof[x]; for (let j = 0; j < hh; j++) { const hw = (hh - j) >> 2; G.P.rect(x - hw, ry + j, hw * 2 + 1, 1, R[j < 2 ? 3 : 4]); } if (k % 2 === 0) { const sh = 2 + G.ri(k + 60, 0, 4); for (let j = 0; j < sh; j++) G.P.rect(x - ((sh - j) >> 2), G.gy - 1 - j, ((sh - j) >> 1) + 1, 1, R[3]); }
+      G.P.em.push({ k: 'fn', x, y: 0, wide: true, draw: (X, Y, t) => { const p = ((t / 2600) + nH(k, 1, s)) % 1; if (p < 0.3) { g.fillStyle = 'rgba(200,222,240,0.8)'; g.fillRect(X, (Y + ry + hh + p / 0.3 * (G.gy - ry - hh)) | 0, 1, 2); } } }); } },
+  crust(G) { for (let k = 0; k < 40 * G.w / 195; k++) { const x = Math.round(G.r(k) * G.w), y = Math.round(G.r(k + 200) * G.h), wd = 3 + (k % 5); for (let i = 0; i < wd; i++) G.mix(x + i, y, 0xffffffff, 0.5); } },
+  icicles(G) { const c = kHex('#d8f0fc'), cw = kHex('#ffffff'); for (let k = 0; k < 11 * G.w / 195; k++) { const x = Math.round(4 + G.r(k) * (G.fx - 8)), hh = 6 + G.ri(k + 30, 0, 13), ry = G.roof[x]; for (let j = 0; j < hh; j++) { const hw = (hh - j) >> 3; G.P.rect(x - hw, ry + j, hw * 2 + 1, 1, j < hh / 2 && hw === 0 ? cw : c); } } G.P.em.push({ k: 'glint', x: 0, y: G.top, w: G.fx, h: 40, n: 7, ms: 420, s: G.s, c: '#ffffff' }); },
+  seams(G) { const dip = G.K.q.dip || 0, c = kHex('#050506'), sh = kHex('#7888a8'); for (let y0 = -30; y0 < G.h + 30; y0 += 23) for (let x = 0; x < G.w; x++) { const y = Math.round(y0 + ((y0 * 5) % 7) - x * dip); for (let j = 0; j < 4; j++) if (G.solid(x, y + j)) G.P.px(x, y + j, c); if (nH(x, y0, G.s) > 0.93 && G.solid(x, y + 1)) G.P.px(x, y + 1, sh); } },
+  cracks(G) { const gc = kHex(G.pit.glow || '#ff7a30'), rgb = G.pit.glow ? `${gc & 255},${(gc >> 8) & 255},${(gc >> 16) & 255}` : '255,122,48'; for (let k = 0; k < 7 * G.w / 195; k++) { let x = Math.round(G.r(k) * G.w), y = Math.round(G.r(k + 9) * 60), dx = 0; const pts = [], x0 = x; for (let j = 0; j < G.h; j += 3) { pts.push([x, y]); y += 3; if (nH(k, j, G.s) > 0.72) dx = Math.round((nH(k + 1, j, G.s) - 0.5) * 4); x += dx; if (nH(k + 2, j, G.s) > 0.93 || y > G.h) break; } G.late.push(() => { for (const [px, py] of pts) if (G.solid(px, py)) { G.P.rect(px, py, 1, 3, gc); G.P.lit(px, py + 1, gc, 200); } }); G.P.em.push({ k: 'fn', x: x0, y: 0, wide: true, draw: (X, Y, t) => { const a = 0.25 + 0.25 * Math.sin(t / 300 + k); g.fillStyle = `rgba(${rgb},${a.toFixed(2)})`; for (let i = 0; i < pts.length; i += 3) g.fillRect(X - x0 + pts[i][0] - 1, Y + pts[i][1], 3, 3); } }); } G.lamps.push([G.w * 0.5, G.gy + 40, 70]); },
+  sheen(G) { for (let x0 = -G.h; x0 < G.w; x0 += 17) for (let y = 0; y < G.h; y++) { G.mix(x0 + (G.h - y), y, 0xffffffff, 0.13); G.mix(x0 + 2 + (G.h - y), y, 0xffffffff, 0.06); } },
+  ribs(G) { const c = kHex('#e8e0cc'), d = kHex('#b8ac94'); for (let k = 0; k < Math.ceil(G.w / 46); k++) { const cx = 16 + k * 46, cy = G.top - 30 - G.ri(k, 0, 12), rr = 20 + G.ri(k + 9, 0, 8); for (let y = 0; y <= rr; y++) { const hw = Math.round(Math.sqrt(rr * rr - y * y)); for (const sx of [cx + hw, cx - hw - 2]) for (let i = 0; i < 3; i++) if (G.solid(sx + i, cy + y)) G.P.px(sx + i, cy + y, i === 0 ? d : c); } } },
+  shards(G) { const gc = kHex(G.pit.glow || '#78dcff'); for (let k = 0; k < 9 * G.w / 195; k++) { const x = Math.round(6 + G.r(k) * (G.fx - 12)), hh = 6 + G.ri(k + 30, 0, 11), up = k % 2, y0 = up ? G.roof[x] : G.gy - 1; G.late.push(() => { for (let j = 0; j < hh; j++) { const wd = (j >> 1) + 1, yy = up ? y0 + hh - 1 - j : y0 - hh + 1 + j; for (let i = 0; i < wd; i++) { G.P.px(x - (j >> 2) + i, yy, i === 0 ? 0xffffffff : gc); G.P.lit(x - (j >> 2) + i, yy, gc, 120); } } G.P.halo(x, up ? y0 + (hh >> 1) : y0 - (hh >> 1), 9, gc, 60); }); } G.lamps.push([G.fx * 0.5, G.top + 30, G.fx * 0.5]); },
+  knobs(G) { const c = kHex('#f0e8d8'), d = kHex('#b8a890'); for (let k = 0; k < 20 * G.w / 195; k++) { const x = Math.round(G.r(k) * G.w), y = Math.round(G.r(k + 200) * G.h); G.P.rect(x, y, 4, 3, c); G.P.rect(x, y + 3, 4, 1, d); G.P.px(x + 3, y, d); } },
+  pages(G) { const c = kHex('#f6efdc'), ink = kHex('#5a5040'); for (let k = 0; k < 14 * G.w / 195; k++) { const x = Math.round(G.r(k) * G.w), y = Math.round(G.r(k + 200) * G.h); G.P.rect(x, y, 10, 7, c); for (let j = 1; j < 6; j += 2) G.P.rect(x + 1, y + j, 5 + ((k + j) % 3), 1, ink); } },
+  rust(G) { const c = kHex('#c85a1e'), c2 = kHex('#ff8c32'); for (let k = 0; k < 16 * G.w / 195; k++) { const x = Math.round(G.r(k) * G.w), y = Math.round(G.r(k + 9) * G.h * 0.8), hh = 8 + G.ri(k + 40, 0, 24); for (let j = 0; j < hh; j++) { G.mix(x, y + j, c, 0.5); G.mix(x + 1, y + j, c, 0.3); if (j < hh / 2) G.mix(x, y + j, c2, 0.3); } } },
+  shells(G) { const c = kHex('#f4f0e4'), d = kHex('#9a9484'); for (let k = 0; k < 16 * G.w / 195; k++) { const x = Math.round(G.r(k) * G.w), y = Math.round(G.r(k + 200) * G.h); G.P.rect(x, y + 2, 7, 1, c); G.P.rect(x + 1, y + 1, 5, 1, c); G.P.rect(x + 2, y, 3, 1, c); G.P.rect(x + 3, y, 1, 3, d); } },
+  rings(G) { for (let k = 0; k < Math.ceil(G.w / 50) + 1; k++) { const cx = 20 + k * 50, cy = G.top + 32 + G.ri(k, -50, 60); for (let rr = 4; rr < 34; rr += 5) for (let a = 0; a < 6.28; a += 0.5 / rr) G.mix(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * 0.8, 0xff000000, 0.25); } },
+  cogs(G) { const cgs = []; for (let k = 0; k < Math.ceil(G.w / 48); k++) cgs.push([24 + k * 48, G.top + 10 + G.ri(k, 0, 40), 7 + (k % 2) * 3, k % 2 ? -1 : 1]); G.P.em.push({ k: 'fn', x: 0, y: 0, wide: true, draw: (X, Y, t) => { for (const [cx, cy, rr, dir] of cgs) { const a = t / 1400 * dir; g.fillStyle = '#b8871c'; for (let y = -rr; y <= rr; y++) { const hw = Math.sqrt(rr * rr - y * y) | 0; g.fillRect(X + cx - hw, Y + cy + y, hw * 2, 1); } g.fillStyle = '#5a4a3a'; for (let y = -rr + 3; y <= rr - 3; y++) { const hw = Math.sqrt((rr - 3) * (rr - 3) - y * y) | 0; g.fillRect(X + cx - hw, Y + cy + y, hw * 2, 1); } g.fillStyle = '#b8871c'; for (let j = 0; j < 8; j++) { const an = a + j * Math.PI / 4; g.fillRect(X + cx + Math.round(Math.cos(an) * (rr + 1)), Y + cy + Math.round(Math.sin(an) * (rr + 1)), 2, 2); } } } }); },
+  stars(G) { const st = []; for (let k = 0; k < 60 * G.w / 195; k++) st.push([Math.round(G.r(k) * G.w), Math.round(G.r(k + 200) * G.h), k]); G.P.em.push({ k: 'fn', x: 0, y: 0, wide: true, draw: (X, Y, t) => { for (const [x, y, k] of st) { g.fillStyle = `rgba(220,230,255,${(0.35 + 0.6 * Math.abs(Math.sin(t / 700 + k))).toFixed(2)})`; g.fillRect(X + x, Y + y, 1, 1); } } }); },
+  roots(G) { const R = kRamp('#6a5438'); for (let k = 0; k < 12 * G.w / 195; k++) { let x = 4 + G.r(k) * (G.fx - 8); const hh = 8 + G.ri(k + 30, 0, 18), ry = G.roof[Math.round(x)]; for (let j = -10; j < hh; j++) { x += (nH(j, k, G.s) - 0.5) * 1.4; G.P.px(x, ry + j, R[j % 5 === 0 ? 1 : 2]); if (j > 2 && nH(j, k + 5, G.s) > 0.85) G.P.px(x + 1, ry + j + 1, R[1]); } } },
+  shrooms(G) { const xs = []; for (let k = 0; k < Math.max(3, 4 * G.w / 195); k++) xs.push(Math.round(30 + G.r(k) * (G.fx - 60))); G.P.em.push({ k: 'fn', x: 0, y: 0, wide: true, draw: (X, Y, t) => { for (const x of xs) glowshroom(X + x, Y + G.gy, 0, t, 1); } }); for (let k = 0; k < 20; k++) G.mix(Math.round(G.r(k + 7) * G.w), Math.round(G.top + G.r(k + 9) * 60), kHex('#c8a0ff'), 0.4); G.lamps.push([G.fx * 0.5, G.gy - 6, G.fx * 0.4]); },
+};
+const GAL_C = new Map();
+function mineSprite(l, level) {
+  const key = `${l.id}|${level}|${W}|${H}|${SURF}|${SW}`; let C = GAL_C.get(key); if (C) return C; if (GAL_C.size >= T_GAL.keep) GAL_C.delete(GAL_C.keys().next().value);
+  try { C = new GalB(l, level).finish(); } catch (e) { console.error('gallery', l.id, level, e); const P = new Paint(W, H); P.rect(0, 0, W, H, kHex('#1e1e28')); C = { cv: P.canvas(), glow: null, em: [] }; }
+  GAL_C.set(key, C); return C;
+}
+// the painted gallery and what moves in it (inside the mine's scenery layer)
+function drawMineArt(l, level, t) { const V = mineSprite(l, level); g.drawImage(V.cv, 0, 0); if (V.glow) g.drawImage(V.glow, 0, 0); for (const e of V.em) EMIT[e.k](e, e.x, e.y, t, 1, V); }
+// the working face's rock for its canvas: the same stuff at half size, quieter, half way to the kind's own wall colour so the tells still read
+const MFACE_C = new Map();
+function mineFaceTex(l, level, cols, rows, px) {
+  const key = `${l.id}|${level}`; let c = MFACE_C.get(key); if (c) return c; if (MFACE_C.size > 2) MFACE_C.clear();
+  const w = cols * px, h = rows * px, P = new Paint(w, h), K = stuffOf(pitRockOf(l), 'rock'), s0 = groundSeed(l) % 9973, q = Object.assign({}, K.q), wall = kHex((MINE_KIND[l.mine.kind] || MINE_KIND.rock).wall[1]); if (q.dip == null) q.dip = (nH(1, 2, s0) - 0.5) * 0.36;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let t = (BTEX[K.tex] || BTEX.smooth)(x + 4296, y + level * 173 + 40, 30, s0, q), c; if (t > 255) c = t >>> 0; else { let R = K.M.R; if (t >= 8) { t -= 8; R = K.R2; } c = kMix(R[2], R[t < 1 ? 1 : t > 3 ? 3 : t | 0], 0.45); } P.d[y * w + x] = kMix(c, wall, 0.5); }
+  c = P.canvas(); MFACE_C.set(key, c); return c;
+}
 // --- the runtime: build an island's layers once, relight them with the hour, blit them ---
 const LANDS = {}; // island id -> s => { ... } : the island's own landscape, written against the layer API above
 let LAND_C = {};
@@ -23886,12 +24055,11 @@ const FT = 48; // a face tile on its canvas: 24 logical pixels at 2x
 function drawMineFace(t) {
   const cv = $('#mface'); if (!cv || !MI) return; const x = cv.getContext('2d'); x.imageSmoothingEnabled = false;
   const kind = MINE_KIND[loc().mine.kind] || MINE_KIND.rock, [deep, wall, light] = kind.wall, twig = MI.aid === 'twig', canary = MI.aid === 'canary', pick = PICK();
-  x.fillStyle = deep; x.fillRect(0, 0, cv.width, cv.height);
+  x.fillStyle = deep; x.fillRect(0, 0, cv.width, cv.height); const ftex = mineFaceTex(loc(), MI.level, T_MINE.cols, T_MINE.rows, FT >> 1);
   for (let r = 0; r < T_MINE.rows; r++) for (let c = 0; c < T_MINE.cols; c++) {
     const tl = tileAt(c, r), X = c * FT, Y = r * FT, i = r * T_MINE.cols + c;
     if (tl.s === 'rock') {
-      x.fillStyle = wall; x.fillRect(X + 1, Y + 1, FT - 2, FT - 2);
-      for (let yy = 2; yy < FT - 2; yy += 2) for (let xx = 2; xx < FT - 2; xx += 2) { const h = hash(r * 100 + yy, c * 100 + xx, 41); if (h < 0.05) { x.fillStyle = deep; x.fillRect(X + xx, Y + yy, 2, 2); } else if (h > 0.985) { x.fillStyle = light; x.fillRect(X + xx, Y + yy, 2, 2); } }
+      x.drawImage(ftex, c * (FT >> 1), r * (FT >> 1), FT >> 1, FT >> 1, X, Y, FT, FT); // the island's own rock, its beds running on from tile to tile
       const rad = twig ? 2 : 1; let k = 0; // the tells
       for (let dr = -rad; dr <= rad; dr++) for (let dc = -rad; dc <= rad; dc++) {
         if (!dr && !dc) continue; const rr = r + dr, cc = c + dc; if (rr < 0 || cc < 0 || rr >= T_MINE.rows || cc >= T_MINE.cols) continue; const n = tileAt(cc, rr); if (n.s !== 'rock') continue;
@@ -23930,53 +24098,16 @@ function drawMiner(X, gy, t) {
   g.save(); g.translate(X + c.width * sc, Y); g.scale(-sc, sc); g.imageSmoothingEnabled = false; g.drawImage(c, 0, 0); g.restore();
   g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(X + 24, gy, 36, 2);
 }
-// What the gallery walls are made of, drawn over the dithered rock.
-function mineDeco(kind, top, gy, t, level) {
-  const r = k => ((k * 7919 + level * 131) % 97) / 97, hgt = gy - top;
-  if (kind === 'flint') { g.fillStyle = '#2a2a30'; for (let k = 0; k < 9; k++) { const x = (r(k) * W) | 0, y = top + 6 + ((r(k + 7) * (hgt - 14)) | 0); g.fillRect(x, y, 5, 3); g.fillRect(x + 1, y - 1, 3, 5); } }
-  else if (kind === 'layers') { g.fillStyle = 'rgba(0,0,0,0.18)'; for (let y = top + 7; y < gy; y += 9) g.fillRect(0, y + ((y * 3) % 4), W, 2); g.fillStyle = 'rgba(255,255,255,0.08)'; for (let y = top + 3; y < gy; y += 9) g.fillRect(0, y, W, 1); }
-  else if (kind === 'speckle') { for (let k = 0; k < 60; k++) { g.fillStyle = k % 3 ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.3)'; g.fillRect((r(k) * W) | 0, top + ((r(k + 13) * hgt) | 0), 2, 1); } }
-  else if (kind === 'slant') { g.fillStyle = 'rgba(0,0,0,0.2)'; for (let x = -hgt; x < W; x += 11) bres(g, x, gy, x + hgt * 0.5, top, 'rgba(0,0,0,0.22)', 1); }
-  else if (kind === 'drip') { for (let k = 0; k < 7; k++) { const x = (r(k) * W) | 0, h = 5 + ((r(k + 3) * 9) | 0); g.fillStyle = MINE_KIND[loc().mine.kind].wall[2]; for (let j = 0; j < h; j++) g.fillRect(x - ((h - j) >> 2), top + j, ((h - j) >> 1) + 1, 1); if (((t / 900 + k * 2) % 7) < 1) { g.fillStyle = 'rgba(190,210,230,0.8)'; g.fillRect(x, top + h + (((t / 900 + k * 2) % 1) * (hgt - h)) | 0, 1, 2); } } }
-  else if (kind === 'crust') { g.fillStyle = 'rgba(255,255,255,0.55)'; for (let k = 0; k < 22; k++) g.fillRect((r(k) * W) | 0, top + ((r(k + 5) * hgt) | 0), 3 + (k % 5), 1); }
-  else if (kind === 'icicles') { for (let k = 0; k < 9; k++) { const x = (r(k) * W) | 0, h = 6 + ((r(k + 3) * 12) | 0); g.fillStyle = '#d8f0fc'; for (let j = 0; j < h; j++) g.fillRect(x - ((h - j) >> 3), top + j, ((h - j) >> 2) + 1, 1); g.fillStyle = '#ffffff'; g.fillRect(x, top, 1, h >> 1); } g.fillStyle = `rgba(255,255,255,${(0.4 + 0.4 * Math.sin(t / 400)).toFixed(2)})`; for (let k = 0; k < 6; k++) g.fillRect((r(k + 11) * W) | 0, top + ((r(k + 17) * hgt) | 0), 1, 1); }
-  else if (kind === 'seams') { g.fillStyle = '#050506'; for (let y = top + 9; y < gy; y += 14) g.fillRect(0, y + ((y * 5) % 3), W, 4); g.fillStyle = 'rgba(120,130,160,0.35)'; for (let k = 0; k < 14; k++) g.fillRect((r(k) * W) | 0, top + 9 + 14 * (k % 3) + ((k * 5) % 3), 2, 1); }
-  else if (kind === 'cracks') { for (let k = 0; k < 5; k++) { const x = (r(k) * W) | 0, a = 0.5 + 0.5 * Math.sin(t / 300 + k); let y = top + 4 + ((r(k + 9) * 10) | 0), xx = x; g.fillStyle = `rgba(255,120,40,${(0.5 + 0.45 * a).toFixed(2)})`; for (let j = 0; j < hgt - 10; j += 3) { g.fillRect(xx, y, 1, 3); y += 3; xx += (r(k + j) > 0.5 ? 1 : -1); } } }
-  else if (kind === 'sheen') { g.fillStyle = 'rgba(255,255,255,0.1)'; for (let x = -hgt; x < W; x += 17) { bres(g, x, gy, x + hgt, top, 'rgba(255,255,255,0.12)', 1); bres(g, x + 2, gy, x + 2 + hgt, top, 'rgba(255,255,255,0.06)', 1); } }
-  else if (kind === 'ribs') { for (let k = 0; k < 5; k++) { const x = 12 + k * 42, rr = 20; for (let y = 0; y <= rr; y++) { const hw = Math.sqrt(rr * rr - y * y) | 0; g.fillStyle = '#e8e0cc'; g.fillRect(x + hw, top + 4 + y, 3, 1); g.fillRect(x - hw - 2, top + 4 + y, 3, 1); } } }
-  else if (kind === 'shards') { for (let k = 0; k < 7; k++) { const x = (r(k) * W) | 0, h = 6 + ((r(k + 3) * 10) | 0), a = 0.5 + 0.5 * Math.sin(t / 500 + k), up = k % 2; g.fillStyle = `rgba(120,220,255,${(0.6 + 0.4 * a).toFixed(2)})`; for (let j = 0; j < h; j++) g.fillRect(x - (j >> 2), up ? top + j : gy - 1 - j, (j >> 1) + 1, 1); g.fillStyle = '#ffffff'; g.fillRect(x, up ? top : gy - (h >> 1), 1, h >> 1); } }
-  else if (kind === 'knobs') { for (let k = 0; k < 12; k++) { const x = (r(k) * W) | 0, y = top + ((r(k + 7) * hgt) | 0); g.fillStyle = '#f0e8d8'; g.fillRect(x, y, 4, 3); g.fillStyle = '#b8a890'; g.fillRect(x, y + 3, 4, 1); } }
-  else if (kind === 'pages') { for (let k = 0; k < 8; k++) { const x = (r(k) * W) | 0, y = top + 6 + ((r(k + 7) * (hgt - 16)) | 0); g.fillStyle = '#f6efdc'; g.fillRect(x, y, 10, 7); g.fillStyle = '#5a5040'; for (let j = 1; j < 6; j += 2) g.fillRect(x + 1, y + j, 7, 1); } }
-  else if (kind === 'rust') { for (let k = 0; k < 10; k++) { const x = (r(k) * W) | 0, y = top + ((r(k + 3) * 20) | 0), h = 8 + ((r(k + 9) * 24) | 0); g.fillStyle = 'rgba(200,90,30,0.5)'; g.fillRect(x, y, 2, h); g.fillStyle = 'rgba(255,140,50,0.4)'; g.fillRect(x, y, 1, h >> 1); } }
-  else if (kind === 'shells') { for (let k = 0; k < 9; k++) { const x = (r(k) * W) | 0, y = top + 4 + ((r(k + 7) * (hgt - 10)) | 0); g.fillStyle = '#f4f0e4'; g.fillRect(x, y + 2, 7, 1); g.fillRect(x + 1, y + 1, 5, 1); g.fillRect(x + 2, y, 3, 1); g.fillStyle = '#9a9484'; g.fillRect(x + 3, y, 1, 3); } }
-  else if (kind === 'rings') { for (let k = 0; k < 4; k++) { const cx = 20 + k * 50, cy = top + (hgt >> 1); for (let rr = 4; rr < 22; rr += 5) { g.fillStyle = 'rgba(0,0,0,0.25)'; for (let y = -rr; y <= rr; y += 1) { const hw = Math.sqrt(rr * rr - y * y) | 0; g.fillRect(cx + hw, cy + y, 1, 1); g.fillRect(cx - hw, cy + y, 1, 1); } } } }
-  else if (kind === 'cogs') { for (let k = 0; k < 4; k++) { const cx = 24 + k * 48, cy = top + 10 + ((r(k) * (hgt - 24)) | 0), rr = 7 + (k % 2) * 3, a = t / 1400 * (k % 2 ? -1 : 1); g.fillStyle = '#b8871c'; for (let y = -rr; y <= rr; y++) { const hw = Math.sqrt(rr * rr - y * y) | 0; g.fillRect(cx - hw, cy + y, hw * 2, 1); } g.fillStyle = '#5a4a3a'; for (let y = -rr + 3; y <= rr - 3; y++) { const hw = Math.sqrt((rr - 3) * (rr - 3) - y * y) | 0; g.fillRect(cx - hw, cy + y, hw * 2, 1); } for (let j = 0; j < 8; j++) { const ang = a + j * Math.PI / 4; g.fillStyle = '#b8871c'; g.fillRect(cx + Math.round(Math.cos(ang) * (rr + 1)), cy + Math.round(Math.sin(ang) * (rr + 1)), 2, 2); } } }
-  else if (kind === 'stars') { for (let k = 0; k < 30; k++) { const tw = 0.4 + 0.6 * Math.abs(Math.sin(t / 700 + k)); g.fillStyle = `rgba(220,230,255,${tw.toFixed(2)})`; g.fillRect((r(k) * W) | 0, top + ((r(k + 13) * hgt) | 0), 1, 1); } }
-  else if (kind === 'roots') { for (let k = 0; k < 9; k++) { const x = (r(k) * W) | 0, h = 8 + ((r(k + 3) * 16) | 0); bres(g, x, top, x + ((r(k + 5) * 6) | 0) - 3, top + h, '#6a5438', 1); bres(g, x + 1, top + 3, x + 4, top + (h >> 1), '#5a4430', 1); } }
-  else if (kind === 'shrooms') { for (let k = 0; k < 4; k++) glowshroom((r(k) * (W - 40)) | 0 + 10, gy, 0, t, 1); for (let k = 0; k < 10; k++) { g.fillStyle = 'rgba(200,160,255,0.35)'; g.fillRect((r(k + 7) * W) | 0, top + ((r(k + 9) * hgt) | 0), 2, 1); } }
-}
 function drawMine(t) {
-  const l = loc(), kind = MINE_KIND[l.mine.kind] || MINE_KIND.rock, [deep, wall, light] = kind.wall, top = SURF - 56, gy = SURF + 8, lx = (SW * 0.36) | 0, ly = top + 22;
-  g.drawImage(layer('mine', W, H, `${l.id}|${SURF}|${MI ? MI.level : 1}`, () => { // the gallery's rock, props, rails and face wall: a layer, redrawn a few times a second
-    g.fillStyle = deep; g.fillRect(0, 0, W, H); g.fillStyle = 'rgba(255,255,255,0.03)'; for (let y = 0; y < H; y += 3) for (let x0 = 0; x0 < W; x0 += 3) if (hash(y, x0, 80) < 0.12) g.fillRect(x0, y, 2, 1); // the rock above and below the gallery
-    g.fillStyle = wall; g.fillRect(0, top, W, gy - top);
-    for (let y = top; y < gy; y += 2) for (let x0 = 0; x0 < W; x0 += 2) { const h = hash(y, x0, 81); if (h < 0.04) { g.fillStyle = deep; g.fillRect(x0, y, 2, 2); } else if (h > 0.975 && Math.hypot(x0 - lx, y - ly) < W * 0.5) { g.fillStyle = light; g.fillRect(x0, y, 2, 2); } }
-    mineDeco(kind.deco, top, gy, t, MI ? MI.level : 1);
-    g.fillStyle = light; g.fillRect(0, top, W, 1);
-    for (let x0 = 14; x0 < SW - 30; x0 += 44) { g.fillStyle = '#5a4630'; g.fillRect(x0, top, 3, gy - top); g.fillRect(x0 - 3, top, 9, 3); g.fillStyle = '#3a2a1a'; g.fillRect(x0 + 2, top + 3, 1, gy - top - 3); } // timber props
-    g.fillStyle = '#2a2420'; g.fillRect(0, gy, W, H - gy); g.fillStyle = '#4a4036'; g.fillRect(0, gy, W, 2);
-    g.fillStyle = '#5a4630'; for (let x0 = 2; x0 < W; x0 += 10) g.fillRect(x0, gy + 5, 6, 2); g.fillStyle = '#8a8a98'; g.fillRect(0, gy + 4, W, 1); g.fillRect(0, gy + 8, W, 1); // sleepers and rails
-    g.fillStyle = '#3a3a44'; g.fillRect(6, gy - 10, 22, 10); g.fillStyle = '#5a5a66'; g.fillRect(6, gy - 10, 22, 1); g.fillStyle = '#1a1a20'; g.fillRect(9, gy, 4, 3); g.fillRect(21, gy, 4, 3); // the ore cart
-    // the face you work, at the right, with the glints of whatever stands open in it
-    g.fillStyle = wall; g.fillRect(SW - 30, top, 30, gy - top); for (let y = top; y < gy; y += 2) for (let x0 = SW - 30; x0 < SW; x0 += 2) if (hash(y, x0, 83) < 0.08) { g.fillStyle = deep; g.fillRect(x0, y, 2, 2); }
-    g.fillStyle = deep; g.fillRect(SW - 30, top, 1, gy - top);
-  }), 0, 0);
-  if (S.sack.length) for (let k = 0; k < Math.min(8, S.sack.length); k++) { g.fillStyle = mineralPal(MM[S.sack[k].id]).b; g.fillRect(8 + (k % 4) * 5, gy - 13 + ((k / 4) | 0) * 2, 4, 3); }
+  const l = loc(), top = SURF - 56, gy = SURF + 8, lx = galLampX(), ly = top + 22, lv = MI ? MI.level : 1;
+  g.drawImage(layer('mine', W, H, `${l.id}|${SURF}|${lv}`, () => drawMineArt(l, lv, t)), 0, 0); // the gallery at this level, painted for this island (mineSprite); a layer, so what moves in it is redrawn a few times a second
+  g.drawImage(cartSprite(l)[0][0], 4, gy - T_PIT.cartTop); // the tub on the rail, and in it what has been found so far
+  for (let k = 0; k < Math.min(12, S.sack.length); k++) { const mp = mineralPal(MM[S.sack[k].id]), bx = 8 + (k % 4) * 5 + (((k / 4) | 0) & 1) * 2, by = gy - T_PIT.cartTop + 6 - ((k / 4) | 0) * 3; g.fillStyle = mp.b; g.fillRect(bx, by, 4, 3); g.fillStyle = mp.h; g.fillRect(bx + 1, by, 2, 1); }
   if (MI) MI.tiles.forEach((tl, i) => { if (tl.s !== 'exposed' || !tl.m) return; const mp = mineralPal(MM[tl.m]), fx = SW - 26 + (i % T_MINE.cols) * 4, fy = top + 10 + ((i / T_MINE.cols) | 0) * 18; g.fillStyle = Math.sin(t / 250 + i) > 0.3 ? mp.h : mp.b; g.fillRect(fx, fy, 2, 2); });
   drawMiner(lx - 30, gy, t);
   const glow = MI ? clamp(MI.oil / MI.oilMax, 0.15, 1) : 1; // the lamp's halo
   for (let k = 4; k >= 1; k--) { g.fillStyle = `rgba(255,200,110,${(0.05 * glow).toFixed(3)})`; const rr = 13 * k; for (let y = -rr; y <= rr; y += 2) { const hw = Math.sqrt(rr * rr - y * y) | 0; g.fillRect(lx - hw, ly + y, hw * 2, 2); } }
-  g.fillStyle = 'rgba(180,200,220,0.6)'; for (let k = 0; k < 3; k++) { const dx = (37 + k * 61) % W, dy = top + ((t / 7 + k * 300) % (gy - top)); g.fillRect(dx, dy | 0, 1, 2); } // drips
+  if (lv > 2) { g.fillStyle = 'rgba(180,200,220,0.6)'; for (let k = 0; k < Math.min(4, lv - 2); k++) { const dx = (37 + k * 61 + lv * 17) % (SW - 40), dy = top + ((t / 7 + k * 300) % (gy - top)); g.fillRect(dx, dy | 0, 1, 2); } } // it drips, the deeper the more
   if (MI && MI.roof > 0.45) { g.fillStyle = 'rgba(190,170,140,0.7)'; for (let k = 0; k < 12 * MI.roof; k++) g.fillRect((hash(k, 2, 91) * W) | 0, top + (((t / 9 + k * 53) % (gy - top)) | 0), 1, 1); }
   g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, 0, W, 1);
 }
