@@ -19725,6 +19725,104 @@ function drawLandscape(l, cam, yBase, t, nt, o) {
   }
   g.restore();
 }
+// An island seen from far out at sea: its own skyline, small, in three tones of haze (the volcano's cone, the stack with the monastery on
+// it, the organ pipes: whatever its landscape is), with its lights at night and its lighthouse flashing. Made once from the island's
+// landscape as the fishing shore sees it and kept apart from it, since only the island you are on keeps its scene. A cavern's is FAR_CAVE's.
+// A cavern has no skyline of its own; from the sea each is the thing it is inside of. D.prof(tone, [[u, h]…]) fills under a profile, D.ell an
+// ellipse (half: its upper half only), D.box a block, D.light a lamp; u across the picture, h up from the sea, both 0..1; tone 1 far to 3 near, 0 cuts.
+const FAR_CAVE = {
+  hollow(D) { // a mountain with a split peak, and the mouth you sail into with the fishermen's lamps in it
+    D.prof(1, [[0.03, 0], [0.16, 0.24], [0.3, 0.4], [0.5, 0.3], [0.7, 0.38], [0.88, 0.14], [0.98, 0]]);
+    D.prof(2, [[0.16, 0], [0.25, 0.3], [0.34, 0.66], [0.42, 0.98], [0.47, 0.84], [0.53, 0.94], [0.61, 0.58], [0.72, 0.32], [0.84, 0.1], [0.9, 0]]);
+    D.ell(3, 0.63, 0, 0.05, 0.2); D.light(0.615, 0.03, '#ffd27a'); D.light(0.635, 0.09, '#ffd27a'); D.light(0.65, 0.02, '#ffe2a0');
+  },
+  sporewood(D) { // caps like roofs on stalks like towers, and what drifts glowing under them
+    D.prof(2, [[0.06, 0], [0.28, 0.1], [0.6, 0.13], [0.86, 0.07], [0.95, 0]]);
+    D.box(1, 0.665, 0, 0.7, 0.5); D.ell(1, 0.68, 0.48, 0.12, 0.22, true);
+    D.box(2, 0.42, 0, 0.47, 0.66); D.ell(2, 0.445, 0.64, 0.17, 0.3, true);
+    D.box(3, 0.225, 0, 0.255, 0.36); D.ell(3, 0.24, 0.35, 0.1, 0.18, true);
+    D.box(3, 0.575, 0, 0.595, 0.24); D.ell(3, 0.585, 0.23, 0.06, 0.11, true);
+    D.box(3, 0.84, 0, 0.855, 0.18); D.ell(3, 0.848, 0.17, 0.045, 0.09, true);
+    for (const [u, h] of [[0.36, 0.5], [0.52, 0.42], [0.3, 0.24], [0.62, 0.34], [0.75, 0.3], [0.46, 0.2]]) D.light(u, h, '#b8f0c0');
+  },
+  belly(D) { // not an island: a back the size of one, the flukes standing out of the water behind it, and its breath
+    D.prof(2, [[0.16, 0], [0.22, 0.12], [0.36, 0.24], [0.54, 0.3], [0.72, 0.26], [0.86, 0.14], [0.93, 0]]);
+    D.prof(3, [[0.6, 0], [0.7, 0.1], [0.84, 0.1], [0.9, 0]]);
+    D.prof(3, [[0.05, 0], [0.066, 0.25], [0.09, 0.25], [0.106, 0]]); D.ell(3, 0.04, 0.27, 0.042, 0.045); D.ell(3, 0.116, 0.27, 0.042, 0.045); D.ell(3, 0.012, 0.31, 0.022, 0.04); D.ell(3, 0.144, 0.31, 0.022, 0.04); D.ell(0, 0.078, 0.33, 0.02, 0.05);
+    D.light(0.8, 0.17, '#ff7a6a');
+  },
+  nestcaves(D) { // limestone towers, the mouth between them, lamps on the bamboo
+    D.prof(1, [[0.05, 0], [0.13, 0.28], [0.24, 0.4], [0.3, 0.2], [0.4, 0.5], [0.52, 0.3], [0.66, 0.44], [0.8, 0.2], [0.95, 0]]);
+    D.prof(2, [[0.11, 0], [0.14, 0.46], [0.2, 0.62], [0.27, 0.56], [0.3, 0.2], [0.36, 0.16], [0.4, 0.72], [0.46, 0.96], [0.54, 0.9], [0.61, 0.7], [0.67, 0.52], [0.69, 0.2], [0.74, 0.16], [0.77, 0.42], [0.83, 0.46], [0.88, 0.28], [0.92, 0]]);
+    D.ell(3, 0.6, 0, 0.04, 0.34); D.light(0.59, 0.1, '#ffd27a'); D.light(0.61, 0.22, '#ffd27a'); D.light(0.6, 0.03, '#ffe2a0');
+  },
+  saltcathedral(D) { // one crystal carved into a nave: pinnacles in a row, a door, and light coming through the walls
+    D.prof(1, [[0.07, 0], [0.09, 0.2], [0.91, 0.2], [0.93, 0]]);
+    D.prof(2, [[0.13, 0], [0.17, 0.3], [0.23, 0.34], [0.255, 0.64], [0.28, 0.36], [0.34, 0.44], [0.37, 0.5], [0.4, 0.98], [0.43, 0.52], [0.5, 0.56], [0.57, 0.5], [0.6, 0.86], [0.63, 0.46], [0.7, 0.4], [0.722, 0.6], [0.745, 0.36], [0.82, 0.26], [0.87, 0]]);
+    D.ell(3, 0.6, 0, 0.03, 0.26);
+    for (const u of [0.2, 0.3, 0.44, 0.52, 0.68, 0.78]) D.light(u, 0.16, '#e8f4ff');
+  },
+  greatpearl(D) { // one pearl in a half-open shell: the hinge for a mountain, the upper valve curving over, a seam of sky between
+    D.ell(2, 0.54, 0.06, 0.42, 0.9, true); D.ell(0, 0.45, 0.04, 0.4, 0.74, true);
+    D.prof(2, [[0.06, 0], [0.1, 0.08], [0.9, 0.08], [0.96, 0]]);
+    D.prof(3, [[0.74, 0], [0.8, 0.3], [0.87, 0.42], [0.93, 0.24], [0.97, 0]]);
+    D.ell(1, 0.46, 0.2, 0.15, 0.24);
+    for (const [u, h] of [[0.42, 0.28], [0.5, 0.3], [0.46, 0.16], [0.4, 0.18], [0.53, 0.2]]) D.light(u, h, '#fff4e0');
+  },
+};
+function farCave(fn, tone, mw, mh, lights) {
+  const H = Math.round(mh * 0.88), set = (x, y, v) => { if (x >= 0 && x < mw && y >= 0 && y < mh) tone[y * mw + x] = v; };
+  fn({
+    prof(v, pts) { const xa = Math.round(pts[0][0] * mw), xb = Math.round(pts[pts.length - 1][0] * mw); for (let x = xa; x <= xb; x++) { const u = x / mw; let k = 0; while (k < pts.length - 2 && u > pts[k + 1][0]) k++; const a = pts[k], b = pts[k + 1], f = clamp((u - a[0]) / Math.max(1e-6, b[0] - a[0]), 0, 1), h = Math.round((a[1] + (b[1] - a[1]) * f) * H); for (let y = mh - h; y < mh; y++) set(x, y, v); } },
+    ell(v, u, h, ru, rh, half) { const cx = u * mw, cy = mh - h * H, rx = Math.max(0.7, ru * mw), ry = Math.max(0.7, rh * H); for (let y = Math.floor(cy - ry); y <= (half ? Math.floor(cy) - 1 : Math.ceil(cy + ry)); y++) for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) { const dx = (x + 0.5 - cx) / rx, dy = (y + 0.5 - cy) / ry; if (dx * dx + dy * dy <= 1) set(x, y, v); } },
+    box(v, u0, h0, u1, h1) { const xa = Math.round(u0 * mw), xb = Math.max(xa + 1, Math.round(u1 * mw)); for (let x = xa; x < xb; x++) for (let y = mh - Math.round(h1 * H); y < mh - Math.round(h0 * H); y++) set(x, y, v); },
+    light(u, h, c) { lights.push({ x: clamp(Math.round(u * mw), 0, mw - 1), y: clamp(mh - 1 - Math.round(h * H), 0, mh - 1), c }); },
+  });
+}
+const ISLE_FAR = new Map(), T_FAR = { w: 0.4, min: 60, max: 150, span: 1.3, inland: 0.55, cover: 0.2, taper: 0.3, tones: [0.3, 0.44, 0.6], dark: [20, 30, 50], night: [5, 8, 18], nightTone: 0.3, light: 190, caveLit: 0.7, hide: 0.18, keep: 4 }; // hide: how much of its tapered inland end may stay off the screen's edge
+function isleFar(l) {
+  const cave = !!(l && l.scene && l.scene.weather === 'cave'); if (!l || l.id === 'sea' || l.id === 'stars' || (cave && !FAR_CAVE[l.id])) return null;
+  const key = l.id + '|' + W + '|' + SURF + '|' + scale; let M = ISLE_FAR.get(key); if (M) return M;
+  if (ISLE_FAR.size >= T_FAR.keep) ISLE_FAR.delete(ISLE_FAR.keys().next().value);
+  const LH = clamp(SURF - Math.ceil(T_LAND.hud / scale), T_LAND.lh[0], T_LAND.lh[1]), srcW = Math.round(T_FAR.span * W), mw = clamp(Math.round(W * T_FAR.w), T_FAR.min, T_FAR.max), k = srcW / mw, mh = Math.max(6, Math.ceil(LH / k) + 1);
+  const tone = new Uint8Array(mw * mh), lights = [], flashes = [], cut = new Int16Array(mw), S = cave ? null : landScene(l, SURF);
+  if (cave) farCave(FAR_CAVE[l.id], tone, mw, mh, lights);
+  else S.layers.forEach((Y, li) => {
+    const x0 = Y.pad + Math.round(3 * W * Y.f) - Math.round(T_FAR.inland * W), top = Math.max(0, Y.base - Math.ceil(mh * k)), sh = Y.base - top; if (sh < 2) return;
+    const sx = clamp(x0, 0, Y.w - 1), sw = Math.min(Y.w, x0 + srcW) - sx; if (sw < 2) return;
+    const d = Y.cv.getContext('2d').getImageData(sx, top, sw, sh).data, gd = Y.glow ? Y.glow.getContext('2d').getImageData(sx, top, sw, sh).data : null;
+    for (let my = 0; my < mh; my++) {
+      const yb = sh - Math.round((mh - 1 - my) * k), ya = Math.max(0, sh - Math.round((mh - my) * k)); if (yb <= ya) continue; // the rows of the layer this row of ours stands for
+      for (let mx = 0; mx < mw; mx++) {
+        const xa = Math.max(0, Math.round(mx * k) + x0 - sx), xb = Math.min(sw, Math.round((mx + 1) * k) + x0 - sx); if (xb <= xa) continue;
+        let n = 0, ga = 0, gi = 0;
+        for (let y = ya; y < yb; y++) for (let x = xa; x < xb; x++) { const j = (y * sw + x) * 4; if (d[j + 3] > 127) n++; if (gd && gd[j + 3] > ga) { ga = gd[j + 3]; gi = j; } }
+        if (n >= (xb - xa) * (yb - ya) * T_FAR.cover) tone[my * mw + mx] = li + 1; // a mast or a spire a pixel wide still stands
+        if (ga >= T_FAR.light) lights.push({ x: mx, y: my, c: `rgb(${gd[gi]},${gd[gi + 1]},${gd[gi + 2]})` });
+      }
+    }
+    for (const e of Y.em) if ((e.k === 'beam' || e.k === 'blink') && e.x >= x0 && e.x < x0 + srcW && e.y < Y.base) flashes.push({ x: Math.floor((e.x - x0) / k), y: mh - 1 - Math.floor((Y.base - 1 - e.y) / k), c: e.c || (e.k === 'beam' ? '#fff6b0' : '#ff4040'), ms: e.ms || (e.k === 'beam' ? 4200 : 1600), ph: e.ph || 0, duty: e.k === 'beam' ? 0.5 : e.duty || 0.5 });
+  });
+  // the window's inland edge is not the island's end: the land is brought down to the sea there, so it is an island whichever way it is seen
+  const tw = cave ? 0 : Math.max(2, Math.round(mw * T_FAR.taper)); for (let mx = 0; mx < tw; mx++) { cut[mx] = mh - Math.round(mh * Math.sin((mx + 0.5) / tw * Math.PI / 2)); for (let my = 0; my < cut[mx]; my++) tone[my * mw + mx] = 0; }
+  const c = document.createElement('canvas'); c.width = mw; c.height = mh; const x = c.getContext('2d');
+  let peak = mh; for (let i = 0; i < tone.length; i++) if (tone[i]) { peak = (i / mw) | 0; break; }
+  M = { c, x, img: x.createImageData(mw, mh), tone, w: mw, h: mh, rise: Math.max(3, mh - peak), k: '', hide: cave ? 0 : T_FAR.hide, lit: cave ? T_FAR.caveLit : S.lit || 0, lights: lights.filter(L => L.y >= cut[L.x]), flashes: flashes.filter(F => F.x >= 0 && F.x < mw && F.y >= cut[F.x] && F.y < mh) };
+  ISLE_FAR.set(key, M); return M;
+}
+// x: its left edge on the screen. o.sink: 0 standing on the horizon to 1 gone under it (its peak at the sea line). o.flip: mirrored (the island ahead, as its landfall will show it). o.a: how faint.
+function drawIsleFar(l, x, t, nt, o) {
+  const M = isleFar(l); if (!M) return false; o = o || {};
+  const b = curSky.bot, tk = (b[0] | 0) + ',' + (b[1] | 0) + ',' + (b[2] | 0) + ',' + ((nt * 10) | 0); // by night it is a darker shape than the sky, not a paler one
+  if (M.k !== tk) { M.k = tk; const d = M.img.data, dk = lerpC(T_FAR.dark, T_FAR.night, nt), cs = T_FAR.tones.map(f => lerpC(b, dk, Math.min(1, f + T_FAR.nightTone * nt))); for (let i = 0; i < M.tone.length; i++) { const v = M.tone[i], j = i * 4; if (v) { const c = cs[v - 1]; d[j] = c[0]; d[j + 1] = c[1]; d[j + 2] = c[2]; d[j + 3] = 255; } else d[j + 3] = 0; } M.x.putImageData(M.img, 0, 0); }
+  const hh = M.h - Math.round(clamp(o.sink || 0, 0, 1) * M.rise); if (hh <= M.h - M.rise) return true; // it goes under by its own height: a low island and a mountain are both gone at the same moment
+  const a = o.a == null ? 1 : clamp(o.a, 0, 1), X = x | 0, y0 = SURF - hh, at = mx => o.flip ? X + M.w - 1 - mx : X + mx;
+  g.save(); g.globalAlpha = a; if (o.flip) { g.translate(X + M.w, 0); g.scale(-1, 1); g.drawImage(M.c, 0, 0, M.w, hh, 0, y0, M.w, hh); } else g.drawImage(M.c, 0, 0, M.w, hh, X, y0, M.w, hh); g.restore();
+  const ln = Math.max(nt, M.lit);
+  if (ln > 0.08) { g.globalAlpha = a * clamp(ln * 1.2, 0, 1); for (const L of M.lights) if (L.y < hh) { g.fillStyle = L.c; g.fillRect(at(L.x), y0 + L.y, 1, 1); } }
+  for (const F of M.flashes) if (F.y < hh && ((t / F.ms + F.ph) % 1) < F.duty) { g.globalAlpha = a * (0.55 + 0.45 * nt); g.fillStyle = F.c; g.fillRect(at(F.x), y0 + F.y, 1, 1); }
+  g.globalAlpha = 1; return true;
+}
 // the things that move: each a handful of rectangles drawn live over its layer
 const EMIT = {
   // chimney smoke: puffs that rise, drift and thin
@@ -24220,7 +24318,7 @@ function woodTitle(sc) {
 function drawTitle(t) {
   const h = 18.9, nt = drawSkyBase(h, t, {});
   drawSeaBase(h, t, nt, {});
-  farIsland(W - 64, 52, true);
+  { const M = isleFar(LOC.shoal); if (M) drawIsleFar(LOC.shoal, W - M.w - 2, t, nt, { flip: true }); else farIsland(W - 64, 52, true); } // the island of the story, far off: the shoal's own skyline
   { // the sign
     const sc = W >= 260 ? 4 : 3, c = woodTitle(sc), sx = (W - c.width) >> 1, sy = Math.round(SURF * 0.22);
     g.drawImage(c, sx, sy);
@@ -24271,7 +24369,7 @@ function drawStorm(p, t) {
 function drawDrift(p, t) {
   const h = 5.5 + p * 0.8, nt = drawSkyBase(h, t, { noBirds: true });
   drawSeaBase(h, t, nt, { noShafts: true });
-  farIsland(4, 80, true);
+  if (!drawIsleFar(LOC.shoal, 2, t, nt)) farIsland(4, 80, true); // the island he is drifting to: the shoal's own skyline, far off
   const px = (W * 0.84 - p * (W * 0.5)) | 0, py = (SURF - 5 + Math.sin(t / 420) * 1.5) | 0;
   g.fillStyle = '#4a3220'; g.fillRect(px - 5, py + 6, 26, 3); g.fillStyle = '#6a4a2a'; g.fillRect(px - 5, py + 6, 26, 1);
   blit(g, sprite('float'), px, py);
@@ -24313,7 +24411,7 @@ function drawSink(p, t) {
 function drawKept(p, t) {
   const h = 6.2 + p * 0.6, nt = drawSkyBase(h, t, {});
   drawSeaBase(h, t, nt, { noShafts: true });
-  farIsland(4, 80, true);
+  if (!drawIsleFar(LOC.shoal, 2, t, nt)) farIsland(4, 80, true); // the island he never reached
   const hx = (W * 0.58 + Math.sin(t / 1500) * 3) | 0, hy = (SURF - 2 + Math.sin(t / 420) * 1.5) | 0;
   blit(g, sprite('hat'), hx, hy);
   g.fillStyle = rgba(lerpC(curSky.sea, [255, 255, 255], 0.5), 0.9); g.fillRect(hx - 3, hy + 4, 22, 1);
@@ -24451,6 +24549,7 @@ function drawIntro(t) {
 // turning, and the boat pulling in to the new island while the island does what it does (ARRIVE). Tap to advance, SKIP to land.
 let SAIL = null;
 const SAIL_DUR = [3600, 4200, 4600];
+const T_SAIL = { gone: 0.8, rise: 0.25, behind: 0.04, slide: 0.8, ahead: 0.2, boat: [0.16, 0.6] }; // the passage: by when the island behind is under the horizon and from when the one ahead shows; how far the island behind stands off the screen's edge at the start and how far it slides (of its width); how much of the one ahead is in view at first (at last all of it but its tapered inland end); where the boat starts and ends (of the screen)
 const NUMWORD = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight'];
 const boatKind = () => S.boat === 'none' ? 'raft' : S.boat === 'starship' ? 'ironclad' : S.boat;
 const boatW = k => ({ raft: 30, skiff: 36, cutter: 44, trawler: 50, clipper: 56, ironclad: 62 })[k] || 40;
@@ -24506,10 +24605,11 @@ function farBoat(x, y, k, t) { // the boat seen from far off: a hull, a mast, a 
 }
 function drawPassage(p, t) {
   const from = LOC[SAIL.from], to = LOC[SAIL.to], h = (SAIL.h0 + p * 7) % 24, nt = drawSkyBase(h, t, {}); drawSeaBase(h, t, nt, { noShafts: true });
-  const haze = css(lerpC(curSky.bot, [20, 30, 50], 0.5));
-  if (p < 0.6) { const fx = -20 - p * 60 | 0; farIsland(fx, 56, !!(from.scene && from.scene.palms)); if (from.scene && from.scene.far === 'volcano') { g.fillStyle = haze; for (let k = 0; k < 12; k++) g.fillRect(fx + 28 - k * 2 + k, SURF - 3 - k, 2 + k * 3, 1); } }
-  if (p > 0.35) { const tx = W + 30 - (p - 0.35) * 90 | 0; farIsland(tx, 60, !!(to.scene && to.scene.palms)); if (to.scene && to.scene.far === 'volcano') { g.fillStyle = haze; for (let k = 0; k < 14; k++) g.fillRect(tx + 30 - k * 2 + k, SURF - 3 - k, 2 + k * 3, 1); g.fillStyle = `rgba(255,120,40,${(0.5 + 0.4 * Math.sin(t / 400)).toFixed(2)})`; g.fillRect(tx + 30, SURF - 17, 2, 1); } if (to.spaceport) { g.fillStyle = haze; g.fillRect(tx + 40, SURF - 22, 1, 20); g.fillRect(tx + 46, SURF - 22, 1, 20); g.fillRect(tx + 38, SURF - 23, 11, 1); g.fillStyle = Math.sin(t / 300) > 0 ? '#ff4040' : '#601010'; g.fillRect(tx + 40, SURF - 24, 1, 1); } }
-  const bx = (W * 0.18 + p * W * 0.6) | 0, by = (SURF - 2 + Math.sin(t / 600) * 1.2) | 0;
+  // the island you left sinking behind and the one you are bound for rising ahead: their own skylines, far off (both are made on the beat's first frame, under its fade)
+  const A = isleFar(from), B = isleFar(to), q = clamp((p - T_SAIL.rise) / (1 - T_SAIL.rise), 0, 1);
+  if (p < T_SAIL.gone) { if (A) drawIsleFar(from, Math.round(-A.w * (T_SAIL.behind + T_SAIL.slide * p)), t, nt, { sink: p / T_SAIL.gone, a: 1 - p * 0.5 }); else farIsland(-20 - p * 60 | 0, 56, !!(from.scene && from.scene.palms)); }
+  if (q > 0) { if (B) drawIsleFar(to, Math.round(W - B.w * (T_SAIL.ahead + (1 - B.hide - T_SAIL.ahead) * q)), t, nt, { flip: true, sink: 1 - Math.min(1, q / 0.8), a: 0.55 + 0.45 * q }); else farIsland(W + 30 - q * 60 | 0, 60, !!(to.scene && to.scene.palms)); }
+  const bx = (W * (T_SAIL.boat[0] + (T_SAIL.boat[1] - T_SAIL.boat[0]) * p)) | 0, by = (SURF - 2 + Math.sin(t / 600) * 1.2) | 0; // she stops short of the island ahead, so what it is known for is not behind her sail
   wake(bx - 26, bx - 1, by + 1, t); farBoat(bx, by, SAIL.kind, t);
   for (let k = 0; k < 3; k++) { const gx = (bx - 20 + k * 14 + Math.sin(t / 900 + k) * 6) | 0, gy = (by - 22 - k * 5 + Math.sin(t / 500 + k * 2) * 2) | 0; blit(g, maskC(Math.floor(t / 220 + k) % 2 ? 'gullA' : 'gullB', nt > 0.5 ? '#9aa0a8' : '#f4f4f0', 1), gx, gy); }
   if (p > 0.45 && p < 0.62) { // something breaches alongside, once
