@@ -218,6 +218,9 @@ canvas.icon{width:40px;height:40px;image-rendering:pixelated;flex:none}
 .catch .pill.gold{background:var(--brass-2);color:#2b1d05}
 .catch .pill.far{background:#5a3a74}
 .catch .pill.off{background:#12406a;border:1px solid #4aa0d8;color:#bfe4ff}
+.catch .pill.hid{background:#153a2c;border:1px solid #4fc08a;color:#c6f6dc}
+.freshw{color:#7fe0b0}
+.hidtag{display:inline-block;font-size:9px;letter-spacing:.08em;padding:1px 5px;border-radius:3px;background:#153a2c;border:1px solid #4fc08a;color:#c6f6dc;vertical-align:1px}
 .chip.static{opacity:.75}
 .list .row.sel{border-left:3px solid var(--brass);padding-left:6px}
 .legend small .kind{color:var(--brass-2);font-family:var(--display);font-size:8px;letter-spacing:.5px}
@@ -323,6 +326,9 @@ html.land #newbuild:not(.hard){left:calc((100vw - 360px) / 2);max-width:calc(100
 .list .row.g-nobetter{box-shadow:inset 4px 0 0 #46557a;padding-left:10px}
 .list .row.g-owned,.list .row.g-inuse{box-shadow:inset 4px 0 0 #5a78c0;padding-left:10px}
 .legend .mtag.up{color:var(--good);border-style:dashed}
+.legend .mtag.hid{color:#7fe0b0;border-color:#3f9a70}
+.legend .ttag.sz{color:#cfd6dd}
+.legend .vtag,.legend .mtag,.legend .ttag{display:inline-block;margin-top:3px}
 .stock.out{color:var(--bad)}
 .legend .tierhead{font-family:var(--display);font-size:8px;color:var(--brass);letter-spacing:1px;padding:10px 6px 2px;border-top:1px solid var(--edge);margin-top:4px}
 .legend .mtag{font-family:var(--display);font-size:7px;margin-left:6px;padding:2px 4px;border:1px solid currentColor;vertical-align:middle;white-space:nowrap}
@@ -8689,7 +8695,7 @@ const T_FIGHT = { netBonus: 1.6, speedBase: { dart: 0.5, other: 0.2 }, speedPerD
 // heat: how much the fish is worth, 0 at $60 and 1 at $2,400 (heatFrom × heatSpan). A valuable fish gets a narrower net that is twitchier and bounces harder, and it moves faster and changes its mind more often. // the prologue's fights are easy but not quick: the bar starts near empty, fills slowly and never quite empties, so the first fish takes 8-10 s and cannot be lost
 // How long a hooked fish holds before it spits the hook: the base window, stretched up to ×2.8 for the easiest fish (and ×1.5 more in the prologue).
 const hitWindowFor = sp => T.hitWindow * (1 + Math.max(0, 0.45 - (sp.diff || 0)) * 4) * (S.prologue ? 1.5 : 1);
-const spotOf = (locId, spotId) => { const l = LOC[locId]; return l.spots.find(sp => sp.id === spotId) || l.spots[0]; };
+const spotOf = (locId, spotId) => { const l = LOC[locId]; return l.spots.find(sp => sp.id === spotId) || hiddenSpots(l).find(sp => sp.id === spotId) || l.spots[0]; }; // one of its named spots, or a hidden one (the size bullet)
 const spot = () => spotOf(S.loc, S.spot);
 // Offshore: the island's open-water spot, fished from your own boat. Slower bites, rarer fish (T.offshore).
 const offshore = (locId, spotId) => { const sp = spotOf(locId || S.loc, spotId === undefined ? S.spot : spotId); return !!(sp && sp.boat) && !S.prologue; };
@@ -10408,7 +10414,7 @@ const HARD_NAME = ['', 'soft as talc', 'soft', 'soft', 'firm', 'firm', 'hard', '
 // if the server's copy is later, a bar says so and RELOAD fetches it, the voyage saved first. A build that meets a save made by a
 // later build (on the cloud, or under a code) is behind too, and that is the dangerous case: it cannot read the save and would
 // write its own older copy over it. It stops saving, keeps the newer save where the next build will find it, and offers only RELOAD.
-const SAVE_V = 19; // the save's version: bump it and write a migration in load() when the shape changes
+const SAVE_V = 20; // the save's version: bump it and write a migration in load() when the shape changes
 const T_BUILD = { everyMs: 300000, frontMs: 30000, firstMs: 15000, slackMs: 3000, laterMs: 600000, reloadMs: 2000 }; // ask every five minutes in front, at once on coming back to the front if half a minute has passed, first a quarter of a minute after the page opens; the server's copy must be this much later; LATER hides the bar for ten minutes; RELOAD waits this long at most for the cloud to take the save
 const BUILD = { own: 0, dated: null, t0: Date.parse(document.lastModified) || 0, at0: Date.now(), etag: '', asked: 0, checked: 0, newer: false, frozen: false, later: 0, on: '' }; // own: when the running page was last changed on the server; dated: whether it has such a date at all (null until known)
 BUILD.asked = BUILD.at0 - T_BUILD.everyMs + T_BUILD.firstMs;
@@ -10454,7 +10460,7 @@ function newerSave(d) {
 const buildDate = () => BUILD.own ? new Date(BUILD.own).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
 function freshState() {
   return {
-    v: SAVE_V, started: false, loc: 'shoal', shoreSpot: null, tally: false, wake: [], once: {}, hunted: {}, stock: {}, broke: null, money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 1, trophyRig: false,
+    v: SAVE_V, started: false, loc: 'shoal', shoreSpot: null, tally: false, wake: [], once: {}, found: {}, fished: {}, hunted: {}, stock: {}, broke: null, money: 0, bucket: [], wood: 0, raft: false, boat: 'none', rod: 'stick', slots: 1, trophyRig: false,
     line: 'l10', pail: 'pail', // the line's test weight and the bucket in use (both bought in the shop)
     rodsOwned: ['stick'], linesOwned: ['l10'], pailsOwned: ['pail'], // everything bought stays in the rig sheet and can be put back on
     heldRod: true, // the storm's one question; let go and the sea takes you, and the voyage starts over
@@ -10558,6 +10564,7 @@ function load(seed) {
     for (const f of d.pack || []) if (GM[f.id] && GM[f.id].legend) d.once[f.id] = 'held';
     for (const f of (d.sack || []).concat(d.mpending ? [d.mpending] : [])) if (MM[f.id] && MM[f.id].relic) d.once[f.id] = 'held';
     d.v = 19; }
+  if (d && d.v === 19) { d.found = {}; d.fished = {}; d.v = 20; } // v19 -> v20: the levels reached and the hidden places found on the larger islands, and how far each hidden water is fished down
   if (d && d.v > SAVE_V) { newerSave(d); return; } // saved by a later build than this one: not ours to open, and not ours to overwrite
   if (d && d.v === SAVE_V) S = Object.assign(freshState(), d);
   S.seen = S.seen || {}; for (const k in S.bait) if (S.bait[k] > 0) S.seen['bait:' + k] = true; for (const k in S.shot) if (S.shot[k] > 0) S.seen['shot:' + k] = true; for (const k in S.calls) if (S.calls[k] > 0) S.seen['call:' + k] = true; for (const k in S.charges || {}) if (S.charges[k] > 0) S.seen['charge:' + k] = true; for (const k in S.aids || {}) if (S.aids[k] > 0) S.seen['aid:' + k] = true; if (S.trophyRig) S.seen['rig:trophy'] = true; // things you hold now, you have seen
@@ -10608,6 +10615,108 @@ function weatherText(s) { // the index line for a species that minds the sky
   return '';
 }
 
+// ---------- the size of an island, and what is hidden on it ----------
+// Islands are not all one size. A small one is what every island was: the shore, the village, the gate, the mine. A middling, a large
+// or a great one has more to it: a way up at the back of the island to the heights, a way down to the hollows, or both, and on each of
+// those levels one to three hidden places: a fishing spot nobody fishes, a hunting ground nobody walks, a mine nobody works. Each is a
+// variant of the island's own: its fish, its game and its rock, with the common thinned out and the rare more than doubled (T_SIZE.rank),
+// a deep working that starts several levels down, an upper quarry that is shallow, safe and full. What an island has is a fixed hash
+// of the island (and of what it is called: a rock or a stack leans small, a mountain or a forest large); nothing is stored but what
+// you have found (S.found). The chart draws a landmass by its size.
+const T_SIZE = {
+  odds: [0.46, 0.28, 0.18, 0.08],            // small, middling, large, great
+  lean: 0.55,                                // a name that says small pulls its draw toward small by this much, one that says large toward large
+  blob: [4.5, 6, 7.5, 9],                    // the landmass on the chart by size, px of radius (never more than T_SIZE.fit of the way to the nearest island)
+  long: 1.7,                                 // and how much longer one way than the other it may be
+  fit: 0.4,
+  hidden: [[0, 0], [1, 2], [2, 4], [4, 6]],  // how many hidden places, least and most, by size
+  rank: { spot: [0.5, 1.2, 3.2, 5], hunt: [0.6, 1.5, 2.2, 2.6], mine: [0.7, 1.4, 2, 2.4] }, // what a hidden spot, ground or working does to the island's fish, game and stone by rarity, common to epic
+  fabled: 1.5,                               // and to its fabled creature and its relic
+  land: 0.62,                                // on a level: the ladder's landing, of a screen's width
+  sight: 64,                                 // how near you come to a hidden place before it is found, px
+  drop: 0.3,                                 // how far the island's own country sinks behind the heights, of the sky it stands in
+  climb: 96,                                 // the ladder out of the hollows, px
+  horizon: 27,                               // from the heights the sea's horizon stands this far above the ground you walk on, px (the height of the eye)
+  gloom: 0.5,                                // how dark it is underground, as a share of night
+  water: { out: 14, recoverMs: 4 * 60000, luck: 0.5, tall: 0.45, spent: [1, 0.4, 0.3, 0.25] }, // a hidden water is small: so many fish landed and it is fished down to an ordinary one; a fish's worth of it comes back every so often; while fresh it adds this to the rod's and the bait's luck, and what grows old in it grows large (the size roll leans up: f -> f^(1/(1+tall))); fished down, its rarer fish are the ones that are gone (spent: what is left of each rarity, common to epic)
+  under: ['bat', 'rat', 'snake', 'lizard', 'frog', 'crab', 'scorpion', 'moth', 'turtle', 'bear', 'owl', 'cat', 'fox', 'wolf', 'croc'], // what lives on a ground under the island, by its shape
+  notUp: ['seal', 'crab', 'turtle', 'croc', 'penguin', 'frog'], // and what does not live on one on its heights
+  deep: [3, 4],                              // a hidden deep working starts at one of these levels
+  quarry: { max: 3, pockets: 1.6, roof: 0.35 }, // a hidden upper quarry: three levels and no more, more pockets a face, and open to the sky, so the roof hardly tires
+};
+const SIZE_NAME = ['small', 'middling', 'large', 'great'], SIZE_SET = { trench: 0 }; // SIZE_SET: an island's size said outright (the trench is fished from your own boat: there is no land to it)
+const SIZE_SMALL = /\b(Rock|Stack|Spit|Bank|Cay|Key|Shoal|Reef|Floe|Skerry|Slip|Steps|Station|Lightship|Flotilla|Fleet|Ferry|Market|Hulk|Ship|Raft|Well|Lamp|Tree|Point|Head)\b/i, SIZE_LARGE = /\b(Mountain|Fjords?|Delta|Forest|River|Coast|Fell|Moor|Isles|Lake|Kingdom|City|Wood|Mire|Marsh|Shore|Gardens?|Orchard|Dunes|Giants|Fields|Steppe)\b/i;
+const szRnd = (l, n) => strHash(l.id + '|size|' + n) / 4294967296;
+function isleSize(l) {
+  if (l._size != null) return l._size; let z = 0;
+  if (!(l.noFish || l.locked || !l.spots || l.id === 'shoal' || l.id === 'sea' || l.id === 'stars' || (typeof bankLand === 'function' && bankLand(l).open))) { // a town afloat or on its piles has no bluff to climb and no ground to go down into: it stays as it is
+    if (SIZE_SET[l.id] != null) z = SIZE_SET[l.id];
+    else { let r = szRnd(l, 1); const nm = l.name + ' ' + (l.title || ''); if (SIZE_SMALL.test(nm)) r *= T_SIZE.lean; else if (SIZE_LARGE.test(nm)) r = 1 - (1 - r) * T_SIZE.lean; const O = T_SIZE.odds; z = r < O[0] ? 0 : r < O[0] + O[1] ? 1 : r < O[0] + O[1] + O[2] ? 2 : 3; }
+  }
+  return l._size = z;
+}
+// What kind of country an island is, for what its heights and its hollows are called and made of.
+function isleNature(l) {
+  const hk = l.hunt ? l.hunt.kind : '', mk = l.mine ? l.mine.kind : '', cl = climateOf(l);
+  return mk === 'ice' || hk === 'tundra' || cl === 'cold' ? 'cold' : hk === 'lavafield' || mk === 'lava' || mk === 'obsidian' ? 'fire' : hk === 'dunes' || hk === 'steppe' || hk === 'saltflat' ? 'dry' : hk === 'reeds' || hk === 'mangrove' || hk === 'bamboo' || cl === 'wet' ? 'wet' : l.range >= 5 ? 'odd' : 'green';
+}
+const HID = { // the words for hidden places: adjectives by level, nouns by nature and kind, lines that hint and never list
+  adj: { up: ['high', 'upper', 'far', 'hidden', 'old', 'lost', 'lonely', 'top', 'back', 'quiet', 'forgotten', 'last'], down: ['deep', 'black', 'inner', 'lower', 'drowned', 'old', 'lost', 'hidden', 'cold', 'blind', 'silent', 'forgotten'] },
+  level: { up: { green: 'the heights', cold: 'the high ice', fire: 'the rim', dry: 'the ridge', wet: 'the high ground', odd: 'the upper island' }, down: { green: 'the hollows', cold: 'the ice caves', fire: 'the tubes', dry: 'the hollows', wet: 'the sinks', odd: 'the under-island' } },
+  up: {
+    spot: { green: ['lake', ['tarn', 'loch', 'corrie pool', 'hill pond']], cold: ['ice', ['melt pool', 'ice lochan', 'blue tarn']], fire: ['hotspring', ['crater pool', 'steaming pool', 'hot tarn']], dry: ['pond', ['dew pond', 'cistern', 'rain tank']], wet: ['river', ['falls pool', 'upper reach', 'cloud stream']], odd: ['lake', ['pool', 'upper water', 'still glass']] },
+    hunt: { green: ['moor', 'tops', 'pasture', 'heath', 'fell'], cold: ['snowfield', 'scree', 'corrie'], fire: ['cinder slope', 'ash field', 'burnt ridge'], dry: ['ridge', 'plateau', 'mesa'], wet: ['cloud forest', 'ridge wood', 'canopy'], odd: ['roof', 'loft', 'crown'] },
+    mine: { green: ['quarry', 'cut', 'delf', 'scrape'], cold: ['ice quarry', 'cut'], fire: ['sulphur cut', 'vent workings'], dry: ['borrow pit', 'quarry', 'cut'], wet: ['clay pit', 'red cut'], odd: ['quarry', 'cut', 'working'] },
+  },
+  down: {
+    spot: { green: ['cave', ['sump', 'pool', 'lake', 'well']], cold: ['cave', ['melt lake', 'pool under the ice', 'sump']], fire: ['hotspring', ['hot pool', 'boiling well', 'warm lake']], dry: ['cave', ['cistern', 'well', 'pool']], wet: ['cave', ['sink', 'sump', 'pool']], odd: ['cave', ['pool', 'cistern', 'water', 'well']] },
+    hunt: { green: ['cave', 'hall', 'vault', 'chamber', 'hollow'], cold: ['ice hall', 'crevasse', 'blue vault'], fire: ['lava tube', 'vent hall', 'ember cave'], dry: ['cave', 'hall', 'chamber'], wet: ['cave', 'dripping hall', 'root cave'], odd: ['hall', 'vault', 'gallery', 'chamber'] },
+    mine: { green: ['workings', 'level', 'drift', 'lode', 'stope'], cold: ['ice level', 'workings'], fire: ['fire seam', 'workings', 'drift'], dry: ['workings', 'level', 'drift'], wet: ['workings', 'drowned level', 'drift'], odd: ['workings', 'level', 'seam', 'lode'] },
+  },
+  line: {
+    up: { spot: ['Still water nobody has put a line in for years.', 'Cold and clear to the bottom, and the bottom is a long way down.', 'Nothing is thrown back here because nothing is taken. What grows old grows large.', 'A water the village does not fish. They will not say why.'],
+          hunt: ['a cairn where the path gives out', 'two stones and the wind', 'a gap in an old wall nobody mends', 'a post with a rag on it'],
+          mine: ['a face cut in steps, open to the sky', 'an old cut the turf is taking back', 'benches of stone and a rusted crane'] },
+    down: { spot: ['Black water that has never seen the sun. Something pale turns in it.', 'It does not ripple unless something makes it.', 'The lamp shows the first yard of it. The rest you fish by feel.', 'Older than the mine that found it.'],
+            hunt: ['a squeeze between two pillars', 'a low arch you go through bent double', 'where the roof lifts and the dark opens out'],
+            mine: ['a timbered way older than the village', 'a level the last men walled up, and somebody has opened', 'old props and a rail gone to rust'] },
+  },
+};
+// The hidden places of an island: null for a small one. Each: { id (u0.. the heights, d0.. the hollows), lv, kind (spot, hunt, mine), name,
+// line, and for a spot its water (wkind) and its fish, for a mine where it starts and how deep it goes }.
+function islePlaces(l) {
+  if (l._hid !== undefined) return l._hid; const z = isleSize(l); if (!z) return l._hid = null;
+  const R = n => strHash(l.id + '|hid|' + n) / 4294967296, pick = (a, n) => a[Math.floor(R(n) * a.length) % a.length], nat = isleNature(l), [lo, hi] = T_SIZE.hidden[z], n = lo + Math.floor(R(1) * (hi - lo + 1));
+  const lean = nat === 'cold' || nat === 'green' ? 0.6 : nat === 'fire' || nat === 'odd' ? 0.5 : 0.45, upFirst = R(2) < lean; let nUp, nDn;
+  if (z === 1) { nUp = upFirst ? n : 0; nDn = n - nUp; } else { nUp = Math.min(3, upFirst ? Math.ceil(n / 2) : Math.floor(n / 2)); nDn = Math.min(3, n - nUp); }
+  if (l.scene && l.scene.weather === 'cave') { nDn = Math.min(3, nUp + nDn); nUp = 0; } // an island that is a cavern has nothing above it
+  const orderUp = R(3) < 0.5 ? ['hunt', 'spot', 'mine'] : R(3) < 0.8 ? ['spot', 'hunt', 'mine'] : ['mine', 'hunt', 'spot'], orderDn = R(4) < 0.45 ? ['spot', 'mine', 'hunt'] : R(4) < 0.8 ? ['mine', 'spot', 'hunt'] : ['hunt', 'spot', 'mine'];
+  const used = {}, mk = (lv, kind, i) => { const W = HID[lv][kind][nat] || HID[lv][kind].green, nouns = kind === 'spot' ? W[1] : W; let name, k = 0;
+    const twice = (a, n) => n.split(' ').some(w => w.replace(/s$/, '') === a || w.slice(0, 3) === a.slice(0, 3)); let aj, nn;
+    do { aj = pick(HID.adj[lv], 10 + i * 7 + k); nn = pick(nouns, 20 + i * 5 + k); name = 'the ' + aj + ' ' + nn; k++; } while ((used[name] || twice(aj, nn)) && k < 12); used[name] = 1; // never the same word twice (the top tops)
+    const P = { id: (lv === 'up' ? 'u' : 'd') + i, lv, kind, name, line: pick(HID.line[lv][kind], 30 + i * 3) };
+    if (kind === 'spot') { P.wkind = W[0]; P.fish = {}; for (const sp of SPECIES) if (!sp.kind && !sp.legend && sp.loc[l.id]) P.fish[sp.id] = 1; } // every fish of the island, at its own weight (pool() more than doubles the rare while the water is fresh)
+    if (kind === 'mine') { if (lv === 'up') { P.start = 1; P.max = T_SIZE.quarry.max; P.quarry = true; } else { P.start = T_SIZE.deep[Math.floor(R(40 + i) * T_SIZE.deep.length) % T_SIZE.deep.length]; P.max = T_MINE.maxLevel; } }
+    return P; };
+  const kinds = (order, k) => order.filter(x => x !== 'mine' || l.mine).filter(x => x !== 'hunt' || l.hunt).slice(0, k);
+  const up = kinds(orderUp, nUp).map((k, i) => mk('up', k, i)), down = kinds(orderDn, nDn).map((k, i) => mk('down', k, i));
+  return l._hid = { size: z, nat, up, down, upName: HID.level.up[nat], downName: HID.level.down[nat], all: up.concat(down) };
+}
+const isUnder = (l, lv) => lv === 'down' || (!!lv && !!(l.scene && l.scene.weather === 'cave')); // no sky over it
+const placeOf = (l, id) => { const H = islePlaces(l); return (H && id && H.all.find(p => p.id === id)) || null; };
+// a hidden fishing spot, as a spot: what the rest of the game reads (id, kind, name, known, fish), found or not
+function hiddenSpots(l) { if (l._hsp !== undefined) return l._hsp; const H = islePlaces(l); return l._hsp = H ? H.all.filter(p => p.kind === 'spot').map(p => ({ id: p.id, kind: p.wkind, name: cap1(p.name), known: p.line, fish: p.fish, hidden: p.lv })) : []; }
+const hidN = l => { const F = foundAt(l), Hd = islePlaces(l); return Hd ? Hd.all.filter(p => F[p.id]).length : 0; }; // how many of an island's hidden places you have found
+// A hidden water is small and nobody fishes it: fresh, its rare fish come more than twice as often; every fish landed there fishes it down a
+// little (S.fished, kept like overhunting), and fished down it is an ordinary water until it has rested.
+const waterKey = (locId, spotId) => locId + '/' + spotId;
+const waterPress = key => { const h = S.fished && S.fished[key]; return h ? Math.max(0, h.n - (now() - h.t) / T_SIZE.water.recoverMs) : 0; };
+const waterFresh = (locId, spotId) => clamp(1 - waterPress(waterKey(locId, spotId)) / T_SIZE.water.out, 0, 1); // 1 untouched, 0 fished down
+const waterSay = (locId, spotId) => { const pr = waterPress(waterKey(locId, spotId)), fr = clamp(1 - pr / T_SIZE.water.out, 0, 1), mins = Math.ceil(pr * T_SIZE.water.recoverMs / 60000); return fr >= 1 ? 'Untouched.' : fr > 0.3 ? `Being fished down · rested in ${mins} min.` : fr > 0 ? `Nearly fished down · rested in ${mins} min.` : `Fished down · rested in ${mins} min.`; };
+const spotsAll = l => (l.spots || []).concat(hiddenSpots(l)); // every place to fish on the island, the hidden ones last
+const foundAt = l => (S.found && S.found[l.id]) || {};
+const levelName = (l, lv) => { const H = islePlaces(l); return H ? (lv === 'up' ? H.upName : H.downName) : ''; };
+const cap1 = s => s ? s[0].toUpperCase() + s.slice(1) : s;
 // ---------- fishing ----------
 const STRAYS = {}; // per island: the set of species that can stray in, computed once
 function straysTo(locId) {
@@ -10637,7 +10746,7 @@ function pool(locId, rig, baitId, t, spotId) {
   if (LOC[locId].noFish) return [];
   const ph = phaseAt(t), wx = weatherAt(t, locId), bt = BAITS[baitId].tier, out = [], sp = spotOf(locId, spotId === undefined ? S.spot : spotId);
   if (sp.boat && S.boat === 'none') return []; // open water: you need something that floats
-  const strays = rig === 'set' ? null : straysTo(locId), far = [], off = sp.boat && !S.prologue ? T.offshore : null, offLuck = off ? offshoreLuck() : 0, visit = off ? offVisitors(locId) : null;
+  const strays = rig === 'set' ? null : straysTo(locId), far = [], off = sp.boat && !S.prologue ? T.offshore : null, fresh = sp.hidden ? waterFresh(locId, sp.id) : 0, offLuck = (off ? offshoreLuck() : 0) + fresh * T_SIZE.water.luck, visit = off ? offVisitors(locId) : null;
   for (const s of SPECIES) {
     let mult = sp.fish[s.id] || (visit && visit[s.id]), stray = false; // a spot's own roster: overlapping, but each spot has fish the others lack
     if (!mult) { if (!strays || !strays.has(s)) continue; stray = true; } // ...or a stray, far from its own waters
@@ -10674,6 +10783,11 @@ function pool(locId, rig, baitId, t, spotId) {
     if (C > 0 && R > 0 && R / (R + C) < want) { const k = R * (1 - want) / (want * C); for (const x of com) x[1] *= k; }
     const T1 = sum(fishy); if (T1 > 0) for (const x of fishy) x[1] *= T0 / T1;
   }
+  if (sp.hidden) { // a hidden water: fresh, the rarer fish more than doubled against the common, whatever the bait has made of the pool; fished down, they are the ones that are gone; its total stays what it was
+    const fishy = out.filter(x => !x[0].kind && !x[0].legend), sum = a => a.reduce((n, x) => n + x[1], 0), T0 = sum(fishy), RK = T_SIZE.rank.spot, SPT = T_SIZE.water.spent;
+    for (const x of fishy) { const r = RARITY_RANK[rarityOf(x[0])] || 0; x[1] *= SPT[r] + (RK[r] - SPT[r]) * fresh; }
+    const T1 = sum(fishy); if (T1 > 0) for (const x of fishy) x[1] *= T0 / T1;
+  }
   if (far.length) { // far-from-home fish share a fixed sliver of the pool between them, however many islands feed it
     const R = out.reduce((a, x) => a + x[1], 0), SW = far.reduce((a, x) => a + x[1], 0), k = STRAY.share * R / SW;
     for (const x of far) { x[1] *= k; out.push(x); }
@@ -10694,6 +10808,7 @@ function rollCatch(locId, rig, baitId, t, waitMs) {
   let f = rig === 'set' ? Math.min(0.8, Math.pow(Math.random(), skew)) : Math.pow(Math.random(), skew); // a quick set-line hook never reaches trophy size...
   const bs = BAITS[baitId].size || 0; if (bs && !s.kind) f = Math.min(rig === 'set' ? 0.8 : 1, Math.pow(f, 1 / (1 + bs))); // bigger bait, bigger fish
   const offS = offshore(locId); if (offS && !s.kind) f = Math.min(rig === 'set' ? 0.8 : 1, Math.pow(f, 1 / T.offshore.tall)); // deep water grows them a little bigger
+  { const hsp = spotOf(locId, S.spot), hf = hsp.hidden && !s.kind ? waterFresh(locId, hsp.id) : 0; if (hf > 0) f = Math.min(rig === 'set' ? 0.8 : 1, Math.pow(f, 1 / (1 + T_SIZE.water.tall * hf))); } // and so does a water nobody fishes, while it is fresh
   const soak = soakBonus(rig, waitMs || 0, baitId); if (soak > 0) f = Math.min(1, f + (1 - f) * soak * 0.95); // ...but the longer it soaks, the bigger what takes it
   let v = null; // the variant, if any
   if (!s.kind && !s.legend && !S.prologue) {
@@ -10709,7 +10824,7 @@ function rollCatch(locId, rig, baitId, t, waitMs) {
   const kg = s.kind ? 0 : kgOf(s, cm, rnd(-0.08, 0.08));
   const mult = v && !s.mutant ? VARIANTS[v].mult : 1;
   const bw = s.kind ? 1 : (BAITS[baitId].worth || 1); // a fish taken on better bait sells for more
-  return { id: s.id, cm, kg, value: Math.round(valueOf(s, f, trophy, rnd(-T_VALUE.jit, T_VALUE.jit)) * mult * bw), trophy, v, stray, capped, off: offS || undefined, wx: weatherAt(t, locId) };
+  return { id: s.id, cm, kg, value: Math.round(valueOf(s, f, trophy, rnd(-T_VALUE.jit, T_VALUE.jit)) * mult * bw), trophy, v, stray, capped, off: offS || undefined, hid: spotOf(locId, S.spot).hidden ? 1 : undefined, wx: weatherAt(t, locId) };
 }
 // The rod bites within a few seconds. A passive line soaks: a small chance every second, so the wait is exponential (memoryless), sampled
 // once at cast time so it survives closing the game. Nothing waits longer than soakCap means.
@@ -10758,6 +10873,7 @@ function land(i) {
     if (c.v) { ix.v = ix.v || {}; ix.v[c.v] = (ix.v[c.v] || 0) + 1; }
     if (c.stray) p.tags.push('Far from home');
     if (c.off) p.tags.push('Offshore');
+    if (c.hid) { p.tags.push('Hidden water'); if (spot().hidden) { const wk = waterKey(S.loc, S.spot); S.fished = S.fished || {}; S.fished[wk] = { n: waterPress(wk) + 1, t: now() }; } } // one more out of a small water
     if (c.capped) p.tags.push('Line held');
     if (s.weather) p.tags.push(WEATHER[p.wx].name + ' fish'); // it only shows under this sky
     if (s.legend) { p.tags.push('Legend'); onceHold(c.id); } // in hand from the moment it is landed
@@ -11084,6 +11200,7 @@ function waterText(t) {
   const wx = weatherAt(t, S.loc), skyfish = p.some(x => x[0].weather || (x[0].likes && x[0].likes[wx])); // something that minds this sky is in now
   const skyLine = { clear: 'the bright brings something up to look.', overcast: 'under the grey, something that shuns the sun.', rain: 'the rain has brought something down to the sea.', fog: 'something has come in close under the fog.', storm: 'the storm has brought something up from the deep.', snow: 'something moves under the falling snow.' }[wx];
   const mood = { dawn: ['the water is waking.', 'mist on the surface, and rings under it.', 'the first shapes are moving.'], day: ['small things flicker near the surface.', 'bright and still. Something watches the float.', 'the light goes a long way down today.'], dusk: ['the surface goes glassy. Shadows come up.', 'the last light, and the water changes hands.', 'something turns over, far out.'], night: ['dark, and something stirs in it.', 'you cannot see the float. Something can.', 'the water breathes slower at night.'] }[lastPhase];
+  if (spot().hidden && h % 2 === 0) { const fr = waterFresh(S.loc, S.spot); return fr > 0.75 ? 'nobody fishes this water, and it shows.' : fr > 0.3 ? 'this water is being fished down.' : fr > 0 ? 'nearly fished down. It will want resting.' : 'fished down: an ordinary water until it has rested.'; }
   const line = h % 3 === 0 && skyfish ? skyLine : h % 7 === 3 && legend ? 'something old is awake tonight.' : h % 5 === 1 && big > 0.2 ? 'something heavy moves below.' : h % 4 === 2 && rare ? 'a flash of colour, then nothing.' : h % 6 === 5 && stray ? 'a shape that does not belong here.' : mood[h % mood.length];
   return line;
 }
@@ -11161,7 +11278,7 @@ function renderExtra() {
   if (loc().sell) h += `<button class="tool sell" data-act="sell" ${cnt ? '' : 'disabled'}><span class="n">MARKET</span><span class="v">${cnt ? 'Sell haul ' + money(total) : 'Nothing to sell'}</span></button>`;
   h += '</div>';
   const os = offSpot(loc()); // offshore fishing: out on your own boat, or back in
-  if (os && S.boat !== 'none' && !S.prologue) { const out = spot().boat, to = out ? shoreSpot(loc()) : os; h = `<button class="tool sea ${out ? 'out' : ''}" data-act="spot" data-k="${to.id}"><span class="n">${out ? 'OFFSHORE · ' + boatName().toUpperCase() : 'YOUR ' + boatName().toUpperCase()}</span><span class="v">${out ? 'Back to shore' : 'Go offshore'}<small>${out ? 'slower bites · rarer fish' : 'slower bites, rarer fish'}</small></span></button>` + h; }
+  if (os && S.boat !== 'none' && !S.prologue && !spot().hidden) { const out = spot().boat, to = out ? shoreSpot(loc()) : os; h = `<button class="tool sea ${out ? 'out' : ''}" data-act="spot" data-k="${to.id}"><span class="n">${out ? 'OFFSHORE · ' + boatName().toUpperCase() : 'YOUR ' + boatName().toUpperCase()}</span><span class="v">${out ? 'Back to shore' : 'Go offshore'}<small>${out ? 'slower bites · rarer fish' : 'slower bites, rarer fish'}</small></span></button>` + h; }
   $('#extra').innerHTML = h;
 }
 
@@ -11201,7 +11318,7 @@ function renderSheet() {
         : st === 'known' ? (l.range > R ? 'Rumored. Needs ' + anA(need ? need.name.toLowerCase() : 'bigger boat') + '.' : far ? `Rumored, ${dayTxt}. Too far for your ${boat.name.toLowerCase()}.` : 'Rumored: ' + l.rumor) : (far ? `${dayTxt}: too far for your ${boat.name.toLowerCase()}. ` : '') + l.blurb;
       const ups = st === 'visited' ? shopUpgrades(l) : 0; // what its shop holds that would better what you carry now
       const out = l.range > R || far; // not to be sailed to from here with this boat: an island you have landed on keeps its name and its flag at full strength all the same
-      return { range: l.range, html: `<button class="row st-${st} ${l.id === mapSel ? 'sel' : ''} ${st !== 'visited' && (st === 'fog' || out) ? 'dim' : ''} ${st === 'visited' && out ? 'far' : ''}" data-act="node" data-k="${l.id}"><span class="mk ${st}"></span><div class="name"><span class="nm">${name}</span> <span class="ttag">tier ${l.range}</span>${st === 'visited' ? '<span class="vtag visited">visited</span>' : st === 'known' ? '<span class="vtag not">not visited</span>' : ''}${st === 'visited' ? (l.shop ? '<span class="mtag shop">shop</span>' : l.sell ? '<span class="mtag sell">traders only · no shop</span>' : '<span class="mtag none">no market</span>') : ''}${st === 'visited' && ups ? `<span class="mtag up">▲ ${ups} upgrade${ups > 1 ? 's' : ''} for you</span>` : ''}<small>${sub}</small></div>${l.id === S.loc ? '<div class="here">you are here</div>' : ''}</button>` };
+      return { range: l.range, html: `<button class="row st-${st} ${l.id === mapSel ? 'sel' : ''} ${st !== 'visited' && (st === 'fog' || out) ? 'dim' : ''} ${st === 'visited' && out ? 'far' : ''}" data-act="node" data-k="${l.id}"><span class="mk ${st}"></span><div class="name"><span class="nm">${name}</span> <span class="ttag">tier ${l.range}</span>${l.id !== 'stars' && !l.noFish && isleSize(l) ? `<span class="ttag sz">${SIZE_NAME[isleSize(l)]} island</span>` : ''}${st === 'visited' ? '<span class="vtag visited">visited</span>' : st === 'known' ? '<span class="vtag not">not visited</span>' : ''}${st === 'visited' ? (l.shop ? '<span class="mtag shop">shop</span>' : l.sell ? '<span class="mtag sell">traders only · no shop</span>' : '<span class="mtag none">no market</span>') : ''}${st === 'visited' && ups ? `<span class="mtag up">▲ ${ups} upgrade${ups > 1 ? 's' : ''} for you</span>` : ''}${st === 'visited' && hidN(l) ? `<span class="mtag hid">◆ ${hidN(l)} hidden place${hidN(l) > 1 ? 's' : ''} found</span>` : ''}<small>${sub}</small></div>${l.id === S.loc ? '<div class="here">you are here</div>' : ''}</button>` };
     }).reduce((acc, row) => { // the legend is grouped by tier, each group headed by the boat that reaches it
       if (row.range !== acc.last) { const b = BOATS.find(x => x.range === row.range); acc.out.push(`<div class="tierhead">Tier ${row.range}${row.range === 0 ? ' · where you washed up' : b ? ' · ' + (row.range <= R ? 'your boat reaches it' : 'needs ' + anA(b.name.toLowerCase())) : ''}</div>`); acc.last = row.range; }
       acc.out.push(row.html); return acc; }, { out: [], last: -1 }).out.join('');
@@ -11261,8 +11378,9 @@ function renderSheet() {
   } else if (sheetKind === 'spots') {
     const l = loc();
     const shut = spotClosed(l);
-    const rows = l.spots.map(sp => { const locked = sp.boat && S.boat === 'none', cl = shut && shut.spot.id === sp.id && sp.id !== S.spot ? shut : null; return `<button class="row ${sp.id === S.spot ? 'sel' : ''} ${locked || cl ? 'dim' : ''}" data-act="spot" data-k="${sp.id}"><div class="name">${sp.name}${cl ? ' <span class="shuttag">CLOSED</span>' : ''}<small><b class="kind">${(KIND_NAME[sp.kind] || 'Shore').toUpperCase()}${sp.boat ? ' · FROM THE BOAT' : ''}</b> · ${cl ? `<span class="shutsay">${closedSay(cl)}</span> ` : ''}${locked ? 'Needs a boat. ' : ''}${sp.known}${sp.boat ? ' <i class="offnote">Slower bites, rarer and bigger fish.</i>' : ''}</small></div>${sp.id === S.spot ? '<div class="here">fishing here</div>' : ''}</button>`; }).join('');
-    el.innerHTML = `<div class="head"><h2>Spots · ${l.name}</h2><button class="x" data-act="close">✕</button></div><div class="note">${l.spots.length} places to fish here. Offshore is fished from your own boat: every line waits longer out there, and rare fish come far more often. Moving pulls in your lines.</div><div class="legend">${rows}</div>`;
+    const Fd = foundAt(l), hid = hiddenSpots(l).filter(sp => Fd[sp.id]); // the hidden waters you have found: one tap away from then on
+    const rows = l.spots.concat(hid).map(sp => { const locked = sp.boat && S.boat === 'none', cl = sp.id === S.spot ? null : sp.hidden ? closedAt(l, 'spot', sp.id) : shut && shut.spot.id === sp.id ? shut : null; return `<button class="row ${sp.id === S.spot ? 'sel' : ''} ${locked || cl ? 'dim' : ''}" data-act="spot" data-k="${sp.id}"><div class="name">${sp.name}${sp.hidden ? ' <span class="hidtag">HIDDEN</span>' : ''}${cl ? ' <span class="shuttag">CLOSED</span>' : ''}<small><b class="kind">${(KIND_NAME[sp.kind] || 'Shore').toUpperCase()}${sp.boat ? ' · FROM THE BOAT' : ''}${sp.hidden ? ' · ' + levelName(l, sp.hidden).toUpperCase() : ''}</b>${sp.hidden ? ` · <span class="${waterFresh(l.id, sp.id) > 0.3 ? 'freshw' : 'shutsay'}">${waterSay(l.id, sp.id)}</span>` : ''} · ${cl ? `<span class="shutsay">${closedSay(cl)}</span> ` : ''}${locked ? 'Needs a boat. ' : ''}${sp.known}${sp.boat ? ' <i class="offnote">Slower bites, rarer and bigger fish.</i>' : ''}</small></div>${sp.id === S.spot ? '<div class="here">fishing here</div>' : ''}</button>`; }).join('');
+    el.innerHTML = `<div class="head"><h2>Spots · ${l.name}</h2><button class="x" data-act="close">✕</button></div><div class="note">${l.spots.length + hid.length} places to fish here${hid.length ? `, ${hid.length} of them hidden` : ''}. Offshore is fished from your own boat: every line waits longer out there, and rare fish come far more often. Moving pulls in your lines.</div><div class="legend">${rows}</div>`;
   } else if (sheetKind === 'index') {
     // Thousands of entries: one record at a time (fish, game, minerals), filtered (this island, caught, everything), a screenful at
     // a time. Rows and their sprites are only built as the list is scrolled (indexMore), so the sheet opens at once.
@@ -12012,7 +12130,7 @@ function showCatch() {
   const rarLine = rar ? `<div class="rar"><span class="badge" style="color:${RARITY[rar].col}">${RARITY[rar].name.toUpperCase()}</span>${V ? `<span class="badge" style="color:${V.col}">${V.name.toUpperCase()}${s.mutant ? '' : V.mult < 1 ? ' · HALF WORTH' : ' · ×' + V.mult + ' WORTH'}</span>` : ''}</div>` : '';
   $('#card').className = 'card catch';
   $('#card').innerHTML = `<div class="head" ${headCol}>${head}</div>
-    ${pills.length ? `<div class="pills">${pills.map(t => `<div class="pill ${t === 'Trophy size' || t === 'Legend' || t === 'Wanted' ? 'gold' : t === 'Far from home' ? 'far' : t === 'Offshore' ? 'off' : ''}">${t.toUpperCase()}</div>`).join('')}</div>` : ''}
+    ${pills.length ? `<div class="pills">${pills.map(t => `<div class="pill ${t === 'Trophy size' || t === 'Legend' || t === 'Wanted' ? 'gold' : t === 'Far from home' ? 'far' : t === 'Offshore' ? 'off' : t === 'Hidden water' ? 'hid' : ''}">${t.toUpperCase()}</div>`).join('')}</div>` : ''}
     <canvas class="art" id="ccv" width="192" height="96"></canvas>
     <div class="fish">${V ? `<span style="color:${V.col}">${V.name}</span> ` : ''}${s.name}</div>
     ${rarLine}
@@ -15996,9 +16114,10 @@ function drawRodStand(sx, gy, L, on, t) {
 }
 
 function drawGame(t) {
-  const h = hourAt(t), nt = drawSkyBase(h, t, { l: loc() }); sceneWeather(loc(), t, nt);
-  const sp0 = spot(), onWater = sp0.kind === 'open', vw = onWater ? 1 : spotView(loc(), sp0); // where the eye turns at this spot: inland up a river, out toward open water
-  drawLandscape(loc(), 3 * W + Math.min(0, vw) * W, SURF, t, nt, { off: onWater ? true : Math.max(0, vw) }); // the island behind the shore, from where this spot looks at it
+  const sp0 = spot(), under = !!sp0.hidden && isUnder(loc(), sp0.hidden), h = under ? 1 : hourAt(t), onWater = sp0.kind === 'open', vw = onWater ? 1 : spotView(loc(), sp0); let nt; // where the eye turns at this spot: inland up a river, out toward open water
+  if (under) { nt = T_SIZE.gloom; drawHollow(loc(), t, SURF); } // a water under the island: no sky, no weather, the cavern's own wall behind it
+  else { nt = drawSkyBase(h, t, { l: loc() }); sceneWeather(loc(), t, nt);
+    drawLandscape(loc(), 3 * W + Math.min(0, vw) * W, SURF, t, nt, { off: onWater ? true : Math.max(0, vw), dy: sp0.hidden ? upDrop() : 0 }); } // the island behind the shore, from where this spot looks at it (from a water on its heights it stands lower)
   const tint = S.loc === 'trench' ? 'rgba(0,0,12,0.32)' : S.loc === 'fjord' ? 'rgba(120,180,220,0.1)' : (loc().scene && loc().scene.tint) || null;
   drawSeaBase(h, t, nt, S.loc === 'sea' ? { tint } : { tint, water: spotWater(sp0), tint2: onWater ? null : spotSprite(loc(), sp0).tint }); // the island's own water, then this spot's (open water has its own long swell)
   drawFish(t);
@@ -16033,7 +16152,7 @@ function drawGame(t) {
     }
     if (on) { const yy = (SURF - 16 - Math.abs(Math.sin(t / 150)) * 3) | 0; g.fillStyle = '#2a1e14'; g.fillRect(bx - 2, yy - 1, 4, 10); g.fillStyle = '#f0c050'; g.fillRect(bx - 1, yy, 2, 6); g.fillRect(bx - 1, yy + 7, 2, 2); }
   });
-  sceneFx(loc(), t, nt); drawWeatherFx(loc(), t, nt);
+  if (under) drawLampHole(spot_[0] + 8, spot_[1] - 8, t, 1.25); else { sceneFx(loc(), t, nt); drawWeatherFx(loc(), t, nt); }
   g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, 0, W, 1);
 }
 
@@ -16062,7 +16181,7 @@ function closedAt(l, kind, key, t) {
   const Y = CLOSE_WHY[kind], w = Y[hash32(seed * 3 + slot * 104729) % Y.length];
   return { kind, why: w[0], more: w[1], until: (slot + 1) * C.ms, mins: Math.max(1, Math.ceil(((slot + 1) * C.ms - tt) / 60000)), slot };
 }
-const mineClosed = l => (l.mine && !(S.mine && S.mine.loc === l.id)) ? closedAt(l, 'mine') : null; // a descent already begun is not shut out of its own mine
+const mineClosed = l => (l.mine && !(S.mine && S.mine.loc === l.id && !S.mine.place)) ? closedAt(l, 'mine') : null; // a descent already begun is not shut out of its own mine
 const huntClosed = l => l.hunt ? closedAt(l, 'hunt') : null;
 function spotClosed(l, id) { // the one spot of this island that is fouled now, if any: never its first, never offshore
   const c = closedAt(l, 'spot'); if (!c) return null; const cands = l.spots.filter((sp, i) => i > 0 && !sp.boat); if (!cands.length) return null;
@@ -16081,22 +16200,53 @@ function closedTell(l) {
 // without one). The fishing shore is the normal scene, so walking left from your seat takes you through the village to
 // the gate, and past it to the mine. Camera follows the fisherman.
 let ISL = null;
-const isleScreens = l => l.noFish ? 1 : l.mine ? 3 : 2; // screens of land to the left of the shore
+const isleBack = l => !l.noFish && !!islePlaces(l); // a larger island has a back to it: one more screen on the far left, with the way up, the way down, or both
+const isleScreens = l => l.noFish ? 1 : (l.mine ? 3 : 2) + (isleBack(l) ? 1 : 0); // screens of land to the left of the shore
+const backX = (l, lv) => { const Hd = islePlaces(l), both = Hd.up.length && Hd.down.length; return Math.round(W * (lv === 'up' ? (both ? 0.32 : 0.4) : (both ? 0.76 : 0.58))); }; // where the ladder up and the hole down stand on that screen
+// A level (the heights, the hollows) is a short strip of its own: a screen to each hidden place, the nearest first, and the ladder's landing at the right end.
+function lvGeo(l, lv) { const Hd = islePlaces(l), ps = lv === 'up' ? Hd.up : Hd.down, land = Math.round(T_SIZE.land * W), LW = ps.length * W + land; return { ps, land, LW, ladder: lv === 'up' ? LW - 17 : LW - Math.round(land * 0.42), xs: ps.map((p, i) => LW - land - Math.round((i + 0.5) * W)) }; } // on the heights the ladder stands over the edge he climbed; in the hollows it comes down out of the roof
+const placeClosed = (l, p) => p.kind === 'spot' ? (S.spot === p.id ? null : closedAt(l, 'spot', p.id)) : p.kind === 'hunt' ? closedAt(l, 'hunt', p.id) : (S.mine && S.mine.loc === l.id && S.mine.place === p.id ? null : closedAt(l, 'mine', p.id)); // a hidden place can be shut like any other; never the water you are fishing or the working you are down
+function lvSpots(l, lv) {
+  const G = lvGeo(l, lv), F = foundAt(l), out = [];
+  G.ps.forEach((p, i) => { if (!F[p.id]) return; const c = placeClosed(l, p), nm = cap1(p.name), dn = S.mine && S.mine.loc === l.id && S.mine.place === p.id; // nothing to press until it is found
+    out.push({ id: 'p:' + p.id, place: p, x: G.xs[i] + (typeof placeDX === 'function' ? placeDX(l, p) : 0), label: c ? 'Closed' : p.kind === 'spot' ? 'Fish ' + p.name : p.kind === 'hunt' ? 'Into ' + p.name : dn ? `Back down (level ${S.mine.level})` : (p.quarry ? 'Into ' : 'Down ') + p.name, hint: c ? `${nm}: closed. ${closedSay(c)}` : p.kind === 'spot' ? p.line : nm + ': ' + p.line + '.', closed: c }); });
+  out.push({ id: 'back', x: G.ladder, label: lv === 'up' ? 'Down the ladder' : 'Up the ladder', hint: 'The way back to the island.' });
+  return out;
+}
+const curSpots = l => ISL && ISL.lv ? lvSpots(l, ISL.lv) : isleSpots(l); // what can be pressed where he is: on the island's strip or on one of its levels
 function isleSpots(l) { if (l.noFish) return [{ id: 'shop', x: W + 0.5 * W + 14, label: 'Into the spaceport', hint: l.keeper ? l.keeper.name + ' runs the gantry.' : 'The spaceport.' }];
-  const o = l.mine ? W : 0, sp = [];
+  const b = isleBack(l) ? W : 0, o = b + (l.mine ? W : 0), sp = [];
   const mc = mineClosed(l), hc = huntClosed(l);
-  if (l.mine) sp.push({ id: 'mine', x: 0.5 * W, label: mc ? 'Closed' : S.mine && S.mine.loc === l.id ? `Back down (level ${S.mine.level})` : 'Down ' + (l.mine.name || 'the shaft'), hint: mc ? `${cap1(l.mine.name || 'the mine')}: closed. ${closedSay(mc)}` : l.mine.gate, closed: mc });
+  if (b) { const Hd = islePlaces(l), F = foundAt(l); // the back of the island: the way up, the way down
+    if (Hd.up.length) sp.push({ id: 'up', x: backX(l, 'up'), label: F.up ? 'Up to ' + Hd.upName : 'Up the ladder', hint: F.up ? `The way up to ${Hd.upName}.` : 'A ladder goes up. Nobody seems to use it.' });
+    if (Hd.down.length) sp.push({ id: 'down', x: backX(l, 'down'), label: F.down ? 'Down to ' + Hd.downName : 'Down the hole', hint: F.down ? `The way down to ${Hd.downName}.` : 'A hole in the ground, and a ladder down it.' }); }
+  if (l.mine) sp.push({ id: 'mine', x: b + 0.5 * W, label: mc ? 'Closed' : S.mine && S.mine.loc === l.id && !S.mine.place ? `Back down (level ${S.mine.level})` : 'Down ' + (l.mine.name || 'the shaft'), hint: mc ? `${cap1(l.mine.name || 'the mine')}: closed. ${closedSay(mc)}` : l.mine.gate, closed: mc });
   sp.push({ id: 'hunt', x: o + 0.5 * W, label: hc ? 'Closed' : 'Into ' + (l.hunt.name || 'the wild'), hint: hc ? `${cap1(l.hunt.name || 'the ground')}: closed. ${closedSay(hc)}` : l.hunt.gate, closed: hc },
     { id: 'shop', x: o + W + 0.5 * W + 14, label: l.shop ? 'Into the shop' : l.sell ? 'Sell to the traders' : 'The camp', hint: l.shop ? (l.keeper ? l.keeper.name + ' keeps the shop.' : 'The shop.') : l.sell ? (l.keeper ? l.keeper.name + ' buys the whole haul.' : 'They buy the whole haul.') : 'Your bucket and your bag.' },
     { id: 'fish', x: o + 2 * W + shoreW - 16, label: 'Fishing spots', hint: l.spots.length + ' places to fish. Pick one.' });
   return sp; }
 function enterIsland(at) {
-  const l = loc(); MODE = 'island'; $('#game').hidden = true; $('#hunt').hidden = true; $('#mine').hidden = true; $('#isle').hidden = false; layout();
-  const spots = isleSpots(l);
-  if (!ISL || ISL.loc !== l.id) ISL = { loc: l.id, px: spots[spots.length - 1].x, dir: -1, walk: 0, anim: 0 }; // the spaceport has only the one place to press
-  const sp = spots.find(s => s.id === at); if (sp) ISL.px = sp.x; ISL.dir = at === 'fish' ? -1 : 1; ISL.walk = 0;
-  $('#iName').textContent = locTitle(l); $('#iVibe').textContent = `${islandLabel(l)} · ${l.name}.${l.vibe ? ' ' + l.vibe : ''}`; renderIsle(); window.scrollTo(0, 0);
+  const l = loc(); MODE = 'island'; $('#game').hidden = true; $('#hunt').hidden = true; $('#mine').hidden = true; $('#isle').hidden = false; layout(); GRD = null;
+  const spots = isleSpots(l), P = at && at.slice(0, 2) === 'p:' ? placeOf(l, at.slice(2)) : null;
+  if (!ISL || ISL.loc !== l.id) ISL = { loc: l.id, px: spots[spots.length - 1].x, dir: -1, walk: 0, anim: 0, lv: '' }; // the spaceport has only the one place to press
+  if (P) { const G = lvGeo(l, P.lv); ISL.lv = P.lv; ISL.px = G.xs[G.ps.indexOf(P)] + (typeof placeDX === 'function' ? placeDX(l, P) : 0); ISL.dir = 1; ISL.walk = 0; lvFound(l, P.lv, P); } // back from a hidden place: on its own level, at its door
+  else { ISL.lv = ''; const sp = spots.find(s => s.id === at); if (sp) ISL.px = sp.x; ISL.dir = at === 'fish' ? -1 : 1; ISL.walk = 0; }
+  isleHead(); isleUI = ''; renderIsle(); window.scrollTo(0, 0);
 }
+// the strip's title and the line under it: the island's, or the level's
+function isleHead() { const l = loc(), lv = ISL && ISL.lv; $('#iName').textContent = locTitle(l); $('#iVibe').textContent = lv ? `${islandLabel(l)} · ${l.name} · ${cap1(levelName(l, lv))}. ${lv === 'up' ? 'High ground behind the island, where nobody has reason to go.' : 'Under the island. Your lamp shows the near wall and little else.'}` : `${islandLabel(l)} · ${l.name}.${l.vibe ? ' ' + l.vibe : ''}`; }
+// A level reached, a hidden place come upon: kept in S.found, told once.
+function lvFound(l, lv, P) { const F = S.found[l.id] = S.found[l.id] || {}; let ch = false; if (lv && !F[lv]) { F[lv] = 1; ch = true; } if (P && !F[P.id]) { F[P.id] = 1; ch = true; } if (ch) save(); return ch; }
+function enterLevel(lv, from) { // up or down a ladder: onto a level at its landing, or (lv '') back to the island where that ladder stands
+  const l = loc(); ISL.lv = lv; ISL.walk = 0;
+  if (lv) { ISL.px = lvGeo(l, lv).ladder; ISL.dir = -1; if (lvFound(l, lv)) setTimeout(() => toast(`${cap1(levelName(l, lv))}. ${lv === 'up' ? 'Nobody comes up here.' : 'Nobody comes down here.'}`), 350); }
+  else { ISL.px = backX(l, from); ISL.dir = 1; }
+  isleHead(); isleUI = ''; renderIsle();
+}
+// come within sight of a hidden place and it is found: its mark stands over it from then on, and a hidden water is in the Spots sheet
+function lvSee(l) { const G = lvGeo(l, ISL.lv); G.ps.forEach((p, i) => { if (Math.abs(G.xs[i] - ISL.px) < T_SIZE.sight && lvFound(l, null, p)) { toast(`Found: ${p.name}.`); isleUI = ''; } }); }
+// fish a hidden water: the same as moving to any other spot
+function goHidden(P) { let pulled = 0; if (S.spot !== P.id) { S.lines.forEach(L => { if (L && L.phase !== 'idle') { L.phase = 'idle'; L.c = null; pulled++; } }); S.spot = P.id; reseedFish(); save(); } enterFishing(); toast(`${cap1(P.name)}.` + (pulled ? ` Pulled in ${pulled} line${pulled > 1 ? 's' : ''}.` : '')); }
 // ---------- the first-island tutorial ----------
 // Runs once, on the first island reached after the shoal: EXIT glows, the strip walks you to the village, the shop (or the
 // traders) teaches TALK, selling and buying, then the strip walks you to the gate and the hunt teaches the stalk, then on
@@ -16142,6 +16292,11 @@ function enterFishing() { MODE = 'game'; $('#isle').hidden = true; $('#hunt').hi
 function startEntry(sp) {
   const l = loc(); let fn;
   if (sp.closed) { toast(sp.hint); return; } // shut for now: the hint says why and for how long
+  if (sp.id === 'up' || sp.id === 'down' || sp.id === 'back') { // a ladder: up it hand over hand, or down it out of sight; then the level, or the island again
+    const from = ISL.lv, to = sp.id === 'back' ? '' : sp.id, up = sp.id === 'up' || (sp.id === 'back' && from === 'down'), E = up ? { kind: 'climb', rise: sp.id === 'up' ? backSprite(l, W).rise : T_SIZE.climb } : { kind: 'down', sink: 34 };
+    ISL.walk = 0; ISL.auto = { kind: 'ladder', en: E, x0: sp.x, x: sp.x, t0: now(), arr: 0, after: up ? Math.max(500, E.rise * 1000 / T.climbSpeed) : T.entryMs * 0.8, fn: () => enterLevel(to, from), done: false }; renderIsle(); return; }
+  if (sp.place) { const P = sp.place; fn = P.kind === 'spot' ? () => goHidden(P) : P.kind === 'hunt' ? () => enterHunt(P.id) : () => enterMine(P.id);
+    ISL.walk = 0; ISL.auto = { kind: 'place', x0: sp.x - 20, x: sp.x, t0: now(), dur: T.entryMs, fn, done: false }; renderIsle(); return; }
   if (sp.id === 'hunt') fn = () => { if (tutAt('gate')) tutSet('hunt'); enterHunt(); };
   else if (sp.id === 'mine') fn = enterMine;
   else fn = () => { if (tutAt('village')) tutSet(l.keeper ? 'talk' : haulCount() ? 'sell' : 'gate'); openSheet(l.shop ? 'shop' : 'inv'); };
@@ -16151,7 +16306,7 @@ function startEntry(sp) {
     ISL.walk = 0; ISL.auto = { kind: 'hunt', en: E, x0, x, t0: now(), arr: 0, after: E.kind === 'climb' ? Math.max(500, (E.rise || 40) * 1000 / T.climbSpeed) : E.kind === 'down' ? T.entryMs * 0.8 : T.entryMs * 0.45, fn, done: false }; renderIsle(); return; }
   ISL.walk = 0; ISL.auto = { kind: sp.id, x0: sp.x - 20, x: sp.x, t0: now(), dur: T.entryMs, fn, done: false }; renderIsle();
 }
-function nearSpot() { if (!ISL) return null; const l = loc(); let best = null, bd = 18; for (const sp of isleSpots(l)) { const d = Math.abs(sp.x - ISL.px); if (d < bd) { bd = d; best = sp; } } return best; }
+function nearSpot() { if (!ISL) return null; const l = loc(); let best = null, bd = 18; for (const sp of curSpots(l)) { const d = Math.abs(sp.x - ISL.px); if (d < bd) { bd = d; best = sp; } } return best; }
 // The Map buttons glow from the moment the raft is built until the player has sailed somewhere: the first voyage is the one thing to do.
 const wantsBeacon = () => S.raft && !S.prologue && S.order.filter(id => id !== 'shoal').length === 0;
 function mapBeacon() { const on = wantsBeacon(); if (on) hudShow(); document.querySelectorAll('.tabs [data-k="map"]').forEach(b => b.classList.toggle('pulse', on)); }
@@ -16164,16 +16319,16 @@ function hudShow() { document.documentElement.classList.remove('hudfold'); } // 
 try { if (localStorage.getItem(HUD_KEY)) document.documentElement.classList.add('hudfold'); } catch (e) {}
 function renderIsle() {
   if (MODE !== 'island') return;
-  const sp = nearSpot(), l = loc(), tt = tutHere() ? tutStripText() : '', scr = Math.floor(ISL.px / W), nL = isleScreens(l), huntScr = nL - 2, villScr = nL - 1;
-  const hint = tt || (sp ? `<b>${sp.hint}</b>` : scr < huntScr ? `${cap1(l.mine.name || 'the shaft')} lies this way.` : scr === huntScr ? `${l.hunt.name ? cap1(l.hunt.name) : 'The wild'} lies this way.` : scr === villScr ? (l.shop ? 'The village. Walk up to the door.' : l.sell ? 'The traders\' camp.' : 'Your camp.') : 'The shore. Your lines are to the right.');
-  const key = [S.money, clockText(now()), sp ? sp.id + sp.label : '', hint, wantsBeacon()].join('|'); if (key === isleUI) return; isleUI = key; // nothing it shows has changed: leave the page alone (this runs on every frame of a walk)
+  const sp = nearSpot(), l = loc(), tt = tutHere() ? tutStripText() : '', scr = Math.floor(ISL.px / W), nL = isleScreens(l), huntScr = nL - 2, villScr = nL - 1, lv = ISL.lv, Hd = lv || isleBack(l) ? islePlaces(l) : null;
+  const hint = lv ? (sp ? `<b>${sp.hint}</b>` : lv === 'up' ? `${cap1(Hd.upName)}. The island lies below you.` : `${cap1(Hd.downName)}. It goes on into the dark.`) : tt || (sp ? `<b>${sp.hint}</b>` : Hd && scr < 1 ? 'The back of the island. Few come this far.' : scr < huntScr ? `${cap1(l.mine.name || 'the shaft')} lies this way.` : scr === huntScr ? `${l.hunt.name ? cap1(l.hunt.name) : 'The wild'} lies this way.` : scr === villScr ? (l.shop ? 'The village. Walk up to the door.' : l.sell ? 'The traders\' camp.' : 'Your camp.') : 'The shore. Your lines are to the right.');
+  const key = [S.money, clockText(now()), sp ? sp.id + sp.label : '', hint, wantsBeacon(), lv].join('|'); if (key === isleUI) return; isleUI = key; // nothing it shows has changed: leave the page alone (this runs on every frame of a walk)
   mapBeacon(); $('#iMoney').textContent = money(S.money); $('#iClock').textContent = clockText(now());
   const b = $('#iAct'); b.classList.toggle('ghost', !sp); b.classList.toggle('shut', !!(sp && sp.closed)); b.textContent = sp ? sp.label : '·'; b.dataset.k = sp ? sp.id : '';
   $('#iHint').classList.toggle('tut', !!tt); $('#iHint').innerHTML = hint;
 }
 let isleUI = '';
 function stepIsle(dt) {
-  if (!ISL) return; const l = loc(), nL = isleScreens(l), maxX = l.noFish ? 2 * W - 8 : nL * W + shoreW - 6, minX = l.noFish ? W + 8 : 8;
+  if (!ISL) return; const l = loc(), nL = isleScreens(l), LG = ISL.lv ? lvGeo(l, ISL.lv) : null, maxX = LG ? LG.LW - (ISL.lv === 'up' ? 15 : 8) : l.noFish ? 2 * W - 8 : nL * W + shoreW - 6, Hb = !LG && isleBack(l) ? islePlaces(l) : null, minX = LG ? (ISL.lv === 'up' ? 34 : 8) : l.noFish ? W + 8 : Hb ? (Hb.up.length ? backX(l, 'up') - 2 : Math.round(W * T_LVL.headland) + 8) : 8; // the back of a larger island ends at its bluff (or its headland), the heights at their crag // on the heights the ground ends at the edge he climbed over
   if (ISL.auto && ISL.auto.kind === 'mine') { const A = ISL.auto, R = T.cartRide, n = now(); // walk to the cart, hop in, ride it to the adit, go down
     if (!A.at) { const dx = A.x - ISL.px; A.moving = Math.abs(dx) > 1; if (A.moving && n - A.t0 < 4000) { ISL.px += Math.sign(dx) * Math.min(Math.abs(dx), T.walkSpeed * dt); ISL.dir = Math.sign(dx); ISL.anim += dt * T.walkFps; } else { A.at = n; A.moving = false; ISL.px = A.x; ISL.dir = 1; } return; }
     const u = n - A.at, ru = u - R.hop - R.wait;
@@ -16184,7 +16339,7 @@ function stepIsle(dt) {
     if (A.en && A.arr && (A.en.kind === 'climb' || A.en.kind === 'down')) { A.moving = true; ISL.anim += dt * T.walkFps; } // hand over hand
     const over = A.en ? (A.arr && now() - A.arr >= A.after) || now() - A.t0 > 7000 : now() - A.t0 >= A.dur;
     if (!A.done && over) { A.done = true; const fn = A.fn; fadeTo(() => { if (ISL) ISL.auto = null; fn(); if (MODE === 'island') renderIsle(); }); } return; }
-  if (ISL.walk) { ISL.px = clamp(ISL.px + ISL.walk * T.walkSpeed * dt, minX, maxX); ISL.dir = ISL.walk; ISL.anim += dt * T.walkFps; renderIsle(); }
+  if (ISL.walk) { ISL.px = clamp(ISL.px + ISL.walk * T.walkSpeed * dt, minX, maxX); ISL.dir = ISL.walk; ISL.anim += dt * T.walkFps; if (LG) lvSee(l); renderIsle(); }
 }
 // A closed place: two posts and crossed boards across the way in, a red rag on them, and a red cross where the brass mark would be.
 function drawClosed(x, gy, yy) {
@@ -16196,7 +16351,46 @@ function drawClosed(x, gy, yy) {
 }
 function isleFrame() { const k = Math.floor(ISL.anim) & 3; return ISL.walk || (ISL.auto && ISL.auto.moving) ? { spr: sprite(['walkA', 'stand', 'walkC', 'stand'][k]), bob: k & 1 ? -1 : 0 } : { spr: sprite('stand'), bob: 0 };
 }
+// the walker on the strip or on a level, his feet on row baseY: walking, or on his way in by a gate, a ladder, a door
+function drawWalker(l, gy, t, baseY) {
+  const { spr, bob } = isleFrame();
+  let fy = baseY - spr.height + 1 + bob, alpha = 1, sunk = 0;
+  if (ISL.auto) { const A = ISL.auto, p = clamp((t - A.t0) / A.dur, 0, 1), near = Math.abs(A.x - ISL.px) < 3 ? 1 : 0; // the walk in: through the gate or up its steps, into the cart and down the adit, in at the door
+    if (A.en) { const E = A.en, q = A.arr ? clamp((t - A.arr) / A.after, 0, 1) : 0; // the gate's own way in
+      if (E.kind === 'stair') { fy -= Math.round(clamp((ISL.px - A.x0) / E.run, 0, 1) * E.rise); alpha = 1 - clamp((q - 0.3) / 0.7, 0, 1); } // one step up for every step along
+      else if (E.kind === 'climb') { fy -= Math.round(q * E.rise); alpha = 1 - clamp((q - 0.8) / 0.2, 0, 1); }
+      else if (E.kind === 'down') { sunk = Math.round(q * (E.sink || 30)); fy += sunk; }
+      else alpha = 1 - q; }
+    else if (A.kind === 'mine') { drawCartEntry(A, l, gy, t, spr, bob); alpha = 0; } // into the cart and down: drawn there, cart and all
+    else if (near) alpha = 1 - clamp((p - 0.4) / 0.6, 0, 1);
+  }
+  if (alpha > 0) { g.save(); g.globalAlpha = alpha; if (sunk) { g.beginPath(); g.rect(ISL.px - 40, 0, 80, gy); g.clip(); } blit(g, spr, (ISL.px - spr.width / 2) | 0, fy | 0, ISL.dir > 0); g.restore(); }
+}
+// the brass mark that bobs over a thing you can press
+function drawMark(x, yy) { g.fillStyle = '#f0c050'; g.fillRect(x - 3 | 0, yy, 7, 2); g.fillRect(x - 2 | 0, yy + 2, 5, 1); g.fillRect(x - 1 | 0, yy + 3, 3, 1); g.fillRect(x | 0, yy + 4, 1, 1); }
+const upDrop = () => Math.round(T_SIZE.drop * clamp(SURF - Math.ceil(T_LAND.hud / scale), T_LAND.lh[0], T_LAND.lh[1])); // how far the island's own country stands lower, seen from its heights
+// A level of a larger island (the heights or the hollows): its own short strip. Above ground the island's own sky and its own country,
+// sunk, since you stand over it; below ground no sky at all and only what the lamp reaches. The ground, what stands on it and the
+// hidden places themselves are painted once (levelSprite).
+function drawLevel(t) {
+  const l = loc(), lv = ISL.lv, G = lvGeo(l, lv), gy = landY(l), h = hourAt(t), under = isUnder(l, lv), cam = clamp(ISL.px - SW / 2, 0, Math.max(0, G.LW - W)) | 0; let nt;
+  if (under) { nt = T_SIZE.gloom; g.fillStyle = '#07060a'; g.fillRect(0, 0, W, H); }
+  else { nt = drawSkyBase(h, t, { l }); sceneWeather(l, t, nt);
+    const sk = skyAt(h), hz = T_SIZE.horizon, far = lerpC(sk.sea, sk.bot, 0.4); // the sea, far below and all the way out: its horizon stands at the height of the eye
+    g.fillStyle = `rgb(${sk.sea.map(Math.round).join(',')})`; g.fillRect(0, gy - hz, W, hz + 2); g.fillStyle = `rgb(${far.map(Math.round).join(',')})`; g.fillRect(0, gy - hz, W, 5); g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(0, gy - hz, W, 1);
+    for (let k = 0; k < 9; k++) if (Math.sin(t / 700 + k * 2.3) > 0.5) { g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect((k * 97 + ((t / 9000) | 0) * 31) % W, gy - hz + 4 + (k * 7) % (hz - 8), 3 + (k % 3), 1); }
+    drawLandscape(l, (3 - isleScreens(l)) * W + Math.min(cam, 2 * W), SURF, t, nt, { mode: 'strip', dy: upDrop() }); }
+  g.save(); g.translate(-cam, 0);
+  g.drawImage(layer('strip', G.LW + 1, H, `${l.id}|${lv}|${gy}|${SURF}|${ISL.auto ? ISL.auto.kind || 'in' : ''}|${Object.keys(foundAt(l)).length}`, () => drawLevelArt(l, lv, gy, t, under ? 0 : nt)), 0, 0);
+  const V = levelSprite(l, lv, W);
+  for (const sp of lvSpots(l, lv)) { const yy = (gy - (sp.place ? V.mark[sp.place.id] || 44 : V.mark.back) + Math.sin(t / 300 + sp.x) * 1.5) | 0; if (sp.closed) drawClosed(sp.x | 0, gy, yy); else drawMark(sp.x, yy); }
+  drawWalker(l, gy, t, gy);
+  g.restore();
+  if (under) drawLampHole(ISL.px - cam, gy - 18, t); else { sceneFx(l, t, nt); drawWeatherFx(l, t, nt); }
+  g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, 0, W, 1);
+}
 function drawIsland(t) {
+  if (ISL.lv) { drawLevel(t); return; }
   const l = loc(), h = hourAt(t), nt = drawSkyBase(h, t, { l }); sceneWeather(l, t, nt);
   const nL = isleScreens(l), SX = nL * W, cam = clamp(ISL.px - SW / 2, 0, SX) | 0, gy = landY(l), sc = l.scene;
   drawLandscape(l, cam + (3 - nL) * W, SURF, t, nt, { mode: 'strip' }); // the island's own country, behind everything
@@ -16217,29 +16411,17 @@ function drawIsland(t) {
   S.lines.forEach((L, i) => { if (!L || i >= S.slots || L.phase === 'idle') return; const bx = floatX(i), by = (SURF - 1 + Math.sin(t / 400 + i) * 0.8) | 0; g.fillStyle = L.rig === 'hand' ? '#d7362a' : L.rig === 'trophy' ? '#2d6fb0' : '#f0a040'; g.fillRect(bx - 1, by - 1, 3, 2); });
   g.restore();
   // village, hunting gate and shaft head: land from the island's ground line down
-  const o = l.mine ? W : 0;
+  const b = isleBack(l) ? W : 0, o = b + (l.mine ? W : 0);
   if (groundSprite(l, SX + 1).open) for (let k = Math.max(0, Math.floor(cam / W)); k < nL && k * W < cam + W; k++) { g.save(); g.translate(k * W, 0); drawSeaBase(h, t, nt, { tint: (sc && sc.tint) || null }); g.restore(); } // a town afloat or on its piles: the sea runs on under it
-  g.drawImage(layer('strip', SX + W, H, `${l.id}|${gy}|${SURF}|${ISL.auto ? ISL.auto.kind || 'in' : ''}`, () => { drawLand(l, 0, SX + 1, t); if (l.mine) drawPit(l, 0, gy, t, nt, !!(ISL.auto && ISL.auto.kind === 'mine')); drawWild(l, o, gy, t, nt); }), 0, 0); // the land and all that stands on it: a layer, redrawn a few times a second
+  g.drawImage(layer('strip', SX + W, H, `${l.id}|${gy}|${SURF}|${ISL.auto ? ISL.auto.kind || 'in' : ''}`, () => { drawLand(l, 0, SX + 1, t); if (b) drawBack(l, 0, gy, t, nt); if (l.mine) drawPit(l, b, gy, t, nt, !!(ISL.auto && ISL.auto.kind === 'mine')); drawWild(l, o, gy, t, nt); }), 0, 0); // the land and all that stands on it: a layer, redrawn a few times a second
   drawVillage(l, isleSpots(l).find(sp => sp.id === 'shop').x, gy, t, nt); // the village building, at the walker's own scale, its smoke and lamps live
   sceneFx(l, t, nt);
   // the things you can press: a bobbing brass mark above each
-  { for (const sp of isleSpots(l)) { const up = sp.id === 'fish' ? 38 : sp.id === 'shop' ? villageSprite(l).doorH + 30 : Math.min(sp.id === 'mine' ? pitSprite(l, W).G.mark : wildSprite(l, W).mark + 14, gy - 70), yy = (gy - up + Math.sin(t / 300 + sp.x) * 1.5) | 0;
+  { for (const sp of isleSpots(l)) { const up = sp.id === 'fish' ? 38 : sp.id === 'shop' ? villageSprite(l).doorH + 30 : sp.id === 'up' || sp.id === 'down' ? backSprite(l, W).mark[sp.id] : Math.min(sp.id === 'mine' ? pitSprite(l, W).G.mark : wildSprite(l, W).mark + 14, gy - 70), yy = (gy - up + Math.sin(t / 300 + sp.x) * 1.5) | 0;
       if (sp.closed) { drawClosed(sp.x | 0, gy, yy); continue; }
-      g.fillStyle = '#f0c050'; g.fillRect(sp.x - 3 | 0, yy, 7, 2); g.fillRect(sp.x - 2 | 0, yy + 2, 5, 1); g.fillRect(sp.x - 1 | 0, yy + 3, 3, 1); g.fillRect(sp.x | 0, yy + 4, 1, 1); } }
+      drawMark(sp.x, yy); } }
   // the fisherman
-  const { spr, bob } = isleFrame();
-  let fy = (ISL.px >= SX ? shoreTop(l, Math.min(shoreW - 1, Math.max(0, ISL.px - SX | 0))) : gy) - spr.height + 1 + bob, alpha = 1;
-  let sunk = 0;
-  if (ISL.auto) { const A = ISL.auto, p = clamp((t - A.t0) / A.dur, 0, 1), near = Math.abs(A.x - ISL.px) < 3 ? 1 : 0; // the walk in: through the gate or up its steps, into the cart and down the adit, in at the door
-    if (A.en) { const E = A.en, q = A.arr ? clamp((t - A.arr) / A.after, 0, 1) : 0; // the gate's own way in
-      if (E.kind === 'stair') { fy -= Math.round(clamp((ISL.px - A.x0) / E.run, 0, 1) * E.rise); alpha = 1 - clamp((q - 0.3) / 0.7, 0, 1); } // one step up for every step along
-      else if (E.kind === 'climb') { fy -= Math.round(q * E.rise); alpha = 1 - clamp((q - 0.8) / 0.2, 0, 1); }
-      else if (E.kind === 'down') { sunk = Math.round(q * (E.sink || 30)); fy += sunk; }
-      else alpha = 1 - q; }
-    else if (A.kind === 'mine') { drawCartEntry(A, l, gy, t, spr, bob); alpha = 0; } // into the cart and down: drawn there, cart and all
-    else if (near) alpha = 1 - clamp((p - 0.4) / 0.6, 0, 1);
-  }
-  if (alpha > 0) { g.save(); g.globalAlpha = alpha; if (sunk) { g.beginPath(); g.rect(ISL.px - 40, 0, 80, gy); g.clip(); } blit(g, spr, (ISL.px - spr.width / 2) | 0, fy | 0, ISL.dir > 0); g.restore(); }
+  drawWalker(l, gy, t, ISL.px >= SX ? shoreTop(l, Math.min(shoreW - 1, Math.max(0, ISL.px - SX | 0))) : gy);
   g.restore(); drawWeatherFx(l, t, nt);
   g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, 0, W, 1);
 }
@@ -17958,7 +18140,7 @@ function bankTurned(things, turn) { if (!turn) return things; const fixed = t =>
 function bankSprite(l, noSeat) {
   const bw = shoreW, dep = clamp(H - SURF, 24, T_BANK.depth), turn = noSeat ? 0 : spotTurn(l), key = l.id + '|' + bw + '|' + dep + (noSeat ? '|n' : '') + '|' + turn; let C = BANK_C.get(key); if (C) return C; // turn: which of the island's spots this is, so each shows another stretch of the same shore
   if (BANK_C.size > 7) BANK_C.delete(BANK_C.keys().next().value);
-  const o = bankOf(l), F = BANKFORM[o.form] || BANKFORM.beach, s = groundSeed(l) % 9973, u = T_BANK.u, w = bw + T_BANK.pad, wl = T_BANK.room, h = wl + dep, P = new Paint(w, h); P.seed = s;
+  const o = (typeof hidBank === 'function' && hidBank(l)) || bankOf(l), F = BANKFORM[o.form] || BANKFORM.beach, s = groundSeed(l) % 9973, u = T_BANK.u, w = bw + T_BANK.pad, wl = T_BANK.room, h = wl + dep, P = new Paint(w, h); P.seed = s; /* a hidden water has its own bank (hidBank) */
   const top = new Float32Array(w).fill(NaN), thick = new Float32Array(w).fill(1e9), E = F.edge ? bw - T_BANK.back : bw, deep = F.under === 'deep';
   F.top(top, bw, o, s, thick);
   if (!deep) { for (let x = E; x < bw; x++) top[x] = 0; for (let x = bw; x < Math.min(w, bw + T_BANK.fall[0]); x++) top[x] = -(x - bw) * T_BANK.fall[1]; }
@@ -19251,7 +19433,7 @@ const pitOf = l => { const p = PIT[l.id] || {}, a = pitAuto(l); if (p.form === '
 const PIT_C = new Map();
 function pitSprite(l, w) {
   const key = l.id + '|' + w; let C = PIT_C.get(key); if (C) return C; if (PIT_C.size > 1) PIT_C.clear();
-  const o = pitOf(l), u = T_WILD.u, head = T_PIT.head, M = T_WILD.margin, P = new Paint(w + 2 * M, head + T_PIT.foot), gy = head, s = (groundSeed(l) + 77) % 9973, W = { w, ox: M, openL: true, gy, u, s, l, top: null }, x = M + (w >> 1), rock = pitRockOf(l), RK = stuffOf(rock, 'rock').M.R; P.seed = s; P.isle = l.id;
+  const o = pitOf(l), u = T_WILD.u, head = T_PIT.head, M = T_WILD.margin, P = new Paint(w + 2 * M, head + T_PIT.foot), gy = head, s = (groundSeed(l) + 77) % 9973, W = { w, ox: M, openL: !isleBack(l), gy, u, s, l, top: null }, x = M + (w >> 1), rock = pitRockOf(l), RK = stuffOf(rock, 'rock').M.R; P.seed = s; P.isle = l.id;
   let G = { clip: [-17, 46, 34, 0], dark: [-17, -46, 34, 46], drop: T.cartRide.drop, mark: 60, lift: null };
   try {
     if (o.back) { wildItems(P, W, o.back, gy, u, s + 1, null); wildHaze(P, o.haze || '#b4c6d8', T_WILD.fade); }
@@ -19330,9 +19512,9 @@ const HFLOOR = { // [what, how many to the 200 px, options]
 };
 function huntDesc(l) { const k = l.hunt ? l.hunt.kind : 'dunes', o = wildOf(l), h = o.hunt || {}, F = Object.assign({}, HFLOOR[k] || HFLOOR.dunes), sd = o.sand || wildTone(l).sand; if (k === 'dunes' && sd && sd[0] === '#') { F.c = sd; F.c2 = kCssHex(kTone(kHex(sd), -0.16)); } const fl = o.floor || h.floor, G = fl ? (typeof HGROUND !== 'undefined' && HGROUND[fl]) : null; if (fl && !G) console.warn('no such floor:', fl); return Object.assign({ far: [].concat(o.deep || [], o.back || []), haze: o.haze }, F, G, h); }
 const HUNT_C = new Map();
-function huntSprite(l, w, fh) {
-  const key = l.id + '|' + w + '|' + fh; let C = HUNT_C.get(key); if (C) return C; if (HUNT_C.size > 1) HUNT_C.clear();
-  const D = huntDesc(l), head = T_HUNTART.head, P = new Paint(w, head + fh), s = (groundSeed(l) + 191) % 9973, TH = T_HUNTART; P.seed = s;
+function huntSprite(l, w, fh, pl) { // pl: a hidden ground (its own floor and its own far line: hiddenHuntDesc)
+  const key = l.id + '|' + w + '|' + fh + '|' + (pl ? pl.id : ''); let C = HUNT_C.get(key); if (C) return C; if (HUNT_C.size > 1) HUNT_C.clear();
+  const D = pl ? hiddenHuntDesc(l, pl) : huntDesc(l), head = T_HUNTART.head, P = new Paint(w, head + fh), s = (groundSeed(l) + 191 + (pl ? 53 + strHash(pl.id) % 401 : 0)) % 9973, TH = T_HUNTART; P.seed = s;
   try {
     // what stands on the far line, a little hazed
     const Wf = { w, ox: 0, openL: true, openR: true, gy: head, u: TH.uFar, s, l, top: null }; wildItems(P, Wf, D.far, head, TH.uFar, s + 2, null); wildHaze(P, D.haze || '#b4c6d8', D.fade == null ? TH.fade : D.fade);
@@ -19352,8 +19534,8 @@ function huntSprite(l, w, fh) {
   C = { id: l.id, cv: P.canvas(), dark: nightShape(P), glow: P.glowCanvas(), em: P.em, head, lit: D.lit || wildOf(l).lit || 0 }; HUNT_C.set(key, C); return C;
 }
 // draw it with its far line on row gy
-function drawHuntGround(l, gy, t, nt) {
-  const V = huntSprite(l, W, Math.max(40, H - gy)), sy = gy - V.head; g.drawImage(V.cv, 0, sy);
+function drawHuntGround(l, gy, t, nt, pl) {
+  const V = huntSprite(l, W, Math.max(40, H - gy), pl), sy = gy - V.head; g.drawImage(V.cv, 0, sy);
   if (nt > 0.02) { g.globalAlpha = nt * T_BANK.night; g.drawImage(V.dark, 0, sy); g.globalAlpha = 1; }
   const gn = Math.max(nt, V.lit); if (V.glow && gn > 0.05) { g.globalAlpha = clamp(gn * 1.25, 0, 1); g.drawImage(V.glow, 0, sy); g.globalAlpha = 1; }
   for (const e of V.em) EMIT[e.k](e, e.x, e.y + sy, t, gn, V);
@@ -19515,7 +19697,7 @@ const SPOT_VIEW = { river: -1.15, lake: -1.35, pond: -1.5, marsh: -1.0, hotsprin
 // the island's first spot keeps the view its landscape was composed for; the others turn by their kind and are kept apart
 function spotViews(l) {
   if (l._sv) return l._sv; const V = {}, used = [], cave = !!(l.scene && l.scene.weather === 'cave'), s = groundSeed(l) % 9973, lo = -T_SPOT.inland, hi = cave ? 0 : T_SPOT.out; let first = true;
-  (l.spots || []).forEach((sp, i) => {
+  spotsAll(l).forEach((sp, i) => {
     if (sp.kind === 'open') { V[sp.id] = 1; return; }
     let v = first ? 0 : (SPOT_VIEW[sp.kind] || 0) + (nH(i, 7, s) - 0.5) * 0.16; first = false; if (cave && v > 0) v = -v;
     const clash = x => used.some(u => Math.abs(u - x) < T_SPOT.step - 1e-6); let dir = v >= 0 && !cave ? 1 : -1, n = 0;
@@ -19565,7 +19747,7 @@ function SpotB(l, sp) {
   this.F = new Paint(this.w, this.h); this.F.seed = this.s; this.top = new Float32Array(this.w).fill(this.h + 4);
   const fl = FLOORS[l.id] || FLOORS.sea, wt = wildTone(l); this.near = fl.near; this.deep = fl.deep; this.kDeep = kRGB(fl.deep[0], fl.deep[1], fl.deep[2]);
   this.noBank = l.id === 'trench' || sp.kind === 'open'; // fished from your own boat: no shore for the bed to come up to
-  this.rock = kRamp(wt.rock || kRGB(fl.near[0] * 0.7 + 44, fl.near[1] * 0.7 + 44, fl.near[2] * 0.7 + 48)); this.deepBank = bankDeep(l);
+  this.rock = kRamp(wt.rock || kRGB(fl.near[0] * 0.7 + 44, fl.near[1] * 0.7 + 44, fl.near[2] * 0.7 + 48)); this.deepBank = sp.hidden ? false : bankDeep(l);
   this.x0 = shoreW + T_SPOT.clear; this.x1 = W - 3; this.floats = [0, 1, 2, 3].map(floatX); this.n = Math.max(1, (this.x1 - this.x0) / 130);
   this.bedTex = 'sand'; this.bedC = null; this.lit = 0; this.fish = 0; this.tint = null; this.mods = [];
   const cold = climateOf(l) === 'cold'; this.pal = cold ? ['#c8a8a0', '#a8b8c0', '#d8c8b0', '#b89a8a'] : [['#e07a6a', '#f0b040', '#c85aa0', '#6ac8b8'], ['#f4d8c8', '#8a6ad8', '#e8904a', '#5aa8d8'], ['#d85a5a', '#f0d060', '#a878c8', '#68c098']][this.s % 3];
@@ -19854,11 +20036,11 @@ const SPOT_C = new Map();
 function spotSprite(l, sp) {
   const key = l.id + '|' + sp.id + '|' + W + '|' + H + '|' + SURF + '|' + shoreW + '|' + SW; let C = SPOT_C.get(key); if (C) return C; if (SPOT_C.size >= T_SPOT.keep) SPOT_C.delete(SPOT_C.keys().next().value);
   const B = new SpotB(l, sp), kind = SPOTKIND[sp.kind] || SPOTKIND.shore, nm = sp.name || '';
-  try { for (const [re, mod] of SPOTBED) if (re.test(nm)) { B.mods.push(mod(B)); break; } kind(B); spotExtras(B); spotLife(B); } catch (e) { console.error('spot', l.id, sp.id, e); if (B.top[0] > B.h) B.bed({ D: [56, 70] }); }
+  try { for (const [re, mod] of SPOTBED) if (re.test(nm)) { B.mods.push(mod(B)); break; } if (sp.hidden === 'up') spotFarBank(B); kind(B); if (sp.hidden === 'down' && sp.kind !== 'cave' && !B.caveIsle) B.roof(); spotExtras(B); if (!sp.hidden) spotLife(B); } catch (e) { console.error('spot', l.id, sp.id, e); if (B.top[0] > B.h) B.bed({ D: [56, 70] }); }
   C = B.finish(); SPOT_C.set(key, C); return C;
 }
 // the spot the shore of island l shows: the one being fished, or its first when it is seen from elsewhere (a landfall, a cutscene)
-function spotShown(l) { if (!l.spots || !l.spots.length) return null; const cur = l.id === S.loc ? l.spots.find(s => s.id === S.spot) : null; return cur && cur.kind !== 'open' ? cur : l.spots.find(s => s.kind !== 'open') || null; }
+function spotShown(l) { if (!l.spots || !l.spots.length) return null; const cur = l.id === S.loc ? spotsAll(l).find(s => s.id === S.spot) : null; return cur && cur.kind !== 'open' && (!cur.hidden || MODE === 'game') ? cur : l.spots.find(s => s.kind !== 'open') || null; } // a hidden spot is shown only while it is fished: the strip's shore is the shore
 // the water of the spot island l shows (for the scenes that draw its shore without being the fishing screen: the strip, a landfall, the storm's last beat)
 const spotWaterOf = l => { const sp = spotShown(l); return sp ? spotWater(sp) : null; };
 // the open water off island l, where the old flat sea bed was drawn under the boat
@@ -19889,7 +20071,7 @@ function fightDress(x, FL, FH, ts) {
   else if (k === 'pier' || k === 'harbour') { x.fillStyle = 'rgba(74,54,38,0.85)'; x.fillRect(27, 0, 5, bedY); x.fillStyle = 'rgba(47,106,66,0.8)'; for (let y = 2; y < 16; y += 3) x.fillRect(27 + ((y * 7) % 4), y, 2, 2); x.fillStyle = 'rgba(40,30,22,0.8)'; x.fillRect(27, 0, 1, bedY); }
 }
 // which of the island's spots is shown, counted among those fished from the shore (0 the first): the bank turns its things by it
-function spotTurn(l) { const sp = spotShown(l); return sp ? Math.max(0, l.spots.filter(q => q.kind !== 'open').indexOf(sp)) : 0; }
+function spotTurn(l) { const sp = spotShown(l); return sp ? Math.max(0, spotsAll(l).filter(q => q.kind !== 'open').indexOf(sp)) : 0; }
 // the bed and what stands in the water, where the old flat floor was drawn
 function drawSpot(l, t, nt) {
   const sp = spotShown(l); if (!sp) { g.drawImage(floorLayer(FLOORS[l.id] ? l.id : 'sea'), 0, SURF); return; }
@@ -19917,12 +20099,12 @@ const T_GAL = {
 const GAL_NUM = { 1: ['.#.', '##.', '.#.', '.#.', '###'], 2: ['##.', '..#', '.#.', '#..', '###'], 3: ['##.', '..#', '.#.', '..#', '##.'], 4: ['#.#', '#.#', '###', '..#', '..#'], 5: ['###', '#..', '##.', '..#', '##.'], 6: ['.##', '#..', '###', '#.#', '###'], 7: ['###', '..#', '.#.', '.#.', '.#.'], 8: ['###', '#.#', '###', '#.#', '###'] };
 // where the miner stands with his lamp: 36% along the scene, but clear of the panel where the panel sits in the middle of a wide screen
 function galLampX() { const pl = PANEL_W ? 0 : Math.round((W - 520 / scale) / 2); return Math.max(60, Math.min((SW * 0.36) | 0, pl > 120 ? pl - 44 : 1e9)); }
-function GalB(l, level) {
-  const pit = pitOf(l); this.l = l; this.level = level; this.pit = pit; this.w = W; this.h = H; this.top = SURF - 56; this.gy = SURF + 8; this.sw = SW; this.lx = galLampX(); this.ly = this.top + 22; this.fx = SW - T_GAL.face;
-  this.s0 = groundSeed(l) % 9973; this.s = (this.s0 + level * 131) % 9973; this.P = new Paint(W, H); this.P.seed = this.s; this.yo = level * 173;
+function GalB(l, level, pl) {
+  const pit = pl ? Object.assign({}, pitOf(l), pl.quarry ? { form: 'adit', mouth: 'raw' } : { form: 'adit', mouth: 'timber' }) : pitOf(l); this.l = l; this.level = level; this.pit = pit; this.pl = pl || null; /* a hidden working is cut its own way: a quarry in the raw, old workings in timber */ this.w = W; this.h = H; this.top = SURF - 56; this.gy = SURF + 8; this.sw = SW; this.lx = galLampX(); this.ly = this.top + 22; this.fx = SW - T_GAL.face;
+  this.s0 = (groundSeed(l) + (pl ? 211 + strHash(pl.id) % 613 : 0)) % 9973; this.s = (this.s0 + level * 131) % 9973; this.P = new Paint(W, H); this.P.seed = this.s; this.yo = level * 173;
   this.K = stuffOf(pitRockOf(l), 'rock'); this.K.q = Object.assign({}, this.K.q); if (this.K.q.dip == null) this.K.q.dip = (nH(1, 2, this.s0) - 0.5) * 0.36; // the beds dip the island's own way
   this.R = this.K.M.R; this.kind = MINE_KIND[l.mine.kind] ? l.mine.kind : 'rock'; this.deco = MINE_KIND[this.kind].deco; this.dark = kMix(this.R[0], 0xff000000, 0.55);
-  this.lamps = []; this.late = []; this.fossils = []; this.roof = new Int16Array(W); this.words = ((l.mine.name || '') + ' ' + (l.mine.gate || '')).toLowerCase(); this.glowC = pit.glow ? kHex(pit.glow) : 0;
+  this.lamps = []; this.late = []; this.fossils = []; this.roof = new Int16Array(W); this.words = (pl ? pl.name + ' ' + pl.line + (pl.quarry ? ' quarry' : '') : (l.mine.name || '') + ' ' + (l.mine.gate || '')).toLowerCase(); this.glowC = pit.glow ? kHex(pit.glow) : 0;
   const built = /\b(cellar|vault|crypt|undercroft|magazine|treasury|catacomb|casemate|icehouse)\b/.test(this.words) && /^(rock|chalk|sandstone|granite|slate|limestone|salt|coal|clay|coral|iron|sand|shell|lava|wood)$/.test(this.kind); // a built vault only where there is stone to build one of
   const m = pit.form === 'shaft' ? (pit.lining || 'timber') : ({ timber: 'timber', arch: 'stone', raw: 'raw', door: pit.iron ? 'iron' : 'timber', slot: 'raw', megalith: 'megalith', ribs: 'ribs', roots: 'roots', ring: 'raw', ice: 'ice' })[pit.mouth || 'timber'] || 'timber';
   this.lining = built && (m === 'timber' || m === 'raw') ? (this.s0 % 2 ? 'brick' : 'stone') : m; this.built = built;
@@ -20052,13 +20234,13 @@ const GALDECO = {
   shrooms(G) { const xs = []; for (let k = 0; k < Math.max(3, 4 * G.w / 195); k++) xs.push(Math.round(30 + G.r(k) * (G.fx - 60))); G.P.em.push({ k: 'fn', x: 0, y: 0, wide: true, draw: (X, Y, t) => { for (const x of xs) glowshroom(X + x, Y + G.gy, 0, t, 1); } }); for (let k = 0; k < 20; k++) G.mix(Math.round(G.r(k + 7) * G.w), Math.round(G.top + G.r(k + 9) * 60), kHex('#c8a0ff'), 0.4); G.lamps.push([G.fx * 0.5, G.gy - 6, G.fx * 0.4]); },
 };
 const GAL_C = new Map();
-function mineSprite(l, level) {
-  const key = `${l.id}|${level}|${W}|${H}|${SURF}|${SW}`; let C = GAL_C.get(key); if (C) return C; if (GAL_C.size >= T_GAL.keep) GAL_C.delete(GAL_C.keys().next().value);
-  try { C = new GalB(l, level).finish(); } catch (e) { console.error('gallery', l.id, level, e); const P = new Paint(W, H); P.rect(0, 0, W, H, kHex('#1e1e28')); C = { cv: P.canvas(), glow: null, em: [] }; }
+function mineSprite(l, level, pl) { // pl: a hidden working (its own seed, its own words, its own way in)
+  const key = `${l.id}|${level}|${W}|${H}|${SURF}|${SW}|${pl ? pl.id : ''}`; let C = GAL_C.get(key); if (C) return C; if (GAL_C.size >= T_GAL.keep) GAL_C.delete(GAL_C.keys().next().value);
+  try { C = new GalB(l, level, pl).finish(); } catch (e) { console.error('gallery', l.id, level, e); const P = new Paint(W, H); P.rect(0, 0, W, H, kHex('#1e1e28')); C = { cv: P.canvas(), glow: null, em: [] }; }
   GAL_C.set(key, C); return C;
 }
 // the painted gallery and what moves in it (inside the mine's scenery layer)
-function drawMineArt(l, level, t) { const V = mineSprite(l, level); g.drawImage(V.cv, 0, 0); if (V.glow) g.drawImage(V.glow, 0, 0); for (const e of V.em) EMIT[e.k](e, e.x, e.y, t, 1, V); }
+function drawMineArt(l, level, t, pl) { const V = mineSprite(l, level, pl); g.drawImage(V.cv, 0, 0); if (V.glow) g.drawImage(V.glow, 0, 0); for (const e of V.em) EMIT[e.k](e, e.x, e.y, t, 1, V); }
 // the working face's rock for its canvas: the same stuff at half size, quieter, half way to the kind's own wall colour so the tells still read
 const MFACE_C = new Map();
 function mineFaceTex(l, level, cols, rows, px) {
@@ -20382,6 +20564,252 @@ function drawSkyBirds(l, t) {
   for (let k = 0; k < n; k++) { const dir = nH(k, 21, q.seed) < 0.5 ? -1 : 1, sp = 4.5 + 4 * nH(k, 22, q.seed), u = ((t / 1000) * sp + nH(k, 23, q.seed) * span) % span, x = (dir > 0 ? u - 12 : W + 12 - u) | 0, y = (SURF * (0.2 + 0.3 * nH(k, 24, q.seed)) + Math.sin(t / 700 + k * 2) * 2) | 0;
     blit(g, maskC(Math.floor(t / 260 + k) % 2 ? 'gullA' : 'gullB', col, 1), x, y); }
 }
+// --- the back of a larger island, its heights and its hollows ---
+// A larger island has more to it than its strip (the size bullet): at its back a bluff with a ladder up it, a hole with a ladder
+// down it, or both; on the heights and in the hollows a screen to each hidden place. All of it is painted once at the walker's
+// scale from the island's own stuff: the rock its mine is cut in (pitRockOf), what grows behind its gate (wildOf), and its nature
+// (isleNature), which says what lies on the high ground (turf, snow, ash, sand) and what gives light under it.
+const T_LVL = {
+  bluff: 7.2,                    // metres the bluff at the back of the island stands
+  headland: 0.2,                 // where there is no way up, the headland the island ends in: how far onto the back screen it comes
+  tarn: [0.6, 150, 13],          // a water on the heights, in section: its share of the screen, its most px, how deep
+  dark: '#06060a',               // what the rock goes to where no light reaches
+  lamp: [46, 150, 0.66],         // the lamp underground: px of clear light, px to full dark, how dark that is
+};
+const LV_CAP = { green: { c: '#5a8a3a', d: 4, tex: 'grass' }, wet: { c: '#3e7a38', d: 5, tex: 'grass' }, cold: { c: '#eef4f8', d: 5, tex: 'snow' }, dry: { c: '#d8c088', d: 3, tex: 'sand' }, fire: null };
+const LV_GROW = { green: [['thorn', 'rowan', 'birch'], ['tussock', 'bush', 'flowers']], wet: [['willow', 'alder'], ['fern', 'bush']], cold: [['dead'], ['tussock']], dry: [['thorn'], ['tussock']], fire: [['charred'], []], odd: [[], []] }; // what grows up there where the island's own gate names nothing
+const LV_BLUFF = {
+  green: [['cracks', { n: 1 }], ['ledges', { n: 0.8 }], ['tufts', { n: 1, c: '#7a9a50' }], ['ivy', { n: 0.5 }]],
+  wet: [['cracks', {}], ['ivy', { n: 1.4, c: '#2e6a30' }], ['moss', { cover: 0.7 }], ['tufts', { c: '#4a8a3a' }]],
+  cold: [['cracks', {}], ['snow', {}], ['icicles', {}], ['ledges', { n: 0.5 }]],
+  fire: [['cracks', { c: '#ff7a30', glow: '#ff8a40', n: 1.3 }], ['steam', { n: 1 }]],
+  dry: [['cracks', {}], ['layers', { c: '#e8d8b0', step: 11, fill: 0.7 }], ['tufts', { n: 0.5, c: '#b8b070' }]],
+  odd: [['cracks', {}], ['ledges', { n: 0.5 }]],
+};
+const LV_LADDER = { green: 'wood', wet: 'bamboo', cold: 'rope', fire: 'iron', dry: 'rope' };
+const LV_WATER = { green: ['#3a6a7a', '#1e3e50'], wet: ['#2f7a66', '#17463c'], cold: ['#7ab4d0', '#3a7090'], fire: ['#6accc2', '#2a8a88'], dry: ['#5a7a58', '#2e4a34'], odd: ['#5a6aa0', '#2a3460'] };
+// what an island's heights and hollows are made of and grown with: its own, where it says; its nature's, where it does not
+function lvStuff(l) {
+  if (l._lvs) return l._lvs; const Hd = islePlaces(l), nat = Hd ? Hd.nat : isleNature(l), o = wildOf(l), rock = Object.assign({}, pitRockOf(l)), s = groundSeed(l) % 9973;
+  const names = list => (list || []).map(it => Array.isArray(it) ? it[0] : it), all = [].concat(o.tree || [], names(o.back), names(o.deep), names(o.mid), names(o.front), o.under || []);
+  const trees = [...new Set(all.filter(n => TREEKIND[n]))], under = [...new Set(all.filter(n => ['tussock', 'bush', 'flowers', 'fern', 'reeds', 'shroom', 'crystal', 'coral', 'cactus'].includes(n)))];
+  let cap = LV_CAP[nat]; if (cap === undefined) { try { cap = bankLand(l).cap || null; } catch (e) { cap = null; } }
+  const mk = l.mine ? l.mine.kind : 'rock', glow = mk === 'crystal' || mk === 'glass' || mk === 'star' ? ['crystal', mk === 'star' ? '#f0e8a0' : '#9ad8ea'] : mk === 'fungus' || mk === 'root' || mk === 'wood' || mk === 'flesh' ? ['shroom', '#8ad0e0'] : mk === 'lava' || mk === 'obsidian' || nat === 'fire' ? ['lava', '#ff8a40'] : mk === 'ice' || nat === 'cold' ? ['ice', '#9adcf4'] : mk === 'amber' || mk === 'wax' ? ['crystal', '#f0b050'] : nat === 'wet' || nat === 'green' ? ['worm', '#7ae0c8'] : nat === 'odd' ? ['crystal', '#c8a0f0'] : ['none', '#000000'];
+  return l._lvs = { nat, rock, cap, trees: trees.length ? trees : LV_GROW[nat][0], under: under.length ? under : LV_GROW[nat][1], haze: o.haze || '#b4c6d8', ladder: LV_LADDER[nat] || ['rope', 'iron', 'wood'][s % 3], water: LV_WATER[nat], glow, s };
+}
+// --- the back of the island: the bluff and its ladder, the hole and its ladder ---
+const BACK_C = new Map();
+function backSprite(l, w) {
+  const key = l.id + '|' + w; let C = BACK_C.get(key); if (C) return C; if (BACK_C.size > 1) BACK_C.clear();
+  const Hd = islePlaces(l), K = lvStuff(l), u = T_WILD.u, head = T_WILD.head, M = T_WILD.margin, P = new Paint(w + 2 * M, head + T_PIT.foot), gy = head, s = (groundSeed(l) + 333) % 9973, Wd = { w, ox: M, openL: true, gy, u, s, l, top: null }; P.seed = s; P.isle = l.id;
+  const mark = { up: 60, down: 48 }; let rise = 90;
+  try {
+    const hasU = Hd.up.length > 0, hasD = Hd.down.length > 0, xu = hasU ? M + backX(l, 'up') : 0, xd = hasD ? M + backX(l, 'down') : 0, RK = stuffOf(K.rock, 'rock').M.R, t0 = K.trees[0], t1 = K.trees[K.trees.length > 1 ? 1 : 0], fx = hasU ? (backX(l, 'up') - 8) / w : 0;
+    if (t0) { wildItems(P, Wd, [[t0, { n: 1.5, from: hasU ? fx + 0.06 : 0.03, to: 0.98 }]], gy, u, s + 1, null); wildHaze(P, K.haze, T_WILD.fade * 1.7); } // the island's own wood, far back
+    if (hasU) { const bh = T_LVL.bluff; // the bluff: off the world's left edge, a face where the ladder stands
+      wildMass(P, Wd, gy, u, Object.assign({}, K.rock, { shape: 'table', from: -0.6, to: fx, h: bh, ease: 0.016, rough: 0.03, cap: K.cap || undefined, on: (LV_BLUFF[K.nat] || LV_BLUFF.odd).concat(l.range <= 4 && K.nat === 'green' ? [['birds', { n: 0.5, kind: 'gull' }]] : []) }), s + 2);
+      if (t1) wildItems(P, Wd, [[t1, { n: 1.3, from: -0.2, to: fx - 0.1, on: true, h: ((TREEKIND[t1] || [0, {}])[1].h || 4) * 0.7 }]], gy, u, s + 3, null); // what grows on top of it
+      GATE.ladder(P, xu, gy, u, { style: K.ladder, up: bh + 0.4 }); rise = Math.round(bh * u) - 5; mark.up = Math.min(Math.round(bh * u) + 26, gy - 66);
+      for (const dx of [-5, 5]) wbox(P, xu + dx - 1, gy - Math.round(bh * u) - 9, 2, 10, kRamp('#6a5236')); // the stakes its head is lashed to
+      for (let k = 0; k < 5; k++) BIG.rock(P, xu + 9 + k * 7 + ((nH(k, 1, s) * 5) | 0), gy + 1, 3 + ((nH(k, 2, s) * 6) | 0), { c: kCssHex(RK[2]), s: s + k, cap: null }); // what has come down off the face
+    }
+    else { wildMass(P, Wd, gy, u, Object.assign({}, K.rock, { shape: 'table', from: -0.6, to: T_LVL.headland, h: 4.4, ease: 0.05, rough: 0.05, cap: K.cap || undefined, on: LV_BLUFF[K.nat] || LV_BLUFF.odd }), s + 2); // no way up: the island ends in a headland all the same
+      if (t1) wildItems(P, Wd, [[t1, { n: 1.3, from: -0.2, to: T_LVL.headland - 0.06, on: true, h: ((TREEKIND[t1] || [0, {}])[1].h || 4) * 0.7 }]], gy, u, s + 3, null); }
+    if (hasD) { const sw = 22; // the hole: the island's own rock about its mouth, a windlass over it, the ladder going down
+      wildMass(P, Wd, gy, u, Object.assign({}, K.rock, { shape: 'hump', from: (xd - M - 44) / w, to: (xd - M + 40) / w, h: 1.5, rough: 0.22, pw: 0.7, cap: K.cap || undefined, on: K.nat === 'fire' ? [['cracks', { c: '#ff7a30', glow: '#ff8a40', n: 2 }]] : K.nat === 'cold' ? [['snow', {}]] : [['tufts', { n: 1, c: '#7a9a50' }]] }), s + 5);
+      pitShaft(P, xd, gy, sw, { lining: 'raw', dark: '#16141c' }, RK, s + 6);
+      for (let y = gy - 14; y < P.h; y++) { const c = kMix(kHex('#8a6a44'), kHex('#050508'), clamp((y - gy) / 60, 0, 0.85)); P.px(xd - 4, y, c); P.px(xd + 4, y, c); if (y % 5 === 2) P.rect(xd - 3, y, 7, 1, c); } // the ladder, its head standing out of the hole
+      if (K.nat === 'fire') P.em.push({ k: 'smoke', x: xd, y: gy - 2, n: 5, rise: 34, c: '236,226,214', a: 0.4, ms: 3000, grow: 4 });
+      else if (K.nat === 'cold') { P.em.push({ k: 'smoke', x: xd, y: gy - 2, n: 3, rise: 20, c: '230,240,250', a: 0.3, ms: 3600, grow: 3 }); }
+      const r = PITHEAD.windlass(P, xd, gy, u, { wood: K.nat === 'cold' ? '#7a7a84' : '#6a5236' }, RK, s + 7) || {}; mark.down = (r.top || 40) + 12;
+      wildThing(P, 'stonelantern', xd + 46, gy, u, { c: kCssHex(RK[3]) }); P.lit(xd + 46, gy - Math.round(u * 1.3) + 5, kHex('#ffd070'), 230); P.halo(xd + 46, gy - Math.round(u * 1.3) + 5, 9, kHex('#ffb040'), 70);
+    }
+    const keep = hasU && hasD ? null : [hasU ? xu : xd, 26], un = K.under.filter(n => n !== 'reeds').slice(0, 2).map((n, i) => [n, { n: 1.6 - i * 0.6, from: hasU ? fx + 0.04 : 0.03, to: 0.97, h: n === 'flowers' ? 0.5 : n === 'tussock' ? 0.8 : n === 'fern' ? 1 : 0.8 }]);
+    if (un.length) wildItems(P, Wd, un, gy, u, s + 8, keep);
+  } catch (e) { console.error('back', l.id, e); }
+  C = { id: l.id, cv: P.canvas(), dark: nightShape(P), glow: P.glowCanvas(), em: P.em, head, w, ox: M, mark, rise, lit: 0 }; BACK_C.set(key, C); return C;
+}
+function drawBack(l, x0, gy, t, nt) {
+  const V = backSprite(l, W), sy = gy - V.head; x0 -= V.ox; g.drawImage(V.cv, x0, sy);
+  if (nt > 0.02) { g.globalAlpha = nt * T_BANK.night; g.drawImage(V.dark, x0, sy); g.globalAlpha = 1; }
+  if (V.glow && nt > 0.05) { g.globalAlpha = clamp(nt * 1.25, 0, 1); g.drawImage(V.glow, x0, sy); g.globalAlpha = 1; }
+  for (const e of V.em) EMIT[e.k](e, e.x + x0, e.y + sy, t, nt, V);
+}
+// --- under the island: its own rock with no daylight on it ---
+function hollowWall(P, x0, x1, y0, y1, K, s, o) { // a wall of it from row y0 to row y1: great buttresses and the bays between, darker to the roof
+  o = o || {}; const R = K.M.R, tx = BTEX[K.tex] || BTEX.rock, q = K.q, bl = kHex(o.dark || T_LVL.dark), w = P.w, hh = Math.max(1, y1 - y0), lum = ((R[2] & 255) * 0.3 + ((R[2] >> 8) & 255) * 0.59 + ((R[2] >> 16) & 255) * 0.11), lift = lum < 90 ? (90 - lum) / 90 * 0.34 : 0; // a rock that is dark by daylight is darkened less, or nothing of it would show
+  for (let x = Math.max(0, x0); x <= Math.min(w - 1, x1); x++) { const X = x + 4096, col = n1(X * 0.021, s + 3), but = n1(X * 0.07, s + 9);
+    for (let y = Math.max(0, y0); y < Math.min(P.h, y1); y++) { let t = tx(X, y, y - y0 + 9, s, q); if (t > 255) { P.d[y * w + x] = kMix(t >>> 0, bl, 0.62); continue; } if (t >= 8) t -= 8; t = t < 0 ? 0 : t > 4 ? 4 : t | 0;
+      const up = (y1 - y) / hh, k = clamp(0.36 + 0.3 * (1 - col) + 0.16 * (but - 0.5) + 0.26 * up * up + (o.k || 0) + (bay(x, y) - 0.5) * 0.05 - lift, 0.1, 0.94); P.d[y * w + x] = lift ? kMix(kMix(R[t], R[4], lift * 0.5), bl, k) : kMix(R[t], bl, k); } }
+}
+function hollowRoof(P, x0, x1, y0, K, s, o) { // what hangs from it
+  o = o || {}; const R = K.M.R, bl = kHex(T_LVL.dark), n = Math.max(1, Math.round((x1 - x0) / (o.gap || 12)));
+  for (let k = 0; k < n; k++) { const x = x0 + Math.round((k + nH(k, 1, s)) * (x1 - x0) / n), len = Math.round((o.len || 18) * (0.25 + 1.3 * nH(k, 2, s) * nH(k, 3, s))), w = 1 + Math.round(len / 8), ice = o.ice && nH(k, 5, s) < 0.7;
+    for (let j = 0; j < len; j++) { const ww = Math.max(0, Math.round(w * (1 - j / len))); for (let i = -ww; i <= ww; i++) P.px(x + i, y0 + j, ice ? kMix(kHex(i >= ww ? '#f4fcff' : '#9ad0e8'), bl, 0.25) : kMix(R[i < 0 ? 1 : i === ww ? 3 : 2], bl, 0.42)); } }
+}
+function stalag(P, x, gy, h, K, s, o) { o = o || {}; const R = K.M.R, bl = kHex(T_LVL.dark), w = Math.max(2, Math.round(h * (o.w || 0.3))); for (let j = 0; j < h; j++) { const ww = Math.max(0, Math.round(w * Math.pow(1 - j / h, 1.3))); for (let i = -ww; i <= ww; i++) P.px(x + i, gy - 1 - j, kMix(R[i < -ww * 0.3 ? 1 : i > ww * 0.4 ? 3 : 2], bl, o.k == null ? 0.22 : o.k)); } }
+// what gives its own light down there, by the island's rock: crystals, mushrooms, the fire's own cracks, ice, glow-worms
+function hollowGlow(P, x0, x1, gy, K, s, n) {
+  const [kind, gc] = K.glow, u = T_WILD.u, c = kHex(gc); if (kind === 'none') return;
+  for (let k = 0; k < n; k++) { const x = x0 + Math.round((k + 0.2 + 0.6 * nH(k, 11, s)) * (x1 - x0) / n), hv = nH(k, 12, s);
+    if (kind === 'crystal') bigAt(P, 'crystal', x, gy + 1, u, { h: 0.5 + hv * 0.9, c: gc, glow: gc, n: 3 + ((hv * 4) | 0), s: s + k * 7 });
+    else if (kind === 'shroom') { for (let j = 0; j < 2 + ((hv * 3) | 0); j++) bigAt(P, 'shroom', x + j * 7 - 6, gy + 1, u, { h: 0.35 + nH(k, j, s + 13) * 0.6, c: gc, glow: gc, spots: false, stalk: '#b8c8c8', s: s + k * 7 + j }); }
+    else if (kind === 'lava') { let xx = x, yy = gy - 4 - ((hv * 60) | 0); for (let j = 0; j < 26 + hv * 30; j++, yy++) { if (yy >= gy) break; P.px(xx, yy, kHex('#ff7a30')); P.lit(xx, yy, c, 230); if (j % 5 === 0) P.halo(xx, yy, 4, c, 60); if (nH(k, j, s + 14) > 0.62) xx += nH(k, j, s + 15) > 0.5 ? 1 : -1; } }
+    else if (kind === 'ice') { const hh = 10 + ((hv * 26) | 0), yy = gy - 8 - ((nH(k, 16, s) * 70) | 0); for (let j = 0; j < hh; j++) for (let i = 0; i < 3 + (j % 4); i++) if (nH(x + i, yy + j, s) > 0.45) { P.px(x + i - j * 0.4, yy + j, kMix(c, kHex('#ffffff'), nH(i, j, s) * 0.5)); P.lit(x + i - j * 0.4, yy + j, c, 90); } }
+    else if (kind === 'worm') { for (let j = 0; j < 7; j++) { const xx = x + ((nH(k, j, s + 17) - 0.5) * 30) | 0, yy = gy - 20 - ((nH(k, j, s + 18) * 90) | 0); P.px(xx, yy, c); P.lit(xx, yy, c, 255); P.halo(xx, yy, 2, c, 70); } }
+  }
+}
+// --- a level: the heights or the hollows, one picture, a screen to each hidden place and the ladder's landing at its right end ---
+// where on its screen you stand to go in, from the screen's middle
+function placeDX(l, p) { return p.kind === 'spot' ? Math.round(Math.min(T_LVL.tarn[0] * W, T_LVL.tarn[1]) * 0.45) + 8 : p.kind === 'mine' && p.lv === 'up' ? Math.round(W * 0.06) + 10 : 0; }
+const LVPLACE = {
+  up: {
+    // a water on the high ground, seen in section: a basin in the rock, full to its lip
+    spot(P, Wd, cx, gy, u, K, p, s, R) { const tw = Math.round(Math.min(T_LVL.tarn[0] * W, T_LVL.tarn[1])), x0 = cx - Math.round(tw * 0.55), x1 = cx + Math.round(tw * 0.45), D = T_LVL.tarn[2], wc = kHex(K.water[0]), wd = kHex(K.water[1]), cold = K.nat === 'cold', hot = K.nat === 'fire';
+      for (let x = x0; x <= x1; x++) { const q = (x - x0) / (x1 - x0), d = Math.round(D * Math.pow(Math.sin(Math.PI * q), 0.6) + nF(x * 0.09, s) * 3) + 1; for (let j = 0; j <= d + 1; j++) { const y = gy + j; P.px(x, y, j > d ? R[0] : j === 0 ? R[1] : j === 1 ? kMix(wc, kHex('#ffffff'), nH(x >> 1, 3, s) > 0.6 ? 0.45 : 0.18) : kMix(wc, wd, clamp((j - 1) / D, 0, 1))); } }
+      P.rect(x0 - 1, gy - 1, 2, 2, R[3]); P.rect(x1, gy - 1, 2, 2, R[4]);
+      for (let x = x0 + 7; x < x1 - 6; x += 11) { const sw = 5 + ((nH(x, 7, s) * 3) | 0); P.rect(x, gy, sw, 1, R[4]); P.rect(x, gy + 1, sw, 2, R[2]); P.px(x, gy + 1, R[1]); P.px(x + sw - 1, gy + 2, R[1]); for (let j = 3; j < 7; j++) if ((j + x) & 1) P.px(x + 1 + (j % (sw - 2)), gy + j, kMix(R[1], wd, 0.5)); } // stepping stones: the way across to what lies beyond
+      if (cold) { for (let k = 0; k < 4; k++) { const fxx = x0 + 6 + Math.round(nH(k, 4, s) * (tw - 18)); P.rect(fxx, gy, 5 + (k % 3) * 2, 2, kHex('#f4fafc')); P.px(fxx, gy + 2, kHex('#b8d8e8')); } }
+      else if (hot) { for (const q of [0.25, 0.6]) P.em.push({ k: 'smoke', x: x0 + Math.round(tw * q), y: gy, n: 4, rise: 26, c: '236,240,244', a: 0.42, ms: 3200, ph: q, grow: 3 }); }
+      else { BIG.reeds(P, x0 + 12, gy + 1, Math.round(u * 1.5), { w: 26, dense: 0.6, s: s + 3, c: K.nat === 'dry' ? '#a8a060' : '#6a9a48' }); BIG.reeds(P, x0 + Math.round(tw * 0.45), gy + 2, Math.round(u * 1.0), { w: 14, dense: 0.5, s: s + 4 }); }
+      BIG.rock(P, x0 - 9, gy + 1, Math.round(u * 0.7), { c: kCssHex(R[2]), s: s + 5, cap: cold ? { c: '#eef4f8', d: 2, tex: 'snow' } : null }); BIG.rock(P, x1 + 22, gy + 1, Math.round(u * 0.4), { c: kCssHex(R[2]), s: s + 6 });
+      P.em.push({ k: 'glint', x: x0 + 4, y: gy + 1, w: tw - 8, h: 2, n: 6, ms: 620, s: s % 97, c: '#ffffff' });
+      return 36; },
+    // the way onto a ground nobody walks: a cairn, two stones, a gap in an old wall, a post with a rag on it
+    hunt(P, Wd, cx, gy, u, K, p, s, R) { const li = HID.line.up.hunt.indexOf(p.line), rc = kCssHex(R[2]), cold = K.nat === 'cold';
+      if (li === 2) { RUN.drystone(P, Wd, cx - 70, cx - 12, gy, u, { h: 1.1, c: rc }, s + 1); RUN.drystone(P, Wd, cx + 12, cx + 64, gy, u, { h: 1.1, c: rc }, s + 2); for (let k = 0; k < 4; k++) BIG.rock(P, cx - 9 + k * 6, gy + 1, 3 + (k % 2) * 2, { c: rc, s: s + k }); return 44; }
+      if (li === 3) { wbox(P, cx - 1, gy - Math.round(u * 2.2), 3, Math.round(u * 2.2), kRamp('#6a5236')); P.em.push({ k: 'flag', x: cx + 2, y: gy - Math.round(u * 2.2) + 1, w: 9, h: 4, c: '#c8362a' }); BIG.rock(P, cx - 2, gy + 1, 6, { c: rc, s }); return Math.round(u * 2.2) + 16; }
+      if (li === 1) { for (const [dx, hm] of [[-13, 1.9], [12, 1.5]]) massAt(P, cx + dx - 5, cx + dx + 5, gy, x => { const q = (x - (cx + dx - 5)) / 10; return hm * u * Math.pow(Math.max(0, Math.sin(Math.PI * clamp(q, 0.02, 0.98))), 0.35) * (0.9 + 0.1 * nH(x, 1, s)); }, stuffOf(Object.assign({}, K.rock, { cap: cold ? { c: '#eef4f8', d: 2, tex: 'snow' } : undefined }), 'rock'), s + dx); return Math.round(u * 1.9) + 16; }
+      wildThing(P, 'cairn', cx - 4, gy, u, { c: rc, n: 7, w: 0.9 }); BIG.tussock(P, cx + 12, gy + 1, Math.round(u * 0.7), { c: cold ? '#9a9a70' : '#8a9a50', s, wind: 0.6 }); return 46; },
+    // an old cut, open to the sky: the rock stepping back in benches, cut blocks, a crane gone to rust
+    mine(P, Wd, cx, gy, u, K, p, s, R) { const li = HID.line.up.mine.indexOf(p.line), x0 = cx - Math.round(W * 0.4), x1 = cx + Math.round(W * 0.06);
+      wildMass(P, { w: W, ox: 0, gy, u, s, l: Wd.l, top: null }, gy, u, Object.assign({}, K.rock, { shape: 'steps', up: 'left', n: 4, from: x0 / W, to: x1 / W, h: 4.6, rough: 0.015, ends: 0.01, cap: li === 1 ? (K.cap || { c: '#5a8a3a', d: 4, tex: 'grass' }) : undefined, on: [['cracks', { n: 0.8 }]].concat(li === 1 ? [['tufts', { n: 1.2, c: '#7a9a50' }], ['ivy', { n: 0.6 }]] : []) }), s + 1);
+      wildThing(P, 'blocks', cx + Math.round(W * 0.06) + 34, gy, u, { c: kCssHex(R[3]) });
+      if (li === 2) { const X = x0 + 30, hgt = Math.round(u * 4.6); P.rect(X, gy - hgt - 60, 3, 60, kHex('#6a4a3a')); P.line(X + 1, gy - hgt - 58, X + 44, gy - hgt - 44, kHex('#7a4a34'), 2); P.line(X + 1, gy - hgt - 30, X + 44, gy - hgt - 44, kHex('#5a3a2a')); P.line(X + 44, gy - hgt - 44, X + 44, gy - hgt - 22, kHex('#2a2a30')); wbox(P, X + 41, gy - hgt - 22, 7, 6, kRamp('#8a8a80')); }
+      for (let k = 0; k < 5; k++) BIG.rock(P, x1 + 4 + k * 5, gy + 1, 2 + ((nH(k, 2, s) * 4) | 0), { c: kCssHex(R[2]), s: s + k });
+      return Math.round(u * 1.2) + 30; },
+  },
+  down: {
+    // black water in the floor, in section: it does not ripple unless something makes it
+    spot(P, Wd, cx, gy, u, K, p, s, R) { const tw = Math.round(Math.min(T_LVL.tarn[0] * W, T_LVL.tarn[1])), x0 = cx - Math.round(tw * 0.55), x1 = cx + Math.round(tw * 0.45), D = T_LVL.tarn[2] + 3, hot = K.nat === 'fire', wc = kHex(hot ? '#2a5a5a' : '#12202e'), wd = kHex('#04060a'), bl = kHex(T_LVL.dark);
+      for (let x = x0; x <= x1; x++) { const q = (x - x0) / (x1 - x0), d = Math.round(D * Math.pow(Math.sin(Math.PI * q), 0.5) + nF(x * 0.09, s) * 3) + 1; for (let j = 0; j <= d + 1; j++) P.px(x, gy + j, j > d ? kMix(R[0], bl, 0.4) : j === 0 ? kMix(R[1], bl, 0.3) : j === 1 ? kMix(wc, kHex('#9ac8e0'), nH(x >> 1, 3, s) > 0.72 ? 0.5 : 0.12) : kMix(wc, wd, clamp((j - 1) / D, 0, 1))); }
+      for (let x = x0 + 7; x < x1 - 6; x += 11) { const sw = 5 + ((nH(x, 7, s) * 3) | 0); P.rect(x, gy, sw, 1, kMix(R[3], bl, 0.15)); P.rect(x, gy + 1, sw, 2, kMix(R[2], bl, 0.3)); for (let j = 3; j < 7; j++) if ((j + x) & 1) P.px(x + 1 + (j % (sw - 2)), gy + j, kMix(R[1], wd, 0.6)); } // stepping stones
+      const Ks = { M: { R } }; stalag(P, x0 - 8, gy, Math.round(u * 1.3), Ks, s + 1); stalag(P, x0 - 16, gy, Math.round(u * 0.7), Ks, s + 2); stalag(P, x1 + 24, gy, Math.round(u * 0.6), Ks, s + 3);
+      P.em.push({ k: 'glint', x: x0 + 4, y: gy + 1, w: tw - 8, h: 2, n: 4, ms: 900, s: s % 89, c: '#bfe4f4' });
+      const dx = x0 + Math.round(tw * 0.4); P.em.push({ k: 'fn', x: dx, y: 0, draw: (x, y, t) => { const pr = (t / 2600) % 1; if (pr < 0.6) { g.fillStyle = 'rgba(190,225,245,0.8)'; g.fillRect(x, y + gy - 150 + Math.round(pr / 0.6 * 149), 1, 2); } else if (pr < 0.75) { g.fillStyle = 'rgba(190,225,245,0.5)'; const r = Math.round((pr - 0.6) / 0.15 * 5); g.fillRect(x - r, y + gy + 1, r * 2 + 1, 1); } } }); // a drip from the roof, and its ring
+      if (hot) P.em.push({ k: 'smoke', x: x0 + Math.round(tw * 0.3), y: gy, n: 4, rise: 24, c: '220,236,236', a: 0.35, ms: 3200, grow: 3 });
+      return 34; },
+    // where the roof lifts and the dark opens out: a way through between two pillars
+    hunt(P, Wd, cx, gy, u, K, p, s, R) { const li = HID.line.down.hunt.indexOf(p.line), hw = li === 1 ? 20 : 15, hh = li === 1 ? Math.round(u * 1.5) : Math.round(u * (li === 2 ? 4.4 : 3)), bl = kHex('#020204');
+      for (let j = 0; j < hh; j++) { const q = j / hh, ww = Math.round(hw * (li === 1 ? Math.sqrt(Math.max(0, 1 - q * q)) : q < 0.6 ? 1 : Math.sqrt(Math.max(0, 1 - Math.pow((q - 0.6) / 0.4, 2))))); for (let i = -ww; i <= ww; i++) P.px(cx + i, gy - 1 - j, kMix(bl, R[1], Math.abs(i) >= ww - 1 ? 0.35 : 0)); }
+      for (const sd of [-1, 1]) { const px = cx + sd * (hw + 7); for (let y = gy - hh - 26; y < gy; y++) { const ww = 4 + Math.round(2 * Math.sin((y - gy) * 0.05 + sd)); for (let i = -ww; i <= ww; i++) P.px(px + i, y, kMix(R[i < -1 ? 1 : i > 2 ? 3 : 2], kHex(T_LVL.dark), 0.2)); } }
+      P.em.push({ k: 'blink', x: cx - 4, y: gy - Math.min(hh - 6, Math.round(u * 1.1)), c: K.glow[0] === 'lava' ? '#ff9a50' : '#d8f0a0', w: 1, h: 1, ms: 5200, duty: 0.86, ph: (s % 10) / 10 }); P.em.push({ k: 'blink', x: cx - 1, y: gy - Math.min(hh - 6, Math.round(u * 1.1)), c: K.glow[0] === 'lava' ? '#ff9a50' : '#d8f0a0', w: 1, h: 1, ms: 5200, duty: 0.86, ph: (s % 10) / 10 }); // something looks back
+      return hh + 18; },
+    // a way in older than the village: timbered, or walled up and opened again, a rail gone to rust
+    mine(P, Wd, cx, gy, u, K, p, s, R) { const li = HID.line.down.mine.indexOf(p.line), r = (li === 1 ? PITMOUTH.arch : PITMOUTH.timber)(P, cx, gy, u, li === 1 ? { stone: '#8a7a70' } : { wood: '#5a4630' }, R, s) || { top: 50 };
+      if (li === 1) { for (let k = 0; k < 9; k++) wbox(P, cx + 20 + (k % 3) * 9 + ((k / 3) | 0) * 3, gy - 5 - ((k / 3) | 0) * 5, 8, 5, kRamp('#8a5a48')); } // the bricks it was walled with
+      pitRails(P, cx - 10, cx + 70, gy); if (li === 2) for (let k = 0; k < 3; k++) wbox(P, cx + 30 + k * 6, gy - 30 + k * 3, 3, 30 - k * 3, kRamp('#5a4630'));
+      return (r.top || 50) + 14; },
+  },
+};
+const LEVEL_C = new Map();
+function levelSprite(l, lv, w) {
+  const key = l.id + '|' + lv + '|' + w + '|' + H + '|' + SURF; let C = LEVEL_C.get(key); if (C) return C; if (LEVEL_C.size > 1) LEVEL_C.clear();
+  const G = lvGeo(l, lv), K = lvStuff(l), under = isUnder(l, lv), u = T_WILD.u, head = Math.max(T_WILD.head, landY(l) + 4), M = T_WILD.margin, P = new Paint(G.LW + 2 * M, head + T_PIT.foot), gy = head, s = (groundSeed(l) + (lv === 'up' ? 555 : 777)) % 9973, Wd = { w: G.LW, ox: M, openL: true, openR: under, gy, u, s, l, top: null }; P.seed = s; P.isle = l.id;
+  const mark = { back: 52 }, Kr = stuffOf(K.rock, 'rock'), R = Kr.M.R, top = new Float32Array(P.w).fill(NaN), thick = new Float32Array(P.w).fill(0), lx = M + G.ladder;
+  try {
+    if (under) {
+      hollowWall(P, 0, P.w - 1, 0, gy, Kr, s, {});
+      for (let k = 0; k < Math.round(G.LW / 150) + 1; k++) { const px = M + Math.round((k + 0.3 + 0.4 * nH(k, 21, s)) * 150), pw = 7 + ((nH(k, 22, s) * 9) | 0); if (Math.abs(px - lx) < 40 || G.xs.some(x => Math.abs(M + x - px) < 70)) continue; for (let y = 0; y < gy; y++) { const q = y / gy, ww = Math.round(pw * (1 - 0.5 * Math.sin(q * Math.PI))); for (let i = -ww; i <= ww; i++) P.px(px + i, y, kMix(R[i < -ww * 0.3 ? 1 : i > ww * 0.45 ? 3 : 2], kHex(T_LVL.dark), 0.3)); } } // pillars, floor to roof
+      hollowRoof(P, 0, P.w - 1, 0, Kr, s + 1, { ice: K.glow[0] === 'ice', len: 22 });
+      for (let x = 0; x < P.w; x++) { top[x] = 20; thick[x] = 1e9; } bankBody(P, top, thick, gy + 20, Object.assign({}, Kr, { cap: null }), s, 4096, 0);
+      { const d = P.d, bl = kHex(T_LVL.dark); for (let y = gy; y < P.h; y++) for (let x = 0; x < P.w; x++) { const i = y * P.w + x; d[i] = kMix(d[i], bl, y === gy ? 0.12 : clamp(0.3 + (y - gy) / 70, 0, 0.9)); } } // the floor, and the dark under it
+      for (let k = 0; k < Math.round(G.LW / 46); k++) { const x = M + Math.round((k + nH(k, 23, s)) * 46); if (Math.abs(x - lx) < 26 || G.xs.some(xx => Math.abs(M + xx - x) < 96)) continue; stalag(P, x, gy, 5 + ((nH(k, 24, s) * nH(k, 25, s) * 30) | 0), Kr, s + k); }
+      hollowGlow(P, M + 20, M + G.LW - 30, gy, K, s + 30, Math.max(2, Math.round(G.LW / 120)));
+      // the way back: a shaft of grey daylight down from the hole, and the ladder up into it
+      for (let y = 0; y < gy; y++) { const hw = 9 + Math.round(y * 0.11); for (let i = -hw; i <= hw; i++) { const x = lx + i, a = (1 - Math.abs(i) / (hw + 1)) * (1 - y / gy * 0.55); if (bay(x, y) < a * 0.7) P.px(x, y, kMix(P.d[y * P.w + x], kHex('#c8d8e8'), 0.16 + a * 0.2)); } }
+      for (let y = 0; y < gy; y++) { const c = kMix(kHex('#9a7a50'), kHex(T_LVL.dark), clamp((gy - y) / 260, 0, 0.5)); P.px(lx - 4, y, c); P.px(lx + 4, y, c); if (y % 5 === 2) P.rect(lx - 3, y, 7, 1, c); }
+      P.ell(lx, gy, 15, 2, kMix(R[3], kHex('#c8d8e8'), 0.3));
+      mark.back = 58;
+    } else {
+      const edge = M + G.LW - 12, Kg = stuffOf(Object.assign({}, K.rock, { cap: K.cap || undefined }), 'rock'), t0 = K.trees[0], t1 = K.trees[K.trees.length > 1 ? 1 : 0];
+      // far off: more of the high ground, and what grows up here, small and wind-cut
+      wildMass(P, Wd, gy, u, Object.assign({}, K.rock, { shape: 'ridge', from: -0.05, to: 0.86, h: 1.5, n: Math.max(3, G.ps.length * 3 + 1), rough: 0.3, cap: K.cap || undefined, on: K.nat === 'cold' ? [['snow', {}]] : K.nat === 'fire' ? [['cracks', { c: '#ff7a30', glow: '#ff8a40', n: 1 }]] : [['tufts', { n: 0.6, c: '#7a9a50' }]] }), s + 2);
+      if (t0) wildItems(P, Wd, [[t0, { n: 0.5, to: 0.9, h: ((TREEKIND[t0] || [0, {}])[1].h || 4) * 0.55 }]], gy, u, s + 3, null);
+      wildHaze(P, K.haze, T_WILD.fade * 1.5);
+      for (let x = 0; x <= edge; x++) { const e = edge - x; top[x] = 20 - (e < 5 ? (5 - e) * (5 - e) * 0.5 : 0); thick[x] = 1e9; } bankBody(P, top, thick, gy + 20, Kg, s, 4096, 0); // the ground: the bluff's own rock under what lies on it, to the edge he climbed over
+      massAt(P, 0, M + 30, gy, x => { const q = clamp((M + 30 - x) / 46, 0, 1); return q <= 0 ? 0 : (5.2 * u) * Math.pow(q, 0.45) * (0.92 + 0.16 * nF(x * 0.08, s)); }, Kg, s + 9, {}); // the far end: the rock goes on up
+      if (t1) wildItems(P, Wd, [[t1, { n: 0.35, from: 0.04, to: 0.86, h: ((TREEKIND[t1] || [0, {}])[1].h || 4) * 0.75 }]], gy, u, s + 4, null);
+      { const lc = kRamp(K.ladder === 'iron' ? '#5a5a64' : K.ladder === 'bamboo' ? '#a8a050' : '#8a6a44'), ex = edge - 3; for (const dx of [-4, 4]) { P.rect(ex + dx, gy - 15, 1, 16 + T_PIT.foot, lc[dx < 0 ? 2 : 3]); } for (let y = gy - 12; y < P.h; y += 5) P.rect(ex - 3, y, 7, 1, lc[2]); wbox(P, ex - 9, gy - 7, 2, 8, kRamp('#6a5236')); P.line(ex - 8, gy - 6, ex - 4, gy - 11, kHex('#c8b888')); } // the head of the ladder standing over the edge, lashed to a stake
+      P.em.push({ k: 'fn', x: 0, y: 0, wide: true, draw: (x, y, t) => { for (let k = 0; k < 3; k++) { const ww = 70 + k * 30, xx = ((t / (90 + k * 25) + k * 311) % (G.LW + 2 * ww)) - ww, yy = gy - 16 - k * 9; g.fillStyle = 'rgba(244,248,252,0.2)'; g.fillRect(x + xx, y + yy, ww, 3); g.fillStyle = 'rgba(244,248,252,0.13)'; g.fillRect(x + xx + 9, y + yy - 2, ww - 22, 2); g.fillRect(x + xx - 8, y + yy + 3, ww - 10, 2); } } }); // a rag of cloud going by at the height you stand
+      wildThing(P, 'cairn', lx - 26, gy, u, { c: kCssHex(R[2]), n: 4, w: 0.6 });
+      mark.back = 40;
+    }
+    G.ps.forEach((p, i) => { const cx = M + G.xs[i]; try { mark[p.id] = LVPLACE[under ? 'down' : 'up'][p.kind](P, Wd, cx, gy, u, K, p, (s + 101 * (i + 1)) % 9973, R) || 44; } catch (e) { console.error('place', l.id, p.id, e); mark[p.id] = 44; } });
+    if (!under) { const keep = [lx, 20], un = K.under.filter(n => n !== 'reeds').slice(0, 2).map((n, i) => [n, { n: 1.3 - i * 0.5, from: 0.02, to: 0.9, h: n === 'flowers' ? 0.5 : n === 'tussock' ? 0.7 : n === 'fern' ? 0.9 : 0.7, wind: 0.5 }]); if (un.length) wildItems(P, Wd, un, gy, u, s + 8, keep); }
+  } catch (e) { console.error('level', l.id, lv, e); }
+  C = { id: l.id, cv: P.canvas(), dark: nightShape(P), glow: P.glowCanvas(), em: P.em, head, w, ox: M, mark, under }; LEVEL_C.set(key, C); return C;
+}
+function drawLevelArt(l, lv, gy, t, nt) {
+  const V = levelSprite(l, lv, W), sy = gy - V.head, x0 = -V.ox; g.drawImage(V.cv, x0, sy);
+  if (nt > 0.02 && !V.under) { g.globalAlpha = nt * T_BANK.night; g.drawImage(V.dark, x0, sy); g.globalAlpha = 1; }
+  const gn = V.under ? 1 : nt; if (V.glow && gn > 0.05) { g.globalAlpha = clamp(gn * 1.25, 0, 1); g.drawImage(V.glow, x0, sy); g.globalAlpha = 1; }
+  for (const e of V.em) EMIT[e.k](e, e.x + x0, e.y + sy, t, gn, V);
+}
+// --- the wall of the hollows, behind a water or a ground down there (where the sky and the island's country would be) ---
+const HOLLOW_C = new Map();
+function hollowBack(l, yBase) {
+  const key = l.id + '|' + W + '|' + H + '|' + yBase; let C = HOLLOW_C.get(key); if (C) return C; if (HOLLOW_C.size > 1) HOLLOW_C.clear();
+  const K = lvStuff(l), Kr = stuffOf(K.rock, 'rock'), R = Kr.M.R, s = (groundSeed(l) + 919) % 9973, hh = yBase + 6, P = new Paint(W, hh); P.seed = s; P.isle = l.id;
+  try {
+    hollowWall(P, 0, W - 1, 0, hh, Kr, s, { k: 0.1 });
+    for (let k = 0; k < Math.round(W / 110) + 1; k++) { const px = Math.round((k + 0.25 + 0.5 * nH(k, 21, s)) * 110), pw = 5 + ((nH(k, 22, s) * 8) | 0); for (let y = 0; y < hh; y++) { const q = y / hh, ww = Math.round(pw * (1 - 0.5 * Math.sin(q * Math.PI))); for (let i = -ww; i <= ww; i++) P.px(px + i, y, kMix(R[i < -ww * 0.3 ? 1 : i > ww * 0.45 ? 3 : 2], kHex(T_LVL.dark), 0.42)); } }
+    hollowRoof(P, 0, W - 1, 0, Kr, s + 1, { ice: K.glow[0] === 'ice', len: Math.max(14, Math.round(yBase * 0.16)) });
+    hollowGlow(P, 20, W - 20, yBase - 2, K, s + 30, Math.max(2, Math.round(W / 130)));
+  } catch (e) { console.error('hollow', l.id, e); }
+  C = { cv: P.canvas(), glow: P.glowCanvas(), em: P.em }; HOLLOW_C.set(key, C); return C;
+}
+function drawHollow(l, t, yBase) { const V = hollowBack(l, yBase); g.fillStyle = '#05050a'; g.fillRect(0, 0, W, H); g.drawImage(V.cv, 0, 0); if (V.glow) g.drawImage(V.glow, 0, 0); for (const e of V.em) EMIT[e.k](e, e.x, e.y, t, 1, V); }
+// the lamp he carries down there: clear about him, and the dark closing in beyond it in dithered steps
+const LAMP_C = new Map();
+function drawLampHole(x, y, t, k) {
+  k = k || 1; const key = W + '|' + H + '|' + k; let c = LAMP_C.get(key);
+  if (!c) { if (LAMP_C.size > 2) LAMP_C.clear(); c = document.createElement('canvas'); c.width = 2 * W; c.height = 2 * H; const im = new ImageData(2 * W, 2 * H), d = new Uint32Array(im.data.buffer), r0 = T_LVL.lamp[0] * k, r1 = T_LVL.lamp[1] * k, mx = T_LVL.lamp[2];
+    for (let yy = 0; yy < 2 * H; yy++) for (let xx = 0; xx < 2 * W; xx++) { const dx = (xx - W) * 0.82, dy = (yy - H) * 1.1, dd = Math.sqrt(dx * dx + dy * dy); let a = clamp((dd - r0) / (r1 - r0), 0, 1); a = Math.floor(a * 6 + bay(xx, yy) * 0.9) / 6; if (a > 0) d[yy * 2 * W + xx] = ((Math.round(clamp(a, 0, 1) * mx * 255) << 24) | 0x0a0606) >>> 0; }
+    c.getContext('2d').putImageData(im, 0, 0); LAMP_C.set(key, c); }
+  g.drawImage(c, Math.round(x) - W, Math.round(y) - H);
+  const fl = 0.07 + 0.03 * Math.sin(t / 130) * Math.sin(t / 47); g.fillStyle = `rgba(255,190,90,${fl.toFixed(3)})`; g.fillRect(Math.round(x) - 26, Math.round(y) - 22, 52, 40); // the flame's own colour on what is nearest
+}
+// --- a hidden hunting ground: its own floor and its own far line ---
+function hiddenHuntDesc(l, p) {
+  const K = lvStuff(l), s = (groundSeed(l) + strHash(p.id)) % 9973, rc = kCssHex(stuffOf(K.rock, 'rock').M.R[2]), t0 = K.trees[0];
+  if (isUnder(l, p.lv)) { const dk = kCssHex(kMix(kHex(rc), kHex(T_LVL.dark), 0.5)), F = Object.assign({}, HFLOOR.cave, { c: dk, c2: kCssHex(kMix(kHex(rc), kHex(T_LVL.dark), 0.62)) });
+    const g0 = K.glow[0], far = [['mass', Object.assign({}, K.rock, { shape: 'ridge', from: 0, to: 1, h: 1.7, n: 7, rough: 0.3 })]].concat(g0 === 'crystal' ? [['crystal', { n: 2.2, h: 1.1, c: K.glow[1], glow: K.glow[1] }]] : g0 === 'shroom' ? [['shroom', { n: 2.6, h: 1, c: K.glow[1], glow: K.glow[1], spots: false }]] : []);
+    F.items = [['stone', 10, { c: rc }], ['pool', 3, { c: '#0e1826', sky: '#2a4a5e' }], ['crack', 5, { c: '#0a0a10' }]].concat(g0 === 'shroom' || g0 === 'worm' ? [['shroomlet', 9, { c: K.glow[1], glow: K.glow[1] }]] : g0 === 'lava' ? [['crack', 10, { c: '#ff7a30', glow: '#ff8a40' }]] : g0 === 'crystal' || g0 === 'ice' ? [['shard', 10, { c: K.glow[1] }]] : []);
+    F.near = [['rock', { at: 0.9, d: 0.5, h: 0.9, c: dk }]];
+    return Object.assign({ far, haze: '#0c0c14', fade: 0.3, lit: 1 }, F); }
+  const fl = { green: ['moor', 'heath', 'rocktop'], wet: ['jungle', 'needles', 'moor'], cold: ['snow', 'ice', 'rocktop'], dry: ['redearth', 'rocktop', 'stubble'], fire: ['ash', 'blacksand', 'rocktop'], odd: ['rocktop', 'moor', 'heath'] }[K.nat] || ['moor'], F = Object.assign({}, HGROUND[fl[s % fl.length]] || HGROUND.moor);
+  const far = [['crag', Object.assign({}, K.rock, { from: 0.02, to: 0.98, h: 2.8, n: 4, cap: K.cap || undefined })]].concat(t0 ? [[t0, { n: 0.7, h: ((TREEKIND[t0] || [0, {}])[1].h || 4) * 0.6 }]] : []);
+  return Object.assign({ far, haze: K.haze }, F);
+}
+
+// a water on the heights has a far side: a low broken shore of the island's own rock under what lies on it, a tree or two, a little hazed
+function spotFarBank(B) {
+  const l = B.l, K = lvStuff(l), P = B.F, gy = B.up, s = (B.s + 71) % 9973, Kg = stuffOf(Object.assign({}, K.rock, { cap: K.cap || undefined }), 'rock'), x0 = Math.round(shoreW * 0.5), hz = kHex(K.haze), n = 3 + (s % 3), t0 = K.trees[0];
+  const top = massAt(P, x0, P.w - 1, gy, x => { const q = (x - x0) / Math.max(1, P.w - x0); let h = 0; for (let i = 0; i < n; i++) { const c = (i + 0.5 + (nH(i, 1, s) - 0.5) * 0.6) / n, wd = (0.6 + 0.5 * nH(i, 2, s)) / n, d = Math.abs(q - c) / wd; if (d < 1) h = Math.max(h, (0.45 + 0.55 * nH(i, 3, s)) * Math.pow(Math.cos(d * Math.PI / 2), 0.8)); } return Math.max(5, 9 + h * 30) * (0.9 + 0.2 * nF(x * 0.06, s)) * Math.min(1, (x - x0 + 2) / 26); }, Kg, s, {});
+  if (t0) for (let k = 0; k < 2 + (s % 3); k++) { const x = x0 + 30 + Math.round((k + nH(k, 5, s)) * (P.w - x0 - 50) / (2 + (s % 3))), h = top[clamp(x, 0, P.w - 1)]; if (h > 4) bigAt(P, t0, x, gy - Math.ceil(h) + 2, 7, { h: ((TREEKIND[t0] || [0, {}])[1].h || 4) * (0.7 + 0.5 * nH(k, 6, s)), s: s + k * 9 }); }
+  if (K.nat === 'fire') for (let k = 0; k < 2; k++) P.em.push({ k: 'smoke', x: x0 + 40 + k * Math.round((P.w - x0) * 0.4), y: gy - 14, n: 4, rise: 26, c: '236,226,214', a: 0.4, ms: 3300, ph: k * 0.4, grow: 3 });
+  for (let y = 0; y < gy; y++) for (let x = x0; x < P.w; x++) { const i = y * P.w + x; if ((P.d[i] >>> 24) === 255) P.d[i] = kMix(P.d[i], hz, 0.2); }
+}
+// the bank at a hidden water: the rock of the place under what lies on it, a stone to sit on, and nothing anybody built
+function hidBank(l) {
+  if (typeof MODE === 'undefined' || MODE !== 'game' || l.id !== S.loc) return null; const sp = spotOf(l.id, S.spot); if (!sp.hidden) return null;
+  const K = lvStuff(l), under = isUnder(l, sp.hidden), rc = kCssHex(stuffOf(K.rock, 'rock').M.R[2]), nat = K.nat;
+  if (under) return { form: 'ledge', mat: K.rock.mat, tex: K.rock.tex, q: K.rock.q, cap: false, seat: 'rock', seato: { c: rc }, strew: ['pebbles', 'puddles'], edge: ['stones'], things: [['stonelantern', { c: rc }], ['boulder', { c: rc }], ['bones', {}], ['boulder', { c: rc, w: 1.4 }]] };
+  return { form: nat === 'cold' ? 'shelf' : nat === 'green' || nat === 'wet' ? 'bank' : 'rocks', mat: nat === 'cold' ? 'ice' : nat === 'green' || nat === 'wet' ? '#6a5a40' : K.rock.mat, tex: nat === 'cold' ? undefined : nat === 'green' || nat === 'wet' ? 'soil' : K.rock.tex, q: K.rock.q, cap: nat === 'cold' ? undefined : K.cap || undefined, seat: nat === 'cold' ? 'ice' : 'rock', seato: { c: rc },
+    strew: nat === 'cold' ? ['snow', 'pebbles'] : nat === 'fire' ? ['cracks', 'pebbles'] : nat === 'dry' ? ['pebbles', 'tufts'] : nat === 'wet' ? ['moss', 'tufts', 'leaves'] : ['tufts', 'flowers', 'pebbles'], edge: nat === 'cold' ? ['icicles'] : nat === 'fire' ? ['stones'] : ['reeds', 'stones'],
+    things: nat === 'cold' ? [['tipup', {}], ['boulder', { c: rc }], ['cairn', { c: rc }]] : [['boulder', { c: rc }], ['cairn', { c: rc }], ['rushes', {}], ['boulder', { c: rc, w: 1.5 }]] };
+}
 // --- the runtime: build an island's layers once, relight them with the hour, blit them ---
 const LANDS = {}; // island id -> s => { ... } : the island's own landscape, written against the layer API above
 let LAND_C = {};
@@ -20417,7 +20845,7 @@ function drawLandscape(l, cam, yBase, t, nt, o) {
   g.save(); if (o.flip) { g.translate(W, 0); g.scale(-1, 1); }
   for (let i = 0; i < S.layers.length; i++) {
     const Y = S.layers[i]; if (q >= 1 && i === 2) continue;
-    const sx = -Y.pad - Math.round(cam * Y.f) - Math.round(T_LAND.off[i] * W * q), sy = yBase - Y.base;
+    const sx = -Y.pad - Math.round(cam * Y.f) - Math.round(T_LAND.off[i] * W * q), sy = yBase - Y.base + (o.dy || 0); // dy: drawn lower than it was built for (the island seen from its own heights)
     for (const e of Y.em) if (e.under) EMIT[e.k](e, e.x + sx, e.y + sy, t, nt, Y); // what shows through a hole in the layer (the day outside a cave's mouth)
     g.drawImage(Y.tint, sx, sy);
     if (Y.glow && gn > 0.05) { g.globalAlpha = clamp(gn * 1.25, 0, 1); g.drawImage(Y.glow, sx, sy); g.globalAlpha = 1; }
@@ -24844,11 +25272,12 @@ shopSay({
 // A stalk: wait a few seconds, something steps out at a spot along the ground. A mark swings along the bar; hold the
 // button to draw (the mark slows, your breath runs out), let go with the mark inside the band to take it. Wait too long
 // and it bolts. Band width is the weapon, less the animal's skittishness; swing speed is the animal.
-let HU = null;
-function enterHunt() {
-  const l = loc(), hcl = huntClosed(l); if (hcl) { toast(`${cap1(l.hunt.name || 'the ground')}: closed. ${closedSay(hcl)}`); if (MODE !== 'island') enterIsland('hunt'); return; }
-  MODE = 'hunt'; $('#isle').hidden = true; $('#game').hidden = true; $('#hunt').hidden = false; HU = { phase: 'idle' };
-  $('#hName').textContent = l.hunt.name ? l.hunt.name[0].toUpperCase() + l.hunt.name.slice(1) : 'The wild'; $('#hSub').textContent = `${islandLabel(l)} · ${locTitle(l)}`;
+let HU = null, GRD = null; // GRD: the hidden ground being hunted (a place of islePlaces), or null on the island's own
+const huntKey = () => S.loc + (GRD ? '/' + GRD.id : ''); // overhunting is kept per ground
+function enterHunt(pid) {
+  const l = loc(), P = pid ? placeOf(l, pid) : null, nm = P ? P.name : l.hunt.name, hcl = P ? closedAt(l, 'hunt', P.id) : huntClosed(l); if (hcl) { toast(`${cap1(nm || 'the ground')}: closed. ${closedSay(hcl)}`); if (MODE !== 'island') enterIsland(P ? 'p:' + P.id : 'hunt'); return; }
+  MODE = 'hunt'; $('#isle').hidden = true; $('#game').hidden = true; $('#hunt').hidden = false; HU = { phase: 'idle' }; GRD = P;
+  $('#hName').textContent = nm ? cap1(nm) : 'The wild'; $('#hSub').textContent = `${islandLabel(l)} · ${locTitle(l)}` + (P ? ' · ' + levelName(l, P.lv) : '');
   renderHunt(); window.scrollTo(0, 0);
 }
 // Overhunting: every animal taken puts a point of pressure on its species here that fades over T_HUNT.recoverMs; the species comes
@@ -24881,14 +25310,17 @@ function thinBar(locId) {
 // it comes back while you watch: a point every ten minutes
 function thinBarUpdate() {
   const box = $('#hgameBox'); if (!box || MODE !== 'hunt') return;
-  const G = groundThin(S.loc); box.className = 'meter game l' + G.lvl; $('#hgame').style.width = (G.left * 100).toFixed(1) + '%'; $('#hgameWord').textContent = THIN_WORD[G.lvl]; $('#hgameTxt').innerHTML = thinText(G);
+  const G = groundThin(huntKey()); box.className = 'meter game l' + G.lvl; $('#hgame').style.width = (G.left * 100).toFixed(1) + '%'; $('#hgameWord').textContent = THIN_WORD[G.lvl]; $('#hgameTxt').innerHTML = thinText(G);
 }
-function gamePool(locId, t) { // what is out there at this hour that your weapon can bring down; shot and calls tilt it toward the rarer, and overhunting thins it
-  const ph = phaseAt(t), power = WEAPON().power, luck = (SHOT[shotOf()].luck || 0) + (CALLS[callOf()].luck || 0), shun = (SHOT[shotOf()].shun || 1) * (CALLS[callOf()].shun || 1);
-  return GAME.filter(c => c.loc[locId] && (!c.time || c.time.includes(ph)) && c.kg[0] <= power && !(c.legend && onceGone(c.id))).map(c => { const rk = gameRank(c, locId); return [c, c.loc[locId] * (1 + rk * luck * 0.5) * (rk === 0 ? shun : 1) * Math.pow(T_HUNT.pressDrop, pressOf(locId, c.id))]; });
+function gamePool(locId, t, P) { // what is out there at this hour that your weapon can bring down; shot and calls tilt it toward the rarer, and overhunting thins it; P: a hidden ground, where the rare are more than doubled
+  const key = P ? locId + '/' + P.id : locId, RK = P ? T_SIZE.rank.hunt : null, ph = phaseAt(t), power = WEAPON().power, luck = (SHOT[shotOf()].luck || 0) + (CALLS[callOf()].luck || 0), shun = (SHOT[shotOf()].shun || 1) * (CALLS[callOf()].shun || 1);
+  const fits = !P ? null : P.lv === 'down' || isUnder(LOC[locId], P.lv) ? c => T_SIZE.under.includes(c.sil) : c => !T_SIZE.notUp.includes(c.sil); // a hidden ground has what would live there: no deer in a cave, no seal on a moor
+  let list = GAME.filter(c => c.loc[locId] && (!c.time || c.time.includes(ph)) && c.kg[0] <= power && !(c.legend && onceGone(c.id)));
+  if (fits) { const f = list.filter(c => c.legend || fits(c)); if (f.filter(c => !c.legend).length >= 2) list = f; } // (where that would leave next to nothing, the island's game as it is)
+  return list.map(c => { const rk = gameRank(c, locId); return [c, c.loc[locId] * (1 + rk * luck * 0.5) * (rk === 0 ? shun : 1) * Math.pow(T_HUNT.pressDrop, pressOf(key, c.id)) * (RK ? (c.legend ? T_SIZE.fabled : RK[rk] || 1) : 1)]; });
 }
 function rollGame() {
-  const p = gamePool(S.loc, now()); if (!p.length) return null;
+  const p = gamePool(S.loc, now(), GRD); if (!p.length) return null;
   const tot = p.reduce((a, x) => a + x[1], 0); let r = Math.random() * tot, c = p[p.length - 1][0];
   for (const [cc, w] of p) { r -= w; if (r <= 0) { c = cc; break; } }
   return rollSize(c);
@@ -24899,7 +25331,7 @@ function startStalk() {
   const roll = rollGame(); if (!roll) { toast('Nothing stirs here at this hour.'); return; }
   const winds = ['face', 'cross', 'cross', 'back'], call = CALLS[callOf()], shot = SHOT[shotOf()];
   if (callOf() !== 'none') S.calls[callOf()]--; // a call is spent on the stalk
-  const wait = rnd(T_HUNT.wait[0], T_HUNT.wait[1]) * (call.wait || 1) * (S.scattered > now() ? (WEAPON().loud || 1.5) : 1) * (1 + Math.min(T_HUNT.waitPressMax, T_HUNT.waitPress * groundPress(S.loc))); S.scattered = 0; // a hunted-out ground is slow to show anything
+  const wait = rnd(T_HUNT.wait[0], T_HUNT.wait[1]) * (call.wait || 1) * (S.scattered > now() ? (WEAPON().loud || 1.5) : 1) * (1 + Math.min(T_HUNT.waitPressMax, T_HUNT.waitPress * groundPress(huntKey()))); S.scattered = 0; // a hunted-out ground is slow to show anything
   const flock = !roll.c.legend && roll.c.kg[1] <= T_HUNT.flockMaxKg && Math.random() < T_HUNT.flockOdds ? Math.floor(rnd(T_HUNT.flockN[0], T_HUNT.flockN[1] + 1)) : 0; // once in a while the whole flock comes down
   HU = { phase: 'wait', at: now() + wait, roll, tx: rnd(0.18, 0.82), ph: rnd(0, 6), hold: false, breath: 1, flee: 0, wind: winds[Math.floor(Math.random() * winds.length)], alert: 0, steps: call.near || 0, look: false, lookAt: 0, shot: shotOf(), call: callOf(), calm: CLOAK().calm * (shot.calm || 1), flock, flockN: flock };
   save();
@@ -24953,7 +25385,8 @@ function take() {
   if (HU.shot !== 'stones') tags.push(SHOT[HU.shot].name);
   const gx = S.gindex[c.id] || (S.gindex[c.id] = { n: 0, best: 0 });
   if (gx.n === 0) tags.push('New species'); if (kg > gx.best) { if (gx.n > 0) tags.push('New record'); gx.best = kg; } gx.n++;
-  if (!c.legend) { const hd = S.hunted[S.loc] = S.hunted[S.loc] || {}; hd[c.id] = { n: pressOf(S.loc, c.id) + 1, t: now() }; } // one more taken from this ground
+  if (GRD) tags.push('Hidden ground');
+  if (!c.legend) { const hk = huntKey(), hd = S.hunted[hk] = S.hunted[hk] || {}; hd[c.id] = { n: pressOf(hk, c.id) + 1, t: now() }; } // one more taken from this ground
   let line = '';
   if (S.pack.length < packCap()) { S.pack.push({ id: c.id, kg, value }); if (c.legend) onceHold(c.id); line = `Into the bag. ${S.pack.length}/${packCap()}.`; }
   else line = c.legend ? 'The bag is full. It gets up and is gone: it will be back another day.' : 'The bag is full. You leave it for the gulls.';
@@ -24985,9 +25418,9 @@ function renderHunt() {
   const box = $('#hbox'), ph = HU ? HU.phase : 'idle', w = WEAPON();
   const tt = tutHere() ? tutHuntText(ph) : ''; $('#hNote').classList.toggle('tut', !!tt);
   $('#hbar').classList.toggle('flock', !!(HU && HU.flock && ph === 'seen'));
-  if (ph === 'idle') { const sh = SHOT[shotOf()], ca = CALLS[callOf()], pw = S.tally ? '' : pressWord(S.loc); $('#hNote').innerHTML = tt || `<b>${w.name}</b> · wait, creep, draw, loose${pw ? ` · <span class="look">${pw}</span>` : ''}`;
-    box.innerHTML = `<div class="rigrow"><div class="rigsum"><div class="l1">${gearShort(w)} · ${sh.short}${shotOf() !== 'stones' ? ' ×' + S.shot[shotOf()] : ''}${callOf() !== 'none' ? ` · ${ca.short} ×${S.calls[callOf()]}` : ''}</div><div class="l2">Takes game to ${fmtKg(w.power)} · ${maxSteps()} steps${CLOAK().id !== 'none' ? ' · ' + CLOAK().name.toLowerCase() : ''} · bag ${S.pack.length}/${packCap()}</div></div><button class="rigbtn" data-act="open" data-k="kit">Change kit</button></div>${thinBar(S.loc)}${S.tally ? '' : `<div class="note">${loc().hunt.name ? 'Quiet. Something is out there. The wind will tell you how close you can get.' : ''}</div>`}<button class="cta" data-act="stalk">Wait for a sign</button>`; $('#hband').style.width = '0'; }
-  else if (ph === 'wait') { $('#hNote').innerHTML = tt || `<b>Still.</b> Wind ${WIND_NAME[HU.wind]}.`; box.innerHTML = `${S.tally ? thinBar(S.loc) : ''}<div class="note">Keep low. Something will show.</div><button class="cta alt" data-act="leavehunt">Give up</button>`; }
+  if (ph === 'idle') { const sh = SHOT[shotOf()], ca = CALLS[callOf()], pw = S.tally ? '' : pressWord(huntKey()); $('#hNote').innerHTML = tt || `<b>${w.name}</b> · wait, creep, draw, loose${pw ? ` · <span class="look">${pw}</span>` : ''}`;
+    box.innerHTML = `<div class="rigrow"><div class="rigsum"><div class="l1">${gearShort(w)} · ${sh.short}${shotOf() !== 'stones' ? ' ×' + S.shot[shotOf()] : ''}${callOf() !== 'none' ? ` · ${ca.short} ×${S.calls[callOf()]}` : ''}</div><div class="l2">Takes game to ${fmtKg(w.power)} · ${maxSteps()} steps${CLOAK().id !== 'none' ? ' · ' + CLOAK().name.toLowerCase() : ''} · bag ${S.pack.length}/${packCap()}</div></div><button class="rigbtn" data-act="open" data-k="kit">Change kit</button></div>${thinBar(huntKey())}${S.tally ? '' : `<div class="note">${loc().hunt.name ? 'Quiet. Something is out there. The wind will tell you how close you can get.' : ''}</div>`}<button class="cta" data-act="stalk">Wait for a sign</button>`; $('#hband').style.width = '0'; }
+  else if (ph === 'wait') { $('#hNote').innerHTML = tt || `<b>Still.</b> Wind ${WIND_NAME[HU.wind]}.`; box.innerHTML = `${S.tally ? thinBar(huntKey()) : ''}<div class="note">Keep low. Something will show.</div><button class="cta alt" data-act="leavehunt">Give up</button>`; }
   else if (ph === 'seen') { const c = HU.roll.c, far = HU.steps < maxSteps();
     $('#hNote').innerHTML = (tt ? tt + '<br>' : '') + (HU.flock ? `<b class="gold">A FLOCK · ${HU.flock} left</b> · ` : '') + `<b>${c.name}</b> · ${fmtKg(HU.roll.kg)} · ${tempoWord()} · <span class="${HU.look ? 'look' : ''}">${HU.look ? 'head up!' : distName(HU.steps)}</span> · wind ${WIND_NAME[HU.wind]}`;
     $('#hbar').classList.toggle('flock', !!HU.flock);
@@ -25039,10 +25472,10 @@ function drawHunter(gy, t) {
   g.fillStyle = 'rgba(0,0,0,0.22)'; g.fillRect(X + 8, Y + c.height * sc - 2, c.width * sc - 16, 2); // a shadow under him
 }
 function drawHunt(t) {
-  const l = loc(), h = hourAt(t), nt = drawSkyBase(h, t, { l }); sceneWeather(l, t, nt);
-  const gy = SURF + 10;
-  drawLandscape(l, W, gy, t, nt, { mode: 'hunt' }); // the country behind the gate
-  g.drawImage(layer('hunt', W, H, `${l.id}|${SURF}`, () => drawHuntGround(l, gy, t, nt)), 0, 0); // the island's own ground, painted (huntSprite): a layer, so what little moves on it is redrawn a few times a second
+  const l = loc(), h = hourAt(t), gy = SURF + 10, under = !!GRD && isUnder(l, GRD.lv); let nt;
+  if (under) { nt = T_SIZE.gloom; drawHollow(l, t, gy); } // a ground under the island: the cavern's own wall where the sky would be
+  else { nt = drawSkyBase(h, t, { l }); sceneWeather(l, t, nt); drawLandscape(l, W, gy, t, nt, { mode: 'hunt', dy: GRD ? upDrop() : 0 }); } // the country behind the gate (lower, from a ground on the heights)
+  g.drawImage(layer('hunt', W, H, `${l.id}|${SURF}|${GRD ? GRD.id : ''}`, () => drawHuntGround(l, gy, t, nt, GRD)), 0, 0); // the island's own ground, painted (huntSprite): a layer, so what little moves on it is redrawn a few times a second
   if (HU && HU.phase === 'seen' || (HU && HU.phase === 'taken')) {
     const c = HU.roll.c, cx = (HU.tx * SW) | 0, bob = HU.look ? 0 : Math.sin(t / 260) > 0.6 ? 1 : 0, sc = HU.steps >= 2 ? 2 : 1;
     const mc = beastC(c.id, sc, 'color');
@@ -25057,7 +25490,7 @@ function drawHunt(t) {
     for (let k = 0; k < 14; k++) { const sp = 18 + (k % 4) * 7, x = ((((k * 37) + dir * t / 1000 * sp) % W) + W) % W | 0, y = (gy - 30 + ((k * 13) % 26) + Math.sin(t / 500 + k) * 2) | 0; g.fillRect(x, y, dir === 0.15 ? 1 : 2, 1); }
   }
   drawHunter(gy, t);
-  sceneFx(l, t, nt); drawWeatherFx(l, t, nt);
+  if (under) drawLampHole(SW * 0.42, gy + 6, t, 2.1); else { sceneFx(l, t, nt); drawWeatherFx(l, t, nt); }
   g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, 0, W, 1);
 }
 
@@ -25069,36 +25502,37 @@ function drawHunt(t) {
 // at full it comes down and you are out. Deeper costs oil, and so does the climb back, so the lamp is the whole budget
 // and the decision every face asks is the stalk's: push your luck or go up with what you have.
 let MI = null;
-const cap1 = s => s ? s[0].toUpperCase() + s.slice(1) : s;
 const theOre = m => /^the /i.test(m.name) ? m.name.replace(/^The /, 'the ') : 'the ' + m.name.toLowerCase(); // "the First Folio", "the quartz": never "the the"
-function minePool(locId, level) { return MINERALS.filter(m => m.loc[locId] && level >= m.depth[0] && level <= m.depth[1] && !(m.relic && onceGone(m.id))).map(m => [m, m.loc[locId]]); }
-function rollMineral(locId, level) {
-  let p = minePool(locId, level);
-  for (let d = 1; d <= T_MINE.maxLevel && !p.length; d++) p = minePool(locId, Math.max(1, level - d)).concat(minePool(locId, level + d)); // a thin level borrows from its neighbours
+function minePool(locId, level, P) { const RK = P ? T_SIZE.rank.mine : null; return MINERALS.filter(m => m.loc[locId] && level >= m.depth[0] && level <= m.depth[1] && !(m.relic && onceGone(m.id))).map(m => [m, m.loc[locId] * (RK ? (m.relic ? T_SIZE.fabled : RK[RARITY_RANK[mineralRarityOf(m)] || 0]) : 1)]); } // P: a hidden working, richer in the rare
+const minePlace = () => MI && MI.place ? placeOf(LOC[MI.loc], MI.place) : null;
+function rollMineral(locId, level, P) {
+  let p = minePool(locId, level, P);
+  for (let d = 1; d <= T_MINE.maxLevel && !p.length; d++) p = minePool(locId, Math.max(1, level - d), P).concat(minePool(locId, level + d, P)); // a thin level borrows from its neighbours
   if (!p.length) return null;
   const tot = p.reduce((a, x) => a + x[1], 0); let r = Math.random() * tot;
   for (const [m, w] of p) { r -= w; if (r <= 0) return m; } return p[p.length - 1][0];
 }
-function genFace(locId, level) {
+function genFace(locId, level, P) {
   const n = T_MINE.cols * T_MINE.rows, tiles = Array.from({ length: n }, () => ({ s: 'rock', m: null, hz: null }));
-  const pockets = Math.min(n >> 1, T_MINE.pockets[0] + Math.floor(Math.random() * (T_MINE.pockets[1] - T_MINE.pockets[0] + 1)) + (level >> 1));
+  const pockets = Math.min(n >> 1, Math.round((T_MINE.pockets[0] + Math.floor(Math.random() * (T_MINE.pockets[1] - T_MINE.pockets[0] + 1)) + (level >> 1)) * (P && P.quarry ? T_SIZE.quarry.pockets : 1)));
   const order = tiles.map((_, i) => i).sort(() => Math.random() - 0.5);
-  for (let k = 0; k < pockets; k++) { const m = rollMineral(locId, level); if (m) tiles[order[k]].m = m.id; }
+  for (let k = 0; k < pockets; k++) { const m = rollMineral(locId, level, P); if (m) tiles[order[k]].m = m.id; }
   const gas = T_MINE.gasOdds[0] + T_MINE.gasOdds[1] * level, water = T_MINE.waterOdds[0] + T_MINE.waterOdds[1] * level;
   for (const tl of tiles) { if (tl.m) continue; const r = Math.random(); if (r < gas) tl.hz = 'gas'; else if (r < gas + water) tl.hz = 'water'; }
   return tiles;
 }
 const tileAt = (c, r) => MI.tiles[r * T_MINE.cols + c];
-function startDescent() {
-  const l = loc(), aid = aidOf(); if (aid !== 'none') S.aids[aid]--; // an aid is spent on the descent
-  MI = { loc: l.id, level: 1, oil: LAMP().oil, oilMax: LAMP().oil, roof: 0, tiles: genFace(l.id, 1), finds: [], aid, blast: false, pry: null, swing: 0, sel: null, struck: 0 };
+function startDescent(P) { // P: a hidden working (islePlaces): a deep one starts levels down, an upper quarry is shallow, safe and full
+  const l = loc(), aid = aidOf(), lv0 = P ? P.start : 1; if (aid !== 'none') S.aids[aid]--; // an aid is spent on the descent
+  MI = { loc: l.id, level: lv0, oil: LAMP().oil, oilMax: LAMP().oil, roof: 0, tiles: genFace(l.id, lv0, P), finds: [], aid, blast: false, pry: null, swing: 0, sel: null, struck: 0 };
+  if (P) { MI.place = P.id; MI.base = lv0; MI.max = P.max; MI.quarry = !!P.quarry; }
   S.mine = MI; save();
 }
-function enterMine() {
-  const l = loc(); if (!l.mine) return; const mcl = mineClosed(l); if (mcl) { toast(`${cap1(l.mine.name || 'the mine')}: closed. ${closedSay(mcl)}`); if (MODE !== 'island') enterIsland('mine'); return; }
+function enterMine(pid) {
+  const l = loc(); if (!l.mine) return; const P = pid ? placeOf(l, pid) : null, nm = P ? P.name : l.mine.name, same = !!(S.mine && S.mine.loc === l.id && (S.mine.place || '') === (P ? P.id : '')), mcl = same ? null : closedAt(l, 'mine', P ? P.id : undefined); if (mcl) { toast(`${cap1(nm || 'the mine')}: closed. ${closedSay(mcl)}`); if (MODE !== 'island') enterIsland(P ? 'p:' + P.id : 'mine'); return; }
   MODE = 'mine'; $('#isle').hidden = true; $('#game').hidden = true; $('#hunt').hidden = true; $('#mine').hidden = false;
-  if (S.mine && S.mine.loc === l.id) { MI = S.mine; MI.pry = null; MI.blast = false; MI.going = null; } else startDescent();
-  $('#mName').textContent = cap1(l.mine.name); renderMine(); window.scrollTo(0, 0);
+  if (same) { MI = S.mine; MI.pry = null; MI.blast = false; MI.going = null; } else startDescent(P);
+  $('#mName').textContent = cap1(nm); renderMine(); window.scrollTo(0, 0);
 }
 function strike(i) {
   if (!MI || MI.pry || MI.going) return; const tl = MI.tiles[i]; if (!tl) return;
@@ -25112,7 +25546,7 @@ function strike(i) {
     broke++; const res = breakTile(t2, c, r); if (res === 'gas') gas++; else if (res === 'water') water++; else if (res === 'exposed') seen++;
   }
   MI.oil -= T_MINE.strikeOil; MI.swing = now(); MI.sel = i; MI.struck++;
-  MI.roof += (T_MINE.roof[0] + T_MINE.roof[1] * MI.level) * (rad ? 1 + broke * 0.45 : 1) * (MI.aid === 'props' ? AIDS.props.roof : 1); // every tile broken tires the roof; props hold it
+  MI.roof += (T_MINE.roof[0] + T_MINE.roof[1] * MI.level) * (rad ? 1 + broke * 0.45 : 1) * (MI.aid === 'props' ? AIDS.props.roof : 1) * (MI.quarry ? T_SIZE.quarry.roof : 1); // every tile broken tires the roof; props hold it
   if (gas) { MI.oil -= T_MINE.gasOil * MI.oilMax * gas; toast(gas > 1 ? 'Gas! The lamp flares twice over.' : 'Gas! The lamp flares and gutters.'); }
   if (water) toast('Water! A spring breaks through and floods down the face.');
   if (ch !== 'none') toast(`${CHARGES[ch].name}: ${broke} tile${broke > 1 ? 's' : ''} opened.`);
@@ -25192,23 +25626,23 @@ function showFound(m, find, tags, line) {
 function dropFind(j) { if (!S.sack[j]) return; const f = S.sack.splice(j, 1)[0]; onceFree(f.id); if (MI) { const k = MI.finds.indexOf(f); if (k >= 0) MI.finds.splice(k, 1); }
   if (S.mpending && S.sack.length < sackCap()) { S.sack.push(S.mpending); if (MI) MI.finds.push(S.mpending); const nm = cap1(theOre(MM[S.mpending.id])); S.mpending = null; save(); closeSheet(); closeCard(); toast(`Dropped ${theOre(MM[f.id])}. ${nm} goes in the sack.`); if (MODE === 'mine') renderMine(); return; }
   save(); renderSheet(); toast(`Dropped ${theOre(MM[f.id])}.`); if (MODE === 'mine') renderMine(); }
-const descendCost = () => T_MINE.descend[0] + T_MINE.descend[1] * MI.level, climbCost = () => Math.max(0, MI.level - 1) * T_MINE.climb;
+const descendCost = () => T_MINE.descend[0] + T_MINE.descend[1] * MI.level, climbCost = () => Math.max(0, MI.level - (MI.base || 1)) * T_MINE.climb; // the level you came in at is free to leave
 function descend() {
-  if (!MI || MI.pry || MI.going) return; if (MI.level >= T_MINE.maxLevel) { toast('The shaft goes no deeper.'); return; }
+  if (!MI || MI.pry || MI.going) return; if (MI.level >= (MI.max || T_MINE.maxLevel)) { toast(MI.quarry ? 'The cut goes no deeper.' : 'The shaft goes no deeper.'); return; }
   const cost = descendCost(); if (MI.oil < cost) { toast(`Not enough light to go down. The ladder takes ${cost}.`); return; }
-  const from = MI.level; MI.oil -= cost; MI.level++; MI.roof = 0; MI.tiles = genFace(MI.loc, MI.level); MI.sel = null; MI.going = { from, t0: now() }; S.mine = MI; save(); renderMine(); // the new face is cut already: the ladder is only how you get to it
+  const from = MI.level; MI.oil -= cost; MI.level++; MI.roof = 0; MI.tiles = genFace(MI.loc, MI.level, minePlace()); MI.sel = null; MI.going = { from, t0: now() }; S.mine = MI; save(); renderMine(); // the new face is cut already: the ladder is only how you get to it
   setTimeout(() => { if (!MI || !MI.going) return; MI.going = null; S.mine = MI; save(); toast(`Level ${MI.level}.` + (MI.level === 4 ? ' The deep begins here.' : '')); renderMine(); }, T_MINE.descendMs);
 }
 const sackDrop = () => { const d = SACK().drop; return d == null ? 1 : d; };
 const sackIndexOf = f => S.sack.findIndex(x => x === f || (x.id === f.id && x.kg === f.kg && x.value === f.value && x.level === f.level)); // a descent picked up again after a reload holds copies, not the sack's own
 function climbOut(why) {
-  if (!MI) return; const cost = climbCost(), dark = MI.oil < cost, lvl = MI.level, had = MI.finds.length; let dropped = null;
+  if (!MI) return; const cost = climbCost(), dark = MI.oil < cost, lvl = MI.level - (MI.base || 1) + 1, had = MI.finds.length, pl = minePlace(), out = pl && pl.lv === 'down' ? 'Back in the hollows.' : 'Daylight.', back = pl ? 'p:' + pl.id : 'mine'; let dropped = null;
   // The lamp dies on the ladder: a find may go in the dark. The sack says how likely (its drop), and it is the heaviest that slips.
   if (dark && had && Math.random() < sackDrop()) { const heavy = MI.finds.reduce((a, b) => b.kg > a.kg ? b : a), j = sackIndexOf(heavy); if (j >= 0) { dropped = S.sack.splice(j, 1)[0]; onceFree(dropped.id); } }
   if (S.mpending) onceFree(S.mpending.id); // what was waiting on room stays in the rock
   MI = null; S.mine = null; S.mpending = null; save(); closeCard(); if (tutAt('mine')) tutFinishMine();
-  const msg = (why ? why + ' ' : '') + (dark ? (dropped ? `The lamp died on the ladder. You dropped ${theOre(MM[dropped.id])} in the dark.${isOnceOre(dropped.id) ? ' It is still down there.' : ''}` : had && lvl > 1 ? `The lamp died on the ladder. Your ${gearShort(SACK()).toLowerCase()} held: nothing was lost.` : lvl > 1 ? 'The lamp died on the ladder. You felt your way up.' : 'Daylight.') : lvl > 1 ? `Up ${lvl - 1} level${lvl > 2 ? 's' : ''} and out. Daylight.` : 'Daylight.');
-  fadeTo(() => { enterIsland('mine'); setTimeout(() => toast(msg), 300); });
+  const msg = (why ? why + ' ' : '') + (dark ? (dropped ? `The lamp died on the ladder. You dropped ${theOre(MM[dropped.id])} in the dark.${isOnceOre(dropped.id) ? ' It is still down there.' : ''}` : had && lvl > 1 ? `The lamp died on the ladder. Your ${gearShort(SACK()).toLowerCase()} held: nothing was lost.` : lvl > 1 ? 'The lamp died on the ladder. You felt your way up.' : out) : lvl > 1 ? `Up ${lvl - 1} level${lvl > 2 ? 's' : ''} and out. ${out}` : out);
+  fadeTo(() => { enterIsland(back); setTimeout(() => toast(msg), 300); });
 }
 function caveIn() { toast('The roof comes down!'); MI.pry = null; renderMine(); $('#mface').classList.add('shake'); setTimeout(() => { $('#mface').classList.remove('shake'); climbOut('You got out ahead of it.'); }, 900); }
 function lampOut() { toast('The lamp is out.'); MI.pry = null; renderMine(); setTimeout(() => climbOut(''), 700); }
@@ -25235,7 +25669,7 @@ function renderMine() {
   box.innerHTML = `<div class="rigrow"><div class="rigsum"><div class="l1">${pick.name} · ${lamp.name}${ch !== 'none' ? ` · ${CHARGES[ch].short} ×${S.charges[ch]}` : ''}${aid !== 'none' ? ` · ${AIDS[aid].short}` : ''}</div><div class="l2">Pries stone to ${pick.hard} · down ${descendCost()} oil, up ${climbCost()} · sack ${S.sack.length}/${sackCap()}</div></div><button class="rigbtn" data-act="open" data-k="minekit">Change kit</button></div>
     <div class="note">${MI.roof > 0.7 ? '<span class="hz">The roof is groaning.</span> ' : ''}${MI.struck ? 'Tap an opened stone to pry it out. Deeper is richer and dearer.' : 'Tap rock to strike it. A glint at a tile\'s edge means something lies beside it.'}</div>
     ${ch !== 'none' ? `<button class="cta ${MI.blast ? 'hit' : 'alt'}" data-act="blast">${MI.blast ? 'Blast armed: tap the rock' : `Set a blast · ${CHARGES[ch].short} ×${S.charges[ch]}`}</button>` : ''}
-    <div class="acts2"><button class="cta alt" data-act="climb">Climb out${climbCost() ? ' · ' + climbCost() + ' oil' : ''}</button><button class="cta go" data-act="deeper" ${MI.level >= T_MINE.maxLevel ? 'disabled' : ''}>Deeper · ${descendCost()} oil</button></div>`;
+    <div class="acts2"><button class="cta alt" data-act="climb">Climb out${climbCost() ? ' · ' + climbCost() + ' oil' : ''}</button><button class="cta go" data-act="deeper" ${MI.level >= (MI.max || T_MINE.maxLevel) ? 'disabled' : ''}>Deeper · ${descendCost()} oil</button></div>`;
   drawMineFace(now());
 }
 const FT = 48; // a face tile on its canvas: 24 logical pixels at 2x
@@ -25297,7 +25731,7 @@ function minerClimbC(k) {
 }
 function drawMineGoing(l, t, G, top, gy, lx, ly) {
   const p0 = clamp((now() - G.t0) / T_MINE.descendMs, 0, 1), p = p0 * p0 * (3 - 2 * p0), off = Math.round(p * H), a = Math.min(1, p0 * 6, (1 - p0) * 6);
-  for (const [lv, dy] of [[G.from, -off], [MI.level, H - off]]) { g.save(); g.translate(0, dy); drawMineArt(l, lv, t); g.drawImage(cartSprite(l)[0][0], 4, gy - T_PIT.cartTop); g.restore(); }
+  for (const [lv, dy] of [[G.from, -off], [MI.level, H - off]]) { g.save(); g.translate(0, dy); drawMineArt(l, lv, t, minePlace()); g.drawImage(cartSprite(l)[0][0], 4, gy - T_PIT.cartTop); g.restore(); }
   const sx = lx - 14, y0 = gy - off, y1 = top + H - off; // the shaft: from the floor he leaves to the roof he comes down through
   if (y1 > y0) { g.fillStyle = `rgba(7,7,11,${(0.9 * a).toFixed(2)})`; g.fillRect(sx - 11, y0, 22, y1 - y0); g.fillStyle = `rgba(40,34,28,${a.toFixed(2)})`; g.fillRect(sx - 12, y0, 1, y1 - y0); g.fillRect(sx + 11, y0, 1, y1 - y0); }
   g.globalAlpha = a; g.fillStyle = '#6a5236'; g.fillRect(sx - 7, y0 - 46, 2, y1 - y0 + 92); g.fillRect(sx + 5, y0 - 46, 2, y1 - y0 + 92); // the ladder: its rails stand a man's height into each gallery
@@ -25310,7 +25744,7 @@ function drawMineGoing(l, t, G, top, gy, lx, ly) {
 function drawMine(t) {
   const l = loc(), top = SURF - 56, gy = SURF + 8, lx = galLampX(), ly = top + 22, lv = MI ? MI.level : 1;
   if (MI && MI.going) { drawMineGoing(l, t, MI.going, top, gy, lx, ly); return; }
-  g.drawImage(layer('mine', W, H, `${l.id}|${SURF}|${lv}`, () => drawMineArt(l, lv, t)), 0, 0); // the gallery at this level, painted for this island (mineSprite); a layer, so what moves in it is redrawn a few times a second
+  g.drawImage(layer('mine', W, H, `${l.id}|${SURF}|${lv}|${(MI && MI.place) || ''}`, () => drawMineArt(l, lv, t, minePlace())), 0, 0); // the gallery at this level, painted for this island (mineSprite); a layer, so what moves in it is redrawn a few times a second
   g.drawImage(cartSprite(l)[0][0], 4, gy - T_PIT.cartTop); // the tub on the rail, and in it what has been found so far
   for (let k = 0; k < Math.min(12, S.sack.length); k++) { const mp = mineralPal(MM[S.sack[k].id]), bx = 8 + (k % 4) * 5 + (((k / 4) | 0) & 1) * 2, by = gy - T_PIT.cartTop + 6 - ((k / 4) | 0) * 3; g.fillStyle = mp.b; g.fillRect(bx, by, 4, 3); g.fillStyle = mp.h; g.fillRect(bx + 1, by, 2, 1); }
   if (MI) MI.tiles.forEach((tl, i) => { if (tl.s !== 'exposed' || !tl.m) return; const mp = mineralPal(MM[tl.m]), fx = SW - 26 + (i % T_MINE.cols) * 4, fy = top + 10 + ((i / T_MINE.cols) | 0) * 18; g.fillStyle = Math.sin(t / 250 + i) > 0.3 ? mp.h : mp.b; g.fillRect(fx, fy, 2, 2); });
@@ -25647,7 +26081,8 @@ function finishSail() {
   if (first && !L.noFish && S.order.filter(id => id !== 'shoal').length === 1) tutStart(to); // the first island after the shoal teaches the village and the wild
   save();
   fadeTo(() => { $('#cut').hidden = true; if (L.noFish) { ISL = null; enterIsland('shop'); } else enterFishing();
-    toast(`${first ? 'Landfall: ' : 'Sailed to '}${L.name}.` + (pulled ? ` Pulled in ${pulled} line${pulled > 1 ? 's' : ''}.` : '') + (first && L.vibe ? ' ' + L.vibe : '')); closedTell(L); });
+    toast(`${first ? 'Landfall: ' : 'Sailed to '}${L.name}.` + (pulled ? ` Pulled in ${pulled} line${pulled > 1 ? 's' : ''}.` : '') + (first && L.vibe ? ' ' + L.vibe : '')); closedTell(L);
+    if (first && !L.noFish && isleSize(L)) setTimeout(() => { if (S.loc === to) toast(`${anA(SIZE_NAME[isleSize(L)])} island. There is more of it than the shore shows.`.replace(/^./, c => c.toUpperCase())); }, 5200); }); // a larger island says so, once: what is at the back of it is for the player to find
 }
 // The wake: every passage made, as a pair of islands (each pair once, whichever way it was sailed). The chart draws it in gold.
 function wakeAdd(a, b) { if (!a || !b || a === b || !LOC[a] || !LOC[b] || a === 'sea' || b === 'sea') return; S.wake = S.wake || []; if (!S.wake.some(w => (w[0] === a && w[1] === b) || (w[0] === b && w[1] === a))) S.wake.push([a, b]); }
@@ -25814,13 +26249,20 @@ const MAP_IN = { creel: '#5a6a78', holywell: '#5a8a60', eggcliff: '#6a6a70', mus
 // around land you have only heard the gulls over, and along the routes you have sailed. Space is not on this map.
 const MW = 400, MH = 300; // the chart grew with the fifth expansion and again with the sixth: new seas to the east and south
 let WORLD_C = null, FOG_C = null, fogKey = '';
+// An island on the chart: a blob of radius r (px), its outline its own. By its seed it is longer one way than the other (up to T_SIZE.long),
+// lies at its own angle, and has two to four great lobes and five to seven small ones, so no two coasts are the same shape.
 function landBlob(m, cx, cy, r, seed, rim, ink, inner) {
-  for (let y = -r - 4; y <= r + 4; y++) for (let x = -r - 4; x <= r + 4; x++) {
-    const d = Math.hypot(x, y), th = Math.atan2(y, x), rr = r * (1 + 0.28 * Math.sin(3 * th + seed) + 0.18 * Math.sin(5 * th + seed * 2.3) + 0.1 * Math.sin(7 * th - seed));
+  const fr = v => v - Math.floor(v), k1 = 2 + Math.floor(fr(Math.abs(seed) * 0.731) * 3), k2 = k1 + 3 + Math.floor(fr(Math.abs(seed) * 0.317) * 2), el = Math.sqrt(1 + (T_SIZE.long - 1) * fr(Math.abs(seed) * 0.173)), rot = seed * 0.9, a = r * el, b = r / el, R0 = Math.ceil(r * 1.7) + 3;
+  for (let y = -R0; y <= R0; y++) for (let x = -R0; x <= R0; x++) {
+    const d = Math.hypot(x, y), th = Math.atan2(y, x), ph = th - rot, e = a * b / Math.hypot(b * Math.cos(ph), a * Math.sin(ph)), rr = e * (1 + 0.2 * Math.sin(k1 * th + seed) + 0.1 * Math.sin(k2 * th + seed * 2.3) + 0.04 * Math.sin(7 * th - seed));
     if (d <= rr + 1.2 && d > rr) { m.fillStyle = rim; m.fillRect(cx + x, cy + y, 1, 1); }
-    else if (d <= rr) { m.fillStyle = d <= rr - 2.4 ? inner : ink; m.fillRect(cx + x, cy + y, 1, 1); }
+    else if (d <= rr) { m.fillStyle = d <= rr - Math.min(2.4, r * 0.4) ? inner : ink; m.fillRect(cx + x, cy + y, 1, 1); }
   }
 }
+// how big each island is drawn: by its size, and where two stand close they share the water between them in proportion
+let MAP_R = null;
+function mapRadii() { if (MAP_R) return MAP_R; const want = {}, L = LOCS.filter(l => l.id !== 'sea' && l.id !== 'stars'); for (const l of L) want[l.id] = T_SIZE.blob[isleSize(l)] + (l.id === 'hollow' || l.id === 'cinder' ? 1 : 0);
+  MAP_R = {}; for (const a of L) { let r = want[a.id]; for (const b of L) { if (a === b) continue; const d = Math.hypot(a.x - b.x, a.y - b.y); if (d < 32) r = Math.min(r, d * want[a.id] / (want[a.id] + want[b.id]) * T_SIZE.fit * 2); } MAP_R[a.id] = Math.max(3, r); } return MAP_R; }
 function worldLayer() {
   if (WORLD_C) return WORLD_C;
   const c = document.createElement('canvas'); c.width = MW; c.height = MH; const m = c.getContext('2d');
@@ -25828,7 +26270,7 @@ function worldLayer() {
   for (let i = 0; i < 900; i++) { m.fillStyle = (i % 3) ? 'rgba(90,140,170,0.5)' : 'rgba(40,70,100,0.5)'; m.fillRect((i * 37) % MW, (i * 53 + (i >> 3)) % MH, 2 + (i % 2), 1); }
   m.fillStyle = 'rgba(30,50,80,0.35)'; m.fillRect(72, 24, 84, 53); m.fillRect(120, 132, 72, 36); // deeper water
   for (const [x, y, r, sd] of [[236, 140, 2, 5], [166, 40, 2, 7], [48, 150, 2, 8], [104, 100, 2, 9]]) landBlob(m, x, y, r, sd, '#2a3a50', '#d8cfa8', '#c8b890');
-  for (const l of LOCS) { if (l.id === 'sea' || l.id === 'stars') continue; landBlob(m, l.x, l.y, 6 + (l.range % 3) + (l.id === 'hollow' || l.id === 'cinder' ? 2 : 0), l.x * 0.37 + l.y * 0.11, '#2a3a50', MAP_INK[l.id] || '#e6cf96', MAP_IN[l.id] || '#3f8f4e');
+  for (const l of LOCS) { if (l.id === 'sea' || l.id === 'stars') continue; landBlob(m, l.x, l.y, mapRadii()[l.id], l.x * 0.37 + l.y * 0.11, '#2a3a50', MAP_INK[l.id] || '#e6cf96', MAP_IN[l.id] || '#3f8f4e');
     if (l.id === 'cinder') { m.fillStyle = '#ff6a20'; m.fillRect(l.x, l.y - 1, 1, 1); } if (l.id === 'hollow') { m.fillStyle = '#2a2a38'; m.fillRect(l.x - 2, l.y - 2, 4, 3); m.fillStyle = '#40a080'; m.fillRect(l.x, l.y - 1, 1, 1); } if (l.id === 'fjord') { m.fillStyle = '#ffffff'; m.fillRect(l.x - 3, l.y - 2, 2, 1); m.fillRect(l.x + 1, l.y - 3, 2, 1); } if (l.id === 'lantern') { m.fillStyle = '#c04040'; m.fillRect(l.x - 1, l.y, 3, 1); } if (l.id === 'bell') { m.fillStyle = '#5a4630'; m.fillRect(l.x, l.y - 1, 1, 2); } if (l.id === 'thunder') { m.fillStyle = '#f0e060'; m.fillRect(l.x, l.y - 2, 1, 2); } }
   WORLD_C = c; return c;
 }
@@ -25972,10 +26414,10 @@ document.addEventListener('click', e => {
   else if (a === 'change') { rigOpen = !rigOpen; render(); }
   else if (a === 'catch') resolveCatch(k);
   else if (a === 'talk') talk();
-  else if (a === 'spot') { const spx = spotOf(S.loc, k); if (spx.boat && S.boat === 'none') { toast('You need a boat to fish out there.'); return; } const shutc = k !== S.spot ? spotClosed(loc(), k) : null; if (shutc) { toast(`${spx.name}: closed. ${closedSay(shutc)}`); return; } if (k !== S.spot) { let pulled = 0; S.lines.forEach(L => { if (L && L.phase !== 'idle') { L.phase = 'idle'; L.c = null; pulled++; } }); if (spx.boat && !spot().boat) S.shoreSpot = S.spot; S.spot = k; reseedFish(); save(); toast(`${spot().name}.` + (spx.boat ? ' Offshore: slower bites, rarer fish.' : '') + (pulled ? ` Pulled in ${pulled} line${pulled > 1 ? 's' : ''}.` : '')); } closeSheet(); if (MODE !== 'game') fadeTo(enterFishing); else render(); }
-  else if (a === 'walk') { if (!S.prologue) { if (tutAt('exit')) tutSet('village'); fadeTo(() => enterIsland('fish')); } }
+  else if (a === 'spot') { const spx = spotOf(S.loc, k); if (spx.boat && S.boat === 'none') { toast('You need a boat to fish out there.'); return; } const shutc = k === S.spot ? null : spx.hidden ? closedAt(loc(), 'spot', k) : spotClosed(loc(), k); if (shutc) { toast(`${spx.name}: closed. ${closedSay(shutc)}`); return; } if (k !== S.spot) { let pulled = 0; S.lines.forEach(L => { if (L && L.phase !== 'idle') { L.phase = 'idle'; L.c = null; pulled++; } }); if (spx.boat && !spot().boat) S.shoreSpot = S.spot; S.spot = k; reseedFish(); save(); toast(`${spot().name}.` + (spx.boat ? ' Offshore: slower bites, rarer fish.' : '') + (pulled ? ` Pulled in ${pulled} line${pulled > 1 ? 's' : ''}.` : '')); } closeSheet(); if (MODE !== 'game') fadeTo(enterFishing); else render(); }
+  else if (a === 'walk') { if (!S.prologue) { if (tutAt('exit')) tutSet('village'); const back = spot().hidden ? 'p:' + S.spot : 'fish'; fadeTo(() => enterIsland(back)); } } // from a hidden water you step back onto its own level
   else if (a === 'enter') { const sp = nearSpot(); if (!sp || (ISL && ISL.auto)) return; if (sp.id === 'fish') openSheet('spots'); else startEntry(sp); }
-  else if (a === 'leavehunt') { closeSheet(); fadeTo(() => enterIsland('hunt')); }
+  else if (a === 'leavehunt') { closeSheet(); const back = GRD ? 'p:' + GRD.id : 'hunt'; fadeTo(() => enterIsland(back)); }
   else if (a === 'climb') { if (MI && MI.going) return; closeSheet(); climbOut(''); }
   else if (a === 'deeper') descend();
   else if (a === 'blast') { if (MI && chargeOf() !== 'none') { MI.blast = !MI.blast; renderMine(); } }
