@@ -15309,7 +15309,6 @@ const BAYER = [0.2, 0.7, 0.95, 0.45];
 let seed = 7;
 const prand = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
 const STARS = Array.from({ length: 70 }, () => [prand(), prand() * 0.9, prand() < 0.3 ? 0 : 1]);
-const CLOUDS = Array.from({ length: 7 }, (_, i) => ({ y: 0.06 + prand() * 0.5, w: 16 + (prand() * 18 | 0), spd: i % 2 ? 1.7 : 0.9, off: prand() }));
 const RAIN = Array.from({ length: 110 }, (_, i) => ({ x: prand(), y: prand(), s: 0.75 + (i % 3) * 0.25 }));
 const MOTES = Array.from({ length: 14 }, () => ({ x: prand(), y: prand(), s: 2 + prand() * 4 }));
 const SNOW = Array.from({ length: 50 }, () => ({ x: prand(), y: prand(), s: 0.5 + prand() * 0.8 }));
@@ -15406,17 +15405,7 @@ function drawSkyBase(h, t, o) {
       lightX = mx; lightY = my;
     }
   }
-  if (!o.noClouds) {
-    const base = lerpC(lerpC([250, 250, 255], curSky.bot, 0.3), [40, 50, 80], nt * 0.8), shade = lerpC(base, curSky.top, 0.35);
-    for (const c of CLOUDS) {
-      const x = (((c.off * (W + 70)) + (t / 1000) * c.spd) % (W + 70) - 50) | 0, y = (c.y * SURF) | 0, w = c.w;
-      g.fillStyle = css(base);
-      g.fillRect(x + 1, y + 3, w - 2, 4); g.fillRect(x, y + 4, w, 2);
-      g.fillRect(x + (w * 0.25 | 0), y + 1, w * 0.45 | 0, 3); g.fillRect(x + (w * 0.3 | 0), y, w * 0.3 | 0, 1);
-      g.fillRect(x + (w * 0.6 | 0), y + 2, w * 0.3 | 0, 2);
-      g.fillStyle = css(shade); g.fillRect(x + 2, y + 6, w - 4, 1);
-    }
-  }
+  if (!o.noClouds) drawSkyClouds(o.l || null, h, o.cloudT == null ? t : o.cloudT, nt); // the clouds of the island whose sky this is (o.l), or the open sea's; o.cloudT: their own clock, where days go by in a moment
   if (!o.noBirds && nt < 0.6) for (let k = 0; k < 2; k++) {
     const x = (((t / 1000) * 6 + k * W * 0.55) % (W + 24) - 12) | 0, y = (SURF * (0.28 + k * 0.12) + Math.sin(t / 700 + k) * 2) | 0;
     blit(g, maskC(Math.floor(t / 260 + k) % 2 ? 'gullA' : 'gullB', rgba(lerpC([40, 50, 70], curSky.top, 0.2), 1), 1), x, y);
@@ -15505,8 +15494,8 @@ const glowshroom = (x, yb, h, t, nt) => { const pulse = 0.6 + 0.4 * Math.sin(t /
 function sceneWeather(l, t, nt) {
   const sc = l.scene; if (!sc || !sc.weather) return;
   if (sc.weather === 'ash') { g.fillStyle = 'rgba(70,30,20,0.28)'; g.fillRect(0, 0, W, SURF); g.fillStyle = `rgba(255,110,40,${(0.10 + 0.06 * Math.sin(t / 900)).toFixed(2)})`; g.fillRect(0, SURF - 30, W, 30); }
-  else if (sc.weather === 'storm') { g.fillStyle = 'rgba(4,8,20,0.45)'; g.fillRect(0, 0, W, SURF); for (let k = 0; k < 5; k++) { const x = (((k * 61) + t / 60) % (W + 90)) - 60 | 0; g.fillStyle = 'rgba(30,36,56,0.9)'; g.fillRect(x, 2 + k * 8, 70, 11); g.fillRect(x + 10, k * 8 - 3, 34, 6); } const cyc = 6500, ph = t % cyc; if (ph < 90 || (ph > 180 && ph < 230)) { g.fillStyle = 'rgba(255,255,255,0.25)'; g.fillRect(0, 0, W, H); bolt(Math.floor(t / cyc)); } }
-  else if (sc.weather === 'cloud') { g.fillStyle = 'rgba(200,210,230,0.35)'; g.fillRect(0, 0, W, SURF); for (let x = -10; x < W + 10; x += 9) { const hh = 10 + ((x * 13) % 9), dx = x + (Math.sin(t / 4000 + x) * 2 | 0); g.fillStyle = '#e8eef6'; g.fillRect(dx, 0, 9, hh); g.fillStyle = '#ffffff'; g.fillRect(dx + 2, hh - 3, 5, 3); g.fillStyle = 'rgba(150,165,190,0.5)'; g.fillRect(dx, hh, 9, 1); } }
+  else if (sc.weather === 'storm') { g.fillStyle = 'rgba(4,8,20,0.45)'; g.fillRect(0, 0, W, SURF); drawSkyDeck(l, 'storm', t, nt, 0.94); const cyc = 6500, ph = t % cyc; if (ph < 90 || (ph > 180 && ph < 230)) { g.fillStyle = 'rgba(255,255,255,0.25)'; g.fillRect(0, 0, W, H); bolt(Math.floor(t / cyc)); } }
+  else if (sc.weather === 'cloud') { g.fillStyle = 'rgba(200,210,230,0.35)'; g.fillRect(0, 0, W, SURF); drawSkyDeck(l, 'white', t, nt, 1, T_SKY.ceiling); } // the cloud the island hangs from, or lives under
   else if (sc.weather === 'cave') { g.fillStyle = '#0c0a12'; g.fillRect(0, 0, W, SURF); for (let x = 0; x < W; x += 7) { const hh = 6 + ((x * 13) % 11); g.fillStyle = '#2a2430'; g.fillRect(x, 0, 7, hh); g.fillRect(x + 2, hh, 3, 3 + ((x * 7) % 5)); } g.fillStyle = 'rgba(64,224,176,0.08)'; g.fillRect(0, SURF - 20, W, 20); }
 }
 function sceneFx(l, t, nt) {
@@ -15532,9 +15521,7 @@ function drawWx(l, wx, t, nt, alpha) {
   const own = sc ? sc.particles : (l.id === 'fjord' ? 'snow' : null);
   if (wx === 'overcast' || wx === 'rain' || wx === 'storm') {
     g.fillStyle = wx === 'storm' ? 'rgba(6,10,22,0.42)' : wx === 'rain' ? 'rgba(30,40,60,0.3)' : 'rgba(80,90,110,0.24)'; g.fillRect(0, 0, W, SURF);
-    const col = wx === 'storm' ? '#1e2434' : wx === 'rain' ? '#4a5466' : '#8a94a6', top = wx === 'storm' ? '#2a3044' : wx === 'rain' ? '#5e687a' : '#a4aebe';
-    const cy = (SURF * 0.38) | 0; // the HUD covers the top of the sky: the cloud base sits a third of the way down to the horizon
-    for (let k = 0; k < 7; k++) { const x = ((k * 53 + t / (wx === 'storm' ? 40 : 110)) % (W + 80)) - 50 | 0, y = cy + ((k * 11) % 26) - 8, w = 44 + (k % 3) * 16; g.fillStyle = col; g.fillRect(x, y, w, 8); g.fillRect(x + 8, y - 3, w - 20, 4); g.fillStyle = top; g.fillRect(x + 8, y - 3, w - 20, 1); }
+    drawSkyDeck(l, wx, t, nt); // the deck itself, painted for this island: cloud down to a ragged base a third of the way to the horizon (the HUD covers the top of the sky)
     if (wx === 'storm') { g.fillStyle = 'rgba(0,0,10,0.18)'; g.fillRect(0, SURF, W, H - SURF); const cyc = 7300, ph = (t + 1900) % cyc; if (ph < 80 || (ph > 170 && ph < 215)) { g.fillStyle = 'rgba(255,255,255,0.22)'; g.fillRect(0, 0, W, H); bolt(Math.floor((t + 1900) / cyc) + 5); } }
     if ((wx === 'rain' || wx === 'storm') && own !== 'rain') { const heavy = wx === 'storm'; for (const r of RAIN) { if (!heavy && r.s < 0.9) continue; const y = (((r.y + t / 1000 * r.s * (heavy ? 1.3 : 0.9)) % 1) * SURF) | 0, x = ((((r.x - t / 1000 * r.s * (heavy ? 0.25 : 0.1)) % 1) + 1) % 1 * W) | 0; g.fillStyle = heavy ? 'rgba(200,214,236,0.45)' : 'rgba(190,205,230,0.35)'; g.fillRect(x, y, 1, heavy ? 5 : 4); } }
   } else if (wx === 'snow') {
@@ -15669,7 +15656,7 @@ function drawRodStand(sx, gy, L, on, t) {
 }
 
 function drawGame(t) {
-  const h = hourAt(t), nt = drawSkyBase(h, t, {}); sceneWeather(loc(), t, nt);
+  const h = hourAt(t), nt = drawSkyBase(h, t, { l: loc() }); sceneWeather(loc(), t, nt);
   const sp0 = spot(), onWater = sp0.kind === 'open', vw = onWater ? 1 : spotView(loc(), sp0); // where the eye turns at this spot: inland up a river, out toward open water
   drawLandscape(loc(), 3 * W + Math.min(0, vw) * W, SURF, t, nt, { off: onWater ? true : Math.max(0, vw) }); // the island behind the shore, from where this spot looks at it
   const tint = S.loc === 'trench' ? 'rgba(0,0,12,0.32)' : S.loc === 'fjord' ? 'rgba(120,180,220,0.1)' : (loc().scene && loc().scene.tint) || null;
@@ -15814,7 +15801,7 @@ function stepIsle(dt) {
 function isleFrame() { const k = Math.floor(ISL.anim) & 3; return ISL.walk || (ISL.auto && ISL.auto.moving) ? { spr: sprite(['walkA', 'stand', 'walkC', 'stand'][k]), bob: k & 1 ? -1 : 0 } : { spr: sprite('stand'), bob: 0 };
 }
 function drawIsland(t) {
-  const l = loc(), h = hourAt(t), nt = drawSkyBase(h, t, {}); sceneWeather(l, t, nt);
+  const l = loc(), h = hourAt(t), nt = drawSkyBase(h, t, { l }); sceneWeather(l, t, nt);
   const nL = isleScreens(l), SX = nL * W, cam = clamp(ISL.px - SW / 2, 0, SX) | 0, gy = landY(l), sc = l.scene;
   drawLandscape(l, cam + (3 - nL) * W, SURF, t, nt, { mode: 'strip' }); // the island's own country, behind everything
   g.save(); g.translate(-cam, 0);
@@ -19682,6 +19669,256 @@ function mineFaceTex(l, level, cols, rows, px) {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let t = (BTEX[K.tex] || BTEX.smooth)(x + 4296, y + level * 173 + 40, 30, s0, q), c; if (t > 255) c = t >>> 0; else { let R = K.M.R; if (t >= 8) { t -= 8; R = K.R2; } c = kMix(R[2], R[t < 1 ? 1 : t > 3 ? 3 : t | 0], 0.45); } P.d[y * w + x] = kMix(c, wall, 0.5); }
   c = P.canvas(); MFACE_C.set(key, c); return c;
 }
+// ---------- the sky over an island: its own clouds (the fourteenth pass) ----------
+// The sky was the same seven flat clouds in the same places over every island, and an overcast was seven grey rectangles. An island's sky
+// is now strips of cloud painted once and drifted across (each comes round again): the high cloud, the low cloud, and the deck that an
+// overcast, a rain or a storm brings. A strip is a buffer of tones, coloured again whenever the hour's light changes:
+// 1 deep shade, 2 shade, 3 body, 4 lit, 5 rim, 6 a veil (half there), 7 a thin veil.
+const T_SKY = {
+  wrap: 160,                                   // a strip is this much wider than the screen
+  speed: { hi: 0.4, lo: 1.0, deck: 2.2, storm: 5.5 }, // logical px a second, before the island's own wind
+  haze: [0.6, 0.55],                           // from this far down the sky a cloud fades into the horizon's colour, by up to this much at the sea line
+  deck: 0.38,                                  // an overcast's base, of the sky's height (the HUD covers the top of the sky)
+  ceiling: 0.2,                                // the base of the cloud an island hangs from
+  low: [1.7, 2.2],                             // hours either side of sunrise and of sunset that the light on a cloud is warm
+  warm: [255, 190, 122], moon: [150, 162, 205], grey: [128, 136, 150],
+  veil: [0.52, 0.26],                          // how solid tones 6 and 7 are
+  keep: 5, idle: 120000,                      // skies kept (an island has one a screen layout), and how long a weather's coloured strips outlive it (ms)
+};
+function CloudB(w, h, seed) { this.w = w; this.h = h; this.t = new Uint8Array(w * h); this.s = seed | 0; this.k = 0; }
+CloudB.prototype.rnd = function () { this.k++; return nH(this.k, 77, this.s); }; // a fresh number each call, the same ones every time the island is painted
+CloudB.prototype.set = function (x, y, v) { if (y < 0 || y >= this.h) return; x = ((x % this.w) + this.w) % this.w; this.t[y * this.w + x] = v; };
+CloudB.prototype.get = function (x, y) { if (y < 0 || y >= this.h) return 0; x = ((x % this.w) + this.w) % this.w; return this.t[y * this.w + x]; };
+// rain that does not reach the sea, hanging under a cloud in slanting threads
+CloudB.prototype.virga = function (x0, x1, y, len, dir) { for (let x = Math.round(x0); x <= x1; x += 2) { const L = len * (0.45 + 0.55 * nH(x, 9, this.s)); for (let j = 1; j < L; j++) { const X = Math.round(x + dir * j * 0.4), Y = Math.round(y) + j; if (bay(X, Y) > 0.95 - 0.7 * j / L || this.get(X, Y)) continue; this.set(X, Y, j < L * 0.35 ? 6 : 7); } } };
+// every cloud again beside itself, fainter
+CloudB.prototype.echo = function (dx, dy) { const w = this.w, src = this.t.slice(); for (let y = 0; y < this.h; y++) for (let x = 0; x < w; x++) { const v = src[y * w + x]; if (!v || v > 5) continue; const X = ((x + dx) % w + w) % w, Y = y + dy; if (Y >= 0 && Y < this.h && !src[Y * w + X]) this.t[Y * w + X] = v >= 4 ? 6 : 7; } };
+// the whole strip upside down: flat on top, heaped underneath, lit from below
+CloudB.prototype.flipY = function () { const w = this.w, h = this.h, o = new Uint8Array(w * h); for (let y = 0; y < h; y++) o.set(this.t.subarray(y * w, (y + 1) * w), (h - 1 - y) * w); this.t = o; };
+// A heap of puffs lit from the upper right, cut flat at `base` and shaded toward it. P: [{ x, y, r, z }]. o.under: how deep the shaded
+// underside is; o.lo, o.hi: the darkest and lightest tone used; o.dark: the whole heap that much darker.
+CloudB.prototype.puffs = function (P, base, o) {
+  o = o || {}; let x0 = 1e9, x1 = -1e9, y0 = 1e9; for (const p of P) { x0 = Math.min(x0, p.x - p.r); x1 = Math.max(x1, p.x + p.r); y0 = Math.min(y0, p.y - p.r); }
+  x0 = Math.floor(x0); x1 = Math.ceil(x1); y0 = Math.max(0, Math.floor(y0)); const y1 = Math.min(this.h - 1, Math.floor(base)), un = o.under == null ? 4 : o.under, lo = o.lo || 1, hi = o.hi || 5, dk = o.dark || 0;
+  const bw = x1 - x0 + 1, bh = y1 - y0 + 1; if (bw <= 0 || bh <= 0) return;
+  const Z = new Float32Array(bw * bh), O = new Int16Array(bw * bh); // which puff stands nearest the eye at each pixel: each puff is asked only about its own square
+  for (let i = 0; i < P.length; i++) { const p = P[i], r2 = p.r * p.r, zb = p.r * 0.35 + (p.z || 0), ya = Math.max(y0, Math.floor(p.y - p.r) - 1), yb = Math.min(y1, Math.ceil(p.y + p.r)), xa = Math.max(x0, Math.floor(p.x - p.r) - 1), xb = Math.min(x1, Math.ceil(p.x + p.r));
+    for (let y = ya; y <= yb; y++) { const dy = y + 0.5 - p.y, row = (y - y0) * bw - x0; for (let x = xa; x <= xb; x++) { const dx = x + 0.5 - p.x, d2 = dx * dx + dy * dy; if (d2 < r2) { const z = Math.sqrt(r2 - d2) + zb; if (z > Z[row + x]) { Z[row + x] = z; O[row + x] = i + 1; } } } } }
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    const oi = O[(y - y0) * bw + (x - x0)]; if (!oi) continue; const bp = P[oi - 1];
+    const nx = (x + 0.5 - bp.x) / bp.r, ny = (y + 0.5 - bp.y) / bp.r, nz = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny));
+    let v = nx * 0.42 - ny * 0.72 + nz * 0.3; // lit from the upper right
+    if (un > 0) v -= clamp((y - (base - un)) / un, 0, 1) * 0.95; // the flat underside is in its own shadow
+    v += (bay(x, y) - 0.5) * 0.2 - dk;
+    this.set(x, y, clamp(v > 0.74 ? 5 : v > 0.4 ? 4 : v > -0.05 ? 3 : v > -0.5 ? 2 : 1, lo, hi));
+  }
+};
+// The kinds of cloud. Each paints one at (x, y) on a strip, y its base (or its middle, for the ones with no base), w across.
+const SKYGEN = {
+  // a fair-weather heap: flat underneath, cauliflower on top
+  cumulus(B, x, y, w, o) {
+    o = o || {}; const h = o.h || w * (0.34 + 0.16 * B.rnd()), n = Math.max(3, Math.round(w / 5.5)), P = [];
+    for (let i = 0; i < n; i++) { const u = (i + 0.3 + 0.4 * B.rnd()) / n, dome = Math.pow(Math.sin(Math.PI * clamp(u, 0.03, 0.97)), 0.75), r = Math.max(1.6, h * 0.5 * (0.4 + 0.7 * dome) * (0.85 + 0.3 * B.rnd())); P.push({ x: x + u * w, y: y - r * 0.6, r }); }
+    const m = Math.max(1, Math.round(n * 0.45)); for (let i = 0; i < m; i++) { const u = 0.28 + 0.44 * (i + B.rnd()) / m, r = Math.max(1.6, h * 0.3 * (0.8 + 0.5 * B.rnd())); P.push({ x: x + u * w, y: y - h * (0.55 + 0.2 * B.rnd()), r, z: 1 }); }
+    B.puffs(P, y, { under: Math.max(2, h * 0.24), dark: o.dark, lo: o.lo, hi: o.hi });
+    if (o.virga && w > 24) B.virga(x + w * 0.2, x + w * 0.8, y, o.virga * (0.6 + 0.4 * B.rnd()), o.dir || 1);
+  },
+  // a tower: lobes on lobes, each sunk into the one below and a little smaller, with its own cauliflower round the top; o.anvil spreads the top flat
+  tower(B, x, y, w, o) {
+    o = o || {}; const h = o.h || w * (0.9 + 0.4 * B.rnd()), P = []; let cx = x + w / 2, R = w / 2, cy = y - R * 0.55, k = 0;
+    for (;;) {
+      P.push({ x: cx, y: cy, r: R, z: k * 0.5 });
+      const m = 4 + ((B.rnd() * 4) | 0); for (let i = 0; i < m; i++) { const a = -Math.PI * (0.04 + 0.92 * (i + B.rnd() * 0.8) / m), r = R * (0.26 + 0.24 * B.rnd()); P.push({ x: cx + Math.cos(a) * R * 0.84, y: cy + Math.sin(a) * R * 0.74, r, z: k * 0.5 + 0.8 }); }
+      if (k === 0) for (const sd of [-1, 1]) if (B.rnd() < 0.7) { const r = R * (0.42 + 0.2 * B.rnd()); P.push({ x: cx + sd * (R + r * 0.4), y: y - r * 0.6, r }); P.push({ x: cx + sd * (R + r * 1.3), y: y - r * 0.4, r: r * 0.6 }); } // lower heaps at its foot
+      if (y - (cy - R) >= h || k >= 8) break;
+      const nR = Math.max(3, R * (0.74 + 0.2 * B.rnd())); cy -= R * 0.5 + nR * 0.28; cx += (B.rnd() - 0.5) * R * 0.6; R = nR; k++;
+    }
+    if (o.anvil) { const top = cy - R, aw = w * 1.6, m = Math.round(aw / 4); for (let i = 0; i < m; i++) P.push({ x: cx - aw / 2 + (i + 0.5) / m * aw, y: top + 2 + B.rnd() * 2, r: 2.2 + 2 * Math.sin(Math.PI * (i + 0.5) / m) + B.rnd(), z: k + 1 }); }
+    B.puffs(P, y, { under: Math.max(3, h * 0.14), dark: o.dark, lo: o.lo, hi: o.hi });
+    if (o.virga) B.virga(x + w * 0.15, x + w * 0.85, y, o.virga, o.dir || 1);
+  },
+  // a long low bank with a ragged top and breaks in it
+  bank(B, x, y, w, o) {
+    o = o || {}; const h = o.h || 9 + 4 * B.rnd(); let cx = x;
+    while (cx < x + w) {
+      const seg = Math.min(x + w - cx, 24 + B.rnd() * 28); if (seg < 6) break;
+      if (B.rnd() > (o.gaps == null ? 0.16 : o.gaps)) { const n = Math.max(2, Math.round(seg / 5)), P = [], by = y + (o.step ? Math.round((B.rnd() - 0.5) * o.step) : 0);
+        for (let i = 0; i < n; i++) { const r = Math.max(2, h * 0.5 * (0.6 + 0.6 * B.rnd())); P.push({ x: cx + (i + 0.5) / n * seg, y: by - r * 0.55, r }); }
+        if (B.rnd() < 0.5) P.push({ x: cx + seg * (0.3 + 0.4 * B.rnd()), y: by - h * 0.7, r: h * 0.42, z: 1 });
+        B.puffs(P, by, { under: Math.max(2, h * 0.3), dark: o.dark, lo: o.lo, hi: o.hi }); if (o.virga && B.rnd() < 0.4) B.virga(cx + seg * 0.2, cx + seg * 0.8, by, o.virga * (0.5 + 0.5 * B.rnd()), o.dir || 1); }
+      cx += seg * 0.88;
+    }
+  },
+  // a mackerel sky: small puffs in ranks inside a lens
+  mackerel(B, x, y, w, o) {
+    o = o || {}; const h = o.h || w * 0.3, sx = o.sx || 7, sy = o.sy || 5, tilt = (B.rnd() - 0.5) * 0.4;
+    for (let j = 0; j * sy < h; j++) for (let i = 0; i * sx < w; i++) {
+      const px = (i + (j & 1) * 0.5) * sx, py = j * sy, u = (px / w) * 2 - 1, v = (py / h) * 2 - 1; if (u * u + v * v > 1 - B.rnd() * 0.3) continue;
+      const r = 1.9 + B.rnd() * 1.5, cx = x + px + (B.rnd() - 0.5) * 2.4, cy = y + py + tilt * px + Math.sin(px * 0.16) * 1.6;
+      B.puffs([{ x: cx, y: cy, r }], cy + r, { under: 0, lo: 3, hi: 5 });
+    }
+  },
+  // a long thin streak, thinning away to nothing at both ends
+  streak(B, x, y, w, o) {
+    o = o || {}; const ry = o.ry || 1 + B.rnd() * 1.4, rx = w / 2, cx = x + rx, v0 = o.tone || 3;
+    for (let dy = -Math.ceil(ry); dy <= Math.ceil(ry); dy++) {
+      const f = 1 - Math.pow(dy / (ry + 0.5), 2); if (f <= 0) continue; const half = rx * Math.sqrt(f) * (0.75 + 0.5 * n1((y + dy) * 0.7, B.s)), sh = (n1((y + dy) * 1.3, B.s + 5) - 0.5) * rx * 0.3;
+      for (let dx = -Math.floor(half); dx <= half; dx++) { const e = 1 - Math.abs(dx) / half, X = Math.round(cx + dx + sh), Y = y + dy; if (e < 0.22 && bay(X, Y) > e / 0.22) continue; B.set(X, Y, e < 0.3 ? (v0 === 7 ? 7 : 6) : dy < 0 && v0 >= 3 && v0 < 5 ? v0 + 1 : v0); }
+    }
+  },
+  // a mare's tail: fibres that run level and hook up at the windward end
+  wisp(B, x, y, w, o) {
+    o = o || {}; const n = o.n || 2 + ((B.rnd() * 3) | 0), dir = o.dir || 1, hook = o.hook == null ? 5 + B.rnd() * 6 : o.hook;
+    for (let k = 0; k < n; k++) { const L = Math.max(8, w * (0.6 + 0.4 * B.rnd())), oy = k * 2 + ((B.rnd() * 2) | 0), ox = (B.rnd() - 0.5) * w * 0.3;
+      for (let i = 0; i < L; i++) { const u = i / L, yy = Math.round(y + oy - hook * Math.pow(u, 2.6)), X = Math.round(x + ox + (dir > 0 ? i : L - i)); if (u < 0.25 && bay(X, yy) > u / 0.25 + 0.2) continue; B.set(X, yy, u > 0.8 ? 3 : u > 0.5 ? 6 : 7); if (u > 0.86) B.set(X, yy + 1, 6); } }
+  },
+  // a lens of cloud, or a stack of them, smooth and still (the kind that stands over a mountain)
+  lens(B, x, y, w, o) {
+    o = o || {}; const n = o.n || 1 + ((B.rnd() * 2.4) | 0);
+    for (let k = 0; k < n; k++) { const ww = w * (1 - 0.22 * k), rx = ww / 2, ry = Math.max(1.5, ww * 0.07), cx = x + w / 2 + (B.rnd() - 0.5) * 4, cy = y - k * (ry * 2 + 1);
+      for (let dy = -Math.ceil(ry); dy <= Math.ceil(ry); dy++) { const f = 1 - Math.pow(dy / (ry + 0.3), 2); if (f <= 0) continue; const half = rx * Math.sqrt(f); for (let dx = -Math.floor(half); dx <= half; dx++) { const e = 1 - Math.abs(dx) / half; B.set(Math.round(cx + dx), Math.round(cy + dy), e < 0.12 ? 6 : dy <= -ry * 0.4 ? (dx > 0 ? 5 : 4) : dy >= ry * 0.5 ? 2 : 3); } } }
+  },
+};
+// The kinds of sky: how a sky of that kind lays its clouds out. K: { hi, lo } the two strips, cw their width, H the sky's height, Y(f) a
+// height in it (0 the top, 1 the sea line; the island's `lift` moves it), d how much cloud (1 the usual), z how big, at(i, n) a place
+// along the strip for the i-th of n, dir which way the wind blows, o what is passed on to every cloud (virga, dark).
+const SKYKIND = {
+  none() {},
+  clear(K) { SKYGEN.cumulus(K.lo, K.at(0, 1), K.Y(0.34), 16 * K.z, K.o); K.wisps(1); }, // one small cloud in a whole sky
+  fair(K) { const n = Math.max(3, Math.round(K.cw / 66 * K.d)); for (let i = 0; i < n; i++) { const w = (16 + K.lo.rnd() * 30) * K.z; SKYGEN.cumulus(K.lo, K.at(i, n), K.Y(0.22 + 0.36 * K.lo.rnd()) + Math.round(w * 0.2), w, K.o); } K.far(Math.round(K.cw / 80 * K.d)); K.wisps(1); },
+  heaped(K) { // two or three great heaps, and small ones high above them
+    const m = Math.round(K.cw / 120 * K.d); for (let i = 0; i < m; i++) { const w = (12 + K.lo.rnd() * 14) * K.z; SKYGEN.cumulus(K.lo, K.at(i + 0.5, m), K.Y(0.2 + 0.18 * K.lo.rnd()), w); }
+    const n = Math.max(2, Math.round(K.cw / 170 * K.d)); for (let i = 0; i < n; i++) { const w = (50 + K.lo.rnd() * 44) * K.z; SKYGEN.cumulus(K.lo, K.at(i, n), K.Y(0.52 + 0.14 * K.lo.rnd()), w, Object.assign({ h: w * (0.42 + 0.14 * K.lo.rnd()) }, K.o)); }
+    K.far(Math.round(K.cw / 110 * K.d));
+  },
+  trade(K) { // towers standing along the horizon, the way they do over a warm sea
+    const n = Math.max(2, Math.round(K.cw / 120 * K.d)); for (let i = 0; i < n; i++) { const w = (26 + K.lo.rnd() * 22) * K.z, h = Math.min(K.H * 0.62, w * (1 + 0.6 * K.lo.rnd())); SKYGEN.tower(K.lo, K.at(i, n), K.Y(0.93 + 0.05 * K.lo.rnd()), w, Object.assign({ h, anvil: K.lo.rnd() < 0.22 }, K.o)); }
+    const m = Math.round(K.cw / 110 * K.d); for (let i = 0; i < m; i++) { const w = (12 + K.lo.rnd() * 16) * K.z; SKYGEN.cumulus(K.lo, K.at(i + 0.4, m), K.Y(0.24 + 0.2 * K.lo.rnd()), w); }
+  },
+  wall(K) { // a wall of cloud standing all round the horizon and nothing overhead: the inside of a storm's eye, or the edge of a monsoon
+    let x = 0; while (x < K.cw - 10) { const w = (30 + K.lo.rnd() * 30) * K.z, h = K.H * (0.26 + 0.3 * K.lo.rnd()) * Math.min(1.4, K.d); SKYGEN.tower(K.lo, x, K.Y(0.97), w, Object.assign({ h, anvil: K.lo.rnd() < 0.15 }, K.o)); x += w * 0.78; }
+  },
+  mackerel(K) { const n = Math.max(1, Math.round(K.cw / 230 * K.d)); for (let i = 0; i < n; i++) { const w = (70 + K.hi.rnd() * 60) * K.z; SKYGEN.mackerel(K.hi, K.at(i, n), K.Y(0.16 + 0.14 * K.hi.rnd()), w, { h: w * (0.26 + 0.1 * K.hi.rnd()) }); } K.streaks(Math.round(2 * K.d), 0.5, 0.75); },
+  streaky(K) { K.streaks(Math.max(4, Math.round(K.cw / 60 * K.d)), 0.2, 0.74); K.wisps(1); }, // long streaks at every height: a cold, windy sky
+  wisps(K) { K.wisps(Math.max(3, Math.round(K.cw / 80 * K.d))); }, // mares' tails and nothing else
+  veil(K) { const n = Math.max(5, Math.round(K.cw / 44 * K.d)); for (let i = 0; i < n; i++) { const w = (50 + K.hi.rnd() * 70) * K.z; SKYGEN.streak(K.hi, K.at(i, n), K.Y(0.14 + 0.5 * K.hi.rnd()), w, { tone: K.hi.rnd() < 0.5 ? 7 : 6, ry: 1 + K.hi.rnd() * 2.2 }); } }, // a milky sky: thin sheets, the sun a blur behind them
+  banked(K) { // a bank lying along the horizon, and flat grey heaps above it
+    SKYGEN.bank(K.lo, 0, K.Y(0.9), K.cw, Object.assign({ h: 10 + 5 * K.z, gaps: 0.2 / K.d, step: 5, dark: 0.12 }, K.o));
+    const n = Math.max(2, Math.round(K.cw / 100 * K.d)); for (let i = 0; i < n; i++) { const w = (30 + K.lo.rnd() * 34) * K.z; SKYGEN.cumulus(K.lo, K.at(i, n), K.Y(0.34 + 0.24 * K.lo.rnd()), w, Object.assign({ h: w * 0.26, dark: 0.16 }, K.o)); }
+  },
+  lens(K) { const n = Math.max(1, Math.round(K.cw / 200 * K.d)); for (let i = 0; i < n; i++) SKYGEN.lens(K.hi, K.at(i, n), K.Y(0.22 + 0.16 * K.hi.rnd()), (44 + K.hi.rnd() * 36) * K.z, { n: 1 + ((K.hi.rnd() * 3) | 0) }); K.wisps(2); K.streaks(1, 0.5, 0.7); }, // lenses standing still over high ground
+  smoke(K) { if (!K.q.tint) K.q.tint = [[92, 80, 78], 0.8]; const n = Math.max(4, Math.round(K.cw / 70 * K.d)); for (let i = 0; i < n; i++) { const w = (40 + K.lo.rnd() * 60) * K.z; SKYGEN.streak(K.lo, K.at(i, n), K.Y(0.18 + 0.5 * K.lo.rnd()), w, { tone: K.lo.rnd() < 0.5 ? 2 : 1, ry: 1.2 + K.lo.rnd() * 2 }); } }, // what a burning mountain, or a row of chimneys, puts in the air
+  rows(K) { const n = Math.max(3, Math.round(4 * K.d)); for (let j = 0; j < n; j++) { const f = j / (n - 1), w = (9 + 30 * f * f) * K.z, m = Math.max(2, Math.round(K.cw / (w * 2.6 + 14))); for (let i = 0; i < m; i++) { if (K.lo.rnd() < 0.2) continue; SKYGEN.cumulus(K.lo, K.at(i + (j & 1) * 0.5, m), K.Y(0.84 - 0.6 * Math.pow(f, 0.8)) + Math.round((K.lo.rnd() - 0.5) * 6), w * (0.8 + 0.4 * K.lo.rnd()), Object.assign({ h: Math.max(3.5, w * 0.36) }, K.o)); } } }, // cloud streets: ranks of heaps, small and low far off, large and high overhead
+  grid(K) { // every cloud the same, and each in its place: a sky that has been counted, or ruled
+    const sx = Math.round(34 * K.z), rows = Math.max(2, Math.round(3 * K.d)), n = Math.max(3, Math.round(K.cw / sx)); for (let j = 0; j < rows; j++) for (let i = 0; i < n; i++) { const x = Math.round((i + (j & 1) * 0.5) / n * K.cw), y = K.Y(0.24 + j * 0.14), u = K.z; K.lo.puffs([{ x: x - 4 * u, y: y - 2 * u, r: 3.2 * u }, { x: x + 1 * u, y: y - 3.4 * u, r: 4.2 * u }, { x: x + 6 * u, y: y - 2 * u, r: 3 * u }], y, { under: 2 }); }
+  },
+  threads(K) { // long level fibres from one side of the sky to the other, as if it had been strung
+    const n = Math.max(5, Math.round(9 * K.d)); for (let i = 0; i < n; i++) SKYGEN.streak(K.hi, Math.round(K.hi.rnd() * K.cw), K.Y(0.12 + 0.62 * (i + K.hi.rnd() * 0.6) / n), K.cw * (0.4 + 0.5 * K.hi.rnd()), { tone: i % 3 ? 6 : 3, ry: 0.3 });
+  },
+  flecks(K) { // a fleece: small soft tufts all over, close together
+    const n = Math.max(12, Math.round(K.cw / 16 * K.d)); for (let i = 0; i < n; i++) { const w = (7 + K.lo.rnd() * 9) * K.z; SKYGEN.cumulus(K.lo, K.at(i, n), K.Y(0.16 + 0.5 * K.lo.rnd()), w, { h: Math.max(3.5, w * 0.5), lo: 2 }); }
+  },
+};
+// What an island's sky is, where nothing is said for it: by its climate and its seed.
+const SKY_BY = {
+  mild: ['fair', 'fair', 'fair', 'heaped', 'heaped', 'mackerel', 'wisps', 'rows', 'streaky'],
+  wet: ['banked', 'banked', 'heaped', 'heaped', 'fair', 'mackerel'],
+  cold: ['streaky', 'streaky', 'veil', 'mackerel', 'lens', 'wisps', 'banked'],
+  warm: ['trade', 'trade', 'heaped', 'fair', 'wisps', 'rows'],
+  ash: ['smoke'], storm: ['none'], cloud: ['none'], still: ['clear'],
+};
+const SKYS = {};
+function skySay(o) { for (const k in o) SKYS[k] = o[k]; }
+function skyOf(l) {
+  if (!l) return { k: 'fair', d: 1, z: 1, wind: 1, seed: 4242 };
+  const s = groundSeed(l) % 65521, sc = l.scene || {}, cl = climateOf(l), said = SKYS[l.id] || {}, list = SKY_BY[sc.palms && cl === 'mild' ? 'warm' : cl] || SKY_BY.mild;
+  return Object.assign({ k: list[(nH(3, 1, s) * list.length) | 0], d: 0.75 + 0.6 * nH(3, 2, s), z: 0.85 + 0.4 * nH(3, 3, s), wind: (nH(3, 4, s) < 0.3 ? -1 : 1) * (0.6 + 0.9 * nH(3, 5, s)), seed: s }, said);
+}
+const SKY_C = new Map();
+function skyScape(l) {
+  const id = l ? l.id : '', key = id + '|' + W + '|' + SURF; let K = SKY_C.get(key); if (K) return K;
+  if (SKY_C.size >= T_SKY.keep) SKY_C.delete(SKY_C.keys().next().value);
+  const q = skyOf(l), cw = W + T_SKY.wrap, H = SURF;
+  K = { q, cw, H, d: q.d, z: q.z, dir: q.wind < 0 ? -1 : 1, hi: new CloudB(cw, H, q.seed + 11), lo: new CloudB(cw, H, q.seed + 23), cv: {}, pk: {} };
+  K.o = { virga: q.virga ? q.virga * (H / 170) : 0, dark: q.dark || 0, dir: K.dir };
+  K.Y = f => Math.round(H * clamp(f + (q.lift || 0), 0.04, 0.985));
+  K.at = (i, n) => Math.round(((i + 0.15 + 0.7 * K.lo.rnd()) / n) * cw);
+  K.far = n => { for (let i = 0; i < n; i++) { const w = (9 + K.lo.rnd() * 12) * K.z; SKYGEN.cumulus(K.lo, K.at(i, n), K.Y(0.8 + 0.12 * K.lo.rnd()), w, { h: Math.max(3.5, w * 0.3) }); } }; // the far ones: small and flat, low over the sea
+  K.wisps = n => { for (let i = 0; i < n; i++) SKYGEN.wisp(K.hi, K.at(i, n), K.Y(0.14 + 0.2 * K.hi.rnd()), (28 + K.hi.rnd() * 40) * K.z, { dir: K.dir }); };
+  K.streaks = (n, a, b) => { for (let i = 0; i < n; i++) SKYGEN.streak(K.hi, K.at(i, n), K.Y(a + (b - a) * K.hi.rnd()), (36 + K.hi.rnd() * 64) * K.z, {}); };
+  try {
+    (SKYKIND[q.k] || SKYKIND.fair)(K); if (q.k2) (SKYKIND[q.k2] || SKYKIND.none)(K); // a second kind over the first: wisps over heaps, a bank under streaks
+    for (const a of q.add || []) (SKYGEN[a[0]] || SKYGEN.cumulus)(a[4] === 'hi' ? K.hi : K.lo, Math.round(a[1] * cw), K.Y(a[2]), a[3] * K.z, Object.assign({}, K.o, a[5])); // and single clouds put where the island wants them: [kind, along, down, width, strip, options]
+    if (q.echo) { K.lo.echo(q.echo, 2); K.hi.echo(q.echo, 1); } if (q.flip) { K.lo.flipY(); K.hi.flipY(); }
+  } catch (e) { console.error('sky', id, e); }
+  SKY_C.set(key, K); return K;
+}
+// the deck an overcast, a rain or a storm brings: cloud from the top of the picture down to a ragged base, painted once an island
+function skyDeck(K, base) {
+  const nm = 'deck' + base; if (K[nm]) return K[nm]; const B = K[nm] = new CloudB(K.cw, K.H, K.q.seed + 37 + Math.round(base * 100)), by = Math.round(K.H * base);
+  const lump = (x, y) => n2(x * 0.035, y * 0.11, B.s) + n2(x * 0.09, y * 0.24, B.s + 3) * 0.5, sm = 48; // long soft billows, and the same ones where the strip comes round
+  for (let y = 0; y < by - 3; y++) for (let x = 0; x < K.cw; x++) { let m = lump(x, y); if (x >= K.cw - sm) { const u = (x - (K.cw - sm)) / sm; m = m * (1 - u) + lump(x - K.cw, y) * u; } m += (bay(x, y) - 0.5) * 0.1; B.t[y * K.cw + x] = m > 1.0 ? 4 : m > 0.62 ? 3 : 2; } // the body of it
+  SKYGEN.bank(B, 0, by - 5, K.cw, { h: 11, gaps: 0, step: 4, lo: 1, hi: 4 }); SKYGEN.bank(B, 14, by + 2, K.cw, { h: 13, gaps: 0.08, step: 8, lo: 1, hi: 4, dark: 0.1 }); // its underside, in two ranks
+  for (let x = 0; x < K.cw; x++) if (nH(x, 5, B.s) > 0.72) { const y0 = by - 4 + ((nH(x, 6, B.s) * 6) | 0), len = 2 + ((nH(x, 7, B.s) * 5) | 0); for (let j = 0; j < len; j++) if (B.t[Math.min(K.H - 1, y0 + j) * K.cw + x] === 0 && bay(x, y0 + j) > 0.35) B.set(x, y0 + j, 7); } // and the rags hanging under it
+  return B;
+}
+// the same weather further off: ranks of cloud going away under the deck to the horizon, each thinner and more broken than the last (behind the land, where the deck is over it)
+function skyFarDeck(K) {
+  if (K.fard) return K.fard; const B = K.fard = new CloudB(K.cw, K.H, K.q.seed + 53), n = 6, y0 = T_SKY.deck + 0.09;
+  for (let j = 0; j < n; j++) { const f = j / (n - 1), y = Math.round(K.H * (y0 + (0.9 - y0) * Math.pow(f, 0.72)));
+    if (j < 3) SKYGEN.bank(B, (j * 37) % 50, y, K.cw, { h: Math.max(4, Math.round(10 - 8 * f)), gaps: 0.1 + 0.3 * f, step: 5, lo: 1, hi: 4, dark: 0.12 - 0.12 * f });
+    else { const m = Math.max(3, Math.round(K.cw / (70 - j * 6))); for (let i = 0; i < m; i++) if (B.rnd() > 0.18) SKYGEN.streak(B, Math.round(((i + 0.8 * B.rnd()) / m) * K.cw), y + Math.round((B.rnd() - 0.5) * 7), 26 + B.rnd() * (70 - j * 8), { tone: j > 4 ? 3 : 2, ry: 0.8 + B.rnd() * (j > 4 ? 0.7 : 1.3) }); } } // the last of them are only lines
+  return B;
+}
+// the decks in the sky over an island now, each with how far it has faded in: [[kind, alpha]…]
+function skyWx(l, t) {
+  if (!l) return []; const sc = l.scene; if (sc && sc.weather) return sc.weather === 'storm' ? [['storm', 1]] : [];
+  const D = { overcast: 1, rain: 1, storm: 1 }, wx = weatherAt(t, l.id), into = t % T.weatherMs, fade = T.weatherFadeMs, pv = into < fade ? weatherAt(t - T.weatherMs, l.id) : wx;
+  if (pv === wx) return D[wx] ? [[wx, 1]] : []; const a = into / fade, out = []; if (D[pv]) out.push([pv, 1 - a]); if (D[wx]) out.push([wx, a]); return out;
+}
+// The hour's light on a cloud. grey: 0 a fair sky to 1 under a storm. q.tint: [colour, how much] of the island's own.
+function skyPal(h, nt, grey, q) {
+  const b = curSky.bot, tp = curSky.top, low = Math.max(q && q.warm || 0, 1 - Math.abs(h - 5.9) / T_SKY.low[0], 1 - Math.abs(h - 19.2) / T_SKY.low[1]);
+  let body = lerpC(lerpC([250, 250, 255], b, 0.42), [40, 50, 80], nt * 0.8); const sun = lerpC(lerpC([255, 255, 255], T_SKY.warm, low), T_SKY.moon, nt);
+  if (q && q.tint) body = lerpC(body, lerpC(q.tint[0], [20, 24, 40], nt * 0.7), q.tint[1]);
+  if (grey > 0) body = lerpC(body, lerpC(T_SKY.grey, [26, 30, 46], nt * 0.8), grey * 0.6);
+  const k = 1 - grey * 0.55, T = [null, lerpC(body, tp, 0.62), lerpC(body, tp, 0.36), body, lerpC(body, sun, 0.5 * k), lerpC(body, sun, 0.9 * k), body, body];
+  return T;
+}
+// what an overcast, a rain and a storm are made of, by the hour
+const DECK_PAL = { overcast: [[112, 122, 140], [140, 150, 166], [170, 180, 194], [196, 204, 216]], rain: [[52, 62, 80], [74, 84, 102], [98, 108, 126], [122, 132, 150]], storm: [[14, 18, 30], [26, 32, 48], [42, 48, 68], [62, 70, 92]], white: [[150, 168, 200], [196, 208, 228], [232, 238, 246], [255, 255, 255]] };
+function deckPal(kind, nt) { const D = DECK_PAL[kind] || DECK_PAL.overcast, n = kind === 'storm' ? 0.4 : 0.72, f = c => lerpC(c, [12, 16, 32], nt * n); return [null, f(D[0]), f(D[1]), f(D[2]), f(D[3]), f(D[3]), f(D[2]), f(D[1])]; }
+// colour a strip for this hour (only when its key changes), and hand back its canvas
+function skyStrip(K, name, B, pal, key, hazed) {
+  let c = K.cv[name]; if (!c) { c = K.cv[name] = document.createElement('canvas'); c.width = B.w; c.height = B.h; c.x = c.getContext('2d'); c.img = c.x.createImageData(B.w, B.h); c.d = new Uint32Array(c.img.data.buffer); }
+  c.used = performance.now(); if (K.pk[name] === key) return c; K.pk[name] = key;
+  const b = curSky.bot, LV = 4, P = []; // the same tones, fading into the horizon's colour row by row
+  for (let lv = 0; lv < LV; lv++) { const f = hazed ? (lv / (LV - 1)) * T_SKY.haze[1] : 0, row = new Uint32Array(8); for (let v = 1; v < 8; v++) { const col = lerpC(pal[v], b, f), a = v === 6 ? T_SKY.veil[0] : v === 7 ? T_SKY.veil[1] : 1; row[v] = ((Math.round(a * 255) << 24) | ((col[2] & 255) << 16) | ((col[1] & 255) << 8) | (col[0] & 255)) >>> 0; } P.push(row); }
+  const t = B.t, d = c.d, w = B.w, h0 = T_SKY.haze[0] * B.h, hs = B.h - h0;
+  for (let y = 0; y < B.h; y++) { const row = P[hazed ? clamp(Math.round((y - h0) / hs * (LV - 1)), 0, LV - 1) : 0], o = y * w; for (let x = 0; x < w; x++) { const v = t[o + x]; d[o + x] = v ? row[v] : 0; } }
+  c.x.putImageData(c.img, 0, 0); return c;
+}
+function skyBlit(c, off, a) { const w = c.width; off = ((off % w) + w) % w; if (a != null) g.globalAlpha = a; g.drawImage(c, -off, 0); if (off > w - W) g.drawImage(c, w - off, 0); if (a != null) g.globalAlpha = 1; }
+// how grey the fair-weather cloud is under this island's sky of the hour (it goes with the weather, and fades with it)
+function skyGrey(l, t) {
+  if (!l) return 0; const sc = l.scene; if (sc && sc.weather) return sc.weather === 'storm' ? 1 : sc.weather === 'cloud' ? 0.3 : 0;
+  const G = { clear: 0, fog: 0.35, snow: 0.45, overcast: 0.6, rain: 0.8, storm: 1 }, wx = weatherAt(t, l.id), into = t % T.weatherMs, fade = T.weatherFadeMs; if (into >= fade) return G[wx] || 0;
+  const pv = weatherAt(t - T.weatherMs, l.id), a = into / fade; return (G[pv] || 0) * (1 - a) + (G[wx] || 0) * a;
+}
+// the island's own clouds, over the sky's colours and under everything else
+function drawSkyClouds(l, h, t, nt) {
+  if (l && l.scene && l.scene.weather === 'cave') return; // a cavern has no sky
+  const K = skyScape(l), nowMs = performance.now(); if ((K.pruned || 0) + 30000 < nowMs) { K.pruned = nowMs; for (const nm in K.cv) if (nm !== 'hi' && nm !== 'lo' && K.cv[nm].used + T_SKY.idle < nowMs) { delete K.cv[nm]; delete K.pk[nm]; } } // a weather's strips are let go once it has been gone a while
+  const grey = Math.round(skyGrey(l, t) * 6) / 6, key = Math.round(h * 12) + '|' + grey, pal = skyPal(h, nt, grey, K.q), sp = (t / 1000) * K.q.wind;
+  skyBlit(skyStrip(K, 'hi', K.hi, pal, key, true), -sp * T_SKY.speed.hi + K.q.seed);
+  skyBlit(skyStrip(K, 'lo', K.lo, pal, key, true), -sp * T_SKY.speed.lo + K.q.seed * 3);
+  for (const [kind, a] of skyWx(l, t)) skyBlit(skyStrip(K, 'far' + kind, skyFarDeck(K), deckPal(kind, nt), kind + '|' + ((nt * 8) | 0) + '|' + Math.round(h * 12), true), -sp * T_SKY.speed.lo * 1.5 + K.q.seed * 7, a);
+}
+// the deck itself: kind overcast, rain, storm or white (the cloud an island hangs from), at this much alpha
+function drawSkyDeck(l, kind, t, nt, alpha, base) {
+  const K = skyScape(l), B = skyDeck(K, base || T_SKY.deck), nm = 'deck' + (base || T_SKY.deck) + kind, c = skyStrip(K, nm, B, deckPal(kind, nt), kind + '|' + ((nt * 8) | 0), false);
+  skyBlit(c, -(t / 1000) * (kind === 'storm' ? T_SKY.speed.storm : T_SKY.speed.deck) * clamp(K.q.wind, -1.6, 1.6) + K.q.seed * 5, alpha); // it goes with the island's own wind, and where there is none it stands
+}
 // --- the runtime: build an island's layers once, relight them with the hour, blit them ---
 const LANDS = {}; // island id -> s => { ... } : the island's own landscape, written against the layer API above
 let LAND_C = {};
@@ -20784,6 +21021,303 @@ pitSay({
   waveshepherd: { form: 'adit', in: ['bluff', { mat: 'chalk', tex: 'crag', cap: W_TURF }], mouth: 'timber', things: [['drywall', { dx: -5.6 }], ['dog', { dx: 6.6 }]] },
   lookout: { form: 'adit', in: ['face', { mat: 'granite', tex: 'crag', n: 3 }], mouth: 'raw', things: [['lens', { dx: -5 }], ['blocks', { dx: 7, c: '#d8e8f0' }]] },
   greatpearl: { form: 'shaft', head: 'gin', lining: 'raw', liningc: '#f4f0ec', glow: '#ffe8f8', lit: 0.4, haze: '#e8d8e8', in: [['mass', { shape: 'hump', pw: 0.5, from: 0.04, to: 0.96, h: 3, mat: '#f4f0ec', tex: 'nacre' }]], things: [['shells', { dx: -4.8 }], ['conch', { dx: 6.8 }]] },
+});
+// --- every island's own sky: the home waters and the near seas (tiers 0 to 2) ---
+// k the kind of sky, k2 a second kind over it, d how much cloud, z how big, wind which way and how fast, lift up (-) or down (+) the sky,
+// tint [colour, how much], warm the low sun's light at any hour, virga rain hanging under the clouds, dark, echo, flip, add single clouds.
+skySay({
+  sea: { k: 'fair', d: 0.7, wind: 0.6 },
+  shoal: { k: 'trade', d: 0.9, z: 1.05, wind: 0.8 },
+  harbor: { k: 'fair', d: 1.1, z: 1.1, wind: 0.9 },
+  brine: { k: 'clear', k2: 'wisps', d: 0.8, wind: 0.5 },
+  tortoise: { k: 'trade', d: 1.1, wind: -0.7 },
+  gannet: { k: 'streaky', d: 1.2, wind: 1.6 },
+  oyster: { k: 'rows', d: 1.1, wind: 0.8 },
+  wreckers: { k: 'banked', d: 1.2, dark: 0.1, wind: 1.3 },
+  pilchard: { k: 'fair', d: 0.8, z: 0.9, wind: 0.6 },
+  hermit: { k: 'wisps', d: 1.2, wind: 0.5 },
+  kelpburn: { k: 'smoke', k2: 'fair', d: 0.8, tint: [[168, 160, 150], 0.55], wind: 1.1 },
+  crabpots: { k: 'heaped', d: 0.9, wind: 1.1 },
+  tidemill: { k: 'mackerel', d: 1, wind: 0.7 },
+  smugglers: { k: 'banked', k2: 'wisps', d: 0.8, wind: -1 },
+  codflakes: { k: 'streaky', d: 0.9, wind: 1.4 },
+  weedfarm: { k: 'veil', d: 0.9, wind: 0.5 },
+  lampfish: { k: 'fair', k2: 'wisps', d: 0.9, wind: -1.1 },
+  creel: { k: 'rows', d: 0.9, z: 0.9, wind: 0.9 },
+  holywell: { k: 'clear', d: 1, wind: 0.3, add: [['lens', 0.34, 0.22, 60, 'hi', { n: 2 }]] },
+  eggcliff: { k: 'flecks', d: 0.8, wind: 1.3 },
+  musselropes: { k: 'fair', d: 1.2, z: 0.85, wind: 0.8 },
+  shearing: { k: 'flecks', d: 1.2, z: 1.1, wind: 0.5 },
+  samphire: { k: 'heaped', d: 0.8, z: 1.2, wind: 0.5 },
+  ropewalk: { k: 'threads', k2: 'fair', d: 0.7, wind: 0.8 },
+  kipper: { k: 'fair', k2: 'smoke', d: 0.8, tint: [[150, 138, 128], 0.45], wind: 0.9 },
+  pilots: { k: 'mackerel', k2: 'wisps', d: 1, wind: 1.2 },
+  cockle: { k: 'veil', k2: 'rows', d: 0.7, wind: 0.6 },
+  netmenders: { k: 'fair', d: 1, wind: -0.6 },
+  boatyard: { k: 'heaped', d: 1.1, wind: 0.8 },
+  lifeboat: { k: 'banked', virga: 14, d: 1.3, wind: 1.6, dark: 0.08 },
+  limekiln: { k: 'smoke', k2: 'wisps', d: 0.7, tint: [[214, 208, 196], 0.5], wind: 0.7 },
+  gansey: { k: 'heaped', virga: 12, d: 1.1, dark: 0.1, wind: 1 },
+  whelk: { k: 'fair', z: 1.2, d: 0.9, wind: 0.6 },
+  birdringers: { k: 'wisps', d: 1.4, wind: 1.2 },
+  coastguard: { k: 'rows', d: 1.1, wind: 1.1 },
+  ferrysteps: { k: 'mackerel', d: 1.2, wind: -0.8 },
+  lightship: { k: 'banked', k2: 'wisps', d: 0.7, wind: 0.9 },
+  reach: { k: 'heaped', d: 0.9, wind: 1 },
+  lantern: { k: 'mackerel', d: 1.1, z: 0.9, wind: 0.5 },
+  market: { k: 'trade', d: 0.9, wind: 0.6 },
+  monastery: { k: 'lens', k2: 'streaky', d: 0.8, wind: 0.9 },
+  sargasso: { k: 'clear', k2: 'veil', d: 0.6, wind: 0.2 },
+  fen: { k: 'banked', k2: 'veil', d: 1.1, wind: 0.5 },
+  lazaret: { k: 'veil', d: 1.2, wind: 0.3, dark: 0.1 },
+  dyers: { k: 'fair', d: 1, tint: [[196, 150, 214], 0.35], wind: 0.7 },
+  terrace: { k: 'banked', virga: 14, d: 1.2, lift: -0.08, wind: 0.6 },
+  bayou: { k: 'heaped', z: 1.25, d: 0.9, wind: 0.4, virga: 10 },
+  spice: { k: 'trade', d: 1.2, z: 1.1, wind: 0.8 },
+  flamingo: { k: 'fair', d: 0.7, z: 0.9, tint: [[255, 170, 190], 0.4], wind: 0.5 },
+  spongers: { k: 'clear', k2: 'wisps', d: 0.6, wind: 0.6 },
+  kites: { k: 'streaky', k2: 'flecks', d: 0.8, wind: 1.8 },
+  teariver: { k: 'banked', k2: 'veil', d: 0.9, lift: -0.05, wind: 0.5 },
+  buttonworks: { k: 'mackerel', d: 1.3, tint: [[236, 226, 240], 0.4], wind: 0.6 },
+  cormorants: { k: 'veil', d: 1, wind: 0.4 },
+  turtlebeach: { k: 'trade', d: 0.8, wind: -0.6 },
+  flaxisle: { k: 'rows', d: 1.2, z: 0.9, wind: 0.9 },
+  skeps: { k: 'heaped', d: 1, z: 1.1, wind: 1.1 },
+  coracle: { k: 'fair', d: 1.3, z: 0.8, wind: 0.7 },
+  copperisle: { k: 'smoke', k2: 'fair', d: 0.7, tint: [[150, 170, 150], 0.45], wind: 0.8 },
+  flourmill: { k: 'heaped', d: 1.3, z: 1.3, wind: 1.3 },
+  potters: { k: 'fair', k2: 'smoke', d: 0.8, tint: [[170, 150, 136], 0.4], wind: 0.6 },
+  floatglass: { k: 'lens', k2: 'wisps', d: 1.1, wind: 0.7 },
+  heronry: { k: 'fair', d: 0.9, wind: -0.5 },
+  sailloft: { k: 'streaky', d: 1.1, wind: 1.5 },
+  sealpool: { k: 'wisps', k2: 'banked', d: 0.6, wind: 0.8 },
+  vineyard: { k: 'fair', d: 0.7, z: 1.2, warm: 0.35, wind: 0.5 },
+  almadraba: { k: 'clear', k2: 'streaky', d: 0.5, wind: 0.9 },
+  garum: { k: 'veil', d: 0.9, tint: [[230, 214, 170], 0.35], wind: 0.3 },
+  corkoak: { k: 'rows', d: 0.8, z: 1.1, warm: 0.2, wind: 0.6 },
+  icehouse: { k: 'streaky', k2: 'lens', d: 0.8, wind: 0.9 },
+});
+// --- every island's own sky: the far real seas and the cold ones (tiers 3 and 4) ---
+skySay({
+  trench: { k: 'banked', d: 1.3, dark: 0.15, virga: 16, wind: 1.2 },
+  delta: { k: 'wall', d: 1.1, virga: 18, dark: 0.08, wind: 0.7 }, // the monsoon standing on the horizon
+  pirate: { k: 'trade', d: 1, z: 1.15, wind: 1.2 },
+  whaling: { k: 'streaky', k2: 'banked', d: 0.8, wind: 1.3 },
+  tidal: { k: 'mackerel', k2: 'wisps', d: 1, wind: 0.8 },
+  graveyard: { k: 'veil', d: 1.1, dark: 0.12, wind: 0.4 },
+  steppe: { k: 'rows', d: 1.4, z: 1.2, wind: 1.2 }, // a sky the size of the steppe, in ranks to the horizon
+  cannery: { k: 'fair', k2: 'smoke', d: 0.9, tint: [[160, 156, 150], 0.35], wind: 0.8 },
+  whirlpool: { k: 'mackerel', d: 1.4, wind: -1.4 },
+  ghats: { k: 'veil', k2: 'trade', d: 0.7, warm: 0.4, wind: 0.4 },
+  iguanas: { k: 'banked', d: 1.1, lift: -0.3, wind: 0.6 }, // the low grey that sits on those islands half the year
+  forest: { k: 'heaped', z: 1.3, d: 1.1, virga: 16, wind: 0.5 },
+  saltmine: { k: 'clear', k2: 'wisps', d: 0.7, wind: 0.5 },
+  regatta: { k: 'fair', d: 1.2, wind: 1.9 }, // a racing day
+  bellfoundry: { k: 'heaped', k2: 'smoke', d: 0.8, tint: [[150, 146, 150], 0.3], wind: 0.7 },
+  quarry: { k: 'fair', d: 0.8, z: 1.1, wind: 0.6 },
+  tarpits: { k: 'veil', d: 0.8, tint: [[120, 110, 100], 0.4], wind: 0.3 },
+  shipbreakers: { k: 'smoke', k2: 'trade', d: 0.7, tint: [[130, 120, 112], 0.5], wind: 0.6 },
+  dam: { k: 'rows', d: 0.9, wind: 0.8 },
+  convent: { k: 'veil', k2: 'banked', d: 0.8, wind: 0.5 },
+  customshouse: { k: 'fair', d: 1, wind: 1 },
+  threelights: { k: 'banked', d: 1.2, virga: 12, wind: 1.5, dark: 0.1 },
+  tiderace: { k: 'streaky', d: 1.3, wind: 2 },
+  careenage: { k: 'trade', k2: 'smoke', d: 0.8, tint: [[150, 136, 120], 0.3], wind: 0.7 },
+  fortress: { k: 'heaped', d: 0.9, wind: 0.9 },
+  powdermill: { k: 'rows', d: 0.9, z: 0.9, wind: 0.5 },
+  cenote: { k: 'trade', d: 1.2, wind: 0.5 },
+  silverwreck: { k: 'fair', k2: 'wisps', d: 0.8, tint: [[226, 232, 240], 0.3], wind: 0.9 },
+  flotilla: { k: 'trade', d: 1, z: 0.9, wind: -0.8 },
+  reedislands: { k: 'lens', k2: 'fair', d: 0.9, z: 0.9, lift: -0.04, wind: 0.8 }, // thin air, and the clouds that stand in it
+  sugarmill: { k: 'trade', k2: 'smoke', d: 0.9, tint: [[176, 160, 140], 0.3], wind: 0.6 },
+  indigo: { k: 'fair', d: 1, tint: [[150, 170, 230], 0.4], wind: 0.7 },
+  logwood: { k: 'heaped', d: 1.2, virga: 14, z: 1.2, wind: 0.5 },
+  cinnamon: { k: 'trade', d: 1, warm: 0.3, wind: 0.6 },
+  arena: { k: 'fair', d: 0.7, z: 1.2, wind: 0.5 },
+  dhowyard: { k: 'clear', k2: 'trade', d: 0.5, warm: 0.2, wind: 0.7 },
+  coralmosque: { k: 'wisps', d: 1, warm: 0.2, wind: 0.6 },
+  stiltfishers: { k: 'trade', d: 1.2, z: 1.1, wind: 0.9 },
+  honeymangrove: { k: 'wall', d: 0.9, virga: 14, wind: 0.5 },
+  ambercay: { k: 'fair', d: 0.7, wind: 1.1 },
+  fjord: { k: 'lens', k2: 'veil', d: 1, wind: 0.6 },
+  bell: { k: 'rows', d: 1, wind: 0.9 },
+  crater: { k: 'lens', k2: 'fair', d: 1.2, wind: 0.5 },
+  iceship: { k: 'veil', d: 1.3, wind: 0.3 },
+  witch: { k: 'banked', d: 1, dark: 0.15, tint: [[150, 170, 140], 0.3], wind: 0.4 },
+  coral: { k: 'trade', d: 1.3, z: 1.2, wind: 0.8 },
+  rookery: { k: 'streaky', d: 1.3, wind: 1.7 },
+  geyser: { k: 'heaped', k2: 'wisps', d: 0.8, z: 0.9, wind: 0.8 },
+  salmonrun: { k: 'heaped', d: 1, z: 1.1, wind: 0.8 },
+  totem: { k: 'banked', d: 1.4, virga: 14, lift: -0.1, wind: 0.6 },
+  caviar: { k: 'veil', k2: 'rows', d: 0.8, wind: 0.6 },
+  city: { k: 'banked', d: 1.2, virga: 16, dark: 0.12, wind: 0.9 },
+  haulout: { k: 'streaky', k2: 'banked', d: 0.9, wind: 1.1 },
+  driftice: { k: 'veil', d: 1, wind: 0.5 },
+  fogbank: { k: 'banked', d: 1.6, lift: -0.2, wind: 0.3 },
+  convicts: { k: 'banked', d: 1.1, dark: 0.18, virga: 10, wind: 0.8 },
+  eiderisle: { k: 'flecks', d: 1.1, z: 1.1, wind: 0.5 }, // a sky of down
+  icecutters: { k: 'streaky', d: 0.9, wind: 0.8 },
+  bathhouse: { k: 'heaped', k2: 'veil', d: 0.7, wind: 0.4 },
+  divingbell: { k: 'fair', d: 0.9, wind: 1 },
+  puffins: { k: 'flecks', d: 0.9, wind: 1.4 },
+  glacierriver: { k: 'lens', k2: 'streaky', d: 1.3, wind: 0.9 },
+  ternstrand: { k: 'streaky', d: 1, wind: 1.5 },
+  greenhouses: { k: 'heaped', k2: 'lens', d: 0.9, z: 0.9, wind: 0.6 },
+  guanofort: { k: 'veil', d: 0.8, wind: 0.6 },
+  albatross: { k: 'streaky', k2: 'banked', d: 1.2, wind: 2.1 }, // the wind those birds live on
+  berghour: { k: 'wisps', k2: 'veil', d: 0.9, wind: 0.5 },
+  lichenfell: { k: 'veil', k2: 'lens', d: 0.9, wind: 0.5 },
+  narwhal: { k: 'veil', d: 0.7, wind: 0.3 },
+  glasssponge: { k: 'banked', d: 1, virga: 10, wind: 0.7 },
+  codliver: { k: 'streaky', k2: 'smoke', d: 0.8, tint: [[150, 144, 138], 0.4], wind: 0.9 },
+  packice: { k: 'veil', d: 1.4, wind: 0.2 },
+  qiviut: { k: 'lens', k2: 'veil', d: 0.8, wind: 0.9 },
+  cablestation: { k: 'mackerel', k2: 'banked', d: 1, wind: 1.2 },
+  boomtown: { k: 'fair', k2: 'smoke', d: 1, tint: [[176, 172, 168], 0.3], wind: 1.1 },
+  sauna: { k: 'veil', k2: 'smoke', d: 0.8, tint: [[190, 184, 178], 0.4], wind: 0.3 },
+  bore: { k: 'mackerel', d: 1.3, wind: 1 },
+  cloudberry: { k: 'heaped', d: 0.9, z: 1.2, warm: 0.3, wind: 0.5 },
+  sledpost: { k: 'streaky', k2: 'veil', d: 0.9, wind: 1.2 },
+  shellmidden: { k: 'fair', d: 1, z: 0.9, wind: 0.7 },
+  cliffcells: { k: 'banked', d: 1.2, lift: -0.15, virga: 8, wind: 0.6 },
+  ashstrand: { k: 'smoke', k2: 'veil', d: 0.9, tint: [[130, 124, 122], 0.6], wind: 0.5 },
+});
+// --- every island's own sky: the islands that are not real (tiers 5 and 6). Here the sky is the island's idea again. ---
+skySay({
+  cinder: { k: 'smoke', d: 1.2, tint: [[80, 60, 56], 0.85], wind: 0.7 },
+  glass: { k: 'clear', k2: 'lens', d: 1, wind: 0.4 },
+  biolum: { k: 'wisps', d: 0.8, tint: [[120, 220, 200], 0.35], wind: 0.4 },
+  deadsea: { k: 'veil', d: 0.7, wind: 0 },
+  frogs: { k: 'heaped', z: 1.3, d: 0.9, virga: 10, tint: [[214, 236, 200], 0.3], wind: 0.4 },
+  throat: { k: 'wall', d: 0.7, dark: 0.15, wind: 0.5 },
+  mirage: { k: 'none', echo: 9, wind: 0.3, add: [['cumulus', 0.3, 0.3, 30], ['cumulus', 0.72, 0.44, 24], ['cumulus', 0.52, 0.2, 16]] }, // every cloud twice, the way the flats show everything
+  ink: { k: 'heaped', d: 1, tint: [[30, 30, 50], 0.85], virga: 18, wind: 0.5 }, // black, and dripping
+  amber: { k: 'heaped', d: 0.8, tint: [[255, 196, 96], 0.55], warm: 0.6, wind: 0.3 },
+  furnace: { k: 'smoke', k2: 'lens', d: 0.8, tint: [[200, 120, 90], 0.5], warm: 0.5, wind: 0.6 },
+  lookingglass: { k: 'fair', d: 0.9, wind: 0.15 },
+  lepers: { k: 'mackerel', d: 1.4, tint: [[200, 220, 230], 0.3], wind: 0.5 }, // a sky in scales
+  carnivore: { k: 'heaped', d: 1.1, tint: [[236, 200, 214], 0.3], virga: 8, wind: 0.4 },
+  bonesleep: { k: 'heaped', z: 1.6, d: 0.6, wind: 0.15 }, // clouds as big and as slow as what sleeps under them
+  chord: { k: 'threads', d: 0.55, wind: 0.3, add: [['cumulus', 0.2, 0.3, 12], ['cumulus', 0.42, 0.22, 10], ['cumulus', 0.6, 0.4, 12], ['cumulus', 0.84, 0.3, 10]] }, // five lines across the sky, and notes on them
+  candle: { k: 'wisps', k2: 'smoke', d: 0.6, tint: [[236, 214, 170], 0.5], warm: 0.5, wind: 0.3 },
+  orchard: { k: 'flecks', d: 0.9, z: 1.2, tint: [[255, 214, 220], 0.35], wind: 0.5 },
+  loom: { k: 'threads', d: 1.4, wind: 0.6 },
+  barrow: { k: 'veil', d: 1, dark: 0.15, wind: 0.2 },
+  midges: { k: 'mackerel', d: 1.6, dark: 0.1, wind: 0.4 },
+  echoes: { k: 'fair', echo: 8, d: 0.9, wind: 0.7 },
+  octopus: { k: 'heaped', d: 0.8, tint: [[214, 170, 200], 0.3], wind: 0.3 },
+  milk: { k: 'veil', d: 1.6, tint: [[250, 250, 244], 0.5], wind: 0.3 },
+  moth: { k: 'flecks', d: 0.8, tint: [[236, 226, 200], 0.35], wind: 0.4 },
+  beachedmoon: { k: 'wisps', d: 0.7, tint: [[214, 220, 240], 0.3], wind: 0.4 },
+  singingsand: { k: 'clear', k2: 'streaky', d: 0.5, warm: 0.3, tint: [[250, 226, 180], 0.3], wind: 1 },
+  lockkeeper: { k: 'rows', d: 1, wind: 0.6 },
+  belltower: { k: 'heaped', k2: 'wisps', d: 0.9, wind: 0.7 },
+  coralwhaler: { k: 'trade', d: 1.1, wind: 0.8 },
+  silence: { k: 'clear', d: 1, wind: 0 }, // nothing in it moves
+  crabcity: { k: 'fair', d: 1, wind: 0.2 },
+  losthats: { k: 'flecks', d: 0.8, wind: 1.6 },
+  marblesea: { k: 'veil', k2: 'streaky', d: 1.1, tint: [[240, 236, 244], 0.4], wind: 0.5 },
+  rainingfish: { k: 'heaped', d: 1.2, virga: 26, dark: 0.1, wind: 0.6 },
+  reefofteeth: { k: 'streaky', d: 0.9, wind: 1 },
+  mapisland: { k: 'grid', d: 0.7, tint: [[236, 220, 186], 0.5], wind: 0.4 }, // a ruled sky
+  feast: { k: 'heaped', d: 1, z: 1.2, tint: [[255, 236, 214], 0.3], warm: 0.3, wind: 0.4 },
+  glassfisherman: { k: 'lens', d: 1.3, tint: [[214, 236, 244], 0.4], wind: 0.5 },
+  upsidesky: { k: 'fair', flip: true, d: 1.1, wind: 0.7 }, // the clouds are the right way up for somebody
+  puppets: { k: 'threads', d: 0.8, wind: 0.2 },
+  uphilltide: { k: 'heaped', flip: true, d: 0.8, wind: 0.6 },
+  frozenmusic: { k: 'threads', d: 0.55, wind: 0, add: [['cumulus', 0.16, 0.26, 10], ['cumulus', 0.36, 0.36, 12], ['cumulus', 0.55, 0.2, 10], ['cumulus', 0.76, 0.3, 12]] },
+  carousel: { k: 'rows', d: 1, wind: 2.4 },
+  chessboard: { k: 'grid', d: 1.2, wind: 0.5 },
+  deadletters: { k: 'flecks', d: 0.7, tint: [[244, 238, 220], 0.5], wind: 0.9 },
+  saltstatues: { k: 'veil', d: 0.6, wind: 0 },
+  lakeoftears: { k: 'banked', virga: 30, d: 1.2, dark: 0.1, wind: 0.3 },
+  onetree: { k: 'none', wind: 0.25, add: [['cumulus', 0.5, 0.36, 46]] }, // one tree, one cloud
+  twomoons: { k: 'fair', echo: 10, d: 0.7, wind: 0.5 },
+  staircases: { k: 'rows', d: 1.3, wind: 0.5 },
+  birthdays: { k: 'flecks', d: 1, tint: [[255, 214, 236], 0.4], wind: 0.6 },
+  longshadow: { k: 'streaky', d: 0.8, warm: 1, wind: 0.6 }, // the light is always low here
+  tideofhands: { k: 'wisps', d: 1.4, wind: 0.7 },
+  inwardlights: { k: 'banked', d: 0.8, dark: 0.15, wind: 0.6 },
+  sleepwalkers: { k: 'heaped', d: 0.8, z: 1.3, wind: 0.2, tint: [[200, 200, 236], 0.3] },
+  knots: { k: 'threads', k2: 'wisps', d: 1, wind: 0.8 },
+  onewave: { k: 'banked', d: 1.5, lift: -0.3, wind: 0 }, // a roll of cloud that never comes ashore either
+  bottles: { k: 'fair', d: 0.8, tint: [[200, 236, 220], 0.3], wind: 0.8 },
+  counting: { k: 'grid', d: 1, z: 0.8, wind: 0.4 }, // somebody has counted them
+  weathervanes: { k: 'streaky', k2: 'wisps', d: 1.2, wind: 2.2 },
+  clockwork: { k: 'grid', d: 0.8, tint: [[220, 200, 160], 0.3], wind: 1 },
+  ribcage: { k: 'streaky', d: 1, tint: [[236, 230, 214], 0.3], wind: 0.6 },
+  stormeye: { k: 'wall', d: 1.4, dark: 0.2, wind: 2.4 }, // the wall of the storm going round, and blue straight up
+  sleeper: { k: 'heaped', d: 0.7, z: 1.4, wind: 0.1, tint: [[200, 214, 236], 0.3] },
+  spaceport: { k: 'threads', d: 0.4, wind: 0.5 },
+  runoff: { k: 'smoke', k2: 'banked', d: 1, tint: [[150, 170, 90], 0.6], wind: 0.5 },
+  folio: { k: 'flecks', d: 0.9, tint: [[244, 236, 214], 0.5], wind: 0.7 },
+  starfall: { k: 'wisps', d: 0.8, wind: 0.6 },
+  ferry: { k: 'veil', d: 1.4, dark: 0.2, wind: 0.2 },
+  hourglass: { k: 'streaky', d: 0.7, tint: [[240, 220, 170], 0.4], warm: 0.3, wind: 0.7 },
+  heldbreath: { k: 'fair', d: 1, wind: 0 }, // not one of them has moved
+  eclipse: { k: 'rows', d: 0.8, dark: 0.3, tint: [[60, 50, 80], 0.5], wind: 0.4 },
+  ironisle: { k: 'smoke', k2: 'fair', d: 0.9, tint: [[170, 110, 80], 0.55], wind: 0.7 },
+  mirrorprison: { k: 'fair', echo: -8, d: 0.9, wind: 0.3 },
+  door: { k: 'none', wind: 0.2, add: [['lens', 0.5, 0.25, 70, 'hi', { n: 1 }]] },
+  windworks: { k: 'streaky', k2: 'flecks', d: 1.3, wind: 3 },
+  blackglass: { k: 'lens', d: 1, tint: [[60, 56, 70], 0.6], wind: 0.5 },
+  tidewell: { k: 'rows', d: 1, wind: 0.5 },
+  coalsea: { k: 'smoke', d: 1.3, tint: [[40, 40, 46], 0.85], wind: 0.6 },
+  lastlighthouse: { k: 'banked', d: 0.9, dark: 0.2, wind: 0.8 },
+  godsfishhook: { k: 'wisps', d: 1.6, z: 1.4, wind: 0.7 }, // hooks, all over the sky
+  drownedsun: { k: 'mackerel', d: 1.2, warm: 1, wind: 0.4 },
+  backwards: { k: 'fair', d: 1, wind: -1.6, virga: 10 },
+  wellofstars: { k: 'clear', d: 0.6, wind: 0.3 },
+  boneorchard: { k: 'flecks', d: 0.8, tint: [[244, 240, 230], 0.4], wind: 0.4 },
+  followsyou: { k: 'fair', d: 0.9, wind: -0.9 },
+  nameless: { k: 'none' }, // nothing in it at all
+  beachedkraken: { k: 'heaped', d: 0.9, dark: 0.1, wind: 0.6 },
+  painters: { k: 'veil', d: 1.5, z: 1.4, tint: [[255, 220, 200], 0.4], warm: 0.4, wind: 0.3 },
+  masks: { k: 'grid', d: 0.7, z: 1.2, wind: 0.3 },
+  greatnet: { k: 'threads', d: 1.5, wind: 0.5 },
+  giantshand: { k: 'heaped', d: 0.7, z: 1.5, wind: 0.3 },
+  seasedge: { k: 'banked', d: 1.4, lift: 0.04, wind: 0.5 },
+  deadstar: { k: 'wisps', d: 0.6, tint: [[200, 214, 255], 0.4], wind: 0.3 },
+  firstmorning: { k: 'mackerel', k2: 'fair', d: 1, warm: 1, wind: 0.5 }, // it is always the first light on them
+  thebalance: { k: 'rows', d: 0.7, wind: 0.5 },
+  wordisle: { k: 'clear', d: 1, wind: 0.4 },
+  onloan: { k: 'wisps', d: 0.9, wind: 0.6 },
+  tomorrowisle: { k: 'heaped', d: 0.9, wind: 1.5 },
+  smallgods: { k: 'flecks', d: 1.1, warm: 0.3, wind: 0.5 },
+  lastwords: { k: 'banked', d: 1, virga: 12, wind: 0.6 },
+  worldanchor: { k: 'banked', d: 1.2, dark: 0.12, virga: 10, wind: 0.7 },
+  skippedstones: { k: 'rows', d: 1.1, z: 0.8, wind: 0.9 },
+  promises: { k: 'wisps', k2: 'fair', d: 0.8, wind: 0.6 },
+  sewnsea: { k: 'threads', k2: 'fair', d: 0.9, wind: 0.6 },
+  ninthwave: { k: 'rows', d: 1.6, virga: 10, wind: 0.9 },
+  midnightsun: { k: 'fair', d: 0.9, warm: 0.6, wind: 0.5 },
+  drownedking: { k: 'trade', d: 1, z: 1.2, wind: 0.5 },
+  heartofthesea: { k: 'heaped', d: 0.9, tint: [[255, 200, 200], 0.3], wind: 0.5 },
+  closedeyes: { k: 'veil', d: 1.2, wind: 0.2 },
+  slackwater: { k: 'mackerel', d: 1, wind: 0 },
+  greatdrum: { k: 'rows', d: 1.2, wind: 1 },
+  returning: { k: 'fair', d: 1, wind: -1.2 },
+  fishnursery: { k: 'flecks', d: 1.2, z: 0.8, wind: 0.4 },
+  maperror: { k: 'threads', d: 0.5, tint: [[60, 60, 80], 0.7], wind: 0.3 }, // lines ruled across it in ink
+  worldkeel: { k: 'streaky', d: 1, wind: 1 },
+  spentwishes: { k: 'flecks', d: 0.8, tint: [[250, 226, 150], 0.4], wind: 0.5 },
+  wrongsea: { k: 'heaped', d: 1, virga: 12, wind: 0.6 },
+  firstcastaway: { k: 'trade', d: 0.9, wind: 0.8 }, // the same sky as the shoal's, where it began
+  serpentcoil: { k: 'mackerel', d: 1.8, z: 1.2, wind: 0.5 },
+  thirst: { k: 'clear', d: 1, warm: 0.4, wind: 0.2 }, // one small cloud, and it has never rained
+  starlines: { k: 'threads', d: 0.5, tint: [[200, 214, 255], 0.4], wind: 0.3 },
+  shedskins: { k: 'veil', d: 1.1, tint: [[236, 230, 214], 0.4], wind: 0.5 },
+  waveshepherd: { k: 'flecks', d: 1.5, z: 1.1, wind: 0.8 }, // a flock
+  lookout: { k: 'rows', d: 0.8, z: 0.8, wind: 0.6 },
+  // the islands whose sky is fixed: a deck that never lifts, or the cloud they hang from. What is said here is the wind in it and what shows beneath.
+  thunder: { k: 'none', wind: 1.4 },
+  ghostfleet: { k: 'none', wind: 0.5 },
+  weatherstation: { k: 'none', wind: 1.8 },
+  frozenlightning: { k: 'none', wind: 0 }, // the storm stands still with its lightning
+  hanging: { k: 'none', wind: 0.3 },
+  redwood: { k: 'veil', d: 1, wind: 0.3 }, // fog among the trunks, under the fog that hides their tops
+  kelpotters: { k: 'veil', d: 0.8, wind: 0.4 },
+  fallingsky: { k: 'streaky', d: 0.8, wind: 0.5 },
 });
 // --- the islands' landscapes: tiers 0 and 1, the home waters ---
 // In every one: F the far layer, M the middle, N the near. s.strip is true on the island strip (where the village building
@@ -23997,7 +24531,7 @@ function drawHunter(gy, t) {
   g.fillStyle = 'rgba(0,0,0,0.22)'; g.fillRect(X + 8, Y + c.height * sc - 2, c.width * sc - 16, 2); // a shadow under him
 }
 function drawHunt(t) {
-  const l = loc(), h = hourAt(t), nt = drawSkyBase(h, t, {}); sceneWeather(l, t, nt);
+  const l = loc(), h = hourAt(t), nt = drawSkyBase(h, t, { l }); sceneWeather(l, t, nt);
   const gy = SURF + 10;
   drawLandscape(l, W, gy, t, nt, { mode: 'hunt' }); // the country behind the gate
   g.drawImage(layer('hunt', W, H, `${l.id}|${SURF}`, () => drawHuntGround(l, gy, t, nt)), 0, 0); // the island's own ground, painted (huntSprite): a layer, so what little moves on it is redrawn a few times a second
@@ -24378,7 +24912,7 @@ function drawDrift(p, t) {
   if (p < 0.12) { g.fillStyle = `rgba(255,255,255,${(1 - p / 0.12).toFixed(2)})`; g.fillRect(0, 0, W, H); }
 }
 function beachScene(t, h, mode) {
-  const nt = drawSkyBase(h, t, {});
+  const nt = drawSkyBase(h, t, { l: LOC.shoal });
   drawLandscape(LOC.shoal, 3 * W, SURF, t, nt); // the shoal's own country behind him, as it will be when the game takes over
   drawSeaBase(h, t, nt, { water: spotWaterOf(LOC.shoal) }); // and the water of its first spot, so the cut into play changes nothing
   drawFish(t);
@@ -24549,7 +25083,7 @@ function drawIntro(t) {
 // turning, and the boat pulling in to the new island while the island does what it does (ARRIVE). Tap to advance, SKIP to land.
 let SAIL = null;
 const SAIL_DUR = [3600, 4200, 4600];
-const T_SAIL = { gone: 0.8, rise: 0.25, behind: 0.04, slide: 0.8, ahead: 0.2, boat: [0.16, 0.6] }; // the passage: by when the island behind is under the horizon and from when the one ahead shows; how far the island behind stands off the screen's edge at the start and how far it slides (of its width); how much of the one ahead is in view at first (at last all of it but its tapered inland end); where the boat starts and ends (of the screen)
+const T_SAIL = { gone: 0.8, rise: 0.25, behind: 0.04, slide: 0.8, ahead: 0.2, boat: [0.16, 0.6], clouds: 110000 }; // the passage: by when the island behind is under the horizon and from when the one ahead shows; how far the island behind stands off the screen's edge at the start and how far it slides (of its width); how much of the one ahead is in view at first (at last all of it but its tapered inland end); where the boat starts and ends (of the screen); how much of the clouds' own time goes by in the beat (ms)
 const NUMWORD = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight'];
 const boatKind = () => S.boat === 'none' ? 'raft' : S.boat === 'starship' ? 'ironclad' : S.boat;
 const boatW = k => ({ raft: 30, skiff: 36, cutter: 44, trawler: 50, clipper: 56, ironclad: 62 })[k] || 40;
@@ -24589,7 +25123,7 @@ function drawCrew(bx, by, bw, t) { // the boat with the fisherman seated in it
 }
 function wake(x0, x1, y, t) { g.fillStyle = rgba(lerpC(curSky.sea, [255, 255, 255], 0.55), 0.8); for (let x = Math.min(x0, x1); x < Math.max(x0, x1); x += 3) g.fillRect(x + ((t / 120 + x) % 3 | 0), y + ((x >> 3) % 2), 2, 1); }
 function drawDepart(p, t) {
-  const l = LOC[SAIL.from], h = hourAt(t), nt = drawSkyBase(h, t, {}), spD = spotShown(l), vwD = spD ? spotView(l, spD) : 0; sceneWeather(l, t, nt); drawLandscape(l, 3 * W + Math.min(0, vwD) * W, SURF, t, nt, { off: Math.max(0, vwD) }); drawSeaBase(h, t, nt, { tint: tintOf(l), water: spotWaterOf(l) }); drawFish(t); // the shore as it was fished from
+  const l = LOC[SAIL.from], h = hourAt(t), nt = drawSkyBase(h, t, { l }), spD = spotShown(l), vwD = spD ? spotView(l, spD) : 0; sceneWeather(l, t, nt); drawLandscape(l, 3 * W + Math.min(0, vwD) * W, SURF, t, nt, { off: Math.max(0, vwD) }); drawSeaBase(h, t, nt, { tint: tintOf(l), water: spotWaterOf(l) }); drawFish(t); // the shore as it was fished from
   drawShoreFor(l, t, nt);
   const bw = boatW(SAIL.kind), bx = (shoreW - 16 + easeIn(p) * (W + 70 - shoreW)) | 0, by = (SURF + 1 + Math.sin(t / 700)) | 0;
   if (p > 0.05) wake(shoreW - 6, bx, by + 2, t);
@@ -24604,7 +25138,7 @@ function farBoat(x, y, k, t) { // the boat seen from far off: a hull, a mast, a 
   g.fillStyle = '#f0c050'; g.fillRect(x + (w * 0.4 | 0) + 1, y - 3, 1, 1);
 }
 function drawPassage(p, t) {
-  const from = LOC[SAIL.from], to = LOC[SAIL.to], h = (SAIL.h0 + p * 7) % 24, nt = drawSkyBase(h, t, {}); drawSeaBase(h, t, nt, { noShafts: true });
+  const from = LOC[SAIL.from], to = LOC[SAIL.to], h = (SAIL.h0 + p * 7) % 24, nt = drawSkyBase(h, t, { cloudT: t + p * T_SAIL.clouds }); drawSeaBase(h, t, nt, { noShafts: true }); // the clouds go over as the days do
   // the island you left sinking behind and the one you are bound for rising ahead: their own skylines, far off (both are made on the beat's first frame, under its fade)
   const A = isleFar(from), B = isleFar(to), q = clamp((p - T_SAIL.rise) / (1 - T_SAIL.rise), 0, 1);
   if (p < T_SAIL.gone) { if (A) drawIsleFar(from, Math.round(-A.w * (T_SAIL.behind + T_SAIL.slide * p)), t, nt, { sink: p / T_SAIL.gone, a: 1 - p * 0.5 }); else farIsland(-20 - p * 60 | 0, 56, !!(from.scene && from.scene.palms)); }
@@ -24620,7 +25154,7 @@ function drawPassage(p, t) {
   if (p < 0.1) { g.fillStyle = `rgba(10,16,32,${(1 - p / 0.1).toFixed(2)})`; g.fillRect(0, 0, W, H); }
 }
 function drawArrive(p, t) {
-  const l = LOC[SAIL.to], h = hourAt(t), nt = drawSkyBase(h, t, {}); sceneWeather(l, t, nt); drawLandscape(l, 3 * W, SURF, t, nt, { flip: true }); drawSeaBase(h, t, nt, { tint: tintOf(l), water: spotWaterOf(l) }); drawFish(t);
+  const l = LOC[SAIL.to], h = hourAt(t), nt = drawSkyBase(h, t, { l }); sceneWeather(l, t, nt); drawLandscape(l, 3 * W, SURF, t, nt, { flip: true }); drawSeaBase(h, t, nt, { tint: tintOf(l), water: spotWaterOf(l) }); drawFish(t);
   g.save(); g.translate(W, 0); g.scale(-1, 1); drawShoreFor(l, t, nt); g.restore(); // the new island is on the right: the shore mirrored
   const bw = boatW(SAIL.kind), bx = (-bw - 12 + easeOut(p) * (W - shoreW - bw + 4 + bw + 12)) | 0, by = (SURF + 1 + Math.sin(t / 700)) | 0;
   if (p > 0.05) wake(-10, bx, by + 2, t);
