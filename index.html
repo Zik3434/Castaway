@@ -167,8 +167,9 @@ html.hudfold #hud,html.hudfold .ihud{gap:0;padding-bottom:6px}
 .seg button.empty{border-style:dashed;opacity:.5;background:rgba(10,16,32,.3)}
 .seg button.empty span{color:var(--muted)}
 .seg button.empty .slot{width:40px;height:40px;border:1px dashed var(--edge);box-sizing:border-box}
-.seg.icons button{display:grid;justify-items:center;gap:4px;padding:8px 3px 7px}
-.seg.icons button span{font-size:16px}
+.seg.icons{flex-wrap:wrap}
+.seg.icons button{display:grid;justify-items:center;align-content:start;gap:4px;padding:8px 3px 7px;flex:1 0 calc(25% - 4px);white-space:normal;overflow:visible}
+.seg.icons button span{font-size:16px;line-height:1.05;overflow-wrap:anywhere}
 canvas.icon{width:40px;height:40px;image-rendering:pixelated;flex:none}
 .row canvas.icon{background:rgba(10,16,32,.6);border:2px solid var(--edge);padding:2px;box-sizing:content-box}
 .row.sel canvas.icon{border-color:var(--brass)}
@@ -568,11 +569,61 @@ const T = {
 // (where a spot has nothing that needs the bait, the scrap-takers that can take it keep their weights, and where nothing there could
 // get it in its mouth the biggest fish present still take it, so no cast is ever refused for the bait).
 // The trophy line is for big fish: a species whose largest adult is under T.trophyMinKg never takes it.
+// There are many baits, and each does something of its own beside its tier, luck, size and worth:
+//   shape, beh: the fish it suits by build (fry, bream, trout, pike, eel, big, flat) and by how they fight (floaters feed at the top,
+//     sinkers on the bottom): their weight in the pool is multiplied;
+//   hours: the fish that keep hours (a species with a time window) come to it harder in these; sky: the fish that mind the sky, under these;
+//   legend: the island's legend, when it is abroad; rank: the fish of each rarity, common to epic;
+//   wait: every wait with it on is this many times as long; water: and in these kinds of water this many times again (a worm in a river);
+//   from: the tier of island whose shops begin to sell it; at: the waters an island must have for its shop to keep it; odds: how often
+//     a shop that could does; sure: a shop that could always does.
+// The three classes are the three tiers a species asks for (minBait): a tier-0 bait takes only what scraps take, a tier-1 bait what shrimp
+// takes, a tier-2 bait everything. Shrimp and squid are sold everywhere; of the rest a port keeps a few that suit its own waters (shopBaits).
 const BAITS = {
-  scraps: { name: 'Shell scraps', tier: 0, luck: 0,   size: 0,   price: 0 },
-  shrimp: { name: 'Shrimp', tier: 1, luck: 0.5, size: 0.6, worth: 1.25, share: 0.5,  mouth: 0.03, price: 20, qty: 5 },
-  squid:  { name: 'Squid',  tier: 2, luck: 1.2, size: 1.4, worth: 1.6,  share: 0.25, mouth: 0.25, price: 60, qty: 5 },
+  scraps:   { name: 'Shell scraps',  tier: 0, luck: 0,   size: 0,    price: 0, say: 'Free. Picked off the rocks.' },
+  bread:    { name: 'Bread paste',   tier: 0, luck: 0,   size: 0,    price: 6,  qty: 10, wait: 0.8,  shape: { fry: 1.8, bream: 1.5 }, beh: { floater: 2 }, from: 1, at: ['pier', 'harbour', 'pond', 'lake', 'river', 'lagoon'], say: 'Small fish and bream take it quickly. Nothing that needs better bait will look at it.' },
+  worm:     { name: 'Earthworms',    tier: 0, luck: 0.1, size: 0.1,  price: 8,  qty: 10, shape: { trout: 1.6, eel: 1.6, bream: 1.3 }, water: { river: 0.6, lake: 0.6, pond: 0.6, marsh: 0.6, mangrove: 0.7 }, from: 1, at: ['river', 'lake', 'pond', 'marsh', 'mangrove'], say: 'Fresh water wants a worm: in rivers, lakes and ponds the bites come much sooner.' },
+  limpet:   { name: 'Limpets',       tier: 0, luck: 0.1, size: 0.2,  worth: 1.1, price: 5, qty: 10, shape: { bream: 1.7 }, beh: { sinker: 1.4 }, from: 1, at: ['rocks', 'kelp', 'reef', 'shore', 'wreck'], say: 'Knocked off the rocks. The fish that live among stones know it, and what takes it sells a little better.' },
+  maggot:   { name: 'Maggots',       tier: 0, luck: 0,   size: -0.25, price: 10, qty: 12, wait: 0.65, from: 1, say: 'Bites come fast, and small. For filling a bucket.' },
+  shrimp:   { name: 'Shrimp',        tier: 1, luck: 0.5, size: 0.6,  worth: 1.25, share: 0.5,  mouth: 0.03, price: 20, qty: 5, say: 'Mid-size fish bite it, rarer fish a little more often, and what takes it runs bigger and sells for a quarter more.' },
+  lugworm:  { name: 'Lugworm',       tier: 1, luck: 0.4, size: 0.5,  worth: 1.3,  share: 0.5,  mouth: 0.03, price: 18, qty: 5, shape: { flat: 3.2 }, beh: { sinker: 1.5 }, from: 1, at: ['flats', 'shore', 'harbour', 'lagoon', 'saltflat'], say: 'Dug from the flats. Flatfish and everything that feeds on the bottom come to it.' },
+  ragworm:  { name: 'Ragworm',       tier: 1, luck: 0.6, size: 0.5,  worth: 1.2,  share: 0.5,  mouth: 0.03, price: 24, qty: 5, wait: 0.7, shape: { eel: 1.6, bream: 1.4 }, from: 1, at: ['pier', 'harbour', 'shore', 'rocks', 'channel'], say: 'It never keeps still on the hook. Bites come sooner.' },
+  crab:     { name: 'Peeler crab',   tier: 1, luck: 0.7, size: 0.9,  worth: 1.35, share: 0.5,  mouth: 0.12, price: 32, qty: 5, shape: { big: 1.7, bream: 1.5 }, beh: { sinker: 1.4 }, from: 1, at: ['rocks', 'reef', 'kelp', 'wreck', 'ruins'], say: 'A crab between shells. The big fish of the rocks and reefs take it, and they run large.' },
+  sandeel:  { name: 'Sand eels',     tier: 1, luck: 0.6, size: 0.8,  worth: 1.3,  share: 0.5,  mouth: 0.06, price: 28, qty: 5, shape: { pike: 2.2, trout: 1.6 }, beh: { dart: 1.5 }, from: 1, at: ['shore', 'channel', 'strait', 'flats'], say: 'Silver and quick. The fish that chase take it before the fish that browse.' },
+  mussel:   { name: 'Mussels',       tier: 1, luck: 0.9, size: 0.4,  worth: 1.25, share: 0.5,  mouth: 0.03, price: 16, qty: 5, wait: 0.9, from: 1, at: ['pier', 'harbour', 'rocks', 'kelp'], say: 'Soft, and cheap. The rarer fish like it better than they like shrimp.' },
+  roe:      { name: 'Fish roe',      tier: 1, luck: 0.9, size: 0.6,  worth: 1.45, share: 0.5,  mouth: 0.03, price: 36, qty: 5, shape: { trout: 2.6 }, water: { river: 0.75, lake: 0.85 }, from: 2, at: ['river', 'lake'], say: 'A spoonful of eggs in a twist of net. River fish cannot leave it alone, and what takes it sells well.' },
+  cricket:  { name: 'Crickets',      tier: 1, luck: 0.5, size: 0.3,  worth: 1.2,  share: 0.5,  mouth: 0.02, price: 20, qty: 5, beh: { floater: 3 }, hours: { dawn: 1.8, dusk: 1.8 }, from: 1, at: ['river', 'lake', 'pond', 'marsh', 'mangrove'], say: 'It kicks on the top of the water. The fish that feed at the surface come up for it, at dawn and dusk above all.' },
+  minnow:   { name: 'Live minnows',  tier: 1, luck: 0.7, size: 1.0,  worth: 1.35, share: 0.5,  mouth: 0.2,  price: 34, qty: 5, wait: 1.15, shape: { pike: 2, big: 1.6, eel: 1.4 }, from: 2, at: ['river', 'lake', 'pond', 'pier', 'harbour'], say: 'A fish to catch a fish. Slower to be taken, and what takes it is a hunter.' },
+  leech:    { name: 'Leeches',       tier: 1, luck: 0.7, size: 0.5,  worth: 1.3,  share: 0.5,  mouth: 0.03, price: 26, qty: 5, hours: { night: 2.4, dusk: 1.5 }, from: 2, at: ['marsh', 'lake', 'pond', 'mangrove', 'river'], say: 'The fish that only move after dark come to it.' },
+  squid:    { name: 'Squid',         tier: 2, luck: 1.2, size: 1.4,  worth: 1.6,  share: 0.25, mouth: 0.25, price: 60, qty: 5, say: 'Deep and rare fish take only this or its like. It tilts every cast toward them, and what takes it runs big and sells for half as much again.' },
+  mackerel: { name: 'Mackerel strip', tier: 2, luck: 1.0, size: 1.9, worth: 1.5,  share: 0.25, mouth: 0.6,  price: 70, qty: 5, wait: 1.2, shape: { big: 2, pike: 1.8 }, from: 2, say: 'A flank of oily fish. A longer wait, and then something large.' },
+  cuttle:   { name: 'Cuttlefish',    tier: 2, luck: 1.3, size: 1.5,  worth: 1.6,  share: 0.25, mouth: 0.25, price: 78, qty: 5, hours: { night: 2.6, dusk: 1.8 }, from: 2, say: 'It shines a little in the dark. The night fish come to it first.' },
+  stormfly: { name: 'Storm flies',   tier: 2, luck: 1.0, size: 0.8,  worth: 1.5,  share: 0.25, mouth: 0.05, price: 72, qty: 5, sky: { storm: 3, rain: 2.2, fog: 2.2, snow: 2.2, overcast: 1.6 }, from: 2, say: 'Hatched under bad weather. The fish that mind the sky come to it when the sky is theirs.' },
+  herring:  { name: 'Live herring',  tier: 2, luck: 1.4, size: 1.5,  worth: 1.7,  share: 0.25, mouth: 0.5,  price: 90, qty: 5, water: { open: 0.8, deep: 0.8, strait: 0.8, channel: 0.85 }, from: 3, say: 'Swum down on the hook over deep water. The travellers take it, sooner than they take anything else, and they sell well.' },
+  octopus:  { name: 'Octopus',       tier: 2, luck: 1.1, size: 1.6,  worth: 1.85, share: 0.25, mouth: 1.0,  price: 100, qty: 5, shape: { big: 2.2, eel: 1.6 }, from: 3, at: ['reef', 'rocks', 'deep', 'wreck', 'ruins', 'cave'], say: 'Nothing small can get it in its mouth. What can is worth nearly double.' },
+  bloodworm: { name: 'Bloodworm',    tier: 2, luck: 1.6, size: 0.9,  worth: 1.5,  share: 0.25, mouth: 0.1,  price: 66, qty: 5, water: { river: 0.8, lake: 0.8, pond: 0.8, marsh: 0.8 }, from: 3, at: ['river', 'lake', 'pond', 'marsh'], say: 'Red as a cut. In fresh water the rare fish come to it before the common ones.' },
+  glowgrub: { name: 'Lantern grubs', tier: 2, luck: 1.2, size: 1.0,  worth: 1.55, share: 0.25, mouth: 0.1,  price: 85, qty: 5, hours: { night: 2.8 }, water: { cave: 0.7, deep: 0.85 }, from: 3, say: 'They glow. After dark, and in caves, the night fish find them at once.' },
+  gilt:     { name: 'Gilt lure',     tier: 2, luck: 1.0, size: 1.2,  worth: 1.4,  share: 0.25, mouth: 0.25, price: 900, qty: 3, legend: 7, from: 3, odds: 0.3, say: 'Made for one fish. If the island\'s legend is abroad at this hour, it is seven times as likely to be what takes this.' },
+  glassshrimp: { name: 'Glass shrimp', tier: 1, luck: 1.1, size: 0.5, worth: 1.5, share: 0.5,  mouth: 0.03, price: 150, qty: 5, wait: 0.7, from: 5, say: 'You cannot see it, and nor can a fish see the hook in it. Bites come quickly, and rarer.' },
+  honeygrub: { name: 'Honey grubs',  tier: 1, luck: 0.6, size: 0.4,  worth: 2.0,  share: 0.5,  mouth: 0.03, price: 220, qty: 5, from: 5, say: 'Whatever takes one sells for double. Nobody at the market will say why.' },
+  embergrub: { name: 'Ember grubs',  tier: 2, luck: 1.6, size: 1.2,  worth: 1.9,  share: 0.25, mouth: 0.2,  price: 240, qty: 5, water: { lava: 0.6, hotspring: 0.6, crater: 0.7 }, from: 5, at: ['lava', 'hotspring', 'crater'], sure: true, say: 'Warm in the hand. In fire and in hot water nothing waits long to take one.' },
+  moonmoth: { name: 'Moon moths',    tier: 2, luck: 1.6, size: 1.1,  worth: 1.7,  share: 0.25, mouth: 0.1,  price: 260, qty: 5, hours: { night: 3.2 }, beh: { floater: 2 }, from: 5, say: 'Pale wings on black water. At night the fish that keep the dark hours rise to them.' },
+  starroe:  { name: 'Star roe',      tier: 2, luck: 2.4, size: 1.0,  worth: 1.8,  share: 0.25, mouth: 0.1,  price: 420, qty: 5, rank: [1, 1, 1.5, 2.6], from: 6, say: 'It tilts every cast further toward the rare than anything else that goes on a hook.' },
 };
+const T_BAIT = { shelf: 3, far: 0.45 }; // how many baits of its own a port keeps beside shrimp and squid; how much likelier an exotic port is to keep an exotic bait (it draws against this share of the others' odds)
+// How a bait changes what a fish weighs in the pool: its build, how it fights, its hours, its sky, and the legend.
+function baitTaste(B, s, ph, wx) {
+  let m = 1;
+  if (B.shape && B.shape[s.shape]) m *= B.shape[s.shape];
+  if (B.beh && B.beh[s.beh]) m *= B.beh[s.beh];
+  if (B.hours && B.hours[ph] && s.time) m *= B.hours[ph]; // the fish that keep hours, in theirs
+  if (B.sky && B.sky[wx] && (s.weather || (s.likes && s.likes[wx]))) m *= B.sky[wx]; // the fish that mind the sky, under theirs
+  if (B.legend && s.legend) m *= B.legend;
+  if (B.rank) m *= B.rank[RARITY_RANK[rarityOf(s)] || 0] || 1; // the rarer the fish, the harder it comes
+  return m;
+}
+// How long a wait is with this bait on, at this spot: the bait's own, and its water's.
+const baitWait = (baitId, sp) => { const B = BAITS[baitId] || BAITS.scraps; return (B.wait || 1) * ((B.water && sp && B.water[sp.kind]) || 1); };
 // The ladders are grades: what a thing can be made in. `tier` is the island tier whose shops make it (see "made here", by the shop).
 const RODS = [
   { id: 'stick',    name: 'Stick rod',     bar: 0.24, luck: 0,   price: 0,     tier: 0 },
@@ -10602,6 +10653,7 @@ function pool(locId, rig, baitId, t, spotId) {
     if (!s.kind && bt > 0 && (s.minBait || 0) === bt) w *= 1.5; // the fish that need this bait come to it
     if (rig === 'set' && s.shape === 'big') w *= 0.5;
     if (s.likes && s.likes[wx]) w *= s.likes[wx]; // ...and some bite harder under one
+    if (!s.kind) w *= baitTaste(BAITS[baitId], s, ph, wx); // what this bait suits comes to it
     if (!s.kind && !lineOf().all && kgOf(s, s.size[0], 0) > lineKg() * 1.05) { if (!stray && !s.legend) lost.push([s, w]); continue; } // too heavy for the line at its smallest: it is never landed (it can take the bait and break off: rollCatch)
     if (!s.kind) { const luck = (rig === 'hand' ? rodOf().luck : 0) + (BAITS[baitId].luck || 0) + offLuck, rk = RARITY_RANK[rarityOf(s)] || 0; w *= 1 + rk * luck * 0.5; } // better rod, better bait: rarer fish more often
     (stray ? far : out).push([s, w, stray]);
@@ -10642,7 +10694,7 @@ function rollCatch(locId, rig, baitId, t, waitMs) {
   let f = rig === 'set' ? Math.min(0.8, Math.pow(Math.random(), skew)) : Math.pow(Math.random(), skew); // a quick set-line hook never reaches trophy size...
   const bs = BAITS[baitId].size || 0; if (bs && !s.kind) f = Math.min(rig === 'set' ? 0.8 : 1, Math.pow(f, 1 / (1 + bs))); // bigger bait, bigger fish
   const offS = offshore(locId); if (offS && !s.kind) f = Math.min(rig === 'set' ? 0.8 : 1, Math.pow(f, 1 / T.offshore.tall)); // deep water grows them a little bigger
-  const soak = soakBonus(rig, waitMs || 0); if (soak > 0) f = Math.min(1, f + (1 - f) * soak * 0.95); // ...but the longer it soaks, the bigger what takes it
+  const soak = soakBonus(rig, waitMs || 0, baitId); if (soak > 0) f = Math.min(1, f + (1 - f) * soak * 0.95); // ...but the longer it soaks, the bigger what takes it
   let v = null; // the variant, if any
   if (!s.kind && !s.legend && !S.prologue) {
     if (s.mutant) v = 'mutated';
@@ -10661,20 +10713,20 @@ function rollCatch(locId, rig, baitId, t, waitMs) {
 }
 // The rod bites within a few seconds. A passive line soaks: a small chance every second, so the wait is exponential (memoryless), sampled
 // once at cast time so it survives closing the game. Nothing waits longer than soakCap means.
-const passiveMean = rig => (rig === 'set' ? T.setMean : T.trophyMean) * (offshore() ? T.offshore.wait : 1); // offshore every line soaks longer
-function waitFor(rig) { if (rig === 'hand') { const w = S.prologue ? T.prologueWait : T.handWait; return rnd(w[0], w[1]) * (offshore() ? T.offshore.wait : 1); } const m = passiveMean(rig); return Math.min(m * T.soakCap, Math.max(1500, -m * Math.log(1 - Math.random()))); }
+const passiveMean = (rig, baitId) => (rig === 'set' ? T.setMean : T.trophyMean) * (offshore() ? T.offshore.wait : 1) * (baitId ? baitWait(baitId, spot()) : 1); // offshore every line soaks longer; a bait can shorten or lengthen any wait
+function waitFor(rig, baitId) { if (rig === 'hand') { const w = S.prologue ? T.prologueWait : T.handWait; return rnd(w[0], w[1]) * (offshore() ? T.offshore.wait : 1) * (baitId ? baitWait(baitId, spot()) : 1); } const m = passiveMean(rig, baitId); return Math.min(m * T.soakCap, Math.max(1500, -m * Math.log(1 - Math.random()))); }
 // How much a long soak grows the fish: 0 at one mean or under, 1 at soakGrow means.
-const soakBonus = (rig, waitMs) => rig === 'hand' ? 0 : clamp((waitMs / passiveMean(rig) - 1) / (T.soakGrow - 1), 0, 1);
+const soakBonus = (rig, waitMs, baitId) => rig === 'hand' ? 0 : clamp((waitMs / passiveMean(rig, baitId) - 1) / (T.soakGrow - 1), 0, 1);
 
 function castLine(i) {
   const L = S.lines[i]; if (!L || L.phase !== 'idle') return;
   if (L.rig === 'hand' && S.lines.some((o, j) => o && j !== i && o.rig === 'hand' && o.phase !== 'idle')) { toast('One rod at a time. Pull the other one in.'); return; }
-  if (L.rig === 'trophy' && BAITS[L.bait].tier < 1) { toast('The trophy line needs shrimp or squid.'); return; }
+  if (L.rig === 'trophy' && BAITS[L.bait].tier < 1) { toast('The trophy line needs better bait than that: shrimp, squid or their like.'); return; }
   if (L.bait !== 'scraps') {
     if ((S.bait[L.bait] || 0) <= 0) { toast('Out of ' + BAITS[L.bait].name.toLowerCase() + '.'); return; }
     S.bait[L.bait]--;
   }
-  const wait = waitFor(L.rig), at = now() + wait, c = rollCatch(S.loc, L.rig, L.bait, at, wait);
+  const wait = waitFor(L.rig, L.bait), at = now() + wait, c = rollCatch(S.loc, L.rig, L.bait, at, wait);
   if (!c) { if (L.bait !== 'scraps') S.bait[L.bait]++; toast(spot().boat && S.boat === 'none' ? 'You need a boat to fish out there.' : `Nothing here will take ${lineOf().lb} lb line. Heavier line is sold in the shops.`); return; }
   L.phase = 'waiting'; L.t0 = now(); L.at = at; L.c = c;
   S.casts++; save(); render();
@@ -10877,6 +10929,16 @@ function gearSub(kind, it, V) {
   const head = V.v === 'up' ? `Better than your ${gearLc(V.than)}.` : V.v === 'trade' ? `Against your ${gearLc(V.than)}: better one way, worse another.` : V.v === 'nobetter' ? `No better than ${yours === 'yours' ? 'the ' + gearLc(V.than) + ' you use' : yours}.` : V.v === 'owned' ? 'You own it: use it from your kit.' : 'This is the one you use.';
   return `<span class="gsay ${V.v}">${head}</span>${lines}${it.note ? `<span class="gmade">${it.note}</span>` : ''}`; // (that it is made here and sold nowhere else is said once, at the head of the shop)
 }
+// What bait a port sells: shrimp and squid everywhere, and T_BAIT.shelf more that suit its own waters and its tier, by a fixed hash, so
+// one port has lugworm and roe and the next has crab and cuttlefish, and it never changes.
+function shopBaits(l) {
+  const kinds = new Set((l.spots || []).map(sp => sp.kind)), elig = [];
+  for (const id in BAITS) { const b = BAITS[id]; if (!b.qty || id === 'shrimp' || id === 'squid' || (b.from || 0) > l.range) continue; if (b.at && !b.at.some(k => kinds.has(k))) continue; if (b.odds && madeRnd(l, 'bait:' + id, 1) >= b.odds) continue;
+    elig.push([b.sure ? -1 : madeRnd(l, 'bait:' + id, 2) * ((b.from || 0) >= 5 ? T_BAIT.far : 1), id]); } // sure: a port with its waters always keeps it
+  const own = elig.sort((a, b) => a[0] - b[0]).slice(0, T_BAIT.shelf).map(x => x[1]).sort((a, b) => BAITS[a].tier - BAITS[b].tier || BAITS[a].price - BAITS[b].price);
+  return ['shrimp', 'squid'].concat(own);
+}
+const baitClass = b => b.tier >= 2 ? '' : b.tier === 1 ? ' Takes what shrimp takes.' : ' Takes only what scraps take.'; // which fish it can tempt at all
 // what a shop stocks of the ten kinds: the four it always has, and the shelves its island keeps
 const shopKinds = l => { const stock = shopStock(l); return GEAR_KINDS.filter(k => !(k in SHOP_SHELVES) || stock.has(k)); };
 // how many pieces on this island's shelves would better what you use now (for the chart's list)
@@ -10918,7 +10980,7 @@ function shopItemsRaw() {
   // the gear: this island's own make of each kind it stocks, whatever you carry. gearVerdict says whether it betters it.
   const kinds = shopKinds(l), gear = kind => { if (!kinds.includes(kind)) return; const it = madeHere(l, kind), V = gearVerdict(kind, it); items.push({ k: kind, name: it.name, made: it, verdict: V, html: gearSub(kind, it, V), sub: '', price: it.price, owned: V.v === 'owned' || V.v === 'inuse' }); };
   gear('rod'); gear('line'); gear('pail');
-  if (!S.trophyRig) items.push({ k: 'trig', name: 'Trophy rig', sub: 'A long passive line. Needs shrimp or squid. Hooks big fish; you still land them yourself.', price: TROPHY_RIG_PRICE });
+  if (!S.trophyRig) items.push({ k: 'trig', name: 'Trophy rig', sub: 'A long passive line. Needs shrimp, squid or their like. Hooks big fish; you still land them yourself.', price: TROPHY_RIG_PRICE });
   // the hunting kit and the mining kit: the island's own weapon and pick, and what its shelves keep of cloaks, boots, bags, lamps and sacks; shot, calls, charges and aids by the pack
   const tier = l.range; gear('weapon');
   if (!S.tally && tier >= TALLY.tier) items.push({ k: 'tally', name: TALLY.name, sub: 'A notched stick on a knotted cord. On a hunting ground it shows a bar of the game that is left: how thin the ground is, what has grown scarce, and when it will be fresh again. Bought once.', price: TALLY.price });
@@ -10927,8 +10989,7 @@ function shopItemsRaw() {
   if (stock.has('aids')) for (const [id, ad] of Object.entries(AIDS)) if (ad.qty && ad.tier <= tier) items.push({ k: 'aid:' + id, name: `${ad.name} ×${ad.qty}`, sub: `Have ${S.aids[id] || 0}. ${ad.gas ? 'Shows every pocket of gas in the face. ' : ''}${ad.tells ? 'Every glint plain and two tiles out. ' : ''}${ad.roof ? 'The roof takes half the strain. ' : ''}Spent per descent.`, price: ad.price });
   for (const [id, sh] of Object.entries(SHOT)) if (sh.qty && sh.tier <= tier) items.push({ k: 'shot:' + id, name: `${sh.name} ×${sh.qty}`, sub: `Have ${S.shot[id] || 0}. ${sh.shun ? 'The common game keeps back and the rarer game shows far more often. ' : sh.luck ? 'Rarer game shows more often. ' : ''}${sh.worth ? `A clean kill pays ×${sh.worth}. ` : ''}${sh.calm ? 'The animal takes alarm slower and the mark swings slower. ' : ''}Spent per shot.`, price: sh.price });
   if (stock.has('calls')) for (const [id, ca] of Object.entries(CALLS)) if (ca.qty && ca.tier <= tier) items.push({ k: 'call:' + id, name: `${ca.name} ×${ca.qty}`, sub: `Have ${S.calls[id] || 0}. ${ca.wait ? 'Something shows in half the time. ' : ''}${ca.luck ? 'The common game stays away and the rarer game answers it. ' : ''}${ca.near ? 'It comes to you: the stalk starts a step nearer. ' : ''}Spent per stalk.`, price: ca.price });
-  items.push({ k: 'bait:shrimp', name: 'Shrimp ×5', sub: `Have ${S.bait.shrimp}. Mid-size fish bite it, rarer fish a little more often, and what takes it runs bigger and sells for a quarter more.`, price: BAITS.shrimp.price });
-  items.push({ k: 'bait:squid', name: 'Squid ×5', sub: `Have ${S.bait.squid}. Deep and rare fish take only this, it tilts every cast toward them, and what takes it runs big and sells for half as much again.`, price: BAITS.squid.price });
+  for (const id of shopBaits(l)) { const b = BAITS[id]; items.push({ k: 'bait:' + id, name: `${b.name} ×${b.qty}`, sub: `Have ${S.bait[id] || 0}. ${b.say}${baitClass(b)}`, price: b.price }); }
   const bi = BOATS.findIndex(b => b.id === S.boat);
   if (bi >= 1 && bi < BOATS.length - 1) {
     const b = BOATS[bi + 1];
@@ -11044,13 +11105,13 @@ function slotStatus(L) {
 }
 function waitNote(L) {
   if (L.rig === 'hand') return 'Waiting for a bite…';
-  const m = passiveMean(L.rig), soaked = now() - L.t0; return `${BAITS[L.bait].name} on, soaking ${fmtDur(soaked)}. A chance every second, even with the game closed.${soaked > m * 1.5 ? ' Whatever takes it now will not be small.' : ''}`;
+  const m = passiveMean(L.rig, L.bait), soaked = now() - L.t0; return `${BAITS[L.bait].name} on, soaking ${fmtDur(soaked)}. A chance every second, even with the game closed.${soaked > m * 1.5 ? ' Whatever takes it now will not be small.' : ''}`;
 }
 function rigNote(L) { return rigNote0(L) + (offshore() ? ' <span class="offnote">Offshore: the wait is longer, the fish rarer.</span>' : ''); }
 function rigNote0(L) {
   if (L.rig === 'hand') return 'Tap Reel on the hit, then keep the fish in the net.';
   if (L.rig === 'set') return 'Soaks until something takes it, a chance every second, even while you are away. The longer it soaks, the bigger the fish. No fight.';
-  return 'Soaks for minutes. Hooks big fish, bigger the longer it waits. Needs shrimp or squid. You still land it.';
+  return 'Soaks for minutes. Hooks big fish, bigger the longer it waits. Needs shrimp, squid or their like. You still land it.';
 }
 function readyText() { const n = S.lines.filter(L => L && L.phase === 'idle').length, hot = S.lines.filter(L => L && (L.phase === 'bite' || L.phase === 'hooked')).length; return hot ? `${hot} on!` : `${n} line${n === 1 ? '' : 's'} ready`; }
 function renderSlots() {
@@ -11069,8 +11130,9 @@ let rigOpen = false; // the rig and bait pickers are folded behind CHANGE unless
 const RIG_LABEL = { hand: 'ROD', set: 'SET LINE', trophy: 'TROPHY' };
 function baitLabel(k) { return k === 'scraps' ? 'SCRAPS' : BAITS[k].name.toUpperCase() + ' ×' + (S.bait[k] || 0); }
 function rigsFor() { return S.prologue ? ['hand'] : ['hand', 'set'].concat(S.trophyRig ? ['trophy'] : []); }
-function baitsFor(L) { return Object.keys(BAITS).filter(k => k === 'scraps' ? L.rig !== 'trophy' : S.bait[k] > 0); }
-function cycleRig(L) { const r = rigsFor(), j = r.indexOf(L.rig); L.rig = r[(j + 1) % r.length]; if (L.rig === 'trophy' && L.bait === 'scraps') L.bait = S.bait.shrimp > 0 ? 'shrimp' : S.bait.squid > 0 ? 'squid' : 'scraps'; }
+function baitsFor(L) { return Object.keys(BAITS).filter(k => k === 'scraps' ? L.rig !== 'trophy' : S.bait[k] > 0 && (L.rig !== 'trophy' || BAITS[k].tier >= 1)); }
+const trophyBait = () => Object.keys(BAITS).find(k => BAITS[k].tier >= 1 && S.bait[k] > 0) || 'scraps'; // the first bait you hold that a trophy line can carry
+function cycleRig(L) { const r = rigsFor(), j = r.indexOf(L.rig); L.rig = r[(j + 1) % r.length]; if (L.rig === 'trophy' && BAITS[L.bait].tier < 1) L.bait = trophyBait(); }
 function cycleBait(L) { const b = baitsFor(L); if (!b.length) return; const j = b.indexOf(L.bait); L.bait = b[(j + 1) % b.length]; }
 function renderAction() {
   const i = S.sel, L = S.lines[i], box = $('#action');
@@ -11161,8 +11223,8 @@ function renderSheet() {
     const gearRows = (list, owned, cur, kind, sub) => gearRowsOf(kind, sub, false);
     el.innerHTML = `<div class="head"><h2>Rig · Line ${S.sel + 1}</h2><button class="x" data-act="close">✕</button></div>
       ${busy ? '<div class="note">This line is in the water. Pull it in to change its rig or bait.</div>' : ''}
-      <div class="box"><h3>RIG</h3>${seg(rigs, L && L.rig, 'rig', k => k === 'trophy' && !S.trophyRig)}<div class="note">${L && L.rig === 'hand' ? 'Tap Reel on the hit, then keep the fish in the net. Rarer fish take a better rod.' : L && L.rig === 'set' ? 'Soaks until something takes it, a chance every second, even while you are away. A quick hook is a small fish; a long soak grows it. No fight.' : 'Soaks for minutes, a chance every second. Hooks big fish, bigger the longer it waits. Needs shrimp or squid. You still land it.'}${S.trophyRig ? '' : ' The trophy rig is sold at the harbor.'}</div></div>
-      <div class="box"><h3>BAIT</h3>${seg(Object.entries(BAITS).map(([k, b]) => [k, k === 'scraps' ? 'Scraps' : b.name + ' ×' + (S.bait[k] || 0)]), L && L.bait, 'bait', k => k !== 'scraps' && !(S.bait[k] > 0))}<div class="note">Scraps are free. Better bait is sold in the shops: it gates the bigger and rarer fish, tilts every cast toward them, and the bigger the bait the bigger the fish that takes it and the more it sells for.</div></div>
+      <div class="box"><h3>RIG</h3>${seg(rigs, L && L.rig, 'rig', k => k === 'trophy' && !S.trophyRig)}<div class="note">${L && L.rig === 'hand' ? 'Tap Reel on the hit, then keep the fish in the net. Rarer fish take a better rod.' : L && L.rig === 'set' ? 'Soaks until something takes it, a chance every second, even while you are away. A quick hook is a small fish; a long soak grows it. No fight.' : 'Soaks for minutes, a chance every second. Hooks big fish, bigger the longer it waits. Needs shrimp, squid or their like. You still land it.'}${S.trophyRig ? '' : ' The trophy rig is sold in the shops.'}</div></div>
+      <div class="box"><h3>BAIT</h3>${seg(Object.entries(BAITS).map(([k, b]) => [k, k === 'scraps' ? 'Scraps' : b.name + ' ×' + (S.bait[k] || 0)]), L && L.bait, 'bait', k => (k !== 'scraps' && !(S.bait[k] > 0)) || (L && L.rig === 'trophy' && BAITS[k].tier < 1))}<div class="note">${L && L.bait !== 'scraps' ? `<b>${BAITS[L.bait].name}.</b> ${BAITS[L.bait].say}${baitClass(BAITS[L.bait])} ` : ''}Scraps are free. Better bait is sold in the shops, and every port keeps a few of its own: it gates the bigger and rarer fish, tilts every cast toward them, and the bigger the bait the bigger the fish that takes it and the more it sells for.</div></div>
       <div class="box"><h3>RODS</h3><div class="list">${gearRows(RODS, S.rodsOwned, S.rod, 'rod', r => `Net ${Math.round(r.bar * 100)}% of the track${r.luck ? ` · luck ${r.luck}` : ''}.`)}</div></div>
       <div class="box"><h3>LINE</h3><div class="list">${gearRows(LINE_TEST, S.linesOwned, S.line, 'line', x => `Holds fish to ${fmtKg(lbKg(x.lb))}. Heavier ones will not bite.`)}</div></div>
       <div class="box"><h3>BUCKET</h3><div class="list">${gearRows(BUCKETS, S.pailsOwned, S.pail, 'pail', x => `Room for ${x.cap} fish.`)}</div></div>
@@ -11226,9 +11288,8 @@ function renderSheet() {
       <div class="box"><h3>ORE SACK ${S.sack.length}/${sackCap()}</h3>${S.mpending ? `<div class="warn">The sack is full and ${theOre(MM[S.mpending.id])} is waiting. <b>Drop</b> a find to make room for it${loc().sell ? ', sell the haul' : ''}, or close this and leave it.</div>` : ''}${S.sack.length ? `<div class="list">${S.sack.map((f, j) => { const m = MM[f.id], mr = mineralRarityOf(m), V = f.v ? MINERAL_VARIANTS[f.v] : null; return `<div class="row"><canvas class="mini ore" width="64" height="48" data-ore="${f.id}"></canvas><div class="name" style="flex:1">${V ? `<span style="color:${V.col}">${V.name}</span> ` : ''}${m.name}<small><span style="color:${RARITY[mr].col}">${RARITY[mr].name}</span> · ${fmtKg(f.kg)} · level ${f.level}</small></div><div class="price">${money(f.value)}</div><button class="buy" data-act="drop" data-i="${j}">DROP</button></div>`; }).join('')}</div>` : `<div class="note">Empty. ${PICK().name} in hand. The shaft head is past the gate${loc().mine ? '' : ', on islands that have one'}.</div>`}</div>
       <div class="box"><div class="row"><div>Whole haul</div><div class="price">${money(haulTotal())}</div></div>${market.replace('Sell the haul · ' + money(total), 'Sell the haul · ' + money(haulTotal()))}</div>
       <div class="box"><h3>BAIT</h3><div class="list">
-        <div class="row"><div class="name">Shell scraps<small>Free. Picked off the rocks.</small></div><div class="price">∞</div></div>
-        <div class="row ${S.bait.shrimp ? '' : 'dim'}"><div class="name">Shrimp<small>Mid-size fish, and the trophy rig.</small></div><div class="price">×${S.bait.shrimp}</div></div>
-        <div class="row ${S.bait.squid ? '' : 'dim'}"><div class="name">Squid<small>Deep and rare fish take only this.</small></div><div class="price">×${S.bait.squid}</div></div>
+        <div class="row">${icon('bait:scraps')}<div class="name" style="flex:1">Shell scraps<small>Free. Picked off the rocks.</small></div><div class="price">∞</div></div>
+        ${Object.keys(BAITS).filter(k => k !== 'scraps' && S.bait[k] > 0).map(k => `<div class="row">${icon('bait:' + k)}<div class="name" style="flex:1">${BAITS[k].name}<small>${BAITS[k].say}</small></div><div class="price">×${S.bait[k]}</div></div>`).join('') || '<div class="row dim"><div class="name">Nothing else in the tin<small>Shrimp and squid are sold in every shop, and every port keeps a few baits of its own.</small></div></div>'}
       </div></div>
       <div class="box"><h3>GEAR</h3><div class="list">
         <div class="row">${icon('rod:' + S.rod)}<div class="name" style="flex:1">${rod.name}<small>Net ${Math.round(rod.bar * 100)}% of the track${rod.luck ? `, luck ${rod.luck}` : ''}.</small></div></div>
@@ -11292,7 +11353,7 @@ function indexRowFish(s) {
       const mini = `<canvas class="mini" width="64" height="36" data-fish="${s.id}" data-known="${ix ? 1 : 0}" data-v="${s.mutant ? 'mutated' : ''}"></canvas>`;
       const vT = ix && ix.v ? ' · ' + Object.entries(ix.v).map(([k, n]) => `<span style="color:${VARIANTS[k].col}">${VARIANTS[k].name.toLowerCase()}${n > 1 ? ' ×' + n : ''}</span>`).join(', ') : '';
       if (ix) return `<div class="row">${mini}<div class="name" style="flex:1">${s.name}<small>${rarT} · ${s.legend ? home.name + ' · legend, ' + (S.once[s.id] === 'sold' ? 'landed and sold' : S.once[s.id] ? 'in your bucket' : 'landed and let go: still out there') : homeT + (s.time ? ' · ' + s.time.join('/') : '') + (weatherText(s) ? ' · ' + weatherText(s) : '') + (ix.bestKg ? ' · best ' + fmtKg(ix.bestKg) : '') + vT}</small></div><div class="price">×${ix.n} · ${ix.best} cm${ix.trophies ? ' · ★' + ix.trophies : ''}</div></div>`;
-      return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${rarT} · ${S.visited[home.id] ? homeT : 'somewhere out there'}${s.legend ? ' · legend: rod, squid, ' + s.time.join('/') : s.rare ? ' · rod or trophy line' : ''}${!s.legend && weatherText(s) ? ' · ' + weatherText(s) : ''}</small></div><div class="price">—</div></div>`;
+      return `<div class="row dim">${mini}<div class="name" style="flex:1">???<small>${rarT} · ${S.visited[home.id] ? homeT : 'somewhere out there'}${s.legend ? ' · legend: rod, squid or its like, ' + s.time.join('/') : s.rare ? ' · rod or trophy line' : ''}${!s.legend && weatherText(s) ? ' · ' + weatherText(s) : ''}</small></div><div class="price">—</div></div>`;
 }
 function indexRowGame(c) { const gx = S.gindex[c.id], home = LOCS.find(l => c.loc[l.id]);
       const mini = `<canvas class="mini game" width="80" height="48" data-game="${c.id}" data-known="${gx ? 1 : 0}"></canvas>`;
@@ -14783,6 +14844,20 @@ const FISH_ART = {
 
 // ---------- gear icons: 20x20 masks (a main, b dark, c accent, d highlight, e extra), a palette per item, cached per key/scale ----------
 const ICON_MASKS = {
+  worm: ['....................', '....................', '............bbbbb...', '..........bbaaadab..', '.........baaaaaaab..', '........baaaabbbb...', '........bccbb.......', '........baab........', '........baabb.......', '........baaaab......', '.........baaaab.....', '..........bbccb.....', '...........baaab....', '....bb......baab....', '...baab....baaab....', '...baaabbbbaaab.....', '....baaaaaaaab......', '.....baaaaaab.......', '......bbbbbb........', '....................'],
+  paste: ['....................', '....................', '....................', '....................', '.......bbbbb........', '......baaaaab.......', '.....baaaaaaab......', '....baaddaaaaab.....', '....baaddaaaaab.....', '...baaaaaaaaaaab....', '....baaaaaaaaab.....', '....baaaaaaaaab.....', '.....baaaaaaab......', '......baaaaab..bb...', '....b..bbbbb..baab..', '...bab........baab..', '..baaab.......baab..', '...bab.........bb...', '....b...............', '....................'],
+  limpet: ['....................', '....................', '....................', '....................', '....................', '.........bb.........', '........bddb........', '.......baaaab.......', '......bacacaab......', '.....baacaccaab.....', '.....baacacacab.....', '....baacaacacaab....', '...baacaaacacaaab...', '..baaacaaacaacaaab..', '..baaacaaacaaacaab..', '...bbbbbbbbbbbbbb...', '....................', '....................', '....................', '....................'],
+  mussel: ['....................', '....................', '....................', '....................', '....................', '....................', '.....bbbbbbb........', '....baaaaaaabb......', '...badddddcaacbb....', '...baaaacacaaacab...', '..baaaaacaacaacaab..', '...baaaacacaaacab...', '...baaacaacaacbb....', '....baaaaaaabb......', '.....bbbbbbb........', '....................', '....................', '....................', '....................', '....................'],
+  crab: ['....................', '....................', '....................', '.bbb............bbb.', 'baaab..........baaab', 'baaab..........baaab', '.baab..........baab.', '..baab..bbbb..baab..', '...baabbaaaabbaab...', '....baaacaacaaab....', '....baaaaaaaaaab....', '...bbaaaaaaaaaabb...', '..baaaaadadadaaaab..', '.babbbaaaaaaaabbbab.', '..bbaaabaaaaaaaabb..', '..babaabbbbbbaabab..', '...babb......bbab...', '....b..........b....', '....................', '....................'],
+  baitfish: ['....................', '....................', '....................', '....................', '....................', '....................', '..b.................', '.bab..bbbbb.........', '.baabbaaaaabb.b.....', '.baaaaaaaaaaabcbb...', '.baaaaaaaaaaaaaaab..', '.baaaadddddddbbbb...', '.baabbaaaaabb.......', '.bab..bbbbb.........', '..b.................', '....................', '....................', '....................', '....................', '....................'],
+  strip: ['....................', '....................', '....................', '....................', '....................', '......b.bbbbbbbb....', '.....bcbcacacacab...', '.....bcacacacacab...', '....bcacacacacaab...', '.....baaaaaaaaaab...', '....baaaaaaaaaab....', '....baaaaaaaaaab....', '...baddddddddab.....', '..baaaaaaaaaaab.....', '...bbbbbbbbbbb......', '....................', '....................', '....................', '....................', '....................'],
+  roe: ['....................', '....................', '....................', '....................', '.......b..bbb.......', '......babbaaab......', '.....bdaaadaaab.....', '....baaaaaaacabb....', '.....baacbaaadaab...', '......baaaabaaaaab..', '.....bbadaaaaaacab..', '....baaaaacaaaaab...', '....badaaaaadaab....', '....baacabbaaaab....', '....baaaabbaacab....', '.....bbbb..baab.....', '............bb......', '....................', '....................', '....................'],
+  cricket: ['....................', '....................', '....................', '...............b.bb.', '....b.........babaab', '...bab........babab.', '...baab.......baaab.', '..babab.......baab..', '..babbabbbb..baaab..', '..babbabaaabbbaab...', '..babaddddddaaacab..', '.babbaaaaaaaaaaab...', '.babbaaaaaaaaabb....', '..b..bbaaaaabb......', '.....baabbbab.......', '.....bab...bab......', '......b.....b.......', '....................', '....................', '....................'],
+  grub: ['....................', '....................', '....................', '....................', '....bbb.....bbbb....', '...baaab...baaaab...', '...baaaab..baddacb..', '..bcaaaab..baddaab..', '..baaacab..bcddaab..', '..baaaab....baaaab..', '..baaacb....bcaacb..', '..bcaaab....baaaab..', '..baaaacbbbbcaaaab..', '..baaaaaacacaaaaab..', '...bcaaaaaaaaaacb...', '...baaaaaaaaaaaab...', '....bbaaaaaaaabb....', '......bacaaacb......', '.......bbbbbb.......', '....................'],
+  moth: ['....................', '.......b....b.......', '......bab..bab......', '.......babbab.......', '...bbbbbabbabbbbb...', '..baaaaabaabaaaaab..', '.baaaaaaaddaaaaaaab.', '.baaacaaaddaaacaaab.', '.baaacaaaddaaacaaab.', '.baaaaaaaddaaaaaaab.', '..baaaaabddbaaaaab..', '...bbaaabddbaaabb...', '...baaaaaddaaaaab...', '...baaaaaddaaaaab...', '...baaaaaddaaaaab...', '....baaabddbaaab....', '.....bbb.bb.bbb.....', '....................', '....................', '....................'],
+  fly: ['....................', '....................', '....................', '...........bb.......', '..........bddb......', '.......bbbddddb.....', '......bdddddddb.....', '.....bddddddddb.....', '.....bddddddddb.....', '......bdddbddbb.....', '.......bbaaabbab....', '......baaaaaaacab...', '......baaaaaaaaab...', '......baaaaaaaab....', '.......baaaabbb.....', '......baabbaab......', '......bab..bab......', '.......b....b.......', '....................', '....................'],
+  lure: ['....................', '.........bb.........', '........bccb........', '........bccb........', '........baab........', '.......bdaaab.......', '......badaaaab......', '......badaaaab......', '......badaaaab......', '......badaaaab......', '.......bdaaab.......', '........baab........', '........baab........', '.........bcb........', '.........bcb.b......', '.........bcbbcb.....', '.........bccccb.....', '..........bccb......', '...........bb.......', '....................'],
+  octopus: ['....................', '....................', '.......bbbbbb.......', '......baaaaaab......', '.....baddaaaaab.....', '.....baaaaaaaab.....', '....baaaaaaaaaab....', '....baaacaacaaab....', '.....baaaaaaaab.....', '.....baaaaaaaab.....', '....bbbaaaaaab.b....', '...baabbabbaabbab...', '...baabbabbaabbab...', '..babbaabbabbaab....', '..babbaabbabbaab....', '...baabbabbaabbab...', '...baabbabbaabbab...', '....bb..b..bb..b....', '....................', '....................'],
   unknown: ['....................', '....................', '....................', '......bbbbbbbb......', '.....baaaaaaaab.....', '.....baabbbbaab.....', '.....bbb....baab....', '............baab....', '...........baab.....', '..........baab......',
             '.........baab.......', '.........baab.......', '.........bbbb.......', '....................', '.........bbbb.......', '.........baab.......', '.........baab.......', '.........bbbb.......', '....................', '....................'],
   tally: ['....................', '....................', '................cc..', '...............c..c.', '..............c...c.', '............bbb..c..', '...........bdab.c...', '..........bbbab..c..', '.........bdaab..ccc.', '........bbbab.....c.',
@@ -14857,7 +14932,16 @@ const ICON_PAL = {
   unknown: ['unknown', { a: '#5a6a8e', b: '#1a2234' }],
   'tool:tally': ['tally', { a: '#b8905a', b: '#4a3222', c: '#d8d0c0', d: '#d8b47a' }],
   'rig:hand': ['rod', { a: '#8a6a44', b: '#5a3a22', c: '#d8d0c0', d: '#e8e8e8', e: '#d7362a' }], 'rig:set': ['rigset', { a: '#8a6a44', b: '#4a3222', c: '#e0e0e0' }], 'rig:trophy': ['rigtrophy', { a: '#d7362a', b: '#5a1a12', c: '#e0e0e0', d: '#ffffff' }],
-  'bait:scraps': ['scraps', { a: '#e8dcc8', b: '#8a7a60', c: '#f0a0a0' }], 'bait:shrimp': ['shrimp', { a: '#f08070', b: '#8a3020', c: '#ffffff' }], 'bait:squid': ['squid', { a: '#b070c0', b: '#4a2060', c: '#f0e0ff' }],
+  'bait:scraps': ['scraps', { a: '#e8dcc8', b: '#8a7a60', c: '#f0a0a0' }],
+  'bait:bread': ['paste', { a: '#e8d8a8', b: '#7a6238', d: '#fff4d0' }], 'bait:worm': ['worm', { a: '#d08878', b: '#6a3028', c: '#f0b0a0', d: '#f8d0c8' }], 'bait:limpet': ['limpet', { a: '#b8b0a0', b: '#4a4438', c: '#8a8272', d: '#e8e0d0' }],
+  'bait:maggot': ['grub', { a: '#f0e8d0', b: '#8a8060', c: '#d0c8a8', d: '#c08040' }], 'bait:lugworm': ['worm', { a: '#8a5a3a', b: '#3a2010', c: '#c08a5a', d: '#d8a878' }], 'bait:ragworm': ['worm', { a: '#c85a4a', b: '#5a1810', c: '#f0d060', d: '#f09080' }],
+  'bait:crab': ['crab', { a: '#c86a40', b: '#5a2410', c: '#101010', d: '#f0a070' }], 'bait:sandeel': ['baitfish', { a: '#b8c8c0', b: '#3a4a50', c: '#101820', d: '#f0f8f0' }], 'bait:mussel': ['mussel', { a: '#3a4a78', b: '#101830', c: '#6a7ab0', d: '#9ab0e0' }],
+  'bait:roe': ['roe', { a: '#f08040', b: '#8a3010', c: '#c05020', d: '#ffd0a0' }], 'bait:cricket': ['cricket', { a: '#7a8a3a', b: '#2a3210', c: '#101010', d: '#b0c060' }], 'bait:minnow': ['baitfish', { a: '#8aa0b8', b: '#2a3848', c: '#101820', d: '#d0e0f0' }],
+  'bait:leech': ['worm', { a: '#3a3a30', b: '#101008', c: '#6a6a50', d: '#8a8a70' }], 'bait:mackerel': ['strip', { a: '#e8c8b8', b: '#3a4a58', c: '#3a6a8a', d: '#fff0e8' }], 'bait:cuttle': ['squid', { a: '#c8a878', b: '#5a3a1a', c: '#fff0d0' }],
+  'bait:stormfly': ['fly', { a: '#4a4a5a', b: '#16161e', c: '#f0c050', d: '#a8c8e8' }], 'bait:herring': ['baitfish', { a: '#6a8ab0', b: '#1a2a48', c: '#101820', d: '#e0f0ff' }], 'bait:octopus': ['octopus', { a: '#c05a6a', b: '#4a1020', c: '#101010', d: '#f0a0b0' }],
+  'bait:bloodworm': ['worm', { a: '#c82828', b: '#4a0808', c: '#f06060', d: '#ff9090' }], 'bait:glowgrub': ['grub', { a: '#b8f070', b: '#2a5a10', c: '#e8ffb0', d: '#ffffff' }], 'bait:gilt': ['lure', { a: '#f0c050', b: '#6a4a0a', c: '#d0d8e0', d: '#fff4c0' }],
+  'bait:glassshrimp': ['shrimp', { a: '#b8e0f0', b: '#3a6a8a', c: '#ffffff' }], 'bait:honeygrub': ['grub', { a: '#f0b030', b: '#7a4a08', c: '#ffe080', d: '#fff0b0' }], 'bait:embergrub': ['grub', { a: '#f06020', b: '#5a1404', c: '#ffc040', d: '#fff0a0' }],
+  'bait:moonmoth': ['moth', { a: '#e0e8f8', b: '#3a4a6a', c: '#8aa0d0', d: '#6a7aa0' }], 'bait:starroe': ['roe', { a: '#a8c8ff', b: '#1a2a6a', c: '#5a80e0', d: '#ffffff' }], 'bait:shrimp': ['shrimp', { a: '#f08070', b: '#8a3020', c: '#ffffff' }], 'bait:squid': ['squid', { a: '#b070c0', b: '#4a2060', c: '#f0e0ff' }],
   'rod:stick': ['rod', { a: '#8a6a44', b: '#5a3a22', c: '#d8d0c0', d: '#e8e8e8', e: '#d7362a' }], 'rod:cane': ['rod', { a: '#d8b060', b: '#6a4a20', c: '#f0e0a0', d: '#e8e8e8', e: '#d7362a' }], 'rod:carbon': ['rod', { a: '#3a3a44', b: '#d7362a', c: '#a0a0a8', d: '#e8e8e8', e: '#f0c050' }],
   'rod:steel': ['rod', { a: '#b8c0c8', b: '#4a4a5a', c: '#ffffff', d: '#e8e8e8', e: '#2d6fb0' }], 'rod:stariron': ['rod', { a: '#30305a', b: '#101028', c: '#a0e0ff', d: '#a0e0ff', e: '#ffffff' }],
   'line:l10': ['spool', { a: '#8a6a44', b: '#3a2a1a', c: '#d8d8d8' }], 'line:l20': ['spool', { a: '#8a6a44', b: '#3a2a1a', c: '#ffffff' }], 'line:l40': ['spool', { a: '#8a6a44', b: '#3a2a1a', c: '#80c060' }], 'line:l80': ['spool', { a: '#8a6a44', b: '#3a2a1a', c: '#4a90e0' }],
@@ -25880,7 +25964,7 @@ document.addEventListener('click', e => {
   else if (a === 'reloadbuild') buildReload();
   else if (a === 'laterbuild') { BUILD.later = Date.now() + T_BUILD.laterMs; buildShow(); }
   else if (a === 'sel') { S.sel = i; save(); render(); }
-  else if (a === 'rig') { const L = S.lines[S.sel]; L.rig = k; if (k === 'trophy' && L.bait === 'scraps') L.bait = S.bait.shrimp > 0 ? 'shrimp' : S.bait.squid > 0 ? 'squid' : 'scraps'; save(); render(); renderSheet(); }
+  else if (a === 'rig') { const L = S.lines[S.sel]; L.rig = k; if (k === 'trophy' && BAITS[L.bait].tier < 1) L.bait = trophyBait(); save(); render(); renderSheet(); }
   else if (a === 'bait') { S.lines[S.sel].bait = k; save(); render(); renderSheet(); }
   else if (a === 'equip') { const [kind, id] = k.split(':'); if (kind === 'rod' && S.rodsOwned.includes(id)) S.rod = id; else if (kind === 'line' && S.linesOwned.includes(id)) S.line = id; else if (kind === 'pail' && S.pailsOwned.includes(id)) { if (S.bucket.length > (BUCKETS.find(b => b.id === id) || {}).cap) { toast('Too many fish in the bucket for that one.'); return; } S.pail = id; } else if (kind === 'weapon' && S.weaponsOwned.includes(id)) S.weapon = id; else if (kind === 'cloak' && S.cloaksOwned.includes(id)) S.cloak = id; else if (kind === 'boots' && S.bootsOwned.includes(id)) S.boots = id; else if (kind === 'pick' && S.picksOwned.includes(id)) S.pick = id; else if (kind === 'lamp' && S.lampsOwned.includes(id)) S.lamp = id; else if (kind === 'sack' && S.sacksOwned.includes(id)) { if (S.sack.length > (SACKS.find(b => b.id === id) || {}).cap) { toast('Too much in the sack for that one.'); return; } S.sack_ = id; } else if (kind === 'gamepack' && S.packsOwned.includes(id)) { if (S.pack.length > (PACKS.find(b => b.id === id) || {}).cap) { toast('Too much in the bag for that one.'); return; } S.pack_ = id; } save(); render(); renderSheet(); if (MODE === 'hunt') renderHunt(); }
   else if (a === 'cyclerig') { const L = S.lines[S.sel]; if (L && L.phase === 'idle') { cycleRig(L); save(); render(); } }
